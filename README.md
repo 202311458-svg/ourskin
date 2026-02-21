@@ -1,7 +1,7 @@
-# OurSkin Dermatology Clinic System
+# Our Skin Clinical Operations & Monitoring System (OS-COMS)
 
 Full-stack capstone project using:
-- Next.js
+- Next.js & React 18+
 - FastAPI
 - PostgreSQL (Supabase)
 
