@@ -4,7 +4,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <h1>OurSkin Dermatology Clinic</h1>
+          <h1>Our Skin Dermatology Center</h1>
           <p>
             Advanced skin care solutions powered by medical expertise and
             technology.
