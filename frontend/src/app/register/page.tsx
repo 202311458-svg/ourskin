@@ -1,4 +1,3 @@
-// src/app/register/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -18,8 +17,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-8 mt-10 bg-white shadow rounded">
-      <h1 className="text-2xl font-bold mb-6">Book an Appointment</h1>
+    <div className="max-w-md p-8 mx-auto mt-10 bg-white rounded shadow">
+      <h1 className="mb-6 text-2xl font-bold">Book an Appointment</h1>
       {success && <p className="mb-4 text-green-600">{success}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -28,7 +27,7 @@ export default function RegisterPage() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border px-3 py-2 rounded"
+            className="w-full px-3 py-2 border rounded"
             required
           />
         </div>
@@ -38,13 +37,13 @@ export default function RegisterPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full border px-3 py-2 rounded"
+            className="w-full px-3 py-2 border rounded"
             required
           />
         </div>
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+          className="w-full py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
         >
           Request Appointment
         </button>
