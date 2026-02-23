@@ -5,94 +5,343 @@
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #f8f9fa;
-  color: #222;
+  font-family: Poppins;
+  background: #f6f5f3;
+  overflow-x: hidden;
+  color: #333;
 }
 
-.container {
-  width: 100%;
-}
+/* HERO */
 
 .hero {
-  height: 80vh;
-  background: linear-gradient(to right, #0f4c81, #1c6ea4);
+  height: 100vh;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  align-items: center;
   text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.logoImage {
+  width: 700px;
+  max-width: 80%;
+  margin-bottom: -30px;
+  animation: logoFloat 6s ease-in-out infinite;
+  filter: drop-shadow(0px 15px 30px rgba(0, 0, 0, 0.15));
+}
+
+.sub {
+  font-size: 25px;
+  margin-top: 10px;
+  color: #82334c;
+  opacity: 0.8;
+}
+
+.mainBtn {
+  margin-top: 40px;
+  background: #82334c;
   color: white;
-  padding: 20px;
-}
-
-.hero-content h1 {
-  font-size: 3rem;
-  margin-bottom: 20px;
-}
-
-.hero-content p {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
-}
-
-.primary-btn,
-.secondary-btn {
-  padding: 12px 24px;
+  padding: 18px 40px;
+  border-radius: 40px;
   border: none;
+  font-size: 16px;
+  font-weight: 200;
   cursor: pointer;
-  font-size: 1rem;
-  border-radius: 6px;
+  transition: 0.4s;
 }
 
-.primary-btn {
-  background-color: white;
-  color: #0f4c81;
+.mainBtn:hover {
+  transform: scale(1.1);
+  box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-.secondary-btn {
-  background-color: #0f4c81;
-  color: white;
-}
+/* SECTIONS */
 
 .section {
-  padding: 60px 10%;
+  padding: 120px 10%;
   text-align: center;
+  position: relative;
+  z-index: 2;
 }
 
 .section h2 {
+  font-size: 40px;
   margin-bottom: 20px;
-  font-size: 2rem;
+  color: #82334c;
 }
 
-.services .cards {
+.section p {
+  max-width: 700px;
+  margin: auto;
+}
+
+/* CARDS */
+
+.cards {
   display: flex;
+  gap: 30px;
   justify-content: center;
-  gap: 20px;
-  margin-top: 30px;
+  margin-top: 40px;
   flex-wrap: wrap;
 }
 
 .card {
   background: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 280px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  width: 300px;
+  border-radius: 30px;
+  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.1);
+  transition: 0.5s;
+}
+
+.card:hover {
+  transform: translateY(-15px) scale(1.05);
+  box-shadow: 0px 30px 60px rgba(0, 0, 0, 0.2);
 }
 
 .card h3 {
+  color: #82334c;
   margin-bottom: 10px;
 }
 
-.cta {
-  background: #e9f2fb;
-  padding: 60px 20px;
-  text-align: center;
-}
+/* FOOTER */
 
 .footer {
-  background: #0f4c81;
-  color: white;
+  margin-top: 100px;
+  padding: 40px;
   text-align: center;
-  padding: 20px;
+  background: #82334c;
+  color: white;
+}
+
+/* MODAL */
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 10;
+}
+
+.modalCard {
+  background: white;
+  padding: 50px;
+  border-radius: 30px;
+  width: 400px;
+  box-shadow: 0px 40px 80px rgba(0, 0, 0, 0.3);
+  animation: pop 0.4s;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modalCard input,
+.modalCard select {
+  width: 100%;
+  padding: 14px;
+  margin-top: 15px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.submitBtn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 16px;
+  background: #82334c;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.closeBtn {
+  margin-top: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.guest {
+  margin-top: 10px;
+  opacity: 0.6;
+}
+
+/* LUXURY FABRIC WAVES */
+
+.fabric1 {
+  position: fixed;
+  width: 1600px;
+  height: 1600px;
+  background: linear-gradient(120deg, #ffd1c9, #d19292, #dfc4ba, #fdf7f3);
+  border-radius: 45%;
+  top: -500px;
+  left: -400px;
+  animation: fabricMove1 30s infinite linear;
+  filter: blur(20px);
+  z-index: 0;
+}
+
+.fabric2 {
+  position: fixed;
+  width: 1500px;
+  height: 1500px;
+  background: linear-gradient(120deg, #f7d1cc, #ffc7c7, #d9c5bc);
+  border-radius: 50%;
+  bottom: -600px;
+  right: -300px;
+  animation: fabricMove2 40s infinite linear;
+  filter: blur(25px);
+  z-index: 0;
+}
+
+.fabric3 {
+  position: fixed;
+  width: 1200px;
+  height: 1200px;
+  background: linear-gradient(120deg, #c78282, #ffe5db);
+  border-radius: 40%;
+  top: 200px;
+  right: -200px;
+  animation: fabricMove3 35s infinite linear;
+  filter: blur(20px);
+  z-index: 0;
+}
+
+@keyframes fabricMove1 {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fabricMove2 {
+  0% {
+    transform: rotate(360deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes fabricMove3 {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+/* CONTENT ABOVE FABRIC */
+
+.contentLayer {
+  position: relative;
+  z-index: 5;
+}
+
+/* FABRICS BEHIND EVERYTHING */
+
+.fabric1,
+.fabric2,
+.fabric3 {
+  z-index: -2;
+}
+
+/* FLOATING CIRCLES */
+
+.circle {
+  z-index: -1;
+}
+
+/* MODAL ALWAYS ON TOP */
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+/* FLOATING CIRCLES */
+
+.circle {
+  position: fixed;
+  border-radius: 50%;
+  background: #82334c22;
+  z-index: 0;
+}
+
+.c1 {
+  width: 200px;
+  height: 200px;
+  top: 200px;
+  left: 200px;
+  animation: float 12s infinite;
+}
+
+.c2 {
+  width: 150px;
+  height: 150px;
+  bottom: 200px;
+  right: 200px;
+  animation: float 15s infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-40px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes logoFloat {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }

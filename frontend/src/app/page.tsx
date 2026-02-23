@@ -1,58 +1,164 @@
+"use client";
+
+import { useState } from "react";
+
 export default function Home() {
-  return (
-    <main className="container">
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="hero-content">
-          <h1>Our Skin Dermatology Center</h1>
-          <p>
-            Advanced skin care solutions powered by medical expertise and
-            technology.
-          </p>
-          <button className="primary-btn">Book Appointment</button>
+    const [modal, setModal] = useState(false);
+
+    return (
+        <div>
+            <div className="fabric1"></div>
+            <div className="fabric2"></div>
+            <div className="fabric3"></div>
+            <div className="circle c1"></div>
+            <div className="circle c2"></div>
+
+            <div className="contentLayer">
+
+                <section className="hero">
+                    <img src="/os-logo.png" alt="OurSkin Logo" className="logoImage"/>
+                    <p className="sub">Clinical Operations & Monitoring System</p>
+                    <button className="mainBtn" onClick={() => setModal(true)}>
+                        Book Appointment
+                    </button>
+                </section>
+
+                <section className="section">
+                    <h2>About OurSkin</h2>
+                    <p>
+                        Our Skin Dermatology Center provides advanced skin treatments
+                        supported by modern clinical technology. OS-COMS allows efficient
+                        appointment tracking, patient monitoring, and dermatology workflow
+                        management.
+                    </p>
+                </section>
+
+                <section className="section">
+                    <h2>Services</h2>
+
+                    <div className="cards">
+
+                        <div className="card">
+                            <h3>Acne Treatment</h3>
+                            <p>Personalized treatment plans.</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Laser Therapy</h3>
+                            <p>Advanced skin procedures.</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Skin Analysis</h3>
+                            <p>Professional dermatologist diagnosis.</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* DOCTORS */}
+
+                <section className="section">
+                    <h2>Doctors & Staff</h2>
+
+                    <div className="cards">
+                        <div className="card">
+                            <h3>Dr. Maria Santos</h3>
+
+                            <p>Lead Dermatologist</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Dr. Anne Cruz</h3>
+
+                            <p>Dermatologist</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Nurse Carla</h3>
+
+                            <p>Skin Specialist</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* WHY CHOOSE */}
+
+                <section className="section">
+                    <h2>Why Choose OurSkin</h2>
+
+                    <div className="cards">
+                        <div className="card">
+                            <h3>Medical Experts</h3>
+
+                            <p>Licensed dermatologists.</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Modern Technology</h3>
+
+                            <p>Digital patient monitoring.</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Trusted Clinic</h3>
+
+                            <p>Reliable skin care services.</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* FACEBOOK */}
+
+                <section className="section">
+                    <h2>Inquiries</h2>
+
+                    <p>Contact us on Facebook for questions.</p>
+
+                    <a href="https://www.facebook.com/profile.php?id=61574827784283" target="_blank">
+                        <button className="mainBtn">Message us on Facebook</button>
+                    </a>
+                </section>
+
+                {/* FOOTER */}
+
+                <footer className="footer">© Our Skin Dermatology Center</footer>
+            </div>
+
+            {/* MODAL */}
+
+            {modal && (
+                <div className="modal">
+                    <div className="modalCard">
+                        <h2>Book Appointment</h2>
+
+                        <input placeholder="Full Name" />
+
+                        <input placeholder="Email" />
+
+                        <input placeholder="Phone" />
+
+                        <select>
+                            <option>Consultation</option>
+
+                            <option>Acne Treatment</option>
+
+                            <option>Laser Therapy</option>
+                        </select>
+
+                        <input type="date" />
+
+                        <button className="submitBtn">Submit Appointment</button>
+
+                        <p className="guest">
+                            Guest account will be automatically created.
+                        </p>
+
+                        <button onClick={() => setModal(false)} className="closeBtn">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-      </section>
-
-      {/* About Section */}
-      <section className="section">
-        <h2>About OurSkin</h2>
-        <p>
-          OurSkin provides comprehensive dermatological services including
-          acne treatment, laser therapy, skin diagnostics, and cosmetic
-          dermatology. We combine medical precision with patient-centered care.
-        </p>
-      </section>
-
-      {/* Services Section */}
-      <section className="section services">
-        <h2>Our Services</h2>
-        <div className="cards">
-          <div className="card">
-            <h3>Acne Treatment</h3>
-            <p>Personalized acne management plans tailored to your skin type.</p>
-          </div>
-          <div className="card">
-            <h3>Laser Therapy</h3>
-            <p>Advanced laser treatments for skin rejuvenation and repair.</p>
-          </div>
-          <div className="card">
-            <h3>Skin Analysis</h3>
-            <p>AI-assisted skin diagnostics for accurate treatment planning.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="cta">
-        <h2>Healthy Skin Starts Here</h2>
-        <p>Schedule your consultation with our specialists today.</p>
-        <button className="secondary-btn">Get Started</button>
-      </section>
-
-      {/* Footer */}
-      <footer className="footer">
-        <p>© {new Date().getFullYear()} OurSkin Dermatology Clinic</p>
-      </footer>
-    </main>
-  );
+    );
 }
