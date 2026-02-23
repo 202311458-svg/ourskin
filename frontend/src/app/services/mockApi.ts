@@ -12,7 +12,7 @@ export interface Appointment {
   date: string;
 }
 
-let appointments: Appointment[] = [
+const appointments: Appointment[] = [
   { id: 1, patientName: "Faith", status: "pending", date: "2026-02-21" },
   { id: 2, patientName: "Angela", status: "pending", date: "2026-02-22" },
 ];
@@ -42,4 +42,25 @@ export async function createAppointment(patientName: string, date: string): Prom
   };
   appointments.push(newAppointment);
   return new Promise((resolve) => setTimeout(() => resolve(newAppointment), 500));
+}
+
+const patients: Patient[] = [
+  {
+    id: 1,
+    name: "Faith",
+    email: "faith@email.com",
+    contact: "09123456789",
+  },
+  {
+    id: 2,
+    name: "Angela",
+    email: "angela@email.com",
+    contact: "09987654321",
+  },
+];
+
+export async function fetchPatients(): Promise<Patient[]> {
+  return new Promise((resolve) =>
+    setTimeout(() => resolve(patients), 500)
+  );
 }
