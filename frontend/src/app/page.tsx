@@ -58,25 +58,42 @@ export default function Home() {
                 {/* DOCTORS */}
 
                 <section className="section">
-                    <h2>Doctors & Staff</h2>
+                    <h2>Meet Our Doctors</h2>
 
                     <div className="cards">
                         <div className="card">
-                            <h3>Dr. Maria Santos</h3>
-
+                            <h3>Cecilia Roxas-Rosete, MD, FPDS</h3>
                             <p>Lead Dermatologist</p>
                         </div>
 
                         <div className="card">
-                            <h3>Dr. Anne Cruz</h3>
-
+                            <h3>Raisa Rosete, MD, MBA, DPDS</h3>
                             <p>Dermatologist</p>
                         </div>
 
                         <div className="card">
-                            <h3>Nurse Carla</h3>
+                            <h3>Reena Tagle, MD, DPDS</h3>
+                            <p>Dermatologist</p>
+                        </div>
 
-                            <p>Skin Specialist</p>
+                        <div className="card">
+                            <h3>Gelaine Pangilinan, MD, MBA</h3>
+                            <p>Dermatologist</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Hans Alitin, MD, DPDS</h3>
+                            <p>Dermatologist</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Reinier Rosete, MD, FPSCS</h3>
+                            <p>Cosmetic Surgeon</p>
+                        </div>
+
+                        <div className="card">
+                            <h3>Konrad Aguila, MD, FPSOHNS, FPSCS</h3>
+                            <p>Cosmetic Surgeon</p>
                         </div>
                     </div>
                 </section>
