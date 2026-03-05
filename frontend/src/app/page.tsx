@@ -1,181 +1,361 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useState } from "react"
+import Image from "next/image"
 
 export default function Home() {
-    const [modal, setModal] = useState(false);
 
-    return (
-        <div>
-            <div className="fabric1"></div>
-            <div className="fabric2"></div>
-            <div className="fabric3"></div>
-            <div className="circle c1"></div>
-            <div className="circle c2"></div>
+const [modal,setModal] = useState(false)
+const [isLogin,setIsLogin] = useState(true)
 
-            <div className="contentLayer">
+return(
 
-                <section className="hero">
-                    <img src="/os-logo.png" alt="OurSkin Logo" className="logoImage"/>
-                    <p className="sub">Clinical Operations & Monitoring System</p>
-                    <button className="mainBtn" onClick={() => setModal(true)}>
-                        Book Appointment
-                    </button>
-                </section>
+<div>
 
-                <section className="section">
-                    <h2>About OurSkin</h2>
-                    <p>
-                        Our Skin Dermatology Center provides advanced skin treatments
-                        supported by modern clinical technology. OS-COMS allows efficient
-                        appointment tracking, patient monitoring, and dermatology workflow
-                        management.
-                    </p>
-                </section>
+{/* NAVBAR */}
 
-                <section className="section">
-                    <h2>Services</h2>
+<nav className="navbar">
 
-                    <div className="cards">
+<div className="navLogo">
+<Image src="/os-logo.png" alt="Our Skin" width={140} height={50}/>
+</div>
 
-                        <div className="card">
-                            <h3>Acne Treatment</h3>
-                            <p>Personalized treatment plans.</p>
-                        </div>
+<div className="navLinks">
+<a href="#about">About</a>
+<a href="#services">Services</a>
+<a href="#doctors">Doctors</a>
+<a href="#contact">Contact</a>
+</div>
 
-                        <div className="card">
-                            <h3>Laser Therapy</h3>
-                            <p>Advanced skin procedures.</p>
-                        </div>
+<div className="navActions">
 
-                        <div className="card">
-                            <h3>Skin Analysis</h3>
-                            <p>Professional dermatologist diagnosis.</p>
-                        </div>
-                    </div>
-                </section>
+<button
+className="loginBtn"
+onClick={()=>setModal(true)}
+>
+Login
+</button>
 
-                {/* DOCTORS */}
+<button
+className="bookBtn"
+onClick={()=>setModal(true)}
+>
+Book Appointment
+</button>
 
-                <section className="section">
-                    <h2>Meet Our Doctors</h2>
+</div>
 
-                    <div className="cards">
-                        <div className="card">
-                            <h3>Cecilia Roxas-Rosete, MD, FPDS</h3>
-                            <p>Lead Dermatologist</p>
-                        </div>
+</nav>
 
-                        <div className="card">
-                            <h3>Raisa Rosete, MD, MBA, DPDS</h3>
-                            <p>Dermatologist</p>
-                        </div>
 
-                        <div className="card">
-                            <h3>Reena Tagle, MD, DPDS</h3>
-                            <p>Dermatologist</p>
-                        </div>
+{/* HERO */}
 
-                        <div className="card">
-                            <h3>Gelaine Pangilinan, MD, MBA</h3>
-                            <p>Dermatologist</p>
-                        </div>
+<section className="hero">
 
-                        <div className="card">
-                            <h3>Hans Alitin, MD, DPDS</h3>
-                            <p>Dermatologist</p>
-                        </div>
+<div className="heroLeft">
 
-                        <div className="card">
-                            <h3>Reinier Rosete, MD, FPSCS</h3>
-                            <p>Cosmetic Surgeon</p>
-                        </div>
+<h1>
+Healthy Skin
+<br/>
+Starts With
+<br/>
+Expert Care
+</h1>
 
-                        <div className="card">
-                            <h3>Konrad Aguila, MD, FPSOHNS, FPSCS</h3>
-                            <p>Cosmetic Surgeon</p>
-                        </div>
-                    </div>
-                </section>
+<p>
+Our Skin Dermatology Center provides professional
+dermatological diagnosis, treatment, and skin
+monitoring supported by modern clinical technology.
+</p>
 
-                {/* WHY CHOOSE */}
+<div className="heroButtons">
 
-                <section className="section">
-                    <h2>Why Choose OurSkin</h2>
+<button
+className="bookBtn"
+onClick={()=>setModal(true)}
+>
+Book Consultation
+</button>
 
-                    <div className="cards">
-                        <div className="card">
-                            <h3>Medical Experts</h3>
+<button className="outlineBtn">
+Explore Services
+</button>
 
-                            <p>Licensed dermatologists.</p>
-                        </div>
+</div>
 
-                        <div className="card">
-                            <h3>Modern Technology</h3>
+</div>
 
-                            <p>Digital patient monitoring.</p>
-                        </div>
 
-                        <div className="card">
-                            <h3>Trusted Clinic</h3>
+<div className="heroRight">
 
-                            <p>Reliable skin care services.</p>
-                        </div>
-                    </div>
-                </section>
+<div className="heroCard">
 
-                {/* FACEBOOK */}
+<Image
+src="/os-logo.png"
+alt="clinic"
+width={350}
+height={200}
+/>
 
-                <section className="section">
-                    <h2>Inquiries</h2>
+<div className="heroStats">
 
-                    <p>Contact us on Facebook for questions.</p>
+<div>
+<h3>15+</h3>
+<p>Years Experience</p>
+</div>
 
-                    <a href="https://www.facebook.com/profile.php?id=61574827784283" target="_blank">
-                        <button className="mainBtn">Message us on Facebook</button>
-                    </a>
-                </section>
+<div>
+<h3>10k+</h3>
+<p>Patients Treated</p>
+</div>
 
-                {/* FOOTER */}
+<div>
+<h3>6</h3>
+<p>Specialists</p>
+</div>
 
-                <footer className="footer">© Our Skin Dermatology Center</footer>
-            </div>
+</div>
 
-            {/* MODAL */}
+</div>
 
-            {modal && (
-                <div className="modal">
-                    <div className="modalCard">
-                        <h2>Book Appointment</h2>
+</div>
 
-                        <input placeholder="Full Name" />
+</section>
 
-                        <input placeholder="Email" />
 
-                        <input placeholder="Phone" />
+{/* FEATURE STRIP */}
 
-                        <select>
-                            <option>Consultation</option>
+<section className="featureStrip">
 
-                            <option>Acne Treatment</option>
+<div className="feature">
 
-                            <option>Laser Therapy</option>
-                        </select>
+<h4>Certified Dermatologists</h4>
+<p>Board-certified professionals</p>
 
-                        <input type="date" />
+</div>
 
-                        <button className="submitBtn">Submit Appointment</button>
+<div className="feature">
 
-                        <p className="guest">
-                            Guest account will be automatically created.
-                        </p>
+<h4>Modern Equipment</h4>
+<p>Latest dermatology technology</p>
 
-                        <button onClick={() => setModal(false)} className="closeBtn">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+</div>
+
+<div className="feature">
+
+<h4>Digital Patient Records</h4>
+<p>Secure clinical monitoring</p>
+
+</div>
+
+</section>
+
+
+{/* ABOUT */}
+
+<section id="about" className="section">
+
+<h2>About Our Skin</h2>
+
+<p>
+Our Skin Dermatology Center is dedicated to providing
+high-quality dermatological care. Our specialists focus
+on diagnosis, treatment, and long-term skin health using
+advanced medical technologies and personalized care plans.
+</p>
+
+</section>
+
+
+{/* SERVICES */}
+
+<section id="services" className="section altSection">
+
+<h2>Dermatology Services</h2>
+
+<div className="cards">
+
+<div className="serviceCard">
+<h3>Acne Treatment</h3>
+<p>Medical acne treatment plans for long-term control.</p>
+</div>
+
+<div className="serviceCard">
+<h3>Laser Dermatology</h3>
+<p>Advanced cosmetic and medical laser procedures.</p>
+</div>
+
+<div className="serviceCard">
+<h3>Skin Diagnostics</h3>
+<p>Professional dermatological evaluation.</p>
+</div>
+
+<div className="serviceCard">
+<h3>Scar Therapy</h3>
+<p>Treatment options for acne and surgical scars.</p>
+</div>
+
+</div>
+
+</section>
+
+
+{/* DOCTORS */}
+
+<section id="doctors" className="section">
+
+<h2>Meet Our Dermatologists</h2>
+
+<div className="doctorGrid">
+
+<div className="doctorCard">
+<div className="doctorPhoto"></div>
+<h3>Cecilia Roxas-Rosete, MD</h3>
+<p>Lead Dermatologist</p>
+</div>
+
+<div className="doctorCard">
+<div className="doctorPhoto"></div>
+<h3>Raisa Rosete, MD</h3>
+<p>Dermatologist</p>
+</div>
+
+<div className="doctorCard">
+<div className="doctorPhoto"></div>
+<h3>Reena Tagle, MD</h3>
+<p>Dermatologist</p>
+</div>
+
+<div className="doctorCard">
+<div className="doctorPhoto"></div>
+<h3>Hans Alitin, MD</h3>
+<p>Dermatologist</p>
+</div>
+
+</div>
+
+</section>
+
+
+{/* BOOK CTA */}
+
+<section className="ctaSection">
+
+<h2>Start Your Skin Consultation Today</h2>
+
+<p>
+Book an appointment with our dermatology specialists
+and receive professional care tailored for your skin.
+</p>
+
+<button
+className="bookBtn"
+onClick={()=>setModal(true)}
+>
+Schedule Appointment
+</button>
+
+</section>
+
+
+{/* CONTACT */}
+
+<section id="contact" className="section">
+
+<h2>Visit Our Clinic</h2>
+
+<div className="contactGrid">
+
+<div className="contactCard">
+<h3>Location</h3>
+<p>Olongapo City, Philippines</p>
+</div>
+
+<div className="contactCard">
+<h3>Clinic Hours</h3>
+<p>Monday – Saturday</p>
+<p>9:00 AM – 6:00 PM</p>
+</div>
+
+<div className="contactCard">
+
+<h3>Online Inquiry</h3>
+
+<a
+href="https://www.facebook.com/profile.php?id=61574827784283"
+target="_blank"
+>
+
+<button className="mainBtn">
+Message us on Facebook
+</button>
+
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+
+{/* FOOTER */}
+
+<footer className="footer">
+
+<p>© Our Skin Dermatology Center</p>
+
+</footer>
+
+
+{/* MODAL */}
+
+{modal && (
+
+<div className="modal">
+
+<div className="modalCard">
+
+<h2>
+{isLogin ? "Login to Continue Booking" : "Create an Account"}
+</h2>
+
+{!isLogin && (
+<input placeholder="Full Name"/>
+)}
+
+<input placeholder="Email"/>
+<input type="password" placeholder="Password"/>
+
+<button className="submitBtn">
+{isLogin ? "Login" : "Register"}
+</button>
+
+<p className="switch">
+
+{isLogin ? "Don't have an account?" : "Already have an account?"}
+
+<span onClick={()=>setIsLogin(!isLogin)}>
+{isLogin ? " Register" : " Login"}
+</span>
+
+</p>
+
+<button
+className="closeBtn"
+onClick={()=>setModal(false)}
+>
+Close
+</button>
+
+</div>
+
+</div>
+
+)}
+
+</div>
+
+)
+
 }
