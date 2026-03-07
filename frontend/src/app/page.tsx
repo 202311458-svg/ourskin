@@ -1,12 +1,13 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Image from "next/image"
 
 export default function Home() {
-
+const router = useRouter()
 const [modal,setModal] = useState(false)
-const [isLogin,setIsLogin] = useState(true)
+const [isLogin] = useState(true)
 
 return(
 
@@ -335,8 +336,14 @@ Message us on Facebook
 
 {isLogin ? "Don't have an account?" : "Already have an account?"}
 
-<span onClick={()=>setIsLogin(!isLogin)}>
-{isLogin ? " Register" : " Login"}
+<span
+style={{cursor:"pointer"}}
+onClick={()=>{
+setModal(false)
+router.push("/pages/patient/register")
+}}
+>
+ Register
 </span>
 
 </p>
