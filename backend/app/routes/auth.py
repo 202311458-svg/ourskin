@@ -16,7 +16,6 @@ def get_db():
 
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -24,9 +23,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         name=user.name,
         email=user.email,
-        contact=user.contact,
         password_hash=hash_password(user.password),
-    
+        role=user.role
     )
 
     db.add(new_user)
@@ -44,9 +42,11 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
     token = create_access_token({
         "sub": db_user.email,
+        "role": db_user.role
     })
 
     return {
         "access_token": token,
         "token_type": "bearer",
+        "role": db_user.role
     }

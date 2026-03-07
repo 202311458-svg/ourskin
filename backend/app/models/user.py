@@ -9,5 +9,5 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    contact = Column(String, nullable=True)
+    role = Column(String, nullable=False)  # admin, staff, doctor
     created_at = Column(DateTime(timezone=True), server_default=func.now())

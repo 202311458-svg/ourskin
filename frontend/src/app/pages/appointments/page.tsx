@@ -5,7 +5,7 @@ import {
   Appointment,
   fetchAppointments,
   updateAppointmentStatus,
-} from "../../../services/mockApi"
+} from "../../services/mockApi";
 
 function generateCalendar() {
   const today = new Date();
@@ -115,7 +115,7 @@ export default function AppointmentsPage() {
                     <div className="requestActions">
                       <button
                         onClick={() => handleStatus(a.id, "accepted")}
-                        className="mainBtn small outlineBtn"
+                        className="mainBtn small"
                       >
                         Accept
                       </button>
