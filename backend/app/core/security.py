@@ -9,11 +9,17 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 
+
 def hash_password(password: str):
+    # bcrypt only supports 72 bytes
+    password = password[:72]
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password, hashed_password):
+    plain_password = plain_password[:72]
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()
