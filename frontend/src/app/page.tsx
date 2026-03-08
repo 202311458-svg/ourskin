@@ -1,12 +1,66 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Image from "next/image"
 
 export default function Home() {
 
+const router = useRouter()
+
 const [modal,setModal] = useState(false)
-const [isLogin,setIsLogin] = useState(true)
+const [isLogin] = useState(true)
+
+/* ADDED */
+const [email,setEmail] = useState("")
+const [password,setPassword] = useState("")
+
+/* ADDED */
+const login = async () => {
+
+  try {
+
+    const res = await fetch("http://127.0.0.1:8000/auth/login",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        email:email,
+        password:password
+      })
+    })
+
+    const data = await res.json()
+
+    if(!res.ok){
+      alert(data.detail || "Login failed")
+      return
+    }
+
+    const role = String(data.role).trim().toLowerCase()
+
+    // save authentication info
+    localStorage.setItem("token", data.access_token)
+    localStorage.setItem("role", role)
+
+    console.log("ROLE STORED:", localStorage.getItem("role"))
+
+    setModal(false)
+
+    // redirect depending on role
+    if(role === "staff" || role === "admin"){
+      router.push("/pages/staff/dashboard")
+    }else{
+      router.push("/pages/patient/dashboard")
+    }
+
+  } catch(err){
+    console.error(err)
+    alert("Server error")
+  }
+
+}
 
 return(
 
@@ -128,24 +182,18 @@ height={200}
 <section className="featureStrip">
 
 <div className="feature">
-
 <h4>Certified Dermatologists</h4>
 <p>Board-certified professionals</p>
-
 </div>
 
 <div className="feature">
-
 <h4>Modern Equipment</h4>
 <p>Latest dermatology technology</p>
-
 </div>
 
 <div className="feature">
-
 <h4>Digital Patient Records</h4>
 <p>Secure clinical monitoring</p>
-
 </div>
 
 </section>
@@ -302,9 +350,7 @@ Message us on Facebook
 {/* FOOTER */}
 
 <footer className="footer">
-
 <p>© Our Skin Dermatology Center</p>
-
 </footer>
 
 
@@ -320,14 +366,23 @@ Message us on Facebook
 {isLogin ? "Login to Continue Booking" : "Create an Account"}
 </h2>
 
-{!isLogin && (
-<input placeholder="Full Name"/>
-)}
+<input
+placeholder="Email"
+value={email}
+onChange={(e)=>setEmail(e.target.value)}
+/>
 
-<input placeholder="Email"/>
-<input type="password" placeholder="Password"/>
+<input
+type="password"
+placeholder="Password"
+value={password}
+onChange={(e)=>setPassword(e.target.value)}
+/>
 
-<button className="submitBtn">
+<button
+className="submitBtn"
+onClick={login}
+>
 {isLogin ? "Login" : "Register"}
 </button>
 
@@ -335,8 +390,14 @@ Message us on Facebook
 
 {isLogin ? "Don't have an account?" : "Already have an account?"}
 
-<span onClick={()=>setIsLogin(!isLogin)}>
-{isLogin ? " Register" : " Login"}
+<span
+style={{cursor:"pointer"}}
+onClick={()=>{
+setModal(false)
+router.push("/pages/patient/register")
+}}
+>
+ Register
 </span>
 
 </p>

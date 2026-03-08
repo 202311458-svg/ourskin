@@ -45,6 +45,7 @@ color:#82334c;
 
 .navActions{
 display:flex;
+align-items:center;
 gap:15px;
 }
 
@@ -350,7 +351,7 @@ font-weight:600;
 /* FOOTER */
 
 .footer{
-margin-top:120px;
+margin-top:240px;
 padding:50px;
 background:#82334c;
 color:white;
@@ -501,336 +502,316 @@ display:none;
 
 }
 
-/* APPOINTMENTS*/
+/* APPOINTMENTS */
 
-.appointmentsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
+.appointmentsHeader{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:30px;
 }
 
-.subText {
-  opacity: 0.6;
-  font-size: 14px;
+.subText{
+opacity:0.6;
+font-size:14px;
 }
 
-.tabs {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
+.tabs{
+display:flex;
+gap:20px;
+margin-bottom:20px;
 }
 
-.tab {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  opacity: 0.6;
-  font-weight: 500;
+.tab{
+background:transparent;
+border:none;
+cursor:pointer;
+opacity:0.6;
+font-weight:500;
 }
 
-.tab.active {
-  opacity: 1;
-  border-bottom: 2px solid #7a2c44;
+.tab.active{
+opacity:1;
+border-bottom:2px solid #7a2c44;
 }
 
-.searchBar {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 25px;
+.searchBar{
+display:flex;
+gap:15px;
+margin-bottom:25px;
 }
 
-.searchBar input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
+.searchBar input{
+flex:1;
+padding:10px;
+border-radius:10px;
+border:1px solid #ddd;
 }
 
-.appointmentsContainer {
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 20px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+.appointmentsContainer{
+border-radius:16px;
+background:#ffffff;
+padding:20px;
+box-shadow:0 8px 20px rgba(0,0,0,0.05);
 }
 
-.appointmentRow {
-  display: grid;
-  grid-template-columns: 120px 1fr 200px 120px;
-  align-items: center;
-  padding: 18px 0;
-  border-bottom: 1px solid #eee;
+.appointmentRow{
+display:grid;
+grid-template-columns:120px 1fr 200px 120px;
+align-items:center;
+padding:18px 0;
+border-bottom:1px solid #eee;
 }
 
-.timeCol {
-  font-weight: 600;
+.timeCol{
+font-weight:600;
 }
 
-.statusBadge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  text-align: center;
+.statusBadge{
+padding:6px 12px;
+border-radius:20px;
+font-size:12px;
+text-align:center;
 }
 
-.statusBadge.upcoming {
-  background: rgba(122,44,68,0.1);
-  color: #7a2c44;
+.statusBadge.upcoming{
+background:rgba(122,44,68,0.1);
+color:#7a2c44;
 }
 
-.statusBadge.completed {
-  background: rgba(0,0,0,0.05);
-  color: #555;
+.statusBadge.completed{
+background:rgba(0,0,0,0.05);
+color:#555;
 }
 
-.emptyState {
-  text-align: center;
-  padding: 40px 0;
-  opacity: 0.5;
+.emptyState{
+text-align:center;
+padding:40px 0;
+opacity:0.5;
 }
 
-.dashboardLayer {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 24px;
+.dashboardLayer{
+width:100%;
+max-width:1200px;
+margin:0 auto;
+padding:40px 24px;
 }
 
-.dashboardSection {
-  text-align: left;
-  padding: 60px 10%;
+.dashboardSection{
+text-align:left;
+padding:60px 10%;
 }
 
-.appointmentsGrid {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 40px;
-  margin-top: 40px;
+.appointmentsGrid{
+display:grid;
+grid-template-columns:1fr 1.3fr;
+gap:40px;
+margin-top:40px;
 }
 
-.panelTitle {
-  font-size: 20px;
-  margin-bottom: 20px;
-  color: #82334c;
-}
-
-.requestsPanel,
-.calendarPanel {
-  background: white;
-  padding: 30px;
-  border-radius: 25px;
-  box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
-}
-
-.requestCard {
-  padding: 15px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.requestActions {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-}
-
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.calendarHeader {
-  font-weight: 600;
-  text-align: center;
-  padding: 10px 0;
-  color: #82334c;
-}
-
-.calendarCell {
-  height: 90px;
-  background: #f9f8f7;
-  border-radius: 12px;
-  padding: 8px;
-  position: relative;
-}
-
-.dayNumber {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.todayCell {
-  background: rgba(130, 51, 76, 0.15);
-  border: 2px solid #82334c;
-}
-
-.appointmentsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.subText {
-  opacity: 0.6;
-  font-size: 14px;
-}
-
-.tabs {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.tab {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  opacity: 0.6;
-  font-weight: 500;
-}
-
-.tab.active {
-  opacity: 1;
-  border-bottom: 2px solid #7a2c44;
-}
-
-.searchBar {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 25px;
-}
-
-.searchBar input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-}
-
-.appointmentsContainer {
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 20px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-}
-
-.appointmentRow {
-  display: grid;
-  grid-template-columns: 120px 1fr 200px 120px;
-  align-items: center;
-  padding: 18px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.timeCol {
-  font-weight: 600;
-}
-
-.statusBadge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  text-align: center;
-}
-
-.statusBadge.upcoming {
-  background: rgba(122,44,68,0.1);
-  color: #7a2c44;
-}
-
-.statusBadge.completed {
-  background: rgba(0,0,0,0.05);
-  color: #555;
-}
-
-.emptyState {
-  text-align: center;
-  padding: 40px 0;
-  opacity: 0.5;
-}
-
-.dashboardLayer {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 24px;
-}
-
-.dashboardSection {
-  text-align: left;
-  padding: 60px 10%;
-}
-
-.appointmentsGrid {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 40px;
-  margin-top: 40px;
-}
-
-.panelTitle {
-  font-size: 20px;
-  margin-bottom: 20px;
-  color: #82334c;
+.panelTitle{
+font-size:20px;
+margin-bottom:20px;
+color:#82334c;
 }
 
 .requestsPanel,
-.calendarPanel {
-  background: white;
-  padding: 30px;
-  border-radius: 25px;
-  box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
+.calendarPanel{
+background:white;
+padding:30px;
+border-radius:25px;
+box-shadow:0px 10px 30px rgba(0,0,0,0.08);
 }
 
-.requestCard {
-  padding: 15px 0;
-  border-bottom: 1px solid #eee;
+.requestCard{
+padding:15px 0;
+border-bottom:1px solid #eee;
 }
 
-.requestActions {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
+.requestActions{
+margin-top:10px;
+display:flex;
+gap:10px;
 }
 
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
-  margin-top: 15px;
+.calendarGrid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:10px;
+margin-top:15px;
 }
 
-.calendarHeader {
-  font-weight: 600;
-  text-align: center;
-  padding: 10px 0;
-  color: #82334c;
+.calendarHeader{
+font-weight:600;
+text-align:center;
+padding:10px 0;
+color:#82334c;
 }
 
-.calendarCell {
-  height: 90px;
-  background: #f9f8f7;
-  border-radius: 12px;
-  padding: 8px;
-  position: relative;
+.calendarCell{
+height:90px;
+background:#f9f8f7;
+border-radius:12px;
+padding:8px;
+position:relative;
 }
 
-.dayNumber {
-  font-size: 14px;
-  font-weight: 500;
+.dayNumber{
+font-size:14px;
+font-weight:500;
 }
 
-.todayCell {
-  background: rgba(130, 51, 76, 0.15);
-  border: 2px solid #82334c;
+.todayCell{
+background:rgba(130,51,76,0.15);
+border:2px solid #82334c;
 }
 
-.unavailableLabel {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  font-size: 11px;
-  color: #999;
+.unavailableLabel{
+position:absolute;
+bottom:8px;
+left:8px;
+font-size:11px;
+color:#999;
+}
+
+/* Register page */
+
+.formGrid{
+display:flex;
+flex-direction:column;
+gap:18px;
+}
+
+.formField{
+display:flex;
+flex-direction:column;
+gap:6px;
+text-align:left;
+}
+
+.formField label{
+font-size:13px;
+font-weight:600;
+color:#82334c;
+}
+
+.formField input,
+.formField select{
+padding:14px;
+border-radius:12px;
+border:1px solid #ddd;
+font-size:14px;
+background:white;
+}
+
+.formField input:focus,
+.formField select:focus{
+outline:none;
+border-color:#82334c;
+box-shadow:0 0 0 2px rgba(130,51,76,0.1);
+}
+
+/* ========================= */
+/* PATIENT DASHBOARD LAYOUT  */
+/* ========================= */
+
+.patientDashboard{
+display:flex;
+min-height:100vh;
+background:#f6f5f3;
+}
+
+/* SIDEBAR */
+
+.dashboardSidebar{
+width:240px;
+background:white;
+padding:30px;
+box-shadow:4px 0 20px rgba(0,0,0,0.05);
+display:flex;
+flex-direction:column;
+}
+
+.dashLogo{
+font-size:22px;
+color:#82334c;
+margin-bottom:25px;
+font-weight:600;
+}
+
+.dashboardSidebar nav{
+display:flex;
+flex-direction:column;
+gap:14px;
+}
+
+.dashboardSidebar button{
+background:none;
+border:none;
+text-align:left;
+font-size:15px;
+cursor:pointer;
+padding:8px 0;
+font-weight:500;
+}
+
+.dashboardSidebar button:hover{
+color:#82334c;
+}
+
+/* MAIN AREA */
+
+.dashboardMain{
+flex:1;
+padding:60px;
+}
+
+.dashboardMain h1{
+color:#82334c;
+font-size:34px;
+margin-bottom:30px;
+}
+
+/* CARDS */
+
+.dashboardCards{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:30px;
+}
+
+.dashCard{
+background:white;
+padding:35px;
+border-radius:22px;
+box-shadow:0 15px 40px rgba(0,0,0,0.08);
+}
+
+.dashCard h3{
+color:#82334c;
+margin-bottom:10px;
+}
+
+/* BOOKING PAGE */
+.bookingCard{
+background:white;
+padding:40px;
+border-radius:20px;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+max-width:520px;
+display:flex;
+flex-direction:column;
+gap:15px;
+}
+
+.bookingCard label{
+font-weight:600;
+color:#82334c;
+}
+
+.bookingCard input,
+.bookingCard select{
+padding:12px;
+border-radius:10px;
+border:1px solid #ddd;
 }

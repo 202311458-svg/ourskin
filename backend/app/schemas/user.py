@@ -5,16 +5,19 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: str
+    contact: str
+    role: str = "patient"
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
+    contact: str
     role: str
     created_at: datetime
 
