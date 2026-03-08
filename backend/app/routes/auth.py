@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models.user import User
@@ -7,6 +7,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Dependency for DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -14,11 +15,10 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/register")
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
+    # Check for existing user
+    if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
@@ -33,29 +33,15 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    return {"message": "User created successfully"}
+    return {"message": "User created successfully", "user_id": new_user.id}
 
 @router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
-
-    print("DB USER:", db_user)
-
-    if not db_user:
+    if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    print("Checking password")
-
-    if not verify_password(user.password, db_user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    print("Password OK")
-
-    token = create_access_token({
-        "sub": db_user.email,
-    })
-
-    print("Token created")
+    token = create_access_token({"sub": db_user.email, "role": db_user.role})
 
     return {
         "access_token": token,
