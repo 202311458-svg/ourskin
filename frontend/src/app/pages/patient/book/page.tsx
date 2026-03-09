@@ -1,5 +1,6 @@
 "use client";
 
+import Navbar from "@/app/components/Navbar";
 import Image from "next/image"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,50 +50,7 @@ return(
 
 <div className="patientDashboard">
 
-{/* SIDEBAR */}
-
-<aside className="dashboardSidebar">
-
- <div className="dashLogo">
-  <Image
-    src="/os-logo.png"
-    alt="OurSkin"
-    width={140}
-    height={45}
-  />
-</div>
-
-<nav>
-
-<button onClick={()=>router.push("/pages/patient/dashboard")}>
-Dashboard
-</button>
-
-<button onClick={()=>router.push("/pages/patient/book")}>
-Book Appointment
-</button>
-
-<button onClick={()=>router.push("/pages/patient/appointments")}>
-My Appointments
-</button>
-
-<button>
-Profile
-</button>
-
-<button
-onClick={()=>{
-localStorage.removeItem("token");
-router.push("/");
-}}
->
-Logout
-</button>
-
-</nav>
-
-</aside>
-
+<Navbar />  
 
 {/* MAIN CONTENT */}
 
