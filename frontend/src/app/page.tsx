@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 
 export default function Home() {
@@ -9,28 +9,58 @@ export default function Home() {
   const router = useRouter()
 
   const [modal, setModal] = useState(false)
-  const [isLogin] = useState(true)
-
-  /* ADDED */
+  const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
-  /* ADDED */
+  // --- Hero Gallery ---
+  const clinicImages = [
+    "/clinic1.jpg",
+    "/clinic2.jpg",
+    "/clinic3.jpg",
+    "/clinic4.jpg"
+  ]
+  const [currentImage, setCurrentImage] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % clinicImages.length)
+    }, 3500)
+    return () => clearInterval(interval)
+  }, [])
+
+  // --- Service Gallery Modal ---
+  const serviceImages = [
+    "/service1.jpg",
+    "/service2.jpg",
+    "/service3.jpg",
+    "/service4.jpg",
+    "/service5.jpg",
+    "/service6.jpg"
+  ]
+  const [serviceModalOpen, setServiceModalOpen] = useState(false)
+  const [currentService, setCurrentService] = useState(0)
+
+  const prevService = () => {
+    setCurrentService((prev) => (prev === 0 ? serviceImages.length - 1 : prev - 1))
+  }
+
+  const nextService = () => {
+    setCurrentService((prev) => (prev + 1) % serviceImages.length)
+  }
+
+  // --- Login Function ---
   const login = async () => {
+    if (!email || !password) {
+      alert("Please enter email and password")
+      return
+    }
 
     try {
-
       const res = await fetch("http://127.0.0.1:8000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text()
-        console.error("Server error:", text)
-        return
-      }
+      })
 
       const data = await res.json()
 
@@ -40,39 +70,36 @@ export default function Home() {
       }
 
       const role = String(data.role).trim().toLowerCase()
-
-      // save authentication info
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("role", role)
-
-      console.log("ROLE STORED:", localStorage.getItem("role"))
-
       setModal(false)
 
-      // redirect depending on role
-      if (role === "staff" || role === "admin") {
-        router.push("/pages/staff/dashboard")
-      } else {
-        router.push("/pages/patient/dashboard")
-      }
+      if (role === "admin") router.push("/pages/admin/dashboard")
+      else if (role === "staff") router.push("/pages/staff/dashboard")
+      else if (role === "doctor") router.push("/pages/doctor/dashboard")
+      else router.push("/pages/patient/dashboard")
 
     } catch (err) {
       console.error(err)
-      alert("Server error")
+      alert("Server error. Make sure backend is running.")
     }
+  }
 
+  const closeModal = () => {
+    setModal(false)
+    setEmail("")
+    setPassword("")
   }
 
   return (
-
     <div>
 
+      <div className="animatedBackground"></div>
+
       {/* NAVBAR */}
-
       <nav className="navbar">
-
         <div className="navLogo">
-          <Image src="/os-logo.png" alt="Our Skin" width={140} height={50} />
+          <Image src="/os-logo.png" alt="OurSkin" width={140} height={50} />
         </div>
 
         <div className="navLinks">
@@ -83,32 +110,21 @@ export default function Home() {
         </div>
 
         <div className="navActions">
-
           <button
             className="loginBtn"
-            onClick={() => setModal(true)}
-          >
-            Login
-          </button>
+            onClick={() => { setIsLogin(true); setModal(true) }}
+          >Login</button>
 
           <button
             className="bookBtn"
-            onClick={() => setModal(true)}
-          >
-            Book Appointment
-          </button>
-
+            onClick={() => { setIsLogin(true); setModal(true) }}
+          >Book Appointment</button>
         </div>
-
       </nav>
 
-
       {/* HERO */}
-
       <section className="hero">
-
         <div className="heroLeft">
-
           <h1>
             Healthy Skin
             <br />
@@ -118,161 +134,106 @@ export default function Home() {
           </h1>
 
           <p>
-            Our Skin Dermatology Center provides professional
+            OurSkin Dermatology Center provides professional
             dermatological diagnosis, treatment, and skin
             monitoring supported by modern clinical technology.
           </p>
 
           <div className="heroButtons">
-
             <button
               className="bookBtn"
-              onClick={() => setModal(true)}
+              onClick={() => { setIsLogin(true); setModal(true) }}
+            >Book Consultation</button>
+
+            <button
+              className="outlineBtn"
+              onClick={() => setServiceModalOpen(true)}
             >
-              Book Consultation
+              Explore Services
             </button>
-
-            <a
-              href="https://www.facebook.com/share/p/1HcJPLTfMg/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <button className="outlineBtn">
-                Explore Services
-              </button>
-            </a>
-
           </div>
-
         </div>
 
-
         <div className="heroRight">
-
           <div className="heroCard">
 
-            <Image
-              src="/os-logo.png"
-              alt="clinic"
-              width={350}
-              height={200}
-            />
+            {/* --- Hero Gallery --- */}
+            <div className="heroGallery">
+              <Image
+                src={clinicImages[currentImage]}
+                alt="OurSkin Clinic"
+                width={350}
+                height={220}
+                className="galleryImage"
+              />
+            </div>
 
             <div className="heroStats">
-
               <div>
                 <h3>15+</h3>
                 <p>Years Experience</p>
               </div>
-
               <div>
                 <h3>10k+</h3>
                 <p>Patients Treated</p>
               </div>
-
               <div>
-                <h3>6</h3>
+                <h3>7</h3>
                 <p>Specialists</p>
               </div>
-
             </div>
 
           </div>
-
         </div>
-
       </section>
 
-
       {/* FEATURE STRIP */}
-
       <section className="featureStrip">
-
         <div className="feature">
           <h4>Certified Dermatologists</h4>
           <p>Board-certified professionals</p>
         </div>
-
         <div className="feature">
           <h4>Modern Equipment</h4>
           <p>Latest dermatology technology</p>
         </div>
-
         <div className="feature">
           <h4>Digital Patient Records</h4>
           <p>Secure clinical monitoring</p>
         </div>
-
       </section>
-
 
       {/* ABOUT */}
-
       <section id="about" className="section">
-
         <h2>About Our Skin</h2>
-
         <p>
-          Our Skin Dermatology Center is dedicated to providing
-          high-quality dermatological care. Our specialists focus
-          on diagnosis, treatment, and long-term skin health using
-          advanced medical technologies and personalized care plans.
+          OurSkin Dermatology Center is a medical and aesthetic clinic led by a dedicated
+          team of PDS board-certified dermatologists and PSCS cosmetic surgeons. We are
+          committed to providing safe, effective, and personalized treatments designed
+          to support both skin health and aesthetic goals. Through expert care,
+          advanced medical techniques, and patient-focused consultations, we help every
+          client achieve healthier and more confident skin.
         </p>
-
       </section>
-
 
       {/* SERVICES */}
-
       <section id="services" className="section altSection">
-
         <h2>Dermatology Services</h2>
-
         <div className="cards">
-
-          <div className="serviceCard">
-            <h3>CONSULTATION</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>CONTACT ALLERGY TESTING</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>FACIALS</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>SURGICAL</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>CHEMICAL PEELS</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>LASERS AND EBDs</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>INJECTABLES</h3>
-          </div>
-
-          <div className="serviceCard">
-            <h3>COSMETIC SURGERY</h3>
-          </div>
-
+          <div className="serviceCard"><h3>CONSULTATION</h3></div>
+          <div className="serviceCard"><h3>CONTACT ALLERGY TESTING</h3></div>
+          <div className="serviceCard"><h3>FACIALS</h3></div>
+          <div className="serviceCard"><h3>SURGICAL</h3></div>
+          <div className="serviceCard"><h3>CHEMICAL PEELS</h3></div>
+          <div className="serviceCard"><h3>LASERS AND EBDs</h3></div>
+          <div className="serviceCard"><h3>INJECTABLES</h3></div>
+          <div className="serviceCard"><h3>COSMETIC SURGERY</h3></div>
         </div>
-
       </section>
 
-
       {/* DOCTORS */}
-
       <section id="doctors" className="section">
-
         <h2>Meet Our Dermatologists</h2>
-
         <div className="doctorGrid">
 
           <div className="doctorCard">
@@ -280,37 +241,31 @@ export default function Home() {
             <h3>Cecilia Roxas-Rosete, MD, FPDS</h3>
             <p>Lead Dermatologist</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/raisa.png" alt="Raisa Rosete, MD, MBA, DPDS" width={200} height={200} className="doctorPhoto" />
             <h3>Raisa Rosete, MD, MBA, DPDS</h3>
             <p>Dermatologist</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/reena.png" alt="Reena Tagle, MD, DPDS" width={200} height={200} className="doctorPhoto" />
             <h3>Reena Tagle, MD, DPDS</h3>
             <p>Dermatologist</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/gelaine.png" alt="Gelaine Pangilinan, MD, MBA" width={200} height={200} className="doctorPhoto" />
             <h3>Gelaine Pangilinan, MD, MBA</h3>
             <p>Dermatologist</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/hans.png" alt="Hans Alitin, MD, DPDS" width={200} height={200} className="doctorPhoto" />
             <h3>Hans Alitin, MD, DPDS</h3>
             <p>Dermatologist</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/reinier.png" alt="Reinier Rosete, MD, FPSCS" width={200} height={200} className="doctorPhoto" />
             <h3>Reinier Rosete, MD, FPSCS</h3>
             <p>Cosmetic Surgeon</p>
           </div>
-
           <div className="doctorCard">
             <Image src="/konrad.png" alt="Konrad Aguila, MD, FPSOHNS, FPSCS" width={200} height={200} className="doctorPhoto" />
             <h3>Konrad Aguila, MD, FPSOHNS, FPSCS</h3>
@@ -318,30 +273,21 @@ export default function Home() {
           </div>
 
         </div>
-
       </section>
 
-
-      {/* BOOK CTA */}
-
+      {/* CTA */}
       <section className="ctaSection">
-
         <h2>Start Your Skin Consultation Today</h2>
-
         <p>
-          Book an appointment with our dermatology specialists
-          and receive professional care tailored for your skin.
+          Book your consultation today and connect with our dermatologists and cosmetic
+          surgeons for professional guidance and treatment tailored to your skin and
+          aesthetic needs.
         </p>
-
         <button
           className="bookBtn"
-          onClick={() => setModal(true)}
-        >
-          Schedule Appointment
-        </button>
-
+          onClick={() => { setIsLogin(true); setModal(true) }}
+        >Schedule Appointment</button>
       </section>
-
 
       {/* CONTACT */}
 
@@ -385,7 +331,7 @@ export default function Home() {
 
               <div className="contactInfo">
                 <p>Email: ourskincenter@gmail.com</p>
-                <p>Call: 0998 887 8050</p>
+                <p>Call: 0998 887 8050 - Ms. Lanie</p>
               </div>
 
             </div>
@@ -395,78 +341,53 @@ export default function Home() {
         </div>
 
       </section>
-
-
+      
       {/* FOOTER */}
-
       <footer className="footer">
-        <p>© Our Skin Dermatology Center</p>
+        <p>© OurSkin Dermatology Center</p>
       </footer>
 
-
-      {/* MODAL */}
-
+      {/* LOGIN MODAL */}
       {modal && (
-
         <div className="modal">
-
           <div className="modalCard">
-
-            <h2>
-              {isLogin ? "Login to Continue Booking" : "Create an Account"}
-            </h2>
-
-            <input
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <button
-              className="submitBtn"
-              onClick={login}
-            >
-              {isLogin ? "Login" : "Register"}
-            </button>
-
+            <h2>{isLogin ? "Login to Continue Booking" : "Create an Account"}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); login() }}>
+              <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <button className="submitBtn" type="submit">{isLogin ? "Login" : "Register"}</button>
+            </form>
             <p className="switch">
-
               {isLogin ? "Don't have an account?" : "Already have an account?"}
-
-              <span
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  setModal(false)
-                  router.push("/pages/patient/register")
-                }}
-              >
-                Register
+              <span style={{ cursor: "pointer" }} onClick={() => setIsLogin(!isLogin)}>
+                {isLogin ? " Register" : " Login"}
               </span>
-
             </p>
-
-            <button
-              className="closeBtn"
-              onClick={() => setModal(false)}
-            >
-              Close
-            </button>
-
+            <button className="closeBtn" onClick={closeModal}>Close</button>
           </div>
-
         </div>
+      )}
 
+      {/* SERVICE MODAL */}
+      {serviceModalOpen && (
+        <div className="modal">
+          <div className="serviceModal">
+            <h1>Our Services</h1>
+            <div className="serviceGallery">
+              <button className="arrowPrev" onClick={prevService}>⟨</button>
+              <Image
+                src={serviceImages[currentService]}
+                alt={`Service ${currentService + 1}`}
+                width={500}
+                height={600}
+              />
+              <button className="arrowNext" onClick={nextService}>⟩</button>
+            </div>
+            <button className="closeBtn" onClick={() => setServiceModalOpen(false)}>Close</button>
+          </div>
+        </div>
       )}
 
     </div>
-
   )
-
 }

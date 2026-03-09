@@ -18,49 +18,56 @@ export default function LoginModal({ close }: Props) {
 
   const login = async () => {
 
-  try {
+    try {
 
-    const res = await fetch("http://127.0.0.1:8000/auth/login",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({
-        email:email,
-        password:password
+      const res = await fetch("http://127.0.0.1:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
       })
-    })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    if(!res.ok){
-      alert(data.detail || "Login failed")
-      return
+      if (!res.ok) {
+        alert(data.detail || "Login failed")
+        return
+      }
+
+      const role = String(data.role).trim().toLowerCase()
+
+      // save authentication info
+      localStorage.setItem("token", data.access_token)
+      localStorage.setItem("role", role)
+
+      console.log("ROLE STORED:", localStorage.getItem("role"))
+
+      close()
+
+      // redirect depending on role
+      if (role === "admin") {
+        router.push("/pages/admin/dashboard")
+      }
+      else if (role === "staff") {
+        router.push("/pages/staff/dashboard")
+      }
+      else if (role === "doctor") {
+        router.push("/pages/doctor/dashboard")
+      }
+      else {
+        router.push("/pages/patient/dashboard")
+      }
+
+    } catch (err) {
+      console.error(err)
+      alert("Server error")
     }
 
-    const role = String(data.role).trim().toLowerCase()
-
-    // save authentication info
-    localStorage.setItem("token", data.access_token)
-    localStorage.setItem("role", role)
-
-    console.log("ROLE STORED:", localStorage.getItem("role"))
-
-    close()
-
-    // redirect depending on role
-    if(role === "staff" || role === "admin"){
-      router.push("/pages/staff/dashboard")
-    }else{
-      router.push("/pages/patient/dashboard")
-    }
-
-  } catch(err){
-    console.error(err)
-    alert("Server error")
   }
-
-}
 
 
   return (
@@ -82,9 +89,9 @@ export default function LoginModal({ close }: Props) {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-       <button type="button" className="submitBtn" onClick={login}>
-  Login
-</button>
+        <button type="button" className="submitBtn" onClick={login}>
+          Login
+        </button>
 
         <p>Don&apos;t have an account?</p>
 
