@@ -1,3 +1,94 @@
+/* ===============================
+GLOBAL RESET
+=================================*/
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  transition:
+    background 0.35s ease,
+    color 0.35s ease;
+}
+
+/* ===============================
+THEME VARIABLES
+=================================*/
+
+:root {
+  --navbar-width: 220px;
+
+  --navbar-bg: #82334c;
+
+  --main-bg: #f6f6f6;
+
+  --card-bg: #ffffff;
+
+  --text-dark: #222;
+  --text-secondary: #555;
+
+  --btn-bg: #82334c;
+  --btn-hover: #a64c6a;
+  --btn-text: #ffffff;
+}
+
+/* DARK MODE */
+
+body.darkMode {
+  --navbar-bg: #5b1f37;
+
+  --main-bg: #241c24;
+
+  --card-bg: #3a243a;
+
+  --text-dark: #f5f5f5;
+  --text-secondary: #d3b8d3;
+
+  --btn-bg: #a64c6a;
+  --btn-hover: #c86486;
+}
+
+/* ===============================
+PAGE LAYOUT
+=================================*/
+
+.pageWrapper {
+  margin-left: 220px;
+  padding: 30px;
+
+  min-height: 100vh;
+
+  background: var(--main-bg);
+  color: var(--text-dark);
+
+  transition:
+    margin-left 0.35s ease,
+    background 0.35s ease,
+    color 0.35s ease;
+}
+
+/* NAVBAR COLLAPSED */
+
+body.navCollapsed .pageWrapper {
+  margin-left: 70px;
+}
+
+/* ===============================
+RESPONSIVE
+=================================*/
+
+@media (max-width: 768px) {
+  .pageWrapper {
+    margin-top: 80px;
+    margin-left: 0;
+    padding: 20px;
+  }
+}
+
 /* LANDING PAGE */
 * {
   margin: 0;
@@ -464,7 +555,7 @@ body {
   font-weight: 600;
 }
 .footer {
-  margin-top: 240px;
+  margin-top: 20px;
   padding: 50px;
   background: #82334c;
   color: white;
@@ -552,251 +643,4 @@ body {
   outline: none;
   border-color: #82334c;
   box-shadow: 0 0 0 2px rgba(130, 51, 76, 0.1);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* === Root container === */
-.dashboardContainer {
-  display: flex;
-  height: 100vh;
-  font-family: 'Poppins', sans-serif;
-  transition: background 0.4s ease, color 0.4s ease;
-  background: var(--main-bg);
-  color: var(--text-dark);
-}
-
-/* === Sidebar === */
-.navbar {
-  width: 220px;
-  min-width: 220px;
-  background: var(--sidebar-bg);
-  color: var(--text-light);
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  transition: all 0.4s ease;
-  height: 100vh;
-  position: fixed;
-  overflow-y: auto;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.1);
-  border-radius: 0 12px 12px 0;
-}
-
-.navbar.collapsed {
-  width: 70px;
-  padding: 20px 10px;
-}
-
-/* Logo section */
-.logoSection {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 30px;
-  cursor: pointer;
-}
-
-/* Nav menu */
-.navMenu {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.navItem {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.4s ease;
-  font-weight: 500;
-  color: inherit;
-  background: transparent;
-}
-
-.navItem:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateX(5px);
-}
-
-.navItem.active {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: translateX(5px);
-}
-
-.navItem .icon {
-  font-size: 20px;
-  transition: color 0.4s ease;
-}
-
-.navItem .activeBar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 4px;
-  height: 100%;
-  background-color: var(--btn-text);
-  border-radius: 4px;
-}
-
-.navItem .label {
-  font-size: 16px;
-}
-
-/* Bottom controls */
-.navBottom {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* === Main dashboard === */
-.dashboardMain {
-  flex: 1;
-  margin-left: 220px;
-  padding: 40px;
-  overflow-y: auto;
-  transition: all 0.4s ease;
-  background: var(--main-bg);
-  color: var(--text-dark);
-}
-
-.navbar.collapsed ~ .dashboardMain {
-  margin-left: 70px;
-}
-
-/* Greeting */
-.greetingSection h1 {
-  font-size: 2rem;
-  margin-bottom: 8px;
-  color: var(--text-dark);
-  transition: color 0.4s ease;
-}
-
-.greetingSection p {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  transition: color 0.4s ease;
-}
-
-/* Cards layout */
-.dashboardCards {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-
-.dashCard {
-  flex: 1 1 300px;
-  background: var(--card-bg);
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-  transition: background 0.4s ease, color 0.4s ease, transform 0.3s ease, box-shadow 0.4s ease;
-}
-
-.dashCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-/* Upcoming appointment */
-.upcomingDetails {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.doctorPhoto img {
-  border-radius: 50%;
-  object-fit: cover;
-  transition: filter 0.4s ease;
-}
-
-/* Buttons */
-button {
-  padding: 10px 20px;
-  background: var(--btn-bg);
-  color: var(--btn-text);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.4s ease;
-}
-
-button:hover {
-  background: var(--btn-hover);
-}
-
-/* === Root variables === */
-:root {
-  /* Light mode */
-  --sidebar-bg: #82334c;
-  --main-bg: #f9f9f9;
-  --card-bg: #fff;
-  --btn-bg: #82334c;
-  --btn-hover: #a64c6a;
-  --btn-text: #fff;
-  --text-light: #fff;
-  --text-dark: #222;
-  --text-secondary: #555;
-}
-
-body.darkMode {
-  /* Dark mode keeping palette theme */
-  --sidebar-bg: #5a1f37;
-  --main-bg: #2b1f2b;
-  --card-bg: #3a243a;
-  --btn-bg: #82334c;
-  --btn-hover: #a64c6a;
-  --btn-text: #fff;
-  --text-light: #fff;
-  --text-dark: #eee;
-  --text-secondary: #d3b8d3;
-}
-
-/* === Responsive === */
-@media (max-width: 768px) {
-  .navbar {
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    border-radius: 0;
-  }
-  .navbar.collapsed {
-    width: 100%;
-  }
-  .dashboardMain {
-    margin-left: 0;
-    margin-top: 80px;
-    padding: 20px;
-  }
-  .dashboardCards {
-    flex-direction: column;
-  }
 }

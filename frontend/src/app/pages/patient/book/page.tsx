@@ -1,220 +1,191 @@
 "use client";
 
-import Navbar from "@/app/components/Navbar";
-import Image from "next/image"
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Navbar from "@/app/components/Navbar";
+import styles from "./bookAppointment.module.css";
+
+const times = ["12:00 pm","1:00 pm","2:00 pm","3:00 pm","4:00 pm","5:00 pm","6:00 pm"];
+const timezones = ["America / Los Angeles (-08:00)", "Asia / Manila (+08:00)"];
 
 export default function BookAppointment() {
+  const today = new Date();
+  const [step, setStep] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTimezone, setSelectedTimezone] = useState(timezones[0]);
+  const [patientInfo, setPatientInfo] = useState({
+    firstName: "",
+    lastName: "",
+    age: "",
+    phone: "",
+    email: "",
+    condition: "",
+    lookingFor: "",
+  });
+  const [description, setDescription] = useState("");
 
-const router = useRouter();
+  const monthNames = [
+    "January","February","March","April","May","June","July","August","September","October","November","December"
+  ];
 
-const [date,setDate] = useState("");
-const [time,setTime] = useState("");
-const [service,setService] = useState("");
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-const submitAppointment = async () => {
+  const prevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(selectedYear - 1); }
+    else setSelectedMonth(selectedMonth - 1);
+  };
 
-if(!date || !time || !service){
-alert("Please complete all fields");
-return;
-}
+  const nextMonth = () => {
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(selectedYear + 1); }
+    else setSelectedMonth(selectedMonth + 1);
+  };
 
-const token = localStorage.getItem("token");
+  const isDisabledDay = (day: number) => new Date(selectedYear, selectedMonth, day).getDay() === 0;
+  const isDisabledTime = (time: string) => time === "12:00 pm" || time === "1:00 pm";
 
-const res = await fetch("http://127.0.0.1:8000/appointments",{
-method:"POST",
-headers:{
-"Content-Type":"application/json",
-Authorization:`Bearer ${token}`
-},
-body:JSON.stringify({
-date,
-time,
-service
-})
-});
+  return (
+    <>
+      <Navbar />
+      <div className={styles.container}>
+        {/* Stepper */}
+        <div className={styles.steps}>
+          {[1,2,3,4].map(s => (
+            <div key={s} className={`${styles.step} ${step === s ? styles.stepActive : ""}`}>
+              Step {s}
+            </div>
+          ))}
+        </div>
 
-if(!res.ok){
-alert("Booking failed");
-return;
-}
+        {/* Step 1: Calendar */}
+        {step === 1 && (
+          <>
+            <div className={styles.calendarWrapper}>
+              <div className={styles.calendarHeader}>
+                <span className={styles.arrow} onClick={prevMonth}>◀</span>
+                <span>{monthNames[selectedMonth]} {selectedYear}</span>
+                <span className={styles.arrow} onClick={nextMonth}>▶</span>
+              </div>
 
-alert("Appointment request sent");
+              <div className={styles.timezoneWrapper}>
+                <select
+                  className={styles.timezoneSelect}
+                  value={selectedTimezone}
+                  onChange={e => setSelectedTimezone(e.target.value)}
+                >
+                  {timezones.map(tz => <option key={tz}>{tz}</option>)}
+                </select>
+              </div>
 
-router.push("/pages/patient/dashboard");
+              <div className={styles.calendarGrid}>
+                {daysArray.map(day => (
+                  <div
+                    key={day}
+                    className={`${styles.dayCell} ${day === today.getDate() && selectedMonth === today.getMonth() ? styles.today : ""} ${day === selectedDay ? styles.selectedDay : ""} ${isDisabledDay(day) ? styles.disabled : ""}`}
+                    onClick={() => !isDisabledDay(day) && setSelectedDay(day)}
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-};
+            <div className={styles.timeSlotsWrapper}>
+              {times.map(time => (
+                <div
+                  key={time}
+                  className={`${styles.timeSlot} ${time === selectedTime ? styles.selectedTime : ""} ${isDisabledTime(time) ? styles.timeSlotDisabled : ""}`}
+                  onClick={() => !isDisabledTime(time) && setSelectedTime(time)}
+                >
+                  {time}
+                </div>
+              ))}
+            </div>
 
-return(
+            <div className={styles.navButtons}>
+              <button
+                className={selectedDay && selectedTime ? styles.navButton : styles.navButtonDisabled}
+                disabled={!selectedDay || !selectedTime}
+                onClick={() => setStep(step + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
 
-<div className="patientDashboard">
+        {/* Step 2: Patient Info */}
+        {step === 2 && (
+          <>
+            {Object.keys(patientInfo).map(f => (
+              <div className={styles.formGroup} key={f}>
+                <label>{f.replace(/([A-Z])/g, " $1")}</label>
+                <input
+                  type={f === "age" ? "number" : f === "email" ? "email" : "text"}
+                  value={patientInfo[f as keyof typeof patientInfo]}
+                  onChange={e => setPatientInfo({ ...patientInfo, [f]: e.target.value })}
+                />
+              </div>
+            ))}
 
-<Navbar />  
+            <div className={styles.navButtons}>
+              <button className={styles.navButton} onClick={() => setStep(step - 1)}>Back</button>
+              <button
+                className={patientInfo.firstName && patientInfo.lastName ? styles.navButton : styles.navButtonDisabled}
+                disabled={!patientInfo.firstName || !patientInfo.lastName}
+                onClick={() => setStep(step + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
 
-{/* MAIN CONTENT */}
+        {/* Step 3: Description */}
+        {step === 3 && (
+          <>
+            <div className={styles.formGroup}>
+              <label>Briefly describe what you want to happen</label>
+              <textarea rows={4} value={description} onChange={e => setDescription(e.target.value)} />
+            </div>
 
-<main className="dashboardMain">
+            <div className={styles.navButtons}>
+              <button className={styles.navButton} onClick={() => setStep(step - 1)}>Back</button>
+              <button
+                className={description ? styles.navButton : styles.navButtonDisabled}
+                disabled={!description}
+                onClick={() => setStep(step + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
 
-<h1>Book Appointment</h1>
+        {/* Step 4: Confirm */}
+        {step === 4 && (
+          <>
+            <h3 style={{ color: "#82334C" }}>Confirm Details</h3>
+            <p><strong>Date:</strong> {selectedMonth + 1}/{selectedDay}/{selectedYear}</p>
+            <p><strong>Time:</strong> {selectedTime}</p>
+            <p><strong>Timezone:</strong> {selectedTimezone}</p>
+            <p><strong>Name:</strong> {patientInfo.firstName} {patientInfo.lastName}</p>
+            <p><strong>Age:</strong> {patientInfo.age}</p>
+            <p><strong>Phone:</strong> {patientInfo.phone}</p>
+            <p><strong>Email:</strong> {patientInfo.email}</p>
+            <p><strong>Condition:</strong> {patientInfo.condition}</p>
+            <p><strong>Looking for:</strong> {patientInfo.lookingFor}</p>
+            <p><strong>Description:</strong> {description}</p>
 
-<div className="bookingCard">
-
-<div className="formField">
-<label>Preferred Date</label>
-<input
-type="date"
-value={date}
-onChange={(e)=>{
-const selectedDate = new Date(e.target.value);
-if(selectedDate.getDay() === 0){
-alert("Sundays are unavailable. Please select another date.");
-setDate("");
-return;
-}
-setDate(e.target.value);
-}}
-/>
-</div>
-
-<div className="formField">
-<label>Preferred Time</label>
-<select
-value={time}
-onChange={(e)=>setTime(e.target.value)}
->
-<option value="">Select time</option>
-<option value="9:00 AM">9:00 AM</option>
-<option value="10:00 AM">10:00 AM</option>
-<option value="11:00 AM">11:00 AM</option>
-<option value="1:00 PM">1:00 PM</option>
-<option value="2:00 PM">2:00 PM</option>
-<option value="3:00 PM">3:00 PM</option>
-</select>
-</div>
-
-<div className="formField">
-
-<label>Type of Service</label>
-
-<select
-value={service}
-onChange={(e)=>setService(e.target.value)}
->
-
-<option value="">Select Type of Service</option>
-
-<optgroup label="Consultation">
-<option>Dermatology Consultation</option>
-<option>Face-to-Face Dermatology Consultation</option>
-<option>Online Dermatology Consultation</option>
-<option>Dermoscopy and Mole Assessment</option>
-<option>Skin Cancer Screening</option>
-</optgroup>
-
-<optgroup label="Contact Allergy Testing">
-<option>Patch Test – 30 Allergens (Baseline Series)</option>
-<option>Patch Test – 80 Allergens (Comprehensive Series)</option>
-</optgroup>
-
-<optgroup label="Facials">
-<option>Acne Facial</option>
-<option>Brightening Facial</option>
-<option>Anti-Aging Facial</option>
-</optgroup>
-
-<optgroup label="Surgical Procedures">
-<option>Skin Biopsy (Punch / Shave / Incision / Excision)</option>
-<option>Excision Surgery</option>
-<option>Incision and Drainage</option>
-<option>Nail Surgery</option>
-<option>Scar Revision Surgery</option>
-<option>Wart Removal (Cautery / Laser)</option>
-<option>Benign Skin Growth Removal</option>
-<option>Callus and Corn Removal</option>
-<option>Subcision</option>
-<option>Microneedling</option>
-</optgroup>
-
-<optgroup label="Chemical Peels">
-<option>Acne Vulgaris and Acne Scars</option>
-<option>Pigmentation (Melasma etc.)</option>
-<option>Skin Rejuvenation</option>
-<option>TCA CROSS for Acne Scars</option>
-</optgroup>
-
-<optgroup label="Laser and EBD Treatments">
-<option>Ablative CO2 Laser – Wart Removal</option>
-<option>Ablative CO2 Laser – Benign Skin Growth Removal</option>
-<option>Fractional CO2 Laser – Laser Peeling</option>
-<option>Fractional CO2 Laser – Skin Tightening</option>
-<option>Fractional CO2 Laser – Skin Rejuvenation</option>
-<option>Fractional CO2 Laser – Acne Scars</option>
-<option>Fractional CO2 Laser – Stretch Marks</option>
-<option>QS Nd:YAG Laser – Carbon Laser Peel</option>
-<option>QS Nd:YAG Laser – Laser Toning</option>
-<option>QS Nd:YAG Laser – Pigmentation Treatment</option>
-<option>QS Nd:YAG Laser – Dark Under Eyes</option>
-<option>QS Nd:YAG Laser – Lip Lightening</option>
-<option>QS Nd:YAG Laser – Body Lightening</option>
-<option>QS Nd:YAG Laser – Tattoo Removal</option>
-<option>Long Pulse Nd:YAG Laser – Hair Removal</option>
-<option>Long Pulse Nd:YAG Laser – Vascular Treatment</option>
-<option>Radiofrequency Skin Tightening</option>
-<option>HIFU (High Intensity Focused Ultrasound)</option>
-</optgroup>
-
-<optgroup label="Injectables">
-<option>Intralesional Steroid – Acne Vulgaris</option>
-<option>Intralesional Steroid – Hypertrophic Scars / Keloids</option>
-<option>Intralesional Steroid – Alopecia Areata</option>
-<option>Intralesional Steroid – Inflammatory Skin Conditions</option>
-<option>Intramuscular Steroid Injection</option>
-<option>Botulinum Toxin Injection – Upper Face</option>
-<option>Botulinum Toxin Injection – Lower Face</option>
-<option>Botulinum Toxin Injection – Masseter Botox</option>
-<option>Botulinum Toxin Injection – Microbotox</option>
-<option>Botulinum Toxin Injection – Neck Lift</option>
-<option>Botulinum Toxin Injection – Sweattox</option>
-<option>Botulinum Toxin Injection – Trapezius Botox</option>
-<option>Botulinum Toxin Injection – Barbie Arms</option>
-<option>Biostimulators / Skin Boosters – Hyaluronic Acid</option>
-<option>Biostimulators / Skin Boosters – Polynucleotides</option>
-<option>Biostimulators / Skin Boosters – Poly-L-Lactic Acid</option>
-<option>Hyaluronic Acid Filler Injection</option>
-<option>Mesolipo Fat Dissolving – Face</option>
-<option>Mesolipo Fat Dissolving – Body</option>
-<option>Mesotherapy – Biostimulators / Skin Boosters</option>
-<option>Mesotherapy – Lightening Solutions</option>
-<option>Mesotherapy – Hair Growth Solutions</option>
-<option>Sclerotherapy for Varicosities</option>
-</optgroup>
-
-<optgroup label="Cosmetic Surgery">
-<option>Blepharoplasty – Upper / Lower Eyelids</option>
-<option>Face Lift – Partial / Full</option>
-<option>Rhinoplasty</option>
-<option>Thread Lift – Face Cog Thread Lift</option>
-<option>Thread Lift – Nose Hiko Thread Lift</option>
-</optgroup>
-
-</select>
-
-</div>
-
-<button
-className="bookBtn"
-onClick={submitAppointment}
->
-Request Appointment
-</button>
-
-</div>
-
-</main>
-
-</div>
-
-);
-
+            <div className={styles.navButtons}>
+              <button className={styles.navButton} onClick={() => setStep(step - 1)}>Back</button>
+              <button className={styles.navButton}>Confirm Appointment</button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
 }

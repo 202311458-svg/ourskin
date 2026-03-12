@@ -1,0 +1,111 @@
+.dashboardMain{
+padding:10px;
+}
+
+/* GREETING */
+
+.greetingSection{
+margin-bottom:20px;
+}
+
+.greetingTitle{
+font-size:2rem;
+margin-bottom:8px;
+color:var(--text-dark);
+}
+
+.greetingSubtitle{
+font-size:1rem;
+color:var(--text-secondary);
+}
+
+/* CARDS */
+
+.dashboardCards{
+
+display:flex;
+flex-wrap:wrap;
+gap:20px;
+
+}
+
+/* CARD */
+
+.dashCard{
+
+flex:1 1 300px;
+
+background:var(--card-bg);
+
+padding:24px;
+
+border-radius:16px;
+
+box-shadow:0 6px 20px rgba(0,0,0,0.08);
+
+transition:
+transform .3s ease,
+box-shadow .3s ease,
+background .35s ease;
+
+}
+
+.dashCardHoverable:hover{
+
+transform:translateY(-4px);
+box-shadow:0 8px 25px rgba(0,0,0,0.12);
+
+}
+
+/* UPCOMING */
+
+.upcomingDetails{
+
+display:flex;
+align-items:center;
+gap:16px;
+
+}
+
+.doctorPhoto{
+width:80px;
+height:80px;
+}
+
+.doctorPhoto img{
+border-radius:50%;
+object-fit:cover;
+}
+
+/* BUTTON */
+
+.btnBook{
+
+padding:10px 20px;
+
+border-radius:10px;
+
+background:var(--btn-bg);
+color:var(--btn-text);
+
+border:none;
+
+cursor:pointer;
+
+font-weight:500;
+
+transition:all .3s ease;
+
+}
+
+.btnBookHoverable:hover{
+background:var(--btn-hover);
+}
+
+@media(max-width:768px){
+
+.dashboardCards{
+flex-direction:column;
+}
+
+}

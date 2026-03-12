@@ -1,0 +1,134 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--navbar-width);
+  height: 100vh;
+  background: var(--navbar-bg);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  padding: 2rem 1rem;
+  transition: width .35s ease, background .35s ease, padding .35s ease;
+}
+
+.collapsed {
+  width: 70px;
+  padding: 20px 10px;
+}
+
+/* LOGO */
+.logoSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  cursor: pointer;
+}
+
+/* MENU */
+.navMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* ITEM */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: all .3s ease;
+  font-weight: 500;
+  color: #fff;
+  background: transparent;
+}
+
+.navItem:hover {
+  background: rgba(255,255,255,0.12);
+  transform: translateX(5px);
+}
+
+.active {
+  background: rgba(255,255,255,0.2);
+  transform: translateX(5px);
+}
+
+.icon { font-size: 20px; }
+.label { font-size: 16px; }
+
+.activeBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: #fff;
+  border-radius: 4px;
+}
+
+/* BOTTOM */
+.navBottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* MOBILE */
+.mobileToggle { display: none; font-size: 20px; cursor: pointer; }
+
+@media(max-width:768px) {
+  .navbar {
+    width: 100%;
+    height: 70px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+
+  .logoSection { margin: 0; gap: 20px; }
+
+  .mobileToggle { display: block; }
+
+  .navMenu {
+    position: absolute;
+    top: 70px;
+    left: 0;
+    width: 100%;
+    background: var(--navbar-bg);
+    flex-direction: column;
+    padding: 20px;
+    gap: 10px;
+    display: none;
+  }
+
+  .mobileOpen { display: flex; }
+
+  /* hide desktop logout in top bar */
+  .navBottom { display: none; }
+
+  /* MOBILE LOGOUT (inside drawer only) */
+  .navLogoutMobile {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 500;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.1);
+    margin-top: 10px;
+  }
+
+  .navLogoutMobile:hover { background: rgba(255,255,255,0.2); }
+
+  .collapsed { width: 100%; }
+}
