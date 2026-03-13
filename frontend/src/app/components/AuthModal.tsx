@@ -15,21 +15,48 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
-  const login = async () => {
-    // replace with your real API call
-    const token = "dummy-token"
-    const role = "user"
-    onLoginSuccess(role, token)
-    onClose()
-  }
+const login = async () => {
+  const res = await fetch("http://127.0.0.1:8000/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      username: email,
+      password: password
+    })
+  })
 
-  const register = async () => {
-    // replace with your real API call
-    const token = "dummy-token"
-    const role = "user"
-    onLoginSuccess(role, token)
-    onClose()
+  const data = await res.json()
+
+  const token = data.access_token
+  const role = "patient"
+
+  localStorage.setItem("token", token)
+
+  onLoginSuccess(role, token)
+  onClose()
+}
+
+const register = async () => {
+  const res = await fetch("http://127.0.0.1:8000/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: name,
+      email: email,
+      contact: contact,
+      password: password
+    })
+  })
+
+  if (res.ok) {
+    alert("Account created. Please login.")
+    setIsLogin(true)
   }
+}
 
   if (!isOpen) return null
 

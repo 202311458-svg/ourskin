@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
 from app.models import user
-from app.routes import auth 
+from app.routes import auth, users
 
 load_dotenv()  
 
@@ -54,3 +54,5 @@ def db_check(db: Session = Depends(get_db)):
         return {"db": "connected"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}")
+    
+app.include_router(users.router)
