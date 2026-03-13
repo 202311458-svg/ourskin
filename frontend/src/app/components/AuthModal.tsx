@@ -16,27 +16,35 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [password, setPassword] = useState("")
 
 const login = async () => {
+
   const res = await fetch("http://127.0.0.1:8000/auth/login", {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
       username: email,
-      password: password
-    })
-  })
+      password: password,
+    }),
+  });
 
-  const data = await res.json()
+  if (!res.ok) {
+    alert("Invalid email or password");
+    return;
+  }
 
-  const token = data.access_token
-  const role = "patient"
+  const data = await res.json();
 
-  localStorage.setItem("token", token)
+  if (!data.access_token) {
+    alert("Login failed.");
+    return;
+  }
 
-  onLoginSuccess(role, token)
-  onClose()
-}
+  localStorage.setItem("token", data.access_token);
+
+  onLoginSuccess("patient", data.access_token);
+  onClose();
+};
 
 const register = async () => {
   const res = await fetch("http://127.0.0.1:8000/auth/register", {

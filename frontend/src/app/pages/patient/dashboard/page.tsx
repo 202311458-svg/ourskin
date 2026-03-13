@@ -3,13 +3,30 @@
 import Navbar from "@/app/components/Navbar";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import styles from "./dashboard.module.css";
 
 export default function PatientDashboard() {
 
 const router = useRouter();
 
-const patientName = "Faith";
+const [patientName, setPatientName] = useState("");
+
+useEffect(()=>{
+
+const token = localStorage.getItem("token");
+
+fetch("http://127.0.0.1:8000/users/me",{
+headers:{
+Authorization:`Bearer ${token}`
+}
+})
+.then(res=>res.json())
+.then(data=>{
+setPatientName(data.name);
+});
+
+},[]);
 
 const latestAppointments = [
 {
@@ -48,7 +65,7 @@ return (
 <section className={styles.greetingSection}>
 
 <h1 className={styles.greetingTitle}>
-Hello, {patientName}
+Hello, {patientName || "Patient"}
 </h1>
 
 <p className={styles.greetingSubtitle}>
@@ -56,7 +73,6 @@ You have {latestAppointments.length} appointment{latestAppointments.length > 1 ?
 </p>
 
 </section>
-
 
 <section className={styles.dashboardCards}>
 
@@ -81,7 +97,6 @@ You have {latestAppointments.length} appointment{latestAppointments.length > 1 ?
 </ul>
 
 </div>
-
 
 {/* Upcoming Appointment */}
 
@@ -117,7 +132,6 @@ height={80}
 </div>
 
 </div>
-
 
 {/* Reminder */}
 

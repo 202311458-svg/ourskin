@@ -47,3 +47,38 @@ def decode_access_token(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
+        
+        
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.db import SessionLocal
+from app.models.user import User
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+
+    payload = decode_access_token(token)
+    email = payload.get("sub")
+
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication"
+        )
+
+    db = SessionLocal()
+
+    user = db.query(User).filter(User.email == email).first()
+
+    db.close()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+
+    return user
