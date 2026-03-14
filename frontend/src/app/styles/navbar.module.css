@@ -132,3 +132,15 @@
 
   .collapsed { width: 100%; }
 }
+
+/* DEFAULT CONTENT SHIFT */
+body:not(.navCollapsed) .mainContent {
+  margin-left: 260px;
+  transition: margin-left 0.3s ease;
+}
+
+/* COLLAPSED NAVBAR */
+body.navCollapsed .mainContent {
+  margin-left: 80px;
+  transition: margin-left 0.3s ease;
+}

@@ -11,4 +11,5 @@ python-jose
 python-dotenv
 python-multipart
 email-validator
-bcrypt
+bcrypt==4.0.1
+PyJWT

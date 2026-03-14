@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import { FaCamera } from "react-icons/fa";
 import {
   FaCalendarAlt,
   FaHistory,
@@ -28,6 +29,7 @@ export default function Navbar() {
 
   const navItems = [
     { name: "Dashboard", path: "/pages/patient/dashboard", icon: <FaCalendarAlt /> },
+     { name: "AI Skin Analysis", path: "/pages/patient/ai-analysis", icon: <FaCamera /> },
     { name: "Book Appointment", path: "/pages/patient/book", icon: <FaPlusCircle /> },
     { name: "History", path: "/pages/patient/history", icon: <FaHistory /> },
     { name: "Profile", path: "/pages/patient/profile", icon: <FaUser /> },

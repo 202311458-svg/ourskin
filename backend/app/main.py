@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
 from app.models import user
-from app.routes import auth, users
+from app.routes import auth, users, ai_analysis
 
 load_dotenv()  
 
@@ -56,3 +56,4 @@ def db_check(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}")
     
 app.include_router(users.router)
+app.include_router(ai_analysis.router)
