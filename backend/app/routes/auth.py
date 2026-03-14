@@ -6,6 +6,7 @@ from app.schemas.user import UserCreate, UserLogin, ChangePasswordRequest
 from app.core.security import hash_password, verify_password, create_access_token, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Dependency for DB session
@@ -77,3 +78,5 @@ def change_password(
     db.refresh(user)
 
     return {"message": "Password updated successfully"}
+
+

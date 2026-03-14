@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from app.db import engine, Base, SessionLocal
 from app.models import user
 from app.routes import auth, users, ai_analysis
+from fastapi.staticfiles import StaticFiles
+
 
 load_dotenv()  
 
@@ -57,3 +59,5 @@ def db_check(db: Session = Depends(get_db)):
     
 app.include_router(users.router)
 app.include_router(ai_analysis.router)
+
+app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")

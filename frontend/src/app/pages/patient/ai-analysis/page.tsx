@@ -6,6 +6,9 @@ import Navbar from "@/app/components/Navbar";
 type AnalysisResult = {
   condition: string
   confidence: number
+  severity: string
+  recommendation: string
+  note: string
 }
 
 export default function AISkinAnalysis(){
@@ -32,22 +35,34 @@ if(!image) return
 
 setLoading(true)
 
+const token = localStorage.getItem("token")
+
 const formData = new FormData()
-formData.append("file",image)
+formData.append("file", image)
 
 try{
 
 const res = await fetch("http://127.0.0.1:8000/ai/analyze",{
 method:"POST",
+headers:{
+Authorization:`Bearer ${token}`
+},
 body:formData
 })
+
+if(!res.ok){
+console.error("Server error:", res.status)
+alert("Session expired. Please login again.")
+setLoading(false)
+return
+}
 
 const data = await res.json()
 
 setResult(data.analysis)
 
 }catch(err){
-console.error(err)
+console.error("Request failed:", err)
 }
 
 setLoading(false)
@@ -111,13 +126,16 @@ style={{marginTop:"15px"}}
 
 <p><b>Confidence:</b> {(result.confidence * 100).toFixed(0)}%</p>
 
+<p><b>Severity:</b> {result.severity}</p>
+
 <p style={{marginTop:"10px"}}>
-Recommendation: Please consult a dermatologist for proper diagnosis.
+<b>Recommendation:</b> {result.recommendation}
 </p>
 
 <p style={{fontSize:"12px",color:"#777",marginTop:"10px"}}>
-AI analysis is for informational purposes only and does not replace professional medical advice.
+{result.note}
 </p>
+
 
 </div>
 
