@@ -1,96 +1,97 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Navbar from "@/app/components/Navbar"
+import { useEffect, useState } from "react";
+import Navbar from "@/app/components/Navbar";
+import styles from "./history.module.css";
 
-type Analysis = {
-  id: number
-  image_path: string
-  condition: string
-  confidence: number
-  created_at: string
+interface Appointment {
+  id: number;
+  doctor_name: string;
+  date: string;
+  time: string;
+  services: string;
+  status: string;
+  cancel_reason?: string;
 }
 
-export default function HistoryPage(){
+const PATIENT_EMAIL = "patient@example.com";
 
-const [history,setHistory] = useState<Analysis[]>([])
-const [loading,setLoading] = useState(true)
+export default function PatientHistory() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [navCollapsed, setNavCollapsed] = useState(false);
 
-useEffect(() => {
+  // Listen for navbar toggle events
+  useEffect(() => {
+    const handleNavToggle = (e: CustomEvent) => {
+      setNavCollapsed(e.detail);
+    };
+    window.addEventListener("navbarToggle", handleNavToggle as EventListener);
 
-const token = localStorage.getItem("token")
+    return () => {
+      window.removeEventListener("navbarToggle", handleNavToggle as EventListener);
+    };
+  }, []);
 
-fetch("http://127.0.0.1:8000/ai/history",{
-headers:{
-Authorization:`Bearer ${token}`
-}
-})
-.then(res => res.json())
-.then(data => {
+  // Fetch appointments from backend
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:8000/appointments/list/?email=${PATIENT_EMAIL}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setAppointments(data.reverse());
+      } catch (err) {
+        console.error("Failed to fetch appointments:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (Array.isArray(data)) {
-    setHistory(data)
-  } else {
-    console.error("Unexpected response:", data)
-    setHistory([])
-  }
+    fetchAppointments();
+  }, []);
 
-  setLoading(false)
+  return (
+    <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
+      <Navbar />
+      <div
+        className={styles.historyContainer}
+        style={{
+          marginLeft: navCollapsed ? "80px" : "220px",
+          transition: "margin-left 0.3s ease"
+        }}
+      >
+        <h1>My Appointments</h1>
 
-})
-.catch(err => {
-  console.error("History fetch error:", err)
-  setLoading(false)
-})
-
-},[])
-
-return(
-
-<div className="pageWrapper">
-
-<Navbar/>
-
-<div className="dashboardContainer">
-
-<h1 className="pageTitle">Skin Analysis History</h1>
-
-{loading && <p>Loading history...</p>}
-
-<div className="historyGrid">
-
-{history.map((item)=>(
-<div key={item.id} className="historyCard">
-
-<img
-  src={`http://127.0.0.1:8000${item.image_path}`}
-  alt="Skin analysis"
-  width={150}
-/>
-
-<div className="historyInfo">
-
-<p className="condition">{item.condition}</p>
-
-<p className="confidence">
-Confidence: {(item.confidence * 100).toFixed(1)}%
-</p>
-
-<p className="date">
-{new Date(item.created_at).toLocaleDateString()}
-</p>
-
-</div>
-
-</div>
-))}
-
-</div>
-
-</div>
-
-</div>
-
-)
-
+        {loading ? (
+          <p>Loading...</p>
+        ) : appointments.length === 0 ? (
+          <p>No appointments found.</p>
+        ) : (
+          <div className={styles.cards}>
+            {appointments.map((appt) => (
+              <div key={appt.id} className={styles.card}>
+                <h2>Dr. {appt.doctor_name}</h2>
+                <p>
+                  <strong>Date:</strong> {appt.date} <strong>Time:</strong>{" "}
+                  {appt.time}
+                </p>
+                <p>
+                  <strong>Services:</strong> {appt.services}
+                </p>
+                <p>
+                  <strong>Status:</strong> {appt.status}
+                  {appt.status === "Cancelled" && appt.cancel_reason
+                    ? ` (Reason: ${appt.cancel_reason})`
+                    : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

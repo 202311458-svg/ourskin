@@ -1,0 +1,55 @@
+/* history.module.css */
+
+.historyContainer {
+  padding: 30px 20px;
+  min-height: 100vh;
+  background: #f6f5f3;
+  transition: margin-left 0.3s ease;
+}
+
+/* Title */
+.historyContainer h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Cards wrapper */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Single appointment card */
+.card {
+  background: #fff;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+}
+
+/* Hover effect same as Book Appointment */
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* Card text */
+.card h2 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+.card p {
+  font-size: 0.95rem;
+  margin: 4px 0;
+  color: #555;
+}
+
+.card strong {
+  color: #333;
+}

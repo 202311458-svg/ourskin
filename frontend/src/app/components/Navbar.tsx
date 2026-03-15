@@ -13,7 +13,6 @@ import {
   FaMoon,
   FaSun,
   FaBell,
-  FaEnvelope,
   FaBars
 } from "react-icons/fa";
 
@@ -33,7 +32,6 @@ export default function Navbar() {
     { name: "Book Appointment", path: "/pages/patient/book", icon: <FaPlusCircle /> },
     { name: "History", path: "/pages/patient/history", icon: <FaHistory /> },
     { name: "Profile", path: "/pages/patient/profile", icon: <FaUser /> },
-    { name: "Messages", path: "/pages/patient/messages", icon: <FaEnvelope /> },
     { name: "Updates", path: "/pages/patient/updates", icon: <FaBell /> },
   ];
 
@@ -42,16 +40,19 @@ export default function Navbar() {
     else document.body.classList.remove("darkMode");
   }, [darkMode]);
 
-  const toggleCollapse = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
-    if (newState) document.body.classList.add("navCollapsed");
-    else document.body.classList.remove("navCollapsed");
-  };
+const toggleCollapse = () => {
+  const newState = !collapsed;
+  setCollapsed(newState);
+  if (newState) document.body.classList.add("navCollapsed");
+  else document.body.classList.remove("navCollapsed");
+
+  // Dispatch event so pages can listen
+  window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
+};
 
   return (
     <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
-      {/* TOP BAR */}
+
       <div className={styles.logoSection}>
         <Image
           src="/os-logo.png"
@@ -60,7 +61,7 @@ export default function Navbar() {
           height={collapsed ? 50 : 60}
           onClick={toggleCollapse}
         />
-        {/* MOBILE MENU BUTTON */}
+
         <div
           className={styles.mobileToggle}
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -69,7 +70,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* NAV MENU */}
       <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
         {navItems.map((item, idx) => (
           <div
@@ -87,7 +87,6 @@ export default function Navbar() {
         ))}
       </nav>
 
-      {/* DARK MODE + LOGOUT BOTTOM */}
       <div className={styles.navBottom}>
         <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
           <span className={styles.icon}>{darkMode ? <FaSun /> : <FaMoon />}</span>
@@ -99,7 +98,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* MOBILE LOGOUT (inside drawer only) */}
       {mobileOpen && (
         <div
           className={styles.navLogoutMobile}

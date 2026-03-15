@@ -7,7 +7,7 @@ import styles from "./bookAppointment.module.css";
 
 // Times & Services
 const times = ["12:00 pm","1:00 pm","2:00 pm","3:00 pm","4:00 pm","5:00 pm","6:00 pm"];
-const services = ["Consultation","Facial Treatment","Acne Treatment","Laser Treatment","Skin Rejuvenation","Chemical Peel"];
+const services = ["Consultation","Contact Allergy Testing", "Facial Treatment", "Chemical Peels", "Lasers and EBDs", "Injectables", "Surgical", "Cosmetic Surgery"];
 
 // Doctor interface
 interface Doctor {

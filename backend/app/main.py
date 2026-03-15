@@ -8,6 +8,8 @@ from app.models import user
 from app.routes import auth, users, ai_analysis
 from fastapi.staticfiles import StaticFiles
 
+from app.api import appointments
+from app.models import appointment
 
 load_dotenv()  
 
@@ -21,6 +23,7 @@ def root():
 
 origins = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
@@ -31,8 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Include auth router
+app.include_router(appointments.router, prefix="/appointments", tags=["appointments"])
 app.include_router(auth.router)
 
 
