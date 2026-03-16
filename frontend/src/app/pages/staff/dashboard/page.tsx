@@ -1,30 +1,89 @@
-"use client";
+"use client"
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react"
+import StaffNavbar from "@/app/components/StaffNavbar"
+import styles from "@/app/styles/staff.module.css"
 
-export default function Dashboard() {
-  const router = useRouter();
+type Appointment = {
+  id:number
+  patient_name:string
+  doctor_name:string
+  date:string
+  time:string
+}
 
-useEffect(() => {
-  const role = localStorage.getItem("role");
+export default function StaffDashboard(){
 
-  if (!role) return;
+const [appointments,setAppointments] = useState<Appointment[]>([])
 
-  if (role !== "staff") {
-    router.push("/");
-  }
-}, [router]);
+const formatDate = (dateString:string)=>{
+  const date = new Date(dateString)
 
-  return (
-    <div className="p-10">
-      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-      <p className="mt-4">Welcome to OurSkin Admin Portal.</p>
-      <div className="mt-6">
-        <a href="/book">
-          <button className="mainBtn">View Appointment</button>
-        </a>
-      </div>
-    </div>
-  );
+  return date.toLocaleDateString("en-US",{
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  })
+}
+
+const formatTime = (timeString:string)=>{
+
+  const date = new Date(`1970-01-01T${timeString}`)
+
+  return date.toLocaleTimeString("en-US",{
+    hour:"numeric",
+    minute:"2-digit",
+    hour12:true
+  })
+
+}
+
+useEffect(()=>{
+
+const token = localStorage.getItem("token")
+
+fetch("http://127.0.0.1:8000/appointments/upcoming",{
+headers:{Authorization:`Bearer ${token}`}
+})
+.then(res=>res.json())
+.then(data=>setAppointments(data))
+
+},[])
+
+return(
+
+<div className="staffLayout">
+
+<StaffNavbar/>
+
+<div className="staffContent">
+
+<div className={styles.dashboardHeader}>
+<h1>Today&apos;s Appointments</h1>
+</div>
+
+<div className={styles.card}>
+
+{appointments.length===0 && <p>No appointments scheduled today.</p>}
+
+{appointments.map((appt)=>(
+<div key={appt.id} className={styles.requestCard}>
+
+<b>{appt.patient_name}</b>
+
+<span>{appt.doctor_name}</span>
+
+<span>{formatDate(appt.date)} {formatTime(appt.time)}</span>
+
+</div>
+))}
+
+</div>
+
+</div>
+
+</div>
+
+)
+
 }

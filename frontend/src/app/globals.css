@@ -668,3 +668,65 @@ border-top:1px solid #eee;
 margin-top:20px;
 padding-top:20px;
 }
+
+.staffLayout{
+display:flex;
+min-height:100vh;
+background:var(--main-bg);
+}
+
+.staffContent{
+flex:1;
+padding:30px 40px;
+margin-left:220px;
+transition:margin-left .3s ease;
+}
+
+/* when navbar collapses */
+body.navCollapsed .staffContent{
+margin-left:80px;
+}
+
+.calendarGrid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:8px;
+margin-top:15px;
+}
+
+.calendarHeader{
+font-weight:600;
+text-align:center;
+padding:6px 0;
+color:var(--text-secondary);
+}
+
+.calendarCell{
+min-height:70px;
+border-radius:10px;
+background:var(--card-bg);
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+font-size:14px;
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+.dayNumber{
+font-weight:600;
+}
+
+.todayCell{
+border:2px solid #82334c;
+}
+
+.sundayCell{
+background:#fde9ea;
+}
+
+.unavailableLabel{
+font-size:11px;
+color:#b91c1c;
+margin-top:4px;
+}

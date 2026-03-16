@@ -42,7 +42,7 @@ const login = async () => {
 
   localStorage.setItem("token", data.access_token);
 
-  onLoginSuccess("patient", data.access_token);
+  onLoginSuccess(data.role, data.access_token);
   onClose();
 };
 

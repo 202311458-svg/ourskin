@@ -1,0 +1,80 @@
+.dashboardHeader{
+margin-bottom:25px;
+}
+
+.dashboardHeader h1{
+font-size:28px;
+margin-bottom:6px;
+}
+
+.dashboardGrid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:25px;
+margin-top:20px;
+}
+
+.card{
+background:var(--card-bg);
+padding:22px;
+border-radius:18px;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+transition:0.25s;
+}
+
+.card:hover{
+transform:translateY(-4px);
+box-shadow:0 15px 40px rgba(0,0,0,0.12);
+}
+
+.requestCard{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:var(--card-bg);
+padding:18px;
+border-radius:14px;
+box-shadow:0 6px 20px rgba(0,0,0,0.08);
+margin-bottom:14px;
+}
+
+.actions{
+display:flex;
+gap:10px;
+}
+
+.acceptBtn{
+background:#4CAF50;
+color:white;
+border:none;
+padding:8px 16px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.declineBtn{
+background:#d9534f;
+color:white;
+border:none;
+padding:8px 16px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.staffLayout{
+display:flex;
+min-height:100vh;
+background:var(--main-bg);
+}
+
+.staffContent{
+flex:1;
+padding:30px 40px;
+margin-left:220px;
+transition:margin-left 0.3s ease;
+}
+
+/* when sidebar collapses */
+body.navCollapsed .staffContent{
+margin-left:80px;
+}

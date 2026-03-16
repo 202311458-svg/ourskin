@@ -105,28 +105,57 @@ export default function BookAppointment() {
     }
   };
 
-  const submitBooking = () => {
-    const booking = {
-      id: Date.now(),
-      date: `${selectedMonth+1}/${selectedDay}/${selectedYear}`,
-      time: selectedTime,
-      services: selectedServices,
-      description,
-      patient: patientInfo,
-      status: "Pending"
-    };
+const submitBooking = async () => {
 
-    const existing = JSON.parse(localStorage.getItem("appointments") || "[]");
+  const doctor =
+    availableDoctors.length > 0
+      ? availableDoctors[0].name
+      : "Online Consultation";
 
-    existing.push(booking);
+const convertTime = (time: string) => {
 
-    localStorage.setItem("appointments", JSON.stringify(existing));
+  const [hourMinute, modifier] = time.split(" ");
 
-    alert("Appointment submitted!");
+  const [hourRaw, minute] = hourMinute.split(":").map(Number);
+  let hour = hourRaw;
 
-    window.location.href = "/pages/patient/history";
+  if (modifier === "pm" && hour !== 12) hour += 12;
+  if (modifier === "am" && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2,"0")}:${minute}:00`;
+};
+
+  const booking = {
+    patient_name: `${patientInfo.firstName} ${patientInfo.lastName}`,
+    patient_email: patientInfo.email,
+    doctor_name: doctor,
+    date: `${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}-${String(selectedDay).padStart(2,"0")}`,
+    time: convertTime(selectedTime),
+    services: selectedServices.join(", ")
   };
 
+  try {
+
+    const res = await fetch("http://127.0.0.1:8000/appointments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(booking)
+    });
+
+    if (!res.ok) throw new Error("Booking failed");
+
+    alert("Appointment submitted successfully");
+
+    window.location.href = "/pages/patient/history";
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to submit appointment");
+  }
+
+};
   return (
     <>
       <Navbar/>

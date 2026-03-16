@@ -24,26 +24,28 @@ interface AIHistory {
   created_at: string;
 }
 
-const PATIENT_EMAIL = "patient@example.com";
-
 export default function PatientHistory() {
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [aiHistory, setAIHistory] = useState<AIHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [navCollapsed, setNavCollapsed] = useState(false);
-  const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
 
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  })
-}
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  };
+
   useEffect(() => {
     const handleNavToggle = (e: CustomEvent) => {
       setNavCollapsed(e.detail);
     };
+
     window.addEventListener("navbarToggle", handleNavToggle as EventListener);
 
     return () => {
@@ -51,15 +53,26 @@ export default function PatientHistory() {
     };
   }, []);
 
+  /* FETCH APPOINTMENT HISTORY */
+
   useEffect(() => {
+
     const fetchAppointments = async () => {
+
       try {
+
+        const email = localStorage.getItem("user_email") || "patient@example.com";
+
         const res = await fetch(
-          `http://127.0.0.1:8000/appointments/list/?email=${PATIENT_EMAIL}`
+          `http://127.0.0.1:8000/appointments/list?email=${email}`
         );
-        if (!res.ok) throw new Error("Failed to fetch");
+
+        if (!res.ok) throw new Error("Failed to fetch appointments");
+
         const data = await res.json();
-        setAppointments(data.reverse());
+
+        setAppointments(data);
+
       } catch (err) {
         console.error("Failed to fetch appointments:", err);
       } finally {
@@ -68,11 +81,17 @@ export default function PatientHistory() {
     };
 
     fetchAppointments();
+
   }, []);
 
+  /* FETCH AI ANALYSIS HISTORY */
+
   useEffect(() => {
+
     const fetchAIHistory = async () => {
+
       try {
+
         const token = localStorage.getItem("token");
 
         const res = await fetch("http://127.0.0.1:8000/ai/history", {
@@ -84,42 +103,50 @@ export default function PatientHistory() {
         if (!res.ok) throw new Error("Failed to fetch AI history");
 
         const data = await res.json();
+
         setAIHistory(data);
+
       } catch (err) {
         console.error("Failed to fetch AI history:", err);
       }
     };
 
     fetchAIHistory();
+
   }, []);
 
   return (
     <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
+
       <Navbar />
 
       <div
         style={{
           marginLeft: navCollapsed ? "80px" : "220px",
           transition: "margin-left 0.3s ease",
-          padding: "30px",
+          padding: "30px"
         }}
       >
+
         <div
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: "40px",
+            gap: "40px"
           }}
         >
 
-          {/* AI HISTORY PANEL */}
+          {/* AI HISTORY */}
+
           <div style={{ flex: 1 }}>
+
             <h1>AI Skin Analysis History</h1>
 
             {aiHistory.length === 0 ? (
               <p>No AI analysis records found.</p>
             ) : (
               aiHistory.map((item) => (
+
                 <div key={item.id} className={styles.card}>
 
                   <img
@@ -130,34 +157,42 @@ export default function PatientHistory() {
                       maxHeight: "200px",
                       objectFit: "cover",
                       borderRadius: "6px",
-                      marginBottom: "10px",
+                      marginBottom: "10px"
                     }}
                   />
 
-<p style={{fontSize:"13px",color:"#777"}}>
-<strong>Date:</strong> {formatDate(item.created_at)}
-</p>
+                  <p style={{ fontSize: "13px", color: "#777" }}>
+                    <strong>Date:</strong> {formatDate(item.created_at)}
+                  </p>
 
-<p><strong>Condition:</strong> {item.condition}</p>
+                  <p>
+                    <strong>Condition:</strong> {item.condition}
+                  </p>
 
-<p>
-<strong>Confidence:</strong> {(item.confidence * 100).toFixed(0)}%
-</p>
+                  <p>
+                    <strong>Confidence:</strong> {(item.confidence * 100).toFixed(0)}%
+                  </p>
 
-<p><strong>Severity:</strong> {item.severity}</p>
+                  <p>
+                    <strong>Severity:</strong> {item.severity}
+                  </p>
 
-<p>
-<strong>Recommendation:</strong> {item.recommendation}
-</p>
+                  <p>
+                    <strong>Recommendation:</strong> {item.recommendation}
+                  </p>
 
                 </div>
+
               ))
             )}
+
           </div>
 
 
-          {/* APPOINTMENT PANEL */}
+          {/* APPOINTMENT HISTORY */}
+
           <div style={{ flex: 1 }}>
+
             <h1>Appointment History</h1>
 
             {loading ? (
@@ -165,14 +200,16 @@ export default function PatientHistory() {
             ) : appointments.length === 0 ? (
               <p>No appointments found.</p>
             ) : (
+
               appointments.map((appt) => (
+
                 <div key={appt.id} className={styles.card}>
 
                   <h2>Dr. {appt.doctor_name}</h2>
 
-        <p style={{fontSize:"13px",color:"#777"}}>
-          <strong>Date:</strong> {formatDate(appt.date)}
-        </p>
+                  <p style={{ fontSize: "13px", color: "#777" }}>
+                    <strong>Date:</strong> {formatDate(appt.date)}
+                  </p>
 
                   <p>
                     <strong>Time:</strong> {appt.time}
@@ -190,12 +227,17 @@ export default function PatientHistory() {
                   </p>
 
                 </div>
+
               ))
+
             )}
+
           </div>
 
         </div>
+
       </div>
+
     </div>
   );
 }

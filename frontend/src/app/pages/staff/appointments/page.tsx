@@ -1,199 +1,92 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Appointment,
-  fetchAppointments,
-  updateAppointmentStatus,
-} from "../../../services/mockApi"
+import { useEffect,useState } from "react"
+import StaffNavbar from "@/app/components/StaffNavbar"
+import styles from "@/app/styles/staff.module.css"
 
-function generateCalendar() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const todayDate = today.getDate();
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  const daysInMonth = lastDay.getDate();
-  const startDay = firstDay.getDay();
-
-  const days: {
-    date: number | null;
-    isToday: boolean;
-    isSunday: boolean;
-  }[] = [];
-
-  for (let i = 0; i < startDay; i++) {
-    days.push({
-      date: null,
-      isToday: false,
-      isSunday: false,
-    });
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateObj = new Date(year, month, d);
-    const dayOfWeek = dateObj.getDay();
-
-    days.push({
-      date: d,
-      isToday: d === todayDate,
-      isSunday: dayOfWeek === 0,
-    });
-  }
-
-  return {
-    monthName: today.toLocaleString("default", { month: "long" }),
-    year,
-    days,
-  };
+type Appointment={
+id:number
+patient_name:string
+doctor_name:string
+date:string
+time:string
+status:string
 }
 
-export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function StaffAppointments(){
 
-const router = useRouter();
+const [appointments,setAppointments] = useState<Appointment[]>([])
 
-  // Staff-only access
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role !== "staff") {
-      router.push("/"); // redirect non-staff to landing page
-    }
-  }, [router]);
+const formatDate = (dateString:string)=>{
+  const date = new Date(dateString)
 
-  const calendar = generateCalendar();
+  return date.toLocaleDateString("en-US",{
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  })
+}
 
-  useEffect(() => {
-    const load = async () => {
-      const data = await fetchAppointments();
-      setAppointments(data);
-    };
-    load();
-  }, []);
+const formatTime = (timeString:string)=>{
 
-  const handleStatus = async (
-    id: number,
-    status: "accepted" | "declined"
-  ) => {
-    await updateAppointmentStatus(id, status);
-    const updated = await fetchAppointments();
-    setAppointments(updated);
-  };
+  const date = new Date(`1970-01-01T${timeString}`)
 
-  return (
-    <div>
+  return date.toLocaleTimeString("en-US",{
+    hour:"numeric",
+    minute:"2-digit",
+    hour12:true
+  })
 
-      {/* Background Layers */}
-      <div className="fabric1"></div>
-      <div className="fabric2"></div>
-      <div className="fabric3"></div>
-      <div className="circle c1"></div>
-      <div className="circle c2"></div>
+}
 
-      <div className="contentLayer">
+useEffect(()=>{
 
-        <section className="section dashboardSection">
+const token = localStorage.getItem("token")
 
-          <h2>Appointments</h2>
+fetch("http://127.0.0.1:8000/appointments/confirmed",{
+headers:{Authorization:`Bearer ${token}`}
+})
+.then(res=>res.json())
+.then(data=>setAppointments(data))
 
-          <div className="appointmentsGrid">
+},[])
 
-            {/* LEFT PANEL — REQUESTS */}
-            <div className="requestsPanel">
+return(
 
-              <h3 className="panelTitle">
-                Appointment Requests
-              </h3>
+<div className="staffLayout">
 
-              {appointments.length === 0 && (
-                <div className="emptyState">
-                  No pending requests.
-                </div>
-              )}
+<StaffNavbar/>
 
-              {appointments.map((a) => (
-                <div key={a.id} className="requestCard">
+<div className="staffContent">
 
-                  <strong>{a.patientName}</strong>
-                  <p>{a.date}</p>
-                  <p className="capitalize">{a.status}</p>
+<div className={styles.dashboardHeader}>
+<h1>Confirmed Appointments</h1>
+</div>
 
-                  {a.status === "pending" && (
-                    <div className="requestActions">
-                      <button
-                        onClick={() => handleStatus(a.id, "accepted")}
-                        className="mainBtn small outlineBtn"
-                      >
-                        Accept
-                      </button>
+<div className={styles.dashboardGrid}>
 
-                      <button
-                        onClick={() => handleStatus(a.id, "declined")}
-                        className="mainBtn small outlineBtn"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  )}
+{appointments.map((appt)=>(
 
-                </div>
-              ))}
+<div key={appt.id} className={styles.card}>
 
-            </div>
+<b>{appt.patient_name}</b>
 
-            {/* RIGHT PANEL — CALENDAR */}
-            <div className="calendarPanel">
+<p>{appt.doctor_name}</p>
 
-              <h3 className="panelTitle">
-                {calendar.monthName} {calendar.year}
-              </h3>
+<span>{formatDate(appt.date)} {formatTime(appt.time)}</span>
 
-              <div className="calendarGrid">
+<p>Status: {appt.status}</p>
 
-                {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((day) => (
-                  <div key={day} className="calendarHeader">
-                    {day}
-                  </div>
-                ))}
+</div>
 
-                {calendar.days.map((day, index) => (
-                  <div
-                    key={index}
-                    className={`
-                      calendarCell
-                      ${day.isSunday ? "sundayCell" : ""}
-                      ${day.isToday ? "todayCell" : ""}
-                    `}
-                  >
-                    {day.date && (
-                      <>
-                        <span className="dayNumber">
-                          {day.date}
-                        </span>
+))}
 
-                        {day.isSunday && (
-                          <span className="unavailableLabel">
-                            Unavailable
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
+</div>
 
-              </div>
+</div>
 
-            </div>
+</div>
 
-          </div>
+)
 
-        </section>
-
-      </div>
-    </div>
-  );
 }
