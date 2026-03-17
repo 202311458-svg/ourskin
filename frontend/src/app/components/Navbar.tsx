@@ -1,8 +1,9 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import { FaCamera } from "react-icons/fa";
 import {
   FaCalendarAlt,
   FaHistory,
@@ -17,16 +18,12 @@ import {
 
 import styles from "@/app/styles/navbar.module.css";
 
-interface NavbarProps {
-  darkMode: boolean;
-  setDarkMode: Dispatch<SetStateAction<boolean>>;
-}
-
-export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
+export default function Navbar() {
   const router = useRouter();
   const path = usePathname();
 
   const [collapsed, setCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
@@ -42,18 +39,19 @@ export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
     else document.body.classList.remove("darkMode");
   }, [darkMode]);
 
-  const toggleCollapse = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
-    if (newState) document.body.classList.add("navCollapsed");
-    else document.body.classList.remove("navCollapsed");
+const toggleCollapse = () => {
+  const newState = !collapsed;
+  setCollapsed(newState);
+  if (newState) document.body.classList.add("navCollapsed");
+  else document.body.classList.remove("navCollapsed");
 
-    window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
-  };
+  // Dispatch event so pages can listen
+  window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
+};
 
   return (
     <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
-      {/* LOGO & MOBILE TOGGLE */}
+
       <div className={styles.logoSection}>
         <Image
           src="/os-logo.png"
@@ -62,6 +60,7 @@ export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
           height={collapsed ? 50 : 60}
           onClick={toggleCollapse}
         />
+
         <div
           className={styles.mobileToggle}
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -70,7 +69,6 @@ export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
         </div>
       </div>
 
-      {/* NAV ITEMS */}
       <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
         {navItems.map((item, idx) => (
           <div
@@ -88,7 +86,6 @@ export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
         ))}
       </nav>
 
-      {/* DARK MODE & LOGOUT */}
       <div className={styles.navBottom}>
         <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
           <span className={styles.icon}>{darkMode ? <FaSun /> : <FaMoon />}</span>
@@ -100,7 +97,6 @@ export default function Navbar({ darkMode, setDarkMode }: NavbarProps) {
         </div>
       </div>
 
-      {/* MOBILE LOGOUT */}
       {mobileOpen && (
         <div
           className={styles.navLogoutMobile}
