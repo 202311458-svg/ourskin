@@ -84,37 +84,6 @@ export default function PatientHistory() {
 
   }, []);
 
-  /* FETCH AI ANALYSIS HISTORY */
-
-  useEffect(() => {
-
-    const fetchAIHistory = async () => {
-
-      try {
-
-        const token = localStorage.getItem("token");
-
-        const res = await fetch("http://127.0.0.1:8000/ai/history", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch AI history");
-
-        const data = await res.json();
-
-        setAIHistory(data);
-
-      } catch (err) {
-        console.error("Failed to fetch AI history:", err);
-      }
-    };
-
-    fetchAIHistory();
-
-  }, []);
-
   return (
     <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
 
@@ -135,58 +104,6 @@ export default function PatientHistory() {
             gap: "40px"
           }}
         >
-
-          {/* AI HISTORY */}
-
-          <div style={{ flex: 1 }}>
-
-            <h1>AI Skin Analysis History</h1>
-
-            {aiHistory.length === 0 ? (
-              <p>No AI analysis records found.</p>
-            ) : (
-              aiHistory.map((item) => (
-
-                <div key={item.id} className={styles.card}>
-
-                  <img
-                    src={`http://127.0.0.1:8000${item.image_path}`}
-                    alt="Skin analysis"
-                    style={{
-                      width: "100%",
-                      maxHeight: "200px",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                      marginBottom: "10px"
-                    }}
-                  />
-
-                  <p style={{ fontSize: "13px", color: "#777" }}>
-                    <strong>Date:</strong> {formatDate(item.created_at)}
-                  </p>
-
-                  <p>
-                    <strong>Condition:</strong> {item.condition}
-                  </p>
-
-                  <p>
-                    <strong>Confidence:</strong> {(item.confidence * 100).toFixed(0)}%
-                  </p>
-
-                  <p>
-                    <strong>Severity:</strong> {item.severity}
-                  </p>
-
-                  <p>
-                    <strong>Recommendation:</strong> {item.recommendation}
-                  </p>
-
-                </div>
-
-              ))
-            )}
-
-          </div>
 
 
           {/* APPOINTMENT HISTORY */}

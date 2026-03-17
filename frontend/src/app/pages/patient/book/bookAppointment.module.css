@@ -1,12 +1,30 @@
+:root {
+  --primary-color: #82334c;
+  --card-bg: white;
+  --text-dark: #333;
+  --btn-bg: #82334c;
+  --btn-text: white;
+}
+
+body.darkMode {
+  background-color: #1a1a1a;
+  color: #f5f5f5;
+}
+body.darkMode input,
+body.darkMode textarea {
+  background: #333;
+  color: #f5f5f5;
+  border-color: #82334c;
+}
+
 .pageTitle {
   margin-top: 50px;
   margin-bottom: 10px;
   text-align: center;
-  color: #82334c;
+  color: var(--primary-color);
   font-size: 22px;
   font-weight: 600;
 }
-
 .container {
   display: flex;
   flex-direction: column;
@@ -15,13 +33,10 @@
   color: var(--text-dark);
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-
   max-width: 1000px;
   width: 100%;
-
   margin-top: 20px;
 }
-
 .stepper {
   display: flex;
   align-items: center;
@@ -41,10 +56,10 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  color: #82334c;
+  color: var(--primary-color);
 }
 .activeCircle {
-  background: #82334c;
+  background: var(--primary-color);
   color: white;
 }
 .stepLine {
@@ -53,7 +68,7 @@
   background: #ddd;
 }
 .activeLine {
-  background: #82334c;
+  background: var(--primary-color);
 }
 
 .step1Wrapper {
@@ -63,7 +78,6 @@
 .calendarTimeWrapper {
   flex: 2;
 }
-
 .calendarHeader {
   display: flex;
   justify-content: space-between;
@@ -71,7 +85,7 @@
   margin-bottom: 1rem;
   font-weight: 500;
   font-size: 1rem;
-  color: #82334c;
+  color: var(--primary-color);
   cursor: pointer;
 }
 .calendarGrid {
@@ -83,7 +97,7 @@
   font-weight: 600;
   text-align: center;
   margin-bottom: 5px;
-  color: #82334c;
+  color: var(--primary-color);
 }
 .dayCell {
   padding: 12px;
@@ -97,7 +111,7 @@
   background: #fbe8ee;
 }
 .selectedDay {
-  background: #82334c;
+  background: var(--primary-color);
   color: white;
   font-weight: 600;
 }
@@ -119,14 +133,14 @@
   border: 1px solid #ddd;
   text-align: center;
   cursor: pointer;
-  color: #82334c;
+  color: var(--primary-color);
   transition: all 0.2s ease;
 }
 .timeSlot:hover {
   background: #fbe8ee;
 }
 .selectedTime {
-  background: #82334c;
+  background: var(--primary-color);
   color: white;
 }
 .disabledTime {
@@ -142,7 +156,7 @@
 .formGroup label {
   font-weight: 500;
   margin-bottom: 0.4rem;
-  color: #82334c;
+  color: var(--primary-color);
 }
 .formGroup input,
 .formGroup textarea {
@@ -154,7 +168,7 @@
 }
 .formGroup input:focus,
 .formGroup textarea:focus {
-  border-color: #82334c;
+  border-color: var(--primary-color);
 }
 
 .servicesGrid {
@@ -168,16 +182,16 @@
   border-radius: 10px;
   border: 1px solid #ddd;
   cursor: pointer;
-  color: #82334c;
+  color: var(--primary-color);
   transition: all 0.2s ease;
 }
 .serviceCard:hover {
   background: #fbe8ee;
 }
 .serviceActive {
-  background: #82334c;
+  background: var(--primary-color);
   color: white;
-  border-color: #82334c;
+  border-color: var(--primary-color);
 }
 
 .navButtons {
@@ -242,10 +256,9 @@
   font-weight: 600;
 }
 
-/* === MOBILE === */
+/* MOBILE */
 @media (max-width: 768px) {
   .pageTitle {
-    margin-left: 0;
     text-align: center;
   }
   .container {
@@ -273,9 +286,5 @@
   }
   .step1Wrapper {
     flex-direction: column;
-  }
-  .doctorSidebar {
-    width: 100%;
-    margin-top: 15px;
   }
 }

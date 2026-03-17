@@ -4,161 +4,148 @@ import Navbar from "@/app/components/Navbar";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { FaCalendarAlt, FaClock, FaCheckCircle } from "react-icons/fa";
 import styles from "./dashboard.module.css";
 
 export default function PatientDashboard() {
+  const router = useRouter();
+  const [patientName, setPatientName] = useState("");
+  const [navCollapsed, setNavCollapsed] = useState(false);
 
-const router = useRouter();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    fetch("http://127.0.0.1:8000/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => setPatientName(data.name));
 
-const [patientName, setPatientName] = useState("");
+    const handleNavbarToggle = (e: any) => setNavCollapsed(e.detail);
+    window.addEventListener("navbarToggle", handleNavbarToggle);
+    return () => window.removeEventListener("navbarToggle", handleNavbarToggle);
+  }, []);
 
-useEffect(()=>{
+  const latestAppointments = [
+    { doctor: "Dr. Cecilia Roxas-Rosete", specialty: "Lead Dermatologist", date: "2026-03-16" },
+    { doctor: "Dr. Raisa Rosete", specialty: "Dermatologist", date: "2026-03-16" },
+    { doctor: "Dr. Reinier Rosete", specialty: "Cosmetic Surgeon", date: "2025-10-10" },
+  ];
 
-const token = localStorage.getItem("token");
+  const upcomingAppointment = {
+    doctor: "Dr. Cecilia Roxas-Rosete",
+    specialty: "Lead Dermatologist",
+    date: "2026-03-16",
+    time: "2:30 PM",
+    note: "Follow-up on previous consultation",
+    photo: "/cecilia.png",
+  };
 
-fetch("http://127.0.0.1:8000/users/me",{
-headers:{
-Authorization:`Bearer ${token}`
-}
-})
-.then(res=>res.json())
-.then(data=>{
-setPatientName(data.name);
-});
+  // Filter appointments for today
+  const today = new Date().toISOString().split("T")[0];
+  const upcomingAppointmentsToday = latestAppointments.filter(appt => appt.date >= today);
 
-},[]);
+  return (
+    <>
+      <Navbar />
+      <main className={`${styles.pageWrapper} ${navCollapsed ? styles.navCollapsed : ""}`}>
 
-const latestAppointments = [
-{
-doctor:"Dr. Cecilia Roxas-Rosete",
-specialty:"Lead Dermatologist",
-date:"16 Feb 2026"
-},
-{
-doctor:"Dr. Raisa Rosete",
-specialty:"Dermatologist",
-date:"11 Feb 2026"
-},
-{
-doctor:"Dr. Reinier Rosete",
-specialty:"Cosmetic Surgeon",
-date:"10 Oct 2025"
-}
-];
+        {/* GREETING */}
+        <section className={styles.greetingSection}>
+          <h1 className={styles.greetingTitle}>
+            Hello, {patientName || "Patient"} 👋
+          </h1>
+          <p className={styles.greetingSubtitle}>
+            You have {upcomingAppointmentsToday.length} appointment{upcomingAppointmentsToday.length !== 1 ? "s" : ""} today
+          </p>
+        </section>
 
-const upcomingAppointment = {
-doctor:"Dr. Cecilia Roxas-Rosete",
-specialty:"Lead Dermatologist",
-date:"16 Mar 2026",
-time:"2:30 PM",
-note:"Follow-up on previous consultation",
-photo:"/cecilia.png"
-};
+        {/* DASHBOARD GRID */}
+        <section className={styles.dashboardGrid}>
 
-return (
+          {/* LEFT COLUMN */}
+          <div className={styles.leftColumn}>
 
-<>
-<Navbar />
+            {/* Summary Cards */}
+            <div className={styles.summaryGrid}>
+              <div className={styles.summaryCard}>
+                <FaCalendarAlt className={styles.summaryIcon} />
+                <div>
+                  <h3>Total Appointments</h3>
+                  <p>{latestAppointments.length + 1}</p>
+                </div>
+              </div>
+              <div className={styles.summaryCard}>
+                <FaClock className={styles.summaryIcon} />
+                <div>
+                  <h3>Upcoming</h3>
+                  <p>{upcomingAppointmentsToday.length}</p>
+                </div>
+              </div>
+              <div className={styles.summaryCard}>
+                <FaCheckCircle className={styles.summaryIcon} />
+                <div>
+                  <h3>Completed</h3>
+                  <p>{latestAppointments.length}</p>
+                </div>
+              </div>
+            </div>
 
-<main className="pageWrapper">
+            {/* Latest Appointments */}
+            <div className={styles.card}>
+              <h3>Recent Appointments</h3>
+              <ul className={styles.appointmentList}>
+                {latestAppointments
+                  .filter(appt => appt.date < today)
+                  .map((appt, idx) => (
+                    <li key={idx} className={styles.appointmentItem}>
+                      <span className={styles.appointmentDoctor}>{appt.doctor}</span>
+                      <span className={styles.appointmentSpecialty}>({appt.specialty})</span>
+                      <span className={styles.appointmentDate}>{appt.date}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
 
-<section className={styles.greetingSection}>
+          {/* RIGHT COLUMN */}
+          <div className={styles.rightColumn}>
 
-<h1 className={styles.greetingTitle}>
-Hello, {patientName || "Patient"}
-</h1>
+            {/* Upcoming Appointment Highlight */}
+            <div className={styles.cardHighlight}>
+              <h3>Upcoming Appointment</h3>
+              <div className={styles.upcomingHighlight}>
+                <div className={styles.doctorPhotoLarge}>
+                  <Image
+                    src={upcomingAppointment.photo}
+                    alt={upcomingAppointment.doctor}
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <div className={styles.upcomingTextLarge}>
+                  <h2>{upcomingAppointment.doctor}</h2>
+                  <p className={styles.upcomingSpecialty}>{upcomingAppointment.specialty}</p>
+                  <p className={styles.upcomingDate}>{upcomingAppointment.date} | {upcomingAppointment.time}</p>
+                  <p className={styles.upcomingNote}>{upcomingAppointment.note}</p>
+                </div>
+              </div>
+            </div>
 
-<p className={styles.greetingSubtitle}>
-You have {latestAppointments.length} appointment{latestAppointments.length > 1 ? "s" : ""} today
-</p>
+            {/* Reminder */}
+            <div className={styles.card}>
+              <h3>Appointment Reminder</h3>
+              <p className={styles.reminderText}>
+                Don&apos;t forget your upcoming appointment with {upcomingAppointment.doctor}!
+              </p>
+              <button className={styles.btnBook} onClick={() => router.push("/pages/patient/book")}>
+                Book New Appointment
+              </button>
+            </div>
 
-</section>
+          </div>
 
-<section className={styles.dashboardCards}>
-
-{/* Latest Appointments */}
-
-<div className={`${styles.dashCard} ${styles.dashCardHoverable}`}>
-
-<h3>Latest Appointments</h3>
-
-<ul>
-
-{latestAppointments.map((appt,idx)=>(
-
-<li key={idx}>
-<span>{appt.doctor} ({appt.specialty})</span>
-{" - "}
-<span>{appt.date}</span>
-</li>
-
-))}
-
-</ul>
-
-</div>
-
-{/* Upcoming Appointment */}
-
-<div className={`${styles.dashCard} ${styles.dashCardHoverable}`}>
-
-<h3>Upcoming Appointment</h3>
-
-<div className={styles.upcomingDetails}>
-
-<div className={styles.doctorPhoto}>
-<Image
-src={upcomingAppointment.photo}
-alt={upcomingAppointment.doctor}
-width={80}
-height={80}
-/>
-</div>
-
-<div>
-
-<h4>{upcomingAppointment.doctor}</h4>
-
-<p>{upcomingAppointment.specialty}</p>
-
-<p>
-{upcomingAppointment.date} | {upcomingAppointment.time}
-</p>
-
-<p>{upcomingAppointment.note}</p>
-
-</div>
-
-</div>
-
-</div>
-
-{/* Reminder */}
-
-<div className={`${styles.dashCard} ${styles.dashCardHoverable}`}>
-
-<h3>Appointment Reminder</h3>
-
-<p>
-Don&apos;t forget your upcoming appointment with {upcomingAppointment.doctor}!
-</p>
-
-<button
-className={`${styles.btnBook} ${styles.btnBookHoverable}`}
-onClick={()=>router.push("/pages/patient/book")}
->
-
-Book New Appointment
-
-</button>
-
-</div>
-
-</section>
-
-</main>
-</>
-
-);
-
+        </section>
+      </main>
+    </>
+  );
 }
