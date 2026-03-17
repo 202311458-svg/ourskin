@@ -16,6 +16,43 @@ body {
 }
 
 /* ===============================
+THEME VARIABLES
+=================================*/
+
+:root {
+  --navbar-width: 220px;
+
+  --navbar-bg: #82334c;
+
+  --main-bg: #f6f6f6;
+
+  --card-bg: #ffffff;
+
+  --text-dark: #222;
+  --text-secondary: #555;
+
+  --btn-bg: #82334c;
+  --btn-hover: #a64c6a;
+  --btn-text: #ffffff;
+}
+
+/* DARK MODE */
+
+body.darkMode {
+  --navbar-bg: #5b1f37;
+
+  --main-bg: #241c24;
+
+  --card-bg: #3a243a;
+
+  --text-dark: #f5f5f5;
+  --text-secondary: #d3b8d3;
+
+  --btn-bg: #a64c6a;
+  --btn-hover: #c86486;
+}
+
+/* ===============================
 PAGE LAYOUT
 =================================*/
 
@@ -118,9 +155,6 @@ body {
   display: flex;
   align-items: center;
   gap: 15px;
-}
-.landingnavLogo img {
-  margin-top: 10px;
 }
 .loginBtn {
   font-size: 15px;
