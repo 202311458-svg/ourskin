@@ -4,6 +4,8 @@ from datetime import date, datetime
 
 from app.db import SessionLocal
 from app.models.appointment import AppointmentModel
+from app.models.skin_analysis import SkinAnalysis
+
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -120,3 +122,31 @@ def get_upcoming_appointments(db: Session = Depends(get_db)):
         .order_by(AppointmentModel.date.asc())
         .all()
     )
+    
+    
+    
+@router.get("/history-with-analysis")
+def get_patient_history(email: str, db: Session = Depends(get_db)):
+
+    appointments = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.patient_email == email)
+        .order_by(AppointmentModel.date.asc())
+        .all()
+    )
+
+    results = []
+
+    for appt in appointments:
+        analyses = (
+            db.query(SkinAnalysis)
+            .filter(SkinAnalysis.appointment_id == appt.id)
+            .all()
+        )
+
+        results.append({
+            "appointment": appt,
+            "analyses": analyses
+        })
+
+    return results

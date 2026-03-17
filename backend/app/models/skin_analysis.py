@@ -11,6 +11,8 @@ class SkinAnalysis(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"))
 
+    appointment_id = Column(Integer, ForeignKey("appointments.id"))
+
     image_path = Column(String)
 
     condition = Column(String)
@@ -20,5 +22,7 @@ class SkinAnalysis(Base):
     severity = Column(String)
 
     recommendation = Column(String)
+    
+    doctor_note = Column(String)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,5 +1,5 @@
 "use client"
-
+import { useRouter } from "next/navigation"
 import { useEffect,useState } from "react"
 import StaffNavbar from "@/app/components/StaffNavbar"
 import styles from "@/app/styles/staff.module.css"
@@ -16,6 +16,7 @@ status:string
 export default function StaffAppointments(){
 
 const [appointments,setAppointments] = useState<Appointment[]>([])
+const router = useRouter()
 
 const formatDate = (dateString:string)=>{
   const date = new Date(dateString)
@@ -65,27 +66,37 @@ return(
 
 <div className={styles.dashboardGrid}>
 
-{appointments.map((appt)=>(
+{appointments.map((appt) => (
+  <div key={appt.id} className={styles.card}>
 
-<div key={appt.id} className={styles.card}>
+    <b>{appt.patient_name}</b>
+    <p>{appt.doctor_name}</p>
+    <span>{formatDate(appt.date)} {formatTime(appt.time)}</span>
+    <p>Status: {appt.status}</p>
 
-<b>{appt.patient_name}</b>
+    <button
+      className={styles.acceptBtn}
+      onClick={() =>
+        router.push(`/pages/staff/ai-analysis?appointmentId=${appt.id}`)
+      }
+      style={{ marginTop: "10px" }}
+    >
+      Analyze Skin
+    </button>
 
-<p>{appt.doctor_name}</p>
-
-<span>{formatDate(appt.date)} {formatTime(appt.time)}</span>
-
-<p>Status: {appt.status}</p>
-
-</div>
-
+  </div>
 ))}
 
+
+
 </div>
+
+
 
 </div>
 
 </div>
+
 
 )
 

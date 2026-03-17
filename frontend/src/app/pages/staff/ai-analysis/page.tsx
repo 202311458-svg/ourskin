@@ -1,151 +1,243 @@
 "use client";
-
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StaffNavbar from "@/app/components/StaffNavbar";
 
 type AnalysisResult = {
-  condition: string
-  confidence: number
-  severity: string
-  recommendation: string
-  note: string
-}
+  condition: string;
+  confidence: number;
+  severity: string;
+  recommendation: string;
+  note: string;
+};
 
-export default function AISkinAnalysis(){
+export default function AISkinAnalysis() {
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [doctorNote, setDoctorNote] = useState("");
+  const [saved, setSaved] = useState(false); // ✅ NEW
 
-const [image,setImage] = useState<File | null>(null)
-const [preview,setPreview] = useState<string | null>(null)
-const [result,setResult] = useState<AnalysisResult | null>(null)
-const [loading,setLoading] = useState(false)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const appointmentId = searchParams.get("appointmentId");
 
-const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const role = localStorage.getItem("role");
 
-const file = e.target.files?.[0]
+    if (role !== "staff") {
+      router.push("/");
+    }
+  }, [router]);
 
-if(file){
-setImage(file)
-setPreview(URL.createObjectURL(file))
-}
+  useEffect(() => {
+    if (!appointmentId) {
+      router.push("/pages/staff/appointments");
+    }
+  }, [appointmentId, router]);
 
-}
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
 
-const analyzeSkin = async () => {
+    if (file) {
+      setImage(file);
+      setPreview(URL.createObjectURL(file));
+    }
+  };
 
-if(!image) return
+  // ANALYZE
+  const analyzeSkin = async () => {
+    if (!image) return;
 
-setLoading(true)
+    setLoading(true);
+    setSaved(false); // reset saved state
 
-const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
-const formData = new FormData()
-formData.append("file", image)
+    const formData = new FormData();
+    formData.append("file", image);
 
-try{
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/ai/analyze/${appointmentId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
-const res = await fetch("http://127.0.0.1:8000/ai/analyze",{
-method:"POST",
-headers:{
-Authorization:`Bearer ${token}`
-},
-body:formData
-})
+      if (!res.ok) {
+        alert("Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
 
-if(!res.ok){
-console.error("Server error:", res.status)
-alert("Session expired. Please login again.")
-setLoading(false)
-return
-}
+      const data = await res.json();
+      setResult(data.analysis);
+    } catch (err) {
+      console.error(err);
+    }
 
-const data = await res.json()
+    setLoading(false);
+  };
 
-setResult(data.analysis)
+  // SAVE NOTE
+  const saveDoctorNote = async () => {
+    if (!doctorNote) {
+      alert("Please enter a note first");
+      return;
+    }
 
-}catch(err){
-console.error("Request failed:", err)
-}
+    const token = localStorage.getItem("token");
 
-setLoading(false)
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/ai/save-note/${appointmentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            doctor_note: doctorNote,
+          }),
+        }
+      );
 
-}
+      if (!res.ok) {
+        alert("Failed to save note");
+        return;
+      }
 
-return(
-<>
-<StaffNavbar/>
+      setSaved(true); // ✅ SHOW SUCCESS UI
+      setDoctorNote("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-<main className="pageWrapper">
+  return (
+    <>
+      <StaffNavbar />
 
-<h1>AI Skin Analysis</h1>
+      <main className="pageWrapper">
+        <h1>AI Skin Analysis</h1>
 
-<div className="profileCard">
+        <div className="profileCard">
+          <p>
+            Upload a clear photo of your skin. Our AI will analyze possible skin
+            conditions before your consultation.
+          </p>
 
-<p>
-Upload a clear photo of your skin. Our AI will analyze possible skin conditions before your consultation.
-</p>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="formInput"
+          />
 
-<input
-type="file"
-accept="image/*"
-onChange={handleImageChange}
-className="formInput"
-/>
+          <p style={{ fontSize: "13px", color: "#666" }}>
+            Supported formats: JPG, PNG
+          </p>
 
-<p style={{fontSize:"13px",color:"#666"}}>
-Supported formats: JPG, PNG
-</p>
+          {preview && (
+            <img
+              src={preview}
+              alt="preview"
+              style={{
+                width: "100%",
+                maxHeight: "350px",
+                objectFit: "cover",
+                marginTop: "15px",
+                borderRadius: "6px",
+              }}
+            />
+          )}
 
-{preview && (
-<img
-src={preview}
-alt="preview"
-style={{
-width:"100%",
-maxHeight:"350px",
-objectFit:"cover",
-marginTop:"15px",
-borderRadius:"6px"
-}}
-/>
-)}
+          <button
+            onClick={analyzeSkin}
+            className="mainBtn"
+            style={{ marginTop: "15px" }}
+          >
+            {loading ? "Analyzing..." : "Analyze Skin"}
+          </button>
 
-<button
-onClick={analyzeSkin}
-className="mainBtn"
-style={{marginTop:"15px"}}
->
-{loading ? "Analyzing..." : "Analyze Skin"}
-</button>
+          {result && (
+            <div style={{ marginTop: "25px" }}>
+              <h3>Analysis Result</h3>
 
-{result && (
+              <p><b>Condition:</b> {result.condition}</p>
+              <p><b>Confidence:</b> {(result.confidence * 100).toFixed(0)}%</p>
+              <p><b>Severity:</b> {result.severity}</p>
 
-<div style={{marginTop:"25px"}}>
+              <p style={{ marginTop: "10px" }}>
+                <b>Recommendation:</b> {result.recommendation}
+              </p>
 
-<h3>Analysis Result</h3>
+              <p style={{ fontSize: "12px", color: "#777", marginTop: "10px" }}>
+                {result.note}
+              </p>
 
-<p><b>Condition:</b> {result.condition}</p>
+              <textarea
+                placeholder="Enter doctor notes..."
+                value={doctorNote}
+                onChange={(e) => setDoctorNote(e.target.value)}
+                disabled={!result}
+                style={{
+                  width: "100%",
+                  marginTop: "15px",
+                  padding: "10px",
+                  borderRadius: "6px",
+                }}
+              />
 
-<p><b>Confidence:</b> {(result.confidence * 100).toFixed(0)}%</p>
+              <button
+                onClick={saveDoctorNote}
+                disabled={!result}
+                className="mainBtn"
+                style={{ marginTop: "10px" }}
+              >
+                Save Note
+              </button>
 
-<p><b>Severity:</b> {result.severity}</p>
+              {/* ✅ SUCCESS OPTIONS */}
+              {saved && (
+                <div style={{ marginTop: "15px" }}>
+                  <p style={{ color: "green" }}>Note saved successfully</p>
 
-<p style={{marginTop:"10px"}}>
-<b>Recommendation:</b> {result.recommendation}
-</p>
+                  <button
+                    onClick={() => router.push("/pages/staff/dashboard")}
+                    className="mainBtn"
+                    style={{ marginTop: "10px" }}
+                  >
+                    Go to Dashboard
+                  </button>
 
-<p style={{fontSize:"12px",color:"#777",marginTop:"10px"}}>
-{result.note}
-</p>
-
-
-</div>
-
-)}
-
-</div>
-
-</main>
-
-</>
-)
-
+                  <button
+                    onClick={() => {
+                      setResult(null);
+                      setImage(null);
+                      setPreview(null);
+                      setSaved(false);
+                    }}
+                    className="mainBtn"
+                    style={{ marginTop: "10px", marginLeft: "10px" }}
+                  >
+                    Analyze Another Image
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+    </>
+  );
 }
