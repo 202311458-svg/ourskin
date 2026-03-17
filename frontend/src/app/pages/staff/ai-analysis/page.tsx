@@ -128,12 +128,12 @@ export default function AISkinAnalysis() {
       <StaffNavbar />
 
       <main className="pageWrapper">
-        <h1>AI Skin Analysis</h1>
+        <h1>AI-Assisted Skin Assessment</h1>
 
         <div className="profileCard">
-          <p>
-            Upload a clear photo of your skin. Our AI will analyze possible skin
-            conditions before your consultation.
+          <p style={{ fontSize: "14px" }}>
+          Upload a patient skin image to generate an AI-assisted assessment.
+Results are intended for clinical support only and are not visible to patients.
           </p>
 
           <input
@@ -166,8 +166,9 @@ export default function AISkinAnalysis() {
             className="mainBtn"
             style={{ marginTop: "15px" }}
           >
-            {loading ? "Analyzing..." : "Analyze Skin"}
+            {loading ? "Analyzing..." : "Run Analysis"}
           </button>
+        
 
           {result && (
             <div style={{ marginTop: "25px" }}>
@@ -207,7 +208,7 @@ export default function AISkinAnalysis() {
                 Save Note
               </button>
 
-              {/* ✅ SUCCESS OPTIONS */}
+             
               {saved && (
                 <div style={{ marginTop: "15px" }}>
                   <p style={{ color: "green" }}>Note saved successfully</p>
