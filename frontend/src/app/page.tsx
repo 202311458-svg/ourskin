@@ -10,7 +10,7 @@ export default function Home() {
   const [modal, setModal] = useState(false)
 
   // --- Hero Gallery ---
-  const clinicImages = ["/clinic1.jpg", "/clinic2.jpg", "/clinic3.jpg", "/clinic4.jpg"]
+  const clinicImages = ["/clinic1.jpg", "/clinic2.jpg", "/clinic3.jpg"]
   const [currentImage, setCurrentImage] = useState(0)
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function Home() {
       {/* NAVBAR */}
       <nav className="landingnavbar">
         <div className="landingnavLogo">
-          <Image src="/os-logo.png" alt="OurSkin" width={140} height={50} />
+          <Image src="/navlogo.png" alt="OurSkin" width={180} height={70} />
         </div>
 
         <div className="landingnavLinks">
@@ -76,11 +76,11 @@ export default function Home() {
         <div className="heroRight">
           <div className="heroCard">
             <div className="heroGallery">
-              <Image src={clinicImages[currentImage]} alt="OurSkin Clinic" width={350} height={220} className="galleryImage" />
+              <Image src={clinicImages[currentImage]} alt="OurSkin Clinic" width={400} height={220} className="galleryImage" />
             </div>
             <div className="heroStats">
               <div><h3>15+</h3><p>Years Experience</p></div>
-              <div><h3>10k+</h3><p>Patients Treated</p></div>
+              <div><h3>6k+</h3><p>Patients Treated</p></div>
               <div><h3>7</h3><p>Specialists</p></div>
             </div>
           </div>
