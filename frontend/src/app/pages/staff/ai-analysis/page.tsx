@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "@/app/components/Navbar";
+import StaffNavbar from "@/app/components/StaffNavbar";
 
 type AnalysisResult = {
   condition: string
@@ -71,7 +71,7 @@ setLoading(false)
 
 return(
 <>
-<Navbar/>
+<StaffNavbar/>
 
 <main className="pageWrapper">
 

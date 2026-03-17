@@ -12,7 +12,8 @@ import {
   FaMoon,
   FaSun,
   FaBell,
-  FaBars
+  FaBars,
+  FaCamera
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
@@ -27,6 +28,7 @@ export default function StaffNavbar() {
 
   const navItems = [
     { name: "Dashboard", path: "/pages/staff/dashboard", icon: <FaCalendarAlt /> },
+    { name: "AI Analysis", path: "/pages/staff/ai-analysis", icon: <FaCamera /> },
     { name: "Appointment Requests", path: "/pages/staff/requests", icon: <FaClipboardList /> },
     { name: "Appointments", path: "/pages/staff/appointments", icon: <FaUserMd /> },
     { name: "Patients", path: "/pages/staff/patients", icon: <FaUsers /> },
