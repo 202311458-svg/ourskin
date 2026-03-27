@@ -14,57 +14,81 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [contact, setContact] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
-const login = async () => {
-
-  const res = await fetch("http://127.0.0.1:8000/auth/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      username: email,
-      password: password,
-    }),
-  });
-
-  if (!res.ok) {
-    alert("Invalid email or password");
-    return;
+  const validatePassword = (password: string) => {
+    return /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(password)
   }
 
-  const data = await res.json();
-
-  if (!data.access_token) {
-    alert("Login failed.");
-    return;
-  }
-
-  localStorage.setItem("token", data.access_token);
-
-  onLoginSuccess(data.role, data.access_token);
-  onClose();
-};
-
-const register = async () => {
-  const res = await fetch("http://127.0.0.1:8000/auth/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      name: name,
-      email: email,
-      contact: contact,
-      password: password
+  const login = async () => {
+    const res = await fetch("http://127.0.0.1:8000/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        username: email,
+        password: password,
+      }),
     })
-  })
 
-  if (res.ok) {
-    alert("Account created. Please login.")
-    setIsLogin(true)
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.detail || "Invalid email or password")
+      return
+    }
+
+    if (!data.access_token) {
+      alert("Login failed.")
+      return
+    }
+
+    localStorage.setItem("token", data.access_token)
+
+    onLoginSuccess(data.role, data.access_token)
+    onClose()
   }
-}
+
+  const register = async () => {
+    if (password !== confirmPassword) {
+      alert("Passwords do not match")
+      return
+    }
+
+    if (!validatePassword(password)) {
+      alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character")
+      return
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        contact: contact,
+        password: password,
+        confirm_password: confirmPassword
+      })
+    })
+
+    const data = await res.json()
+
+    if (res.ok) {
+      alert("Account created. Check your email to verify before logging in.")
+      setIsLogin(true)
+      setName("")
+      setContact("")
+      setEmail("")
+      setPassword("")
+      setConfirmPassword("")
+    } else {
+      alert(data.detail || "Registration failed")
+    }
+  }
 
   if (!isOpen) return null
 
@@ -103,12 +127,22 @@ const register = async () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
+          {!isLogin && (
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          )}
 
           <button className="submitBtn" type="submit">
             {isLogin ? "Login" : "Register"}
