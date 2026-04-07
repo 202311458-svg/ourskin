@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from pydantic import BaseModel
 
 from app.db import SessionLocal
 from app.models.user import User
@@ -12,6 +13,11 @@ from app.schemas.user import StaffCreate, StaffUpdate, StaffStatusUpdate
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+class AppointmentStatusUpdate(BaseModel):
+    status: str
+    cancel_reason: str | None = None
 
 
 def get_db():
@@ -117,6 +123,41 @@ def get_appointments(
     ]
 
 
+@router.put("/appointments/{id}/status")
+def update_appointment_status(
+    id: int,
+    payload: AppointmentStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    allowed_statuses = ["Pending", "Approved", "Declined"]
+    if payload.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid appointment status")
+
+    if payload.status == "Declined" and not payload.cancel_reason:
+        raise HTTPException(status_code=400, detail="Cancel reason is required")
+
+    appointment.status = payload.status
+    appointment.cancel_reason = (
+        payload.cancel_reason if payload.status == "Declined" else None
+    )
+
+    db.commit()
+    db.refresh(appointment)
+
+    return {
+        "message": "Appointment status updated successfully",
+        "id": appointment.id,
+        "status": appointment.status,
+        "cancel_reason": appointment.cancel_reason,
+    }
+
+
 @router.get("/ai-logs")
 def get_ai_logs(
     db: Session = Depends(get_db),
@@ -139,7 +180,6 @@ def get_ai_logs(
         }
         for log in logs
     ]
-
 
 
 #staff mgmt endpoints
