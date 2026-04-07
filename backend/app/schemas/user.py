@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, model_validator
 from datetime import datetime
+from typing import Optional
 
 class UserCreate(BaseModel):
     name: str
@@ -35,3 +36,28 @@ class UserResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+    
+    
+class StaffCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str
+    department: Optional[str] = None
+    contact: Optional[str] = None
+    profile_image: Optional[str] = None
+    status: Optional[str] = "Active"
+
+
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    contact: Optional[str] = None
+    profile_image: Optional[str] = None
+    status: Optional[str] = None
+
+
+class StaffStatusUpdate(BaseModel):
+    status: str

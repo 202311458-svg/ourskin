@@ -1,0 +1,189 @@
+.pageWrapper {
+  padding: 30px 40px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 14px;
+}
+
+.addButton {
+  background: #82334c;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.statCard span {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.statCard strong {
+  font-size: 24px;
+}
+
+.filtersRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.searchInput,
+.selectInput {
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.searchInput {
+  min-width: 320px;
+  flex: 1;
+}
+
+.tableCard {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.staffCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.staffCell p {
+  margin: 4px 0 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.active {
+  background: #e7f8ed;
+  color: #1f7a3d;
+}
+
+.inactive {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.viewBtn,
+.editBtn,
+.deactivateBtn {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.viewBtn {
+  background: #eef2ff;
+}
+
+.editBtn {
+  background: #fff4e5;
+}
+
+.deactivateBtn {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.message {
+  color: #666;
+}
+
+.error {
+  color: #b42318;
+}
+
+.dashboardHeader p{
+color:var(--text-secondary);
+font-size:14px;
+margin:0;
+}
+
+.card h3{
+margin:0 0 10px;
+font-size:16px;
+font-weight:600;
+}
+
+.card h2{
+margin:0;
+font-size:28px;
+}

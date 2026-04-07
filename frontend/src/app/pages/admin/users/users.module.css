@@ -1,0 +1,158 @@
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 14px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.statCard span {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.statCard strong {
+  font-size: 24px;
+}
+
+.filtersRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.searchInput,
+.selectInput {
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.searchInput {
+  min-width: 320px;
+  flex: 1;
+}
+
+.tableCard {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.roleBadge,
+.verificationBadge,
+.statusBadge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.patient {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.staff {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.doctor {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.verified {
+  background: #e7f8ed;
+  color: #1f7a3d;
+}
+
+.unverified {
+  background: #fff4e5;
+  color: #b45309;
+}
+
+.active {
+  background: #e7f8ed;
+  color: #1f7a3d;
+}
+
+.inactive {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.message {
+  color: #666;
+}
+
+.error {
+  color: #b42318;
+}
+
+@media (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchInput {
+    min-width: 100%;
+  }
+}

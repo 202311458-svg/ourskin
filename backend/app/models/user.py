@@ -15,3 +15,7 @@ class User(Base):
     verification_token = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
+    # for staff management
+    status = Column(String, default="Active", nullable=False)
+    department = Column(String, nullable=True)
+    profile_image = Column(String, nullable=True)
