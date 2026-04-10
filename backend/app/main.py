@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
 from app.routes import auth, users, ai_analysis, appointments, patients, admin
-from app.models import user, appointment
+from app.models import user, appointment, skin_analysis, follow_up
+from app.routes.doctor import router as doctor_router
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ app.include_router(ai_analysis.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(admin.router)
+app.include_router(doctor_router)
 
 @app.get("/health")
 def health_check():

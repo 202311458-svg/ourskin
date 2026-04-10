@@ -14,20 +14,8 @@ interface Appointment {
   cancel_reason?: string;
 }
 
-interface AIHistory {
-  id: number;
-  image_path: string;
-  condition: string;
-  confidence: number;
-  severity: string;
-  recommendation: string;
-  created_at: string;
-}
-
 export default function PatientHistory() {
-
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [aiHistory, setAIHistory] = useState<AIHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [navCollapsed, setNavCollapsed] = useState(false);
 
@@ -37,79 +25,88 @@ export default function PatientHistory() {
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    const date = new Date(`1970-01-01T${timeString}`);
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
   useEffect(() => {
-    const handleNavToggle = (e: CustomEvent) => {
-      setNavCollapsed(e.detail);
+    const handleNavToggle = (event: Event) => {
+      const customEvent = event as CustomEvent<boolean>;
+      setNavCollapsed(customEvent.detail);
     };
 
-    window.addEventListener("navbarToggle", handleNavToggle as EventListener);
+    window.addEventListener("navbarToggle", handleNavToggle);
 
     return () => {
-      window.removeEventListener("navbarToggle", handleNavToggle as EventListener);
+      window.removeEventListener("navbarToggle", handleNavToggle);
     };
   }, []);
 
-  /* FETCH APPOINTMENT HISTORY */
-
   useEffect(() => {
-
     const fetchAppointments = async () => {
-
       try {
+        const token = localStorage.getItem("token");
 
-        const email = localStorage.getItem("user_email") || "patient@example.com";
+        if (!token) {
+          throw new Error("No token found");
+        }
 
-        const res = await fetch(
-          `http://127.0.0.1:8000/appointments/list?email=${email}`
-        );
+        const appointmentsRes = await fetch("http://127.0.0.1:8000/appointments/my", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        if (!res.ok) throw new Error("Failed to fetch appointments");
+        if (!appointmentsRes.ok) {
+          const rawAppointments = await appointmentsRes.text();
+          console.error("Appointments request failed:", {
+            status: appointmentsRes.status,
+            statusText: appointmentsRes.statusText,
+            body: rawAppointments,
+          });
+          throw new Error("Failed to fetch appointments");
+        }
 
-        const data = await res.json();
-
-        setAppointments(data);
-
-      } catch (err) {
-        console.error("Failed to fetch appointments:", err);
+        const appointmentsData = await appointmentsRes.json();
+        setAppointments(appointmentsData);
+      } catch (error) {
+        console.error("Failed to fetch appointment history:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAppointments();
-
   }, []);
 
   return (
     <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
-
       <Navbar />
 
       <div
         style={{
           marginLeft: navCollapsed ? "80px" : "220px",
           transition: "margin-left 0.3s ease",
-          padding: "30px"
+          padding: "30px",
         }}
       >
-
         <div
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: "40px"
+            gap: "40px",
           }}
         >
-
-
-          {/* APPOINTMENT HISTORY */}
-
           <div style={{ flex: 1 }}>
-
             <h1>Appointment History</h1>
 
             {loading ? (
@@ -117,11 +114,8 @@ export default function PatientHistory() {
             ) : appointments.length === 0 ? (
               <p>No appointments found.</p>
             ) : (
-
               appointments.map((appt) => (
-
                 <div key={appt.id} className={styles.card}>
-
                   <h2>Dr. {appt.doctor_name}</h2>
 
                   <p style={{ fontSize: "13px", color: "#777" }}>
@@ -129,7 +123,7 @@ export default function PatientHistory() {
                   </p>
 
                   <p>
-                    <strong>Time:</strong> {appt.time}
+                    <strong>Time:</strong> {formatTime(appt.time)}
                   </p>
 
                   <p>
@@ -138,23 +132,16 @@ export default function PatientHistory() {
 
                   <p>
                     <strong>Status:</strong> {appt.status}
-                    {appt.status === "Cancelled" && appt.cancel_reason
-                      ? ` (Reason: ${appt.cancel_reason})`
-                      : ""}
+{(appt.status === "Declined" || appt.status === "Cancelled") && appt.cancel_reason
+  ? ` (Reason: ${appt.cancel_reason})`
+  : ""}
                   </p>
-
                 </div>
-
               ))
-
             )}
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

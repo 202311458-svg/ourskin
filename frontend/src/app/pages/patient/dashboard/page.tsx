@@ -68,16 +68,11 @@ export default function PatientDashboard() {
         const userData: CurrentUser = await userRes.json();
         setPatientName(userData.name || "Patient");
 
-        const appointmentsRes = await fetch(
-          `http://127.0.0.1:8000/appointments/list?email=${encodeURIComponent(
-            userData.email
-          )}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const appointmentsRes = await fetch("http://127.0.0.1:8000/appointments/my", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (!appointmentsRes.ok) {
           throw new Error("Failed to fetch appointments");
@@ -114,13 +109,6 @@ export default function PatientDashboard() {
     return new Date(`${date}T${time}`);
   };
 
-  const activeAppointments = useMemo(() => {
-    return appointments.filter((appt) => {
-      const status = normalizeStatus(appt.status);
-      return status !== "cancelled" && status !== "declined";
-    });
-  }, [appointments]);
-
   const approvedAppointments = useMemo(() => {
     return appointments.filter(
       (appt) => normalizeStatus(appt.status) === "approved"
@@ -153,17 +141,27 @@ export default function PatientDashboard() {
       );
   }, [approvedAppointments]);
 
-  const completedAppointments = useMemo(() => {
-    const now = new Date();
+const recentAppointments = useMemo(() => {
+  const now = new Date();
 
-    return approvedAppointments
-      .filter((appt) => combineDateTime(appt.date, appt.time) < now)
-      .sort(
-        (a, b) =>
-          combineDateTime(b.date, b.time).getTime() -
-          combineDateTime(a.date, a.time).getTime()
+  return appointments
+    .filter((appt) => {
+      const status = normalizeStatus(appt.status);
+      const appointmentDateTime = combineDateTime(appt.date, appt.time);
+
+      return (
+        status === "completed" ||
+        status === "declined" ||
+        status === "cancelled" ||
+        (status === "approved" && appointmentDateTime < now)
       );
-  }, [approvedAppointments]);
+    })
+    .sort(
+      (a, b) =>
+        combineDateTime(b.date, b.time).getTime() -
+        combineDateTime(a.date, a.time).getTime()
+    );
+}, [appointments]);
 
   const nearestUpcomingAppointment =
     upcomingAppointments.length > 0 ? upcomingAppointments[0] : null;
@@ -193,6 +191,99 @@ export default function PatientDashboard() {
     return doctorImages[finalDoctorName] || "/default-doctor.png";
   };
 
+
+const cancelAppointment = async (appointmentId: number) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Your session has expired. Please log in again.");
+    return;
+  }
+
+  const reason = window.prompt("Please enter a reason for cancelling this appointment:");
+
+  if (!reason || !reason.trim()) {
+    alert("Cancellation reason is required.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/appointments/${appointmentId}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        status: "Cancelled",
+        cancel_reason: reason.trim(),
+      }),
+    });
+
+    if (!res.ok) {
+      const raw = await res.text();
+
+      console.error("Cancel appointment failed status:", res.status);
+      console.error("Cancel appointment failed statusText:", res.statusText);
+      console.error("Cancel appointment failed body:", raw);
+
+      alert(`Cancel failed: ${res.status} ${raw}`);
+      throw new Error("Failed to cancel appointment");
+    }
+
+    alert("Appointment cancelled successfully.");
+
+    setAppointments((prev) =>
+      prev.map((appt) =>
+        appt.id === appointmentId
+          ? { ...appt, status: "Cancelled", cancel_reason: reason.trim() }
+          : appt
+      )
+    );
+  } catch (error) {
+    console.error("Cancel appointment error:", error);
+    alert("Failed to cancel appointment.");
+  }
+};
+  
+
+  const getStatusBadgeStyle = (status: string) => {
+    const normalized = normalizeStatus(status);
+
+    if (normalized === "approved") {
+      return {
+        backgroundColor: "#e8f7ee",
+        color: "#1f7a45",
+      };
+    }
+
+    if (normalized === "pending") {
+      return {
+        backgroundColor: "#fff4e5",
+        color: "#b86b00",
+      };
+    }
+
+    if (normalized === "declined" || normalized === "cancelled") {
+      return {
+        backgroundColor: "#fdecec",
+        color: "#b42318",
+      };
+    }
+
+    if (normalized === "completed") {
+      return {
+        backgroundColor: "#eef4ff",
+        color: "#1d4ed8",
+      };
+    }
+
+    return {
+      backgroundColor: "#f2f4f7",
+      color: "#344054",
+    };
+  };
+
   return (
     <>
       <Navbar />
@@ -220,7 +311,7 @@ export default function PatientDashboard() {
                 <FaCalendarAlt className={styles.summaryIcon} />
                 <div>
                   <h3>Total Appointments</h3>
-                  <p>{activeAppointments.length}</p>
+                  <p>{appointments.length}</p>
                 </div>
               </div>
 
@@ -242,28 +333,109 @@ export default function PatientDashboard() {
             </div>
 
             <div className={styles.card}>
-              <h3>Recent Appointments</h3>
+              <h3 style={{ marginBottom: "16px" }}>Recent Appointments</h3>
 
-              {completedAppointments.length > 0 ? (
-                <ul className={styles.appointmentList}>
-                  {completedAppointments.slice(0, 5).map((appt) => (
-                    <li key={appt.id} className={styles.appointmentItem}>
-                      <span className={styles.appointmentDoctor}>
-                        {appt.doctor_name || appt.doctor || "Unknown Doctor"}
-                      </span>
-                      <span className={styles.appointmentSpecialty}>
-                        ({appt.services})
-                      </span>
-                      <span className={styles.appointmentDate}>
-                        {formatDate(appt.date)}
-                      </span>
-                    </li>
+              {recentAppointments.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  {recentAppointments.slice(0, 5).map((appt) => (
+                    <div
+                      key={appt.id}
+                      style={{
+                        border: "1px solid #ececec",
+                        borderRadius: "14px",
+                        padding: "14px 16px",
+                        background: "#fff",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: "12px",
+                          flexWrap: "wrap",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <div>
+                          <p
+                            style={{
+                              fontSize: "18px",
+                              fontWeight: 700,
+                              margin: 0,
+                              color: "#1f2937",
+                            }}
+                          >
+                            {appt.doctor_name || appt.doctor || "Unknown Doctor"}
+                          </p>
+
+                          <p
+                            style={{
+                              fontSize: "14px",
+                              margin: "4px 0 0 0",
+                              color: "#667085",
+                            }}
+                          >
+                            {appt.services}
+                          </p>
+                        </div>
+
+                        <span
+                          style={{
+                            ...getStatusBadgeStyle(appt.status),
+                            padding: "6px 10px",
+                            borderRadius: "999px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            textTransform: "capitalize",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {appt.status}
+                        </span>
+                      </div>
+
+                      <p
+                        style={{
+                          margin: "0 0 6px 0",
+                          fontSize: "14px",
+                          color: "#475467",
+                        }}
+                      >
+                        {formatDate(appt.date)} • {formatTime(appt.time)}
+                      </p>
+
+                      {(normalizeStatus(appt.status) === "declined" ||
+                        normalizeStatus(appt.status) === "cancelled") &&
+                        appt.cancel_reason && (
+                          <div
+                            style={{
+                              marginTop: "10px",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              background: "#fff5f5",
+                              border: "1px solid #ffd6d6",
+                              fontSize: "13px",
+                              color: "#7a271a",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            <strong>Reason:</strong> {appt.cancel_reason}
+                          </div>
+                        )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className={styles.reminderText}>
-                  You don’t have any completed appointments yet. Book your first
-                  consultation to get started.
+                  You don’t have any completed or declined appointments yet.
                 </p>
               )}
             </div>
@@ -317,28 +489,45 @@ export default function PatientDashboard() {
             <div className={styles.card}>
               <h3>Pending Requests</h3>
 
-              {pendingAppointments.length > 0 ? (
-                <div className={styles.pendingList}>
-                  {pendingAppointments.slice(0, 3).map((appt) => (
-                    <div key={appt.id} className={styles.pendingCard}>
-                      <div className={styles.pendingTopRow}>
-                        <h4 className={styles.pendingDoctor}>
-                          {appt.doctor_name || appt.doctor || "Unknown Doctor"}
-                        </h4>
-                        <span className={styles.pendingBadge}>Pending</span>
-                      </div>
+{pendingAppointments.length > 0 ? (
+  <div className={styles.pendingList}>
+    {pendingAppointments.slice(0, 3).map((appt) => (
+      <div key={appt.id} className={styles.pendingCard}>
+        <div className={styles.pendingTopRow}>
+          <h4 className={styles.pendingDoctor}>
+            {appt.doctor_name || appt.doctor || "Unknown Doctor"}
+          </h4>
+          <span className={styles.pendingBadge}>Pending</span>
+        </div>
 
-                      <p className={styles.pendingService}>
-                        {appt.services || "Consultation"}
-                      </p>
+        <p className={styles.pendingService}>
+          {appt.services || "Consultation"}
+        </p>
 
-                      <p className={styles.pendingDateTime}>
-                        {formatDate(appt.date)} • {formatTime(appt.time)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+        <p className={styles.pendingDateTime}>
+          {formatDate(appt.date)} • {formatTime(appt.time)}
+        </p>
+
+        <button
+          type="button"
+          onClick={() => cancelAppointment(appt.id)}
+          style={{
+            marginTop: "10px",
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: "none",
+            backgroundColor: "#b42318",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          Cancel Request
+        </button>
+      </div>
+    ))}
+  </div>
+) : (
                 <p className={styles.emptyStateText}>
                   You don’t have any pending requests right now.
                 </p>

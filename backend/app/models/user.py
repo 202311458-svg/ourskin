@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
 from app.db import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -14,8 +15,12 @@ class User(Base):
     is_verified = Column(Boolean, default=False, nullable=False)
     verification_token = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # for staff management
+
     status = Column(String, default="Active", nullable=False)
     department = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
+
+    # doctor profile fields
+    specialty = Column(String, nullable=True)
+    availability = Column(String, nullable=True)
+    bio = Column(String, nullable=True)

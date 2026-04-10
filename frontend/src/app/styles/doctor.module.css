@@ -1,0 +1,474 @@
+.pageWrapper {
+  --primary-color: #82334c;
+  --primary-hover: #a04861;
+
+  --bg-light: #f7f7f9;
+  --card-light: #ffffff;
+  --text-dark: #1f1f1f;
+  --text-secondary: #666666;
+  --border-light: #e6e6e6;
+
+  --bg-dark: #1e1e1e;
+  --card-dark: #2a2a2a;
+  --text-light: #f5f5f5;
+  --text-muted-dark: #b5b5b5;
+  --border-dark: #3b3b3b;
+
+  --success-bg: #e9f8ef;
+  --success-text: #1f7a43;
+
+  --warning-bg: #fff6e5;
+  --warning-text: #b7791f;
+
+  --danger-bg: #fdeaea;
+  --danger-text: #b42318;
+
+  --info-bg: #eef4ff;
+  --info-text: #3457d5;
+
+  --navbar-width: 220px;
+  --navbar-collapsed-width: 90px;
+
+  margin-left: var(--navbar-width);
+  width: calc(100% - var(--navbar-width));
+  min-height: 100vh;
+  padding: 30px 32px;
+  background: var(--bg-light);
+  color: var(--text-dark);
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+:global(body.navCollapsed) .pageWrapper {
+  margin-left: var(--navbar-collapsed-width);
+  width: calc(100% - var(--navbar-collapsed-width));
+}
+
+:global(body.darkMode) .pageWrapper {
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.headerSection {
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.pageSubtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+:global(body.darkMode) .pageSubtitle {
+  color: var(--text-muted-dark);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.dashboardCard {
+  background: var(--card-light);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+:global(body.darkMode) .dashboardCard {
+  background: var(--card-dark);
+  border: 1px solid var(--border-dark);
+}
+
+.statValue {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .statLabel {
+  color: var(--text-muted-dark);
+}
+
+.twoColumnGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.sectionCard {
+  background: var(--card-light);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+:global(body.darkMode) .sectionCard {
+  background: var(--card-dark);
+  border: 1px solid var(--border-dark);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.sectionSubtext {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .sectionSubtext {
+  color: var(--text-muted-dark);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: rgba(130, 51, 76, 0.02);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+:global(body.darkMode) .listItem {
+  border: 1px solid var(--border-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.listLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.listPrimary {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.listSecondary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  word-break: break-word;
+}
+
+:global(body.darkMode) .listSecondary {
+  color: var(--text-muted-dark);
+}
+
+.listRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.statusBadge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badgeApproved {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badgePending {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badgeCompleted {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.badgeUrgent {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.actionButton,
+.secondaryButton,
+.saveButton,
+.dangerButton {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.actionButton,
+.saveButton {
+  background: var(--primary-color);
+  color: white;
+}
+
+.actionButton:hover,
+.saveButton:hover {
+  background: var(--primary-hover);
+}
+
+.secondaryButton {
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.secondaryButton:hover {
+  background: rgba(130, 51, 76, 0.08);
+}
+
+.dangerButton {
+  background: #d92d20;
+  color: white;
+}
+
+.dangerButton:hover {
+  opacity: 0.9;
+}
+
+.filterRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.filterChip {
+  border: 1px solid var(--border-light);
+  background: var(--card-light);
+  color: var(--text-dark);
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+:global(body.darkMode) .filterChip {
+  background: var(--card-dark);
+  border: 1px solid var(--border-dark);
+  color: var(--text-light);
+}
+
+.activeChip {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dataTable th,
+.dataTable td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 14px;
+  vertical-align: top;
+}
+
+:global(body.darkMode) .dataTable th,
+:global(body.darkMode) .dataTable td {
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.dataTable th {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+:global(body.darkMode) .dataTable th {
+  color: var(--text-muted-dark);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputGroup label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  background: var(--card-light);
+  color: var(--text-dark);
+  box-sizing: border-box;
+}
+
+:global(body.darkMode) .input,
+:global(body.darkMode) .select,
+:global(body.darkMode) .textarea {
+  background: var(--card-dark);
+  color: var(--text-light);
+  border: 1px solid var(--border-dark);
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.emptyState {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+}
+
+:global(body.darkMode) .emptyState {
+  color: var(--text-muted-dark);
+  border: 1px dashed var(--border-dark);
+}
+
+@media (max-width: 1200px) {
+  .cardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .twoColumnGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .pageWrapper {
+    margin-left: 0;
+    width: 100%;
+    padding: 24px 20px;
+  }
+
+  :global(body.navCollapsed) .pageWrapper {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pageTitle {
+    font-size: 26px;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .listItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .listRight {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
