@@ -29,7 +29,8 @@ export default function StaffNavbar() {
     { name: "Dashboard", path: "/pages/staff/dashboard", icon: <FaCalendarAlt /> },
     { name: "Appointment Requests", path: "/pages/staff/requests", icon: <FaClipboardList /> },
     { name: "Appointments", path: "/pages/staff/appointments", icon: <FaUserMd /> },
-    { name: "Patients", path: "/pages/staff/patients", icon: <FaUsers /> },
+    { name: "History", path: "/pages/staff/history", icon: <FaUserMd /> },
+    { name: "Profile", path: "/pages/staff/profile", icon: <FaUsers /> },
     { name: "Notifications", path: "/pages/staff/updates", icon: <FaBell /> },
   ];
 

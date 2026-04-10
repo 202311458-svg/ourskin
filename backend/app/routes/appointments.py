@@ -6,6 +6,7 @@ from app.db import SessionLocal
 from app.models.appointment import AppointmentModel
 from app.models.skin_analysis import SkinAnalysis
 from app.models.user import User
+from app.models.appointment_log import AppointmentLog
 from app.schemas.appointment import AppointmentCreate, AppointmentStatusUpdate
 from app.core.security import get_current_user
 
@@ -18,6 +19,29 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def create_appointment_log(
+    db: Session,
+    appointment_id: int,
+    action: str,
+    performed_by_id: int | None,
+    performed_by_name: str,
+    performed_by_role: str,
+    reason: str | None = None,
+):
+    log = AppointmentLog(
+        appointment_id=appointment_id,
+        action=action,
+        performed_by_id=performed_by_id,
+        performed_by_name=performed_by_name,
+        performed_by_role=performed_by_role,
+        reason=reason,
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
 
 
 @router.post("/")
@@ -35,10 +59,8 @@ def create_appointment(
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # patient books for themselves by default
     patient = current_user
 
-    # allow staff/admin to book on behalf of a patient
     if current_user.role in ["staff", "admin"] and data.patient_id:
         patient = (
             db.query(User)
@@ -66,6 +88,16 @@ def create_appointment(
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
+
+    create_appointment_log(
+        db=db,
+        appointment_id=appointment.id,
+        action="Created",
+        performed_by_id=current_user.id,
+        performed_by_name=current_user.name,
+        performed_by_role=current_user.role,
+        reason=None,
+    )
 
     return {
         "message": "Appointment created",
@@ -122,7 +154,6 @@ def update_appointment_status(
     if body.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
 
-    # PATIENT RULES
     if current_user.role == "patient":
         if appointment.patient_id != current_user.id:
             raise HTTPException(status_code=403, detail="You can only modify your own appointment")
@@ -136,7 +167,6 @@ def update_appointment_status(
         if not body.cancel_reason or not body.cancel_reason.strip():
             raise HTTPException(status_code=400, detail="Cancellation reason is required")
 
-    # STAFF / ADMIN / DOCTOR RULES
     elif current_user.role in ["staff", "admin", "doctor"]:
         if body.status in ["Declined", "Cancelled"] and (
             not body.cancel_reason or not body.cancel_reason.strip()
@@ -156,7 +186,18 @@ def update_appointment_status(
     db.commit()
     db.refresh(appointment)
 
+    create_appointment_log(
+        db=db,
+        appointment_id=appointment.id,
+        action=body.status,
+        performed_by_id=current_user.id,
+        performed_by_name=current_user.name,
+        performed_by_role=current_user.role,
+        reason=body.cancel_reason.strip() if body.cancel_reason else None,
+    )
+
     return {"message": "Appointment updated successfully"}
+
 
 @router.get("/today")
 def get_today_appointments(db: Session = Depends(get_db)):
@@ -209,7 +250,126 @@ def get_patient_history(email: str, db: Session = Depends(get_db)):
 
         results.append({
             "appointment": appt,
-            "analyses": analyses
+            "analyses": analyses,
         })
 
     return results
+
+
+@router.get("/history")
+def get_appointment_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ["staff", "admin", "doctor"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    appointments = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.status.in_(["Completed", "Cancelled", "Declined"]))
+        .order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc())
+        .all()
+    )
+
+    results = []
+
+    for a in appointments:
+        latest_log = (
+            db.query(AppointmentLog)
+            .filter(
+                AppointmentLog.appointment_id == a.id,
+                AppointmentLog.action == a.status,
+            )
+            .order_by(AppointmentLog.created_at.desc())
+            .first()
+        )
+
+        results.append({
+            "id": a.id,
+            "patient_id": a.patient_id,
+            "doctor_id": a.doctor_id,
+            "patient_name": a.patient_name,
+            "patient_email": a.patient_email,
+            "doctor_name": a.doctor_name,
+            "date": str(a.date),
+            "time": str(a.time),
+            "services": a.services,
+            "status": a.status,
+            "cancel_reason": a.cancel_reason,
+            "last_action_by_name": latest_log.performed_by_name if latest_log else None,
+            "last_action_by_role": latest_log.performed_by_role if latest_log else None,
+        })
+
+    return results
+
+@router.get("/{id}/logs")
+def get_appointment_logs(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ["staff", "admin", "doctor", "patient"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if current_user.role == "patient" and appointment.patient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    logs = (
+        db.query(AppointmentLog)
+        .filter(AppointmentLog.appointment_id == id)
+        .order_by(AppointmentLog.created_at.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": log.id,
+            "appointment_id": log.appointment_id,
+            "action": log.action,
+            "performed_by_id": log.performed_by_id,
+            "performed_by_name": log.performed_by_name,
+            "performed_by_role": log.performed_by_role,
+            "reason": log.reason,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in logs
+    ]
+
+
+@router.get("/{id}")
+def get_appointment_by_id(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if current_user.role == "patient" and appointment.patient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    if current_user.role not in ["staff", "admin", "doctor", "patient"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    return {
+        "id": appointment.id,
+        "patient_id": appointment.patient_id,
+        "doctor_id": appointment.doctor_id,
+        "patient_name": appointment.patient_name,
+        "patient_email": appointment.patient_email,
+        "doctor_name": appointment.doctor_name,
+        "date": str(appointment.date),
+        "time": str(appointment.time),
+        "services": appointment.services,
+        "status": appointment.status,
+        "cancel_reason": appointment.cancel_reason,
+    }
+
+

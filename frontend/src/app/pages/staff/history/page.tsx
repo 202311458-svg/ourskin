@@ -14,6 +14,8 @@ type Appointment = {
   status: string
   services?: string | null
   cancel_reason?: string | null
+  last_action_by_name?: string | null
+  last_action_by_role?: string | null
 }
 
 type AppointmentLog = {
@@ -27,13 +29,14 @@ type AppointmentLog = {
   created_at: string
 }
 
-export default function AppointmentRequests() {
+export default function StaffHistoryPage() {
   const router = useRouter()
 
-  const [requests, setRequests] = useState<Appointment[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [submittingId, setSubmittingId] = useState<number | null>(null)
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("All")
 
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [appointmentLogs, setAppointmentLogs] = useState<AppointmentLog[]>([])
@@ -60,11 +63,35 @@ export default function AppointmentRequests() {
     })
   }
 
+  const formatDateTime = (dateTimeString: string) => {
+    const date = new Date(dateTimeString)
+
+    return `${date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })} at ${date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })}`
+  }
+
   const getDateTimeValue = (appt: Appointment) => {
     return new Date(`${appt.date}T${appt.time}`).getTime()
   }
 
-  const loadRequests = useCallback(async () => {
+  const getStatusClass = (status: string) => {
+    if (status === "Pending") return `${styles.badge} ${styles.statusPending}`
+    if (status === "Approved") return `${styles.badge} ${styles.statusApproved}`
+    if (status === "Completed") return `${styles.badge} ${styles.statusCompleted}`
+    if (status === "Declined") return `${styles.badge} ${styles.statusDeclined}`
+    if (status === "Cancelled") return `${styles.badge} ${styles.statusCancelled}`
+
+    return styles.badge
+  }
+
+  const loadHistory = useCallback(async () => {
     const token = localStorage.getItem("token")
 
     if (!token) {
@@ -76,21 +103,26 @@ export default function AppointmentRequests() {
     setError("")
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/appointments/requests", {
+      const res = await fetch("http://127.0.0.1:8000/appointments/history", {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to fetch requests")
+        console.error("History request failed:", {
+          status: res.status,
+          statusText: res.statusText,
+          body: data,
+        })
+        throw new Error(data.detail || "Failed to fetch appointment history")
       }
 
-      setRequests(Array.isArray(data) ? data : [])
+      setAppointments(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error("Requests load failed:", err)
-      setError("Unable to load appointment requests.")
-      setRequests([])
+      console.error("History load failed:", err)
+      setError("Unable to load appointment history.")
+      setAppointments([])
     } finally {
       setLoading(false)
     }
@@ -104,70 +136,26 @@ export default function AppointmentRequests() {
       return
     }
 
-    loadRequests()
-  }, [loadRequests, router])
+    loadHistory()
+  }, [loadHistory, router])
 
-  const sortedRequests = useMemo(() => {
-    return [...requests].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
-  }, [requests])
+  const filteredAppointments = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
 
-  const updateStatus = async (id: number, status: "Approved" | "Declined") => {
-    const token = localStorage.getItem("token")
+    return [...appointments]
+      .filter((appt) => {
+        const matchesSearch =
+          appt.patient_name.toLowerCase().includes(keyword) ||
+          appt.doctor_name.toLowerCase().includes(keyword) ||
+          (appt.services || "").toLowerCase().includes(keyword)
 
-    if (!token) {
-      router.push("/")
-      return
-    }
+        const matchesStatus =
+          statusFilter === "All" ? true : appt.status === statusFilter
 
-    let payload: { status: "Approved" | "Declined"; cancel_reason?: string }
-
-    if (status === "Declined") {
-      const reason = window.prompt("Enter a reason for declining this appointment.")
-
-      if (!reason || !reason.trim()) {
-        return
-      }
-
-      payload = {
-        status: "Declined",
-        cancel_reason: reason.trim(),
-      }
-    } else {
-      payload = {
-        status: "Approved",
-      }
-    }
-
-    try {
-      setSubmittingId(id)
-
-      const res = await fetch(`http://127.0.0.1:8000/appointments/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+        return matchesSearch && matchesStatus
       })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to update appointment")
-      }
-
-      await loadRequests()
-
-      if (detailsOpen && selectedAppointment?.id === id) {
-        await openDetails({ ...selectedAppointment, status })
-      }
-    } catch (err) {
-      console.error("Status update failed:", err)
-      alert("Unable to update the appointment status.")
-    } finally {
-      setSubmittingId(null)
-    }
-  }
+      .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a))
+  }, [appointments, search, statusFilter])
 
   const openDetails = async (appointment: Appointment) => {
     const token = localStorage.getItem("token")
@@ -194,6 +182,12 @@ export default function AppointmentRequests() {
       const logsData = await logsRes.json()
 
       if (!appointmentRes.ok || !logsRes.ok) {
+        console.error("Details request failed:", {
+          appointmentStatus: appointmentRes.status,
+          logsStatus: logsRes.status,
+          appointmentBody: appointmentData,
+          logsBody: logsData,
+        })
         throw new Error("Failed to fetch appointment details")
       }
 
@@ -224,68 +218,93 @@ export default function AppointmentRequests() {
         <div className={styles.staffPage}>
           <div className={styles.dashboardHeader}>
             <div>
-              <h1>Appointment Requests</h1>
+              <h1>Appointment History</h1>
               <p className={styles.pageSubtext}>
-                Review pending requests and approve or decline them.
+                Review past appointments, statuses, and action records.
               </p>
             </div>
 
-            <button className={styles.secondaryBtn} onClick={loadRequests}>
+            <button className={styles.secondaryBtn} onClick={loadHistory}>
               Refresh
             </button>
           </div>
 
+          <div className={styles.searchRow}>
+            <input
+              type="text"
+              placeholder="Search patient, doctor, or service"
+              className={styles.searchInput}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.filterRow}>
+            {["All", "Approved", "Completed", "Declined", "Cancelled", "Pending"].map(
+              (status) => (
+                <button
+                  key={status}
+                  className={`${styles.filterChip} ${
+                    statusFilter === status ? styles.filterChipActive : ""
+                  }`}
+                  onClick={() => setStatusFilter(status)}
+                >
+                  {status}
+                </button>
+              )
+            )}
+          </div>
+
           <div className={styles.listCard}>
             <div className={styles.listHeader}>
-              <h2>Pending Requests</h2>
-              <span className={`${styles.badge} ${styles.statusPending}`}>
-                {sortedRequests.length} pending
+              <h2>History Records</h2>
+              <span className={styles.metaText}>
+                {filteredAppointments.length} records
               </span>
             </div>
 
             {loading ? (
-              <div className={styles.emptyState}>Loading appointment requests...</div>
+              <div className={styles.emptyState}>Loading appointment history...</div>
             ) : error ? (
               <div className={styles.emptyState}>{error}</div>
-            ) : sortedRequests.length === 0 ? (
-              <div className={styles.emptyState}>No pending appointment requests.</div>
+            ) : filteredAppointments.length === 0 ? (
+              <div className={styles.emptyState}>No appointment history found.</div>
             ) : (
-              sortedRequests.map((req) => (
-                <div key={req.id} className={styles.requestCard}>
+              filteredAppointments.map((appt) => (
+                <div key={appt.id} className={styles.requestCard}>
                   <div className={styles.requestInfo}>
-                    <b>{req.patient_name}</b>
-                    <p>{req.doctor_name}</p>
+                    <b>{appt.patient_name}</b>
+                    <p>{appt.doctor_name}</p>
                     <span>
-                      {formatDate(req.date)} at {formatTime(req.time)}
+                      {formatDate(appt.date)} at {formatTime(appt.time)}
                     </span>
-                    {req.services && <p className={styles.detailText}>Service: {req.services}</p>}
-                    <span className={`${styles.badge} ${styles.statusPending}`}>
-                      {req.status}
-                    </span>
+
+                    {appt.services && (
+                      <p className={styles.detailText}>Service: {appt.services}</p>
+                    )}
+
+                    {appt.cancel_reason && (
+                      <p className={styles.detailText}>
+                        Reason: {appt.cancel_reason}
+                      </p>
+                    )}
+
+                    {appt.last_action_by_name && (
+  <p className={styles.detailText}>
+    {appt.status} by {appt.last_action_by_name}, {appt.last_action_by_role}
+  </p>
+)}
+
                   </div>
 
                   <div className={styles.actions}>
+                    <span className={getStatusClass(appt.status)}>{appt.status}</span>
+
                     <button
                       className={styles.secondaryBtn}
-                      onClick={() => openDetails(req)}
+                      onClick={() => openDetails(appt)}
                     >
                       View Details
-                    </button>
-
-                    <button
-                      className={styles.acceptBtn}
-                      onClick={() => updateStatus(req.id, "Approved")}
-                      disabled={submittingId === req.id}
-                    >
-                      {submittingId === req.id ? "Saving..." : "Approve"}
-                    </button>
-
-                    <button
-                      className={styles.declineBtn}
-                      onClick={() => updateStatus(req.id, "Declined")}
-                      disabled={submittingId === req.id}
-                    >
-                      {submittingId === req.id ? "Saving..." : "Decline"}
                     </button>
                   </div>
                 </div>
@@ -300,10 +319,7 @@ export default function AppointmentRequests() {
           <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2>Appointment Details</h2>
-              <button
-                className={styles.modalCloseBtn}
-                onClick={closeDetails}
-              >
+              <button className={styles.modalCloseBtn} onClick={closeDetails}>
                 ×
               </button>
             </div>
@@ -319,12 +335,16 @@ export default function AppointmentRequests() {
 
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Patient</span>
-                    <span className={styles.infoValue}>{selectedAppointment.patient_name}</span>
+                    <span className={styles.infoValue}>
+                      {selectedAppointment.patient_name}
+                    </span>
                   </div>
 
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Doctor</span>
-                    <span className={styles.infoValue}>{selectedAppointment.doctor_name}</span>
+                    <span className={styles.infoValue}>
+                      {selectedAppointment.doctor_name}
+                    </span>
                   </div>
 
                   <div className={styles.infoRow}>
@@ -350,7 +370,9 @@ export default function AppointmentRequests() {
 
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Status</span>
-                    <span className={styles.infoValue}>{selectedAppointment.status}</span>
+                    <span className={styles.infoValue}>
+                      {selectedAppointment.status}
+                    </span>
                   </div>
 
                   {selectedAppointment.cancel_reason && (
@@ -378,19 +400,8 @@ export default function AppointmentRequests() {
                           <p>
                             {log.performed_by_name}, {log.performed_by_role}
                           </p>
-                          <span>
-                            {new Date(log.created_at).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}{" "}
-                            at{" "}
-                            {new Date(log.created_at).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
-                          </span>
+                          <span>{formatDateTime(log.created_at)}</span>
+
                           {log.reason && (
                             <p className={styles.detailText}>Reason: {log.reason}</p>
                           )}
