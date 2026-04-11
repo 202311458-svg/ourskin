@@ -44,6 +44,46 @@ def create_appointment_log(
     return log
 
 
+VALID_STATUSES = {"Pending", "Approved", "Declined", "Cancelled", "Completed"}
+
+ROLE_STATUS_TRANSITIONS = {
+    "patient": {
+        "Pending": {"Cancelled"},
+    },
+    "staff": {
+        "Pending": {"Approved", "Declined", "Cancelled"},
+        "Approved": {"Completed", "Cancelled"},
+    },
+    "admin": {
+        "Pending": {"Approved", "Declined", "Cancelled"},
+        "Approved": {"Completed", "Cancelled"},
+    },
+    "doctor": {
+        "Approved": {"Completed", "Cancelled"},
+    },
+}
+
+
+def validate_status_transition(role: str, current_status: str, new_status: str):
+    if new_status not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    if current_status == new_status:
+        raise HTTPException(status_code=400, detail="Appointment is already in that status")
+
+    allowed_map = ROLE_STATUS_TRANSITIONS.get(role)
+    if not allowed_map:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    allowed_next_statuses = allowed_map.get(current_status, set())
+
+    if new_status not in allowed_next_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{role.capitalize()} cannot change appointment from {current_status} to {new_status}",
+        )
+
+
 @router.post("/")
 def create_appointment(
     data: AppointmentCreate,
@@ -101,7 +141,19 @@ def create_appointment(
 
     return {
         "message": "Appointment created",
-        "appointment": appointment,
+        "appointment": {
+            "id": appointment.id,
+            "patient_id": appointment.patient_id,
+            "doctor_id": appointment.doctor_id,
+            "patient_name": appointment.patient_name,
+            "patient_email": appointment.patient_email,
+            "doctor_name": appointment.doctor_name,
+            "date": str(appointment.date),
+            "time": str(appointment.time),
+            "services": appointment.services,
+            "status": appointment.status,
+            "cancel_reason": appointment.cancel_reason,
+        },
     }
 
 
@@ -150,53 +202,56 @@ def update_appointment_status(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    allowed_statuses = ["Pending", "Approved", "Declined", "Cancelled", "Completed"]
-    if body.status not in allowed_statuses:
-        raise HTTPException(status_code=400, detail="Invalid status")
+    role = current_user.role
+    current_status = appointment.status
+    new_status = body.status
 
-    if current_user.role == "patient":
+    if role not in ["patient", "staff", "admin", "doctor"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    if role == "patient":
         if appointment.patient_id != current_user.id:
             raise HTTPException(status_code=403, detail="You can only modify your own appointment")
 
-        if body.status != "Cancelled":
-            raise HTTPException(status_code=403, detail="Patients can only cancel appointments")
+    validate_status_transition(role, current_status, new_status)
 
-        if appointment.status != "Pending":
-            raise HTTPException(status_code=400, detail="Only pending appointments can be cancelled")
-
+    if new_status in ["Declined", "Cancelled"]:
         if not body.cancel_reason or not body.cancel_reason.strip():
-            raise HTTPException(status_code=400, detail="Cancellation reason is required")
-
-    elif current_user.role in ["staff", "admin", "doctor"]:
-        if body.status in ["Declined", "Cancelled"] and (
-            not body.cancel_reason or not body.cancel_reason.strip()
-        ):
             raise HTTPException(status_code=400, detail="Reason is required")
-
-    else:
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    appointment.status = body.status
-
-    if body.status in ["Declined", "Cancelled"]:
         appointment.cancel_reason = body.cancel_reason.strip()
     else:
         appointment.cancel_reason = None
 
+    appointment.status = new_status
     db.commit()
     db.refresh(appointment)
 
     create_appointment_log(
         db=db,
         appointment_id=appointment.id,
-        action=body.status,
+        action=new_status,
         performed_by_id=current_user.id,
         performed_by_name=current_user.name,
         performed_by_role=current_user.role,
-        reason=body.cancel_reason.strip() if body.cancel_reason else None,
+        reason=appointment.cancel_reason,
     )
 
-    return {"message": "Appointment updated successfully"}
+    return {
+        "message": "Appointment updated successfully",
+        "appointment": {
+            "id": appointment.id,
+            "patient_id": appointment.patient_id,
+            "doctor_id": appointment.doctor_id,
+            "patient_name": appointment.patient_name,
+            "patient_email": appointment.patient_email,
+            "doctor_name": appointment.doctor_name,
+            "date": str(appointment.date),
+            "time": str(appointment.time),
+            "services": appointment.services,
+            "status": appointment.status,
+            "cancel_reason": appointment.cancel_reason,
+        },
+    }
 
 
 @router.get("/today")
@@ -302,6 +357,7 @@ def get_appointment_history(
 
     return results
 
+
 @router.get("/{id}/logs")
 def get_appointment_logs(
     id: int,
@@ -371,5 +427,3 @@ def get_appointment_by_id(
         "status": appointment.status,
         "cancel_reason": appointment.cancel_reason,
     }
-
-
