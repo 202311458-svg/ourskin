@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
+import Calendar from "@/app/components/Calendar";
 import styles from "@/app/styles/doctor.module.css";
 import {
   getDoctorAppointments,
@@ -17,18 +18,20 @@ export default function DoctorAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
 
-  const loadAppointments = useCallback(async (status = activeFilter) => {
+  const loadAppointments = useCallback(async (status: string) => {
     try {
       setLoading(true);
       const data = await getDoctorAppointments(status);
-      setAppointments(data);
+      setAppointments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load appointments:", error);
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
-  }, [activeFilter]);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -54,11 +57,17 @@ export default function DoctorAppointmentsPage() {
 
       await updateDoctorAppointmentStatus(appointmentId, status, cancel_reason);
       await loadAppointments(activeFilter);
+      setCalendarRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to update appointment:", error);
       alert(error instanceof Error ? error.message : "Failed to update appointment");
     }
   };
+
+  const calendarStatusFilter =
+    activeFilter === "Approved" || activeFilter === "Pending"
+      ? activeFilter
+      : "All";
 
   return (
     <>
@@ -66,92 +75,103 @@ export default function DoctorAppointmentsPage() {
 
       <main className={styles.pageWrapper}>
         <div className={styles.headerSection}>
-          <h1 className={styles.pageTitle}>Appointments</h1>
-          <p className={styles.pageSubtitle}>
-            Review and manage all doctor consultations.
-          </p>
-        </div>
+  <h1 className={styles.pageTitle}>Appointments</h1>
+  <p className={styles.pageSubtitle}>
+    Review and manage all doctor consultations.
+  </p>
+</div>
 
-        <div className={styles.filterRow}>
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              className={`${styles.filterChip} ${
-                activeFilter === filter ? styles.activeChip : ""
-              }`}
-              onClick={() => setActiveFilter(filter)}
-            >
-              {filter}
-            </button>
+<Calendar
+  mode="full"
+  statusFilter={calendarStatusFilter}
+  refreshKey={calendarRefreshKey}
+  onUpdated={() => loadAppointments(activeFilter)}
+/>
+
+<section className={`${styles.sectionCard} ${styles.appointmentListSection}`}>
+  <div className={styles.sectionHeader}>
+    <h2 className={styles.sectionTitle}>Appointment List</h2>
+  </div>
+
+  <div className={styles.filterRowInside}>
+    {filters.map((filter) => (
+      <button
+        key={filter}
+        className={`${styles.filterChip} ${
+          activeFilter === filter ? styles.activeChip : ""
+        }`}
+        onClick={() => setActiveFilter(filter)}
+      >
+        {filter}
+      </button>
+    ))}
+  </div>
+
+  {loading ? (
+    <div className={styles.emptyState}>Loading appointments...</div>
+  ) : appointments.length === 0 ? (
+    <div className={styles.emptyState}>No appointments found.</div>
+  ) : (
+    <div className={styles.tableWrapper}>
+      <table className={styles.dataTable}>
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {appointments.map((appt) => (
+            <tr key={appt.id}>
+              <td>{appt.patient_name}</td>
+              <td>{appt.doctor_name}</td>
+              <td>{appt.date}</td>
+              <td>{appt.time}</td>
+              <td>{appt.services}</td>
+              <td>{appt.status}</td>
+              <td>
+                <div className={styles.buttonRow}>
+                  {appt.status !== "Approved" && (
+                    <button
+                      className={styles.actionButton}
+                      onClick={() => handleStatusUpdate(appt.id, "Approved")}
+                    >
+                      Approve
+                    </button>
+                  )}
+
+                  {appt.status !== "Completed" && (
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={() => handleStatusUpdate(appt.id, "Completed")}
+                    >
+                      Complete
+                    </button>
+                  )}
+
+                  {appt.status !== "Declined" && (
+                    <button
+                      className={styles.dangerButton}
+                      onClick={() => handleStatusUpdate(appt.id, "Declined")}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
           ))}
-        </div>
-
-        <section className={styles.sectionCard}>
-          {loading ? (
-            <div className={styles.emptyState}>Loading appointments...</div>
-          ) : appointments.length === 0 ? (
-            <div className={styles.emptyState}>No appointments found.</div>
-          ) : (
-            <div className={styles.tableWrapper}>
-              <table className={styles.dataTable}>
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Doctor</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Service</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {appointments.map((appt) => (
-                    <tr key={appt.id}>
-                      <td>{appt.patient_name}</td>
-                      <td>{appt.doctor_name}</td>
-                      <td>{appt.date}</td>
-                      <td>{appt.time}</td>
-                      <td>{appt.services}</td>
-                      <td>{appt.status}</td>
-                      <td>
-                        <div className={styles.buttonRow}>
-                          {appt.status !== "Approved" && (
-                            <button
-                              className={styles.actionButton}
-                              onClick={() => handleStatusUpdate(appt.id, "Approved")}
-                            >
-                              Approve
-                            </button>
-                          )}
-
-                          {appt.status !== "Completed" && (
-                            <button
-                              className={styles.secondaryButton}
-                              onClick={() => handleStatusUpdate(appt.id, "Completed")}
-                            >
-                              Complete
-                            </button>
-                          )}
-
-                          {appt.status !== "Declined" && (
-                            <button
-                              className={styles.dangerButton}
-                              onClick={() => handleStatusUpdate(appt.id, "Declined")}
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
       </main>
     </>
   );

@@ -1,0 +1,1119 @@
+.wrapper {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.monthControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.monthTitle {
+  margin: 0;
+  min-width: 180px;
+  text-align: center;
+  font-size: 1.2rem;
+  color: #1f2937;
+}
+
+.secondaryButton,
+.navButton,
+.primaryButton,
+.closeButton {
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.secondaryButton,
+.navButton,
+.primaryButton {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.secondaryButton {
+  background: #f3f4f6;
+  color: #111827;
+  padding: 10px 14px;
+}
+
+.secondaryButton:hover {
+  background: #e5e7eb;
+}
+
+.navButton {
+  width: 40px;
+  height: 40px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 1.2rem;
+}
+
+.navButton:hover {
+  background: #e5e7eb;
+}
+
+.primaryButton {
+  background: #82334c;
+  color: #ffffff;
+  padding: 10px 18px;
+}
+
+.primaryButton:hover {
+  background: #6f2940;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.approved {
+  background: #10b981;
+}
+
+.pending {
+  background: #f59e0b;
+}
+
+.completed {
+  background: #3b82f6;
+}
+
+.cancelled {
+  background: #6b7280;
+}
+
+.declined {
+  background: #ef4444;
+}
+
+.stateBox {
+  padding: 24px;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #475569;
+  text-align: center;
+  font-weight: 500;
+}
+
+.calendarScroll {
+  width: 100%;
+  overflow-x: hidden;
+  padding-bottom: 0;
+}
+
+.weekHeader,
+.grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.weekHeader {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.weekDay {
+  text-align: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dayCell {
+  height: 170px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 10px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.outsideMonth {
+  background: #f8fafc;
+  opacity: 0.55;
+}
+
+.today {
+  border: 2px solid #82334c;
+}
+
+.dayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dayNumber {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.countBadge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #82334c;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.eventButton {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px;
+  text-align: left;
+  background: #f3f4f6;
+  cursor: pointer;
+  transition: 0.2s ease;
+  min-width: 0;
+}
+
+.eventButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.eventButton[data-status="approved"] {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.eventButton[data-status="pending"] {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.eventButton[data-status="completed"] {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.eventButton[data-status="cancelled"] {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.eventButton[data-status="declined"] {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.eventTime {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventPatient {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventService {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.7rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moreText {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #82334c;
+  padding: 2px 0;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  z-index: 2000;
+}
+
+.modalCard {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #111827;
+}
+
+.modalSubtitle {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 0.92rem;
+}
+
+.closeButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.closeButton:hover {
+  background: #e5e7eb;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detailCard {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.detailLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detailValue {
+  margin: 0;
+  font-size: 1rem;
+  color: #1f2937;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.statusBadge {
+  display: inline-flex;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.statusBadge[data-status="approved"] {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusBadge[data-status="pending"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusBadge[data-status="completed"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.statusBadge[data-status="cancelled"] {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.statusBadge[data-status="declined"] {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.modalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.successButton,
+.completeButton,
+.dangerButton {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.successButton {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.successButton:hover {
+  background: #bbf7d0;
+}
+
+.completeButton {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.completeButton:hover {
+  background: #bfdbfe;
+}
+
+.dangerButton {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dangerButton:hover {
+  background: #fecaca;
+}
+
+.successButton:disabled,
+.completeButton:disabled,
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: 18px;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .monthTitle {
+    min-width: 140px;
+    font-size: 1rem;
+  }
+}
+
+/* Compact mode */
+
+.compactMode {
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.compactMode .title {
+  font-size: 1rem;
+}
+
+.compactMode .subtitle {
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
+
+.compactMode .topbar {
+  margin-bottom: 10px;
+}
+
+.compactMode .toolbar {
+  gap: 8px;
+}
+
+.compactMode .secondaryButton,
+.compactMode .primaryButton {
+  padding: 7px 10px;
+  font-size: 0.74rem;
+  border-radius: 10px;
+}
+
+.compactMode .monthControls {
+  gap: 6px;
+}
+
+.compactMode .monthTitle {
+  min-width: 100px;
+  font-size: 0.82rem;
+}
+
+.compactMode .navButton {
+  width: 30px;
+  height: 30px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.compactMode .legend {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.compactMode .legendItem {
+  font-size: 0.72rem;
+}
+
+.compactMode .legendDot {
+  width: 8px;
+  height: 8px;
+}
+
+.compactMode .calendarScroll {
+  overflow-x: hidden;
+  padding-bottom: 0;
+}
+
+.compactMode .weekHeader,
+.compactMode .grid {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.compactMode .weekHeader {
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.compactMode .weekDay {
+  padding: 6px 4px;
+  font-size: 0.68rem;
+  border-radius: 8px;
+}
+
+.compactMode .grid {
+  gap: 4px;
+}
+
+.compactMode .dayCell {
+  height: 78px;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.compactMode .dayHeader {
+  margin-bottom: 3px;
+}
+
+.compactMode .dayNumber {
+  font-size: 0.72rem;
+}
+
+.compactMode .countBadge {
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.55rem;
+  padding: 0 4px;
+}
+
+.compactMode .events {
+  gap: 3px;
+}
+
+.compactMode .eventButton {
+  padding: 3px 4px;
+  border-radius: 6px;
+}
+
+.compactMode .eventTime {
+  font-size: 0.58rem;
+  line-height: 1.1;
+}
+
+.compactMode .eventPatient,
+.compactMode .eventService {
+  display: none;
+}
+
+.compactMode .moreText {
+  font-size: 0.58rem;
+  padding: 0;
+}
+
+.compactStaticEvent {
+  cursor: default;
+  pointer-events: none;
+}
+
+.compactStaticEvent:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 1024px) {
+  .compactMode .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .compactMode .toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .compactMode .monthControls {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .compactMode {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .compactMode .topbar {
+    margin-bottom: 8px;
+  }
+
+  .compactMode .title {
+    font-size: 0.95rem;
+  }
+
+  .compactMode .subtitle {
+    font-size: 0.7rem;
+  }
+
+  .compactMode .toolbar {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .compactMode .primaryButton,
+  .compactMode .secondaryButton {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+
+  .compactMode .monthControls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+    margin-left: 0;
+  }
+
+  .compactMode .monthTitle {
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+    font-size: 0.78rem;
+  }
+
+  .compactMode .navButton {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .compactMode .legend {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .compactMode .legendItem {
+    font-size: 0.7rem;
+  }
+
+  .compactMode .weekHeader {
+    gap: 3px;
+    margin-bottom: 3px;
+  }
+
+  .compactMode .grid {
+    gap: 3px;
+  }
+
+  .compactMode .weekDay {
+    padding: 4px 2px;
+    font-size: 0.6rem;
+  }
+
+  .compactMode .dayCell {
+    height: 64px;
+    padding: 3px;
+    border-radius: 8px;
+  }
+
+  .compactMode .dayHeader {
+    margin-bottom: 2px;
+  }
+
+  .compactMode .dayNumber {
+    font-size: 0.66rem;
+  }
+
+  .compactMode .countBadge {
+    min-width: 14px;
+    height: 14px;
+    font-size: 0.48rem;
+    padding: 0 3px;
+  }
+
+  .compactMode .events {
+    gap: 2px;
+  }
+
+  .compactMode .eventButton {
+    padding: 2px 3px;
+    border-radius: 5px;
+  }
+
+  .compactMode .eventTime {
+    font-size: 0.48rem;
+    line-height: 1.05;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .compactMode .moreText {
+    font-size: 0.48rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .compactMode {
+    padding: 10px;
+  }
+
+  .compactMode .subtitle {
+    display: none;
+  }
+
+  .compactMode .toolbar {
+    align-items: stretch;
+  }
+
+  .compactMode .primaryButton {
+    width: 100%;
+    order: -1;
+  }
+
+  .compactMode .secondaryButton {
+    padding: 5px 8px;
+    font-size: 0.68rem;
+  }
+
+  .compactMode .monthTitle {
+    font-size: 0.72rem;
+  }
+
+  .compactMode .navButton {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+
+  .compactMode .legendItem {
+    font-size: 0.66rem;
+  }
+
+  .compactMode .weekDay {
+    font-size: 0.54rem;
+    padding: 3px 1px;
+  }
+
+  .compactMode .dayCell {
+    height: 56px;
+    padding: 2px;
+  }
+
+  .compactMode .dayNumber {
+    font-size: 0.6rem;
+  }
+
+  .compactMode .countBadge {
+    min-width: 12px;
+    height: 12px;
+    font-size: 0.42rem;
+    padding: 0 2px;
+  }
+
+  .compactMode .eventTime {
+    font-size: 0.44rem;
+  }
+
+  .compactMode .moreText {
+    font-size: 0.44rem;
+  }
+}
+
+/* Full mode */
+
+.fullMode {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.fullMode .topbar {
+  margin-bottom: 10px;
+}
+
+.fullMode .title {
+  font-size: 1.2rem;
+}
+
+.fullMode .subtitle {
+  font-size: 0.76rem;
+  margin-top: 3px;
+}
+
+.fullMode .toolbar {
+  gap: 8px;
+}
+
+.fullMode .secondaryButton {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+}
+
+.fullMode .monthControls {
+  gap: 8px;
+}
+
+.fullMode .monthTitle {
+  min-width: 120px;
+  font-size: 0.95rem;
+}
+
+.fullMode .navButton {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+}
+
+.fullMode .legend {
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.fullMode .legendItem {
+  font-size: 0.78rem;
+}
+
+.fullMode .legendDot {
+  width: 10px;
+  height: 10px;
+}
+
+.fullMode .weekHeader {
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.fullMode .grid {
+  gap: 6px;
+}
+
+.fullMode .weekDay {
+  padding: 7px 3px;
+  font-size: 0.68rem;
+  border-radius: 8px;
+}
+
+.fullMode .dayCell {
+  height: 96px;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+.fullMode .dayHeader {
+  margin-bottom: 3px;
+}
+
+.fullMode .dayNumber {
+  font-size: 0.72rem;
+}
+
+.fullMode .countBadge {
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.5rem;
+  padding: 0 4px;
+}
+
+.fullMode .events {
+  gap: 3px;
+}
+
+.fullMode .eventButton {
+  padding: 3px 4px;
+  border-radius: 6px;
+}
+
+.fullMode .eventTime {
+  font-size: 0.5rem;
+  line-height: 1.05;
+}
+
+.fullMode .eventPatient {
+  margin-top: 1px;
+  font-size: 0.56rem;
+}
+
+.fullMode .eventService {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .fullMode .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .fullMode .toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fullMode .monthControls {
+    margin-left: auto;
+  }
+
+  .fullMode .weekHeader,
+  .fullMode .grid {
+    gap: 4px;
+  }
+
+  .fullMode .weekDay {
+    padding: 6px 2px;
+    font-size: 0.62rem;
+  }
+
+  .fullMode .dayCell {
+    height: 84px;
+    padding: 4px;
+  }
+
+  .fullMode .dayNumber {
+    font-size: 0.66rem;
+  }
+
+  .fullMode .countBadge {
+    min-width: 14px;
+    height: 14px;
+    font-size: 0.46rem;
+    padding: 0 3px;
+  }
+
+  .fullMode .eventButton {
+    padding: 2px 3px;
+  }
+
+  .fullMode .eventTime {
+    font-size: 0.46rem;
+  }
+
+  .fullMode .eventPatient {
+    font-size: 0.52rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .fullMode {
+    padding: 10px;
+  }
+
+  .fullMode .title {
+    font-size: 1rem;
+  }
+
+  .fullMode .subtitle {
+    display: none;
+  }
+
+  .fullMode .toolbar {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .fullMode .secondaryButton {
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+
+  .fullMode .monthControls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+    margin-left: 0;
+  }
+
+  .fullMode .monthTitle {
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+    font-size: 0.82rem;
+  }
+
+  .fullMode .navButton {
+    width: 28px;
+    height: 28px;
+    font-size: 0.82rem;
+  }
+
+  .fullMode .weekHeader {
+    gap: 3px;
+    margin-bottom: 3px;
+  }
+
+  .fullMode .grid {
+    gap: 3px;
+  }
+
+  .fullMode .weekDay {
+    padding: 4px 1px;
+    font-size: 0.5rem;
+  }
+
+  .fullMode .dayCell {
+    height: 68px;
+    padding: 3px;
+    border-radius: 8px;
+  }
+
+  .fullMode .dayNumber {
+    font-size: 0.58rem;
+  }
+
+  .fullMode .countBadge {
+    min-width: 12px;
+    height: 12px;
+    font-size: 0.4rem;
+    padding: 0 2px;
+  }
+
+  .fullMode .eventButton {
+    padding: 2px;
+    border-radius: 5px;
+  }
+
+  .fullMode .eventTime {
+    font-size: 0.4rem;
+  }
+
+  .fullMode .eventPatient {
+    display: none;
+  }
+}
