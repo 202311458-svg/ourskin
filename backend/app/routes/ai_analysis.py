@@ -34,6 +34,39 @@ def require_doctor(user: User = Depends(get_current_user)):
     return user
 
 
+def build_ai_support_fields(result: dict) -> dict:
+    condition = result.get("condition", "Unknown")
+    severity = result.get("severity", "Unknown")
+    recommendation = result.get("recommendation", "")
+
+    possible_conditions = condition
+
+    key_findings = f"AI detected skin features suggestive of {condition} with {severity} severity."
+
+    treatment_suggestions = recommendation if recommendation else "Further clinical review is recommended."
+
+    prescription_suggestions = (
+        f"Consider appropriate medication options for suspected {condition}, subject to doctor evaluation."
+    )
+
+    follow_up_suggestions = (
+        "Monitor skin response and schedule follow-up if symptoms persist, worsen, or fail to improve."
+    )
+
+    red_flags = (
+        "Immediate review may be needed if there is rapid spreading, severe inflammation, bleeding, infection, or pain."
+    )
+
+    return {
+        "possible_conditions": possible_conditions,
+        "key_findings": key_findings,
+        "treatment_suggestions": treatment_suggestions,
+        "prescription_suggestions": prescription_suggestions,
+        "follow_up_suggestions": follow_up_suggestions,
+        "red_flags": red_flags,
+    }
+
+
 @router.post("/analyze/{appointment_id}")
 async def analyze_skin_image(
     appointment_id: int,
@@ -55,6 +88,7 @@ async def analyze_skin_image(
         shutil.copyfileobj(file.file, buffer)
 
     result = analyze_skin(file_path)
+    ai_support = build_ai_support_fields(result)
 
     record = SkinAnalysis(
         user_id=user.id,
@@ -67,6 +101,12 @@ async def analyze_skin_image(
         recommendation=result["recommendation"],
         doctor_note=doctor_note,
         review_status="Pending Review",
+        possible_conditions=ai_support["possible_conditions"],
+        key_findings=ai_support["key_findings"],
+        treatment_suggestions=ai_support["treatment_suggestions"],
+        prescription_suggestions=ai_support["prescription_suggestions"],
+        follow_up_suggestions=ai_support["follow_up_suggestions"],
+        red_flags=ai_support["red_flags"],
     )
 
     db.add(record)
@@ -86,6 +126,12 @@ async def analyze_skin_image(
             "doctor_note": record.doctor_note,
             "review_status": record.review_status,
             "reviewed_at": record.reviewed_at,
+            "possible_conditions": record.possible_conditions,
+            "key_findings": record.key_findings,
+            "treatment_suggestions": record.treatment_suggestions,
+            "prescription_suggestions": record.prescription_suggestions,
+            "follow_up_suggestions": record.follow_up_suggestions,
+            "red_flags": record.red_flags,
             "created_at": record.created_at,
         },
     }
@@ -124,8 +170,19 @@ def review_analysis(
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
 
-    if "doctor_note" in body:
-        analysis.doctor_note = body["doctor_note"]
+    editable_fields = [
+        "doctor_note",
+        "possible_conditions",
+        "key_findings",
+        "treatment_suggestions",
+        "prescription_suggestions",
+        "follow_up_suggestions",
+        "red_flags",
+    ]
+
+    for field in editable_fields:
+        if field in body:
+            setattr(analysis, field, body[field])
 
     if "review_status" in body:
         allowed_statuses = ["Pending Review", "Reviewed"]

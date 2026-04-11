@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,9 @@ from app.core.security import get_current_user
 from app.schemas.user import DoctorProfileUpdate
 from app.schemas.follow_up import FollowUpCreate, FollowUpUpdate
 from app.schemas.appointment import AppointmentStatusUpdate
+from app.models.diagnosis_report import DiagnosisReport
+from app.models.appointment_log import AppointmentLog
+from app.schemas.diagnosis_report import DiagnosisReportCreate
 
 router = APIRouter(prefix="/doctor", tags=["Doctor Portal"])
 
@@ -58,6 +61,12 @@ def serialize_analysis(analysis: SkinAnalysis):
         "doctor_note": analysis.doctor_note,
         "review_status": analysis.review_status,
         "reviewed_at": analysis.reviewed_at.isoformat() if analysis.reviewed_at else None,
+        "possible_conditions": analysis.possible_conditions,
+        "key_findings": analysis.key_findings,
+        "treatment_suggestions": analysis.treatment_suggestions,
+        "prescription_suggestions": analysis.prescription_suggestions,
+        "follow_up_suggestions": analysis.follow_up_suggestions,
+        "red_flags": analysis.red_flags,
         "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
     }
 
@@ -76,6 +85,52 @@ def serialize_follow_up(item: FollowUp, doctor_name: str | None = None):
         "created_at": item.created_at.isoformat() if item.created_at else None,
     }
 
+
+
+def create_appointment_log(
+    db: Session,
+    appointment_id: int,
+    action: str,
+    performed_by_id: int | None,
+    performed_by_name: str,
+    performed_by_role: str,
+    reason: str | None = None,
+):
+    log = AppointmentLog(
+        appointment_id=appointment_id,
+        action=action,
+        performed_by_id=performed_by_id,
+        performed_by_name=performed_by_name,
+        performed_by_role=performed_by_role,
+        reason=reason,
+    )
+    db.add(log)
+    return log
+
+
+def serialize_diagnosis_report(report: DiagnosisReport):
+    return {
+        "id": report.id,
+        "appointment_id": report.appointment_id,
+        "patient_id": report.patient_id,
+        "doctor_id": report.doctor_id,
+        "skin_analysis_id": report.skin_analysis_id,
+        "doctor_final_diagnosis": report.doctor_final_diagnosis,
+        "doctor_prescription": report.doctor_prescription,
+        "after_appointment_notes": report.after_appointment_notes,
+        "follow_up_plan": report.follow_up_plan,
+        "next_visit_date": str(report.next_visit_date) if report.next_visit_date else None,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "updated_at": report.updated_at.isoformat() if report.updated_at else None,
+    }
+
+def serialize_patient_basic(user: User):
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "contact": user.contact,
+    }
 
 @router.get("/dashboard")
 def doctor_dashboard(
@@ -169,7 +224,7 @@ def update_doctor_appointment_status(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    allowed_statuses = ["Pending", "Approved", "Declined", "Completed"]
+    allowed_statuses = ["Pending", "Approved", "Declined"]
     if payload.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid appointment status")
 
@@ -184,6 +239,299 @@ def update_doctor_appointment_status(
 
     return {"message": "Appointment updated successfully", "appointment": serialize_appointment(appointment)}
 
+
+@router.post("/appointments/{appointment_id}/complete-with-report")
+def complete_appointment_with_report(
+    appointment_id: int,
+    payload: DiagnosisReportCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor),
+):
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # recommended: only the assigned doctor should complete this appointment
+   # if appointment.doctor_id and appointment.doctor_id != current_user.id:
+      #  raise HTTPException(status_code=403, detail="You can only complete appointments assigned to you")
+
+
+    if appointment.status != "Approved":
+        raise HTTPException(status_code=400, detail="Only approved appointments can be completed with a diagnosis report")
+
+    existing_report = (
+        db.query(DiagnosisReport)
+        .filter(DiagnosisReport.appointment_id == appointment_id)
+        .first()
+    )
+
+    if existing_report:
+        raise HTTPException(status_code=400, detail="Diagnosis report already exists for this appointment")
+
+    selected_analysis = None
+
+    if payload.skin_analysis_id is not None:
+        selected_analysis = (
+            db.query(SkinAnalysis)
+            .filter(SkinAnalysis.id == payload.skin_analysis_id)
+            .first()
+        )
+
+        if not selected_analysis:
+            raise HTTPException(status_code=404, detail="Selected skin analysis not found")
+
+        if selected_analysis.appointment_id != appointment.id:
+            raise HTTPException(status_code=400, detail="Selected skin analysis does not belong to this appointment")
+    else:
+        selected_analysis = (
+            db.query(SkinAnalysis)
+            .filter(SkinAnalysis.appointment_id == appointment.id)
+            .order_by(SkinAnalysis.created_at.desc())
+            .first()
+        )
+
+    report = DiagnosisReport(
+        appointment_id=appointment.id,
+        patient_id=appointment.patient_id,
+        doctor_id=current_user.id,
+        skin_analysis_id=selected_analysis.id if selected_analysis else None,
+        doctor_final_diagnosis=payload.doctor_final_diagnosis,
+        doctor_prescription=payload.doctor_prescription,
+        after_appointment_notes=payload.after_appointment_notes,
+        follow_up_plan=payload.follow_up_plan,
+        next_visit_date=payload.next_visit_date,
+    )
+
+    db.add(report)
+
+    appointment.status = "Completed"
+    appointment.cancel_reason = None
+
+    if selected_analysis:
+        selected_analysis.review_status = "Reviewed"
+        selected_analysis.reviewed_at = datetime.utcnow()
+
+    create_appointment_log(
+        db=db,
+        appointment_id=appointment.id,
+        action="Completed",
+        performed_by_id=current_user.id,
+        performed_by_name=current_user.name,
+        performed_by_role=current_user.role,
+        reason="Completed with diagnosis report",
+    )
+
+    db.commit()
+    db.refresh(appointment)
+    db.refresh(report)
+
+    return {
+        "message": "Appointment completed with diagnosis report successfully",
+        "appointment": serialize_appointment(appointment),
+        "report": serialize_diagnosis_report(report),
+        "linked_analysis": serialize_analysis(selected_analysis) if selected_analysis else None,
+    }
+
+
+@router.get("/appointments/{appointment_id}/diagnosis-report")
+def get_diagnosis_report_by_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor),
+):
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if appointment.doctor_id and appointment.doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only view diagnosis reports for your own appointments")
+
+    report = (
+        db.query(DiagnosisReport)
+        .filter(DiagnosisReport.appointment_id == appointment_id)
+        .first()
+    )
+
+    if not report:
+        raise HTTPException(status_code=404, detail="Diagnosis report not found for this appointment")
+
+    linked_analysis = None
+    if report.skin_analysis_id:
+        linked_analysis = (
+            db.query(SkinAnalysis)
+            .filter(SkinAnalysis.id == report.skin_analysis_id)
+            .first()
+        )
+
+    return {
+        "appointment": serialize_appointment(appointment),
+        "report": serialize_diagnosis_report(report),
+        "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
+    }
+
+
+@router.get("/patients")
+def get_doctor_patients(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor),
+):
+    reports = (
+        db.query(DiagnosisReport)
+        .filter(DiagnosisReport.doctor_id == current_user.id)
+        .order_by(DiagnosisReport.created_at.desc())
+        .all()
+    )
+
+    patient_map = {}
+
+    for report in reports:
+        if not report.patient_id:
+            continue
+
+        if report.patient_id not in patient_map:
+            patient = db.query(User).filter(User.id == report.patient_id).first()
+            appointment = db.query(AppointmentModel).filter(AppointmentModel.id == report.appointment_id).first()
+
+            patient_map[report.patient_id] = {
+                "patient": serialize_patient_basic(patient) if patient else {
+                    "id": report.patient_id,
+                    "name": None,
+                    "email": None,
+                    "contact": None,
+                },
+                "latest_report": serialize_diagnosis_report(report),
+                "latest_appointment": serialize_appointment(appointment) if appointment else None,
+                "total_reports": 1,
+            }
+        else:
+            patient_map[report.patient_id]["total_reports"] += 1
+
+    return list(patient_map.values())
+
+
+@router.get("/patients/{patient_id}/history")
+def get_patient_history_for_doctor(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor),
+):
+    patient = db.query(User).filter(User.id == patient_id, User.role == "patient").first()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    reports = (
+        db.query(DiagnosisReport)
+        .filter(DiagnosisReport.patient_id == patient_id)
+        .order_by(DiagnosisReport.created_at.desc())
+        .all()
+    )
+
+    history = []
+
+    for report in reports:
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == report.appointment_id)
+            .first()
+        )
+
+        linked_analysis = None
+        if report.skin_analysis_id:
+            linked_analysis = (
+                db.query(SkinAnalysis)
+                .filter(SkinAnalysis.id == report.skin_analysis_id)
+                .first()
+            )
+
+        report_doctor = None
+        if report.doctor_id:
+            report_doctor = db.query(User).filter(User.id == report.doctor_id).first()
+
+        history.append({
+            "appointment": serialize_appointment(appointment) if appointment else None,
+            "report": serialize_diagnosis_report(report),
+            "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
+            "doctor": {
+                "id": report_doctor.id,
+                "name": report_doctor.name,
+                "email": report_doctor.email,
+            } if report_doctor else None,
+        })
+
+    return {
+        "patient": serialize_patient_basic(patient),
+        "total_reports": len(history),
+        "history": history,
+    }
+    
+    
+@router.get("/appointments/{appointment_id}/patient-history")
+def get_patient_history_from_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor),
+):
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if not appointment.patient_id:
+        raise HTTPException(status_code=400, detail="This appointment has no linked patient_id")
+
+    patient = db.query(User).filter(User.id == appointment.patient_id, User.role == "patient").first()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    reports = (
+        db.query(DiagnosisReport)
+        .filter(DiagnosisReport.patient_id == appointment.patient_id)
+        .order_by(DiagnosisReport.created_at.desc())
+        .all()
+    )
+
+    previous_reports = []
+
+    for report in reports:
+        related_appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == report.appointment_id)
+            .first()
+        )
+
+        linked_analysis = None
+        if report.skin_analysis_id:
+            linked_analysis = (
+                db.query(SkinAnalysis)
+                .filter(SkinAnalysis.id == report.skin_analysis_id)
+                .first()
+            )
+
+        report_doctor = None
+        if report.doctor_id:
+            report_doctor = db.query(User).filter(User.id == report.doctor_id).first()
+
+        previous_reports.append({
+            "appointment": serialize_appointment(related_appointment) if related_appointment else None,
+            "report": serialize_diagnosis_report(report),
+            "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
+            "doctor": {
+                "id": report_doctor.id,
+                "name": report_doctor.name,
+                "email": report_doctor.email,
+            } if report_doctor else None,
+        })
+
+    return {
+        "current_appointment": serialize_appointment(appointment),
+        "patient": serialize_patient_basic(patient),
+        "previous_reports_count": len(previous_reports),
+        "previous_reports": previous_reports,
+    }
 
 @router.get("/ai-cases")
 def get_doctor_ai_cases(

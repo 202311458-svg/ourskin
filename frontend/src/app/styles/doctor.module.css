@@ -496,8 +496,531 @@
   margin-top: 20px;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.modalPanel {
+  width: min(1100px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--card-light);
+  border: 1px solid var(--border-light);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+}
+
+:global(body.darkMode) .modalPanel {
+  background: var(--card-dark);
+  border-color: var(--border-dark);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+:global(body.darkMode) .modalHeader {
+  border-bottom-color: var(--border-dark);
+}
+
+.modalTitle {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.modalSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .modalSubtitle {
+  color: var(--text-muted-dark);
+}
+
+.modalContent {
+  padding: 24px;
+  display: grid;
+  gap: 22px;
+}
+
+.modalSection {
+  display: grid;
+  gap: 14px;
+}
+
+.modalSectionTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.infoCard,
+.notePanel,
+.stackCard,
+.reportCard {
+  background: rgba(130, 51, 76, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+:global(body.darkMode) .infoCard,
+:global(body.darkMode) .notePanel,
+:global(body.darkMode) .stackCard,
+:global(body.darkMode) .reportCard {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-dark);
+}
+
+.infoLabel {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .infoLabel {
+  color: var(--text-muted-dark);
+}
+
+.infoValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dark);
+  word-break: break-word;
+}
+
+:global(body.darkMode) .infoValue {
+  color: var(--text-light);
+}
+
+.stackList {
+  display: grid;
+  gap: 14px;
+}
+
+.stackCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cardMeta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .cardMeta {
+  color: var(--text-muted-dark);
+}
+
+.stackCardBody {
+  display: grid;
+  gap: 8px;
+}
+
+.stackCardBody p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.analysisImage {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 14px;
+}
+
+:global(body.darkMode) .analysisImage {
+  border-color: var(--border-dark);
+}
+
+@media (max-width: 900px) {
+  .modalHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modalGrid,
+  .reportGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .modalOverlay {
+    padding: 14px;
+  }
+
+  .modalPanel {
+    max-height: 92vh;
+  }
+
+  .modalHeader,
+  .modalContent {
+    padding: 18px;
+  }
+}
+
+
+.aiCompactContext {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.aiCompactItem {
+  background: rgba(130, 51, 76, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:global(body.darkMode) .aiCompactItem {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-dark);
+}
+
+.aiReadOnlyBanner {
+  border: 1px solid rgba(52, 87, 213, 0.2);
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.aiMainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.25fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 22px;
+}
+
+.aiHistoryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analysisImageLarge {
+  width: 100%;
+  max-height: 380px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 14px;
+}
+
+:global(body.darkMode) .analysisImageLarge {
+  border-color: var(--border-dark);
+}
+
+@media (max-width: 1100px) {
+  .aiCompactContext {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .aiMainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .aiHistoryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .aiCompactContext {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .dashboardTopGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+.aiLayout {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.aiSidebar {
+  position: sticky;
+  top: 24px;
+}
+
+.patientList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.patientListItem {
+  width: 100%;
+  border: 1px solid var(--border-light);
+  background: rgba(130, 51, 76, 0.03);
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.patientListItem:hover {
+  border-color: rgba(130, 51, 76, 0.35);
+  background: rgba(130, 51, 76, 0.06);
+  transform: translateY(-1px);
+}
+
+.patientListItemActive {
+  border-color: var(--primary-color);
+  background: rgba(130, 51, 76, 0.08);
+  box-shadow: 0 8px 18px rgba(130, 51, 76, 0.08);
+}
+
+:global(body.darkMode) .patientListItem {
+  border-color: var(--border-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:global(body.darkMode) .patientListItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+:global(body.darkMode) .patientListItemActive {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.patientListTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.patientListTitle {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+:global(body.darkMode) .patientListTitle {
+  color: var(--text-light);
+}
+
+.patientListMeta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+:global(body.darkMode) .patientListMeta {
+  color: var(--text-muted-dark);
+}
+
+.patientListFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+:global(body.darkMode) .patientListFooter {
+  color: var(--text-muted-dark);
+}
+
+.aiWorkspace {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.aiWorkspaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.aiWorkspaceSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.aiVisitToolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px);
+  gap: 14px;
+}
+
+.aiTabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.aiTabButton {
+  border: 1px solid var(--border-light);
+  background: var(--card-light);
+  color: var(--text-dark);
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.aiTabButton:hover {
+  border-color: rgba(130, 51, 76, 0.35);
+  background: rgba(130, 51, 76, 0.04);
+}
+
+.aiTabButtonActive {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+:global(body.darkMode) .aiTabButton {
+  background: var(--card-dark);
+  border-color: var(--border-dark);
+  color: var(--text-light);
+}
+
+:global(body.darkMode) .aiTabButton:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.aiPanel {
+  display: grid;
+  gap: 20px;
+}
+
+.aiPanelGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.aiPanelSingle {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 1250px) {
+  .aiLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .aiSidebar {
+    position: static;
+  }
+
+  .patientList {
+    max-height: unset;
+  }
+}
+
+@media (max-width: 1100px) {
+  .aiWorkspaceSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .aiPanelGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .aiWorkspaceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .aiWorkspaceSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .aiVisitToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .patientListTop {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

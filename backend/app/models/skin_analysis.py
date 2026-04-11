@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from app.db import Base
 
@@ -22,9 +22,17 @@ class SkinAnalysis(Base):
     severity = Column(String)
     recommendation = Column(String)
 
-    doctor_note = Column(String, nullable=True)
+    doctor_note = Column(Text, nullable=True)
 
     review_status = Column(String, default="Pending Review", nullable=False)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # new AI decision-support fields
+    possible_conditions = Column(Text, nullable=True)
+    key_findings = Column(Text, nullable=True)
+    treatment_suggestions = Column(Text, nullable=True)
+    prescription_suggestions = Column(Text, nullable=True)
+    follow_up_suggestions = Column(Text, nullable=True)
+    red_flags = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

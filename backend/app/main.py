@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
 from app.routes import auth, users, ai_analysis, appointments, patients, admin
-from app.models import user, appointment, skin_analysis, follow_up
+from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
 

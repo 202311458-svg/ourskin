@@ -1,35 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import Calendar from "@/app/components/Calendar";
 import styles from "@/app/styles/doctor.module.css";
+import { API_BASE_URL } from "@/lib/api";
 import {
+  cancelDoctorAppointment,
+  completeDoctorAppointmentWithReport,
+  getAppointmentAnalyses,
+  getAppointmentById,
+  getAppointmentDiagnosisReport,
+  getAppointmentLogs,
+  getAppointmentPatientHistory,
   getDoctorAppointments,
-  updateDoctorAppointmentStatus,
+  type Analysis,
   type Appointment,
+  type AppointmentLog,
+  type AppointmentPatientHistoryResponse,
+  type CompleteDiagnosisPayload,
+  type DiagnosisReportResponse,
 } from "@/lib/doctor-api";
 
 const filters = ["All", "Pending", "Approved", "Completed", "Declined", "Cancelled"];
-
-type AppointmentLog = {
-  id: number;
-  appointment_id: number;
-  action: string;
-  performed_by_id: number | null;
-  performed_by_name: string;
-  performed_by_role: string;
-  reason: string | null;
-  created_at: string | null;
-};
 
 type AppointmentDetails = Appointment & {
   cancel_reason?: string | null;
 };
 
+const emptyReportForm: CompleteDiagnosisPayload = {
+  skin_analysis_id: null,
+  doctor_final_diagnosis: "",
+  doctor_prescription: "",
+  after_appointment_notes: "",
+  follow_up_plan: "",
+  next_visit_date: "",
+};
+
 export default function DoctorAppointmentsPage() {
   const router = useRouter();
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -37,28 +48,18 @@ export default function DoctorAppointmentsPage() {
 
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
   const [appointmentLogs, setAppointmentLogs] = useState<AppointmentLog[]>([]);
+  const [appointmentAnalyses, setAppointmentAnalyses] = useState<Analysis[]>([]);
+  const [diagnosisReportData, setDiagnosisReportData] =
+    useState<DiagnosisReportResponse | null>(null);
+  const [patientHistoryData, setPatientHistoryData] =
+    useState<AppointmentPatientHistoryResponse | null>(null);
+
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
 
-  const normalizeStatus = (status?: string) => (status || "").trim();
-
-  const getDoctorActions = (status?: string) => {
-    const normalized = normalizeStatus(status);
-
-    if (normalized === "Approved") {
-      return {
-        canView: true,
-        canComplete: true,
-        canCancel: true,
-      };
-    }
-
-    return {
-      canView: true,
-      canComplete: false,
-      canCancel: false,
-    };
-  };
+  const [reportForm, setReportForm] =
+    useState<CompleteDiagnosisPayload>(emptyReportForm);
 
   const loadAppointments = useCallback(async (status: string) => {
     try {
@@ -85,7 +86,135 @@ export default function DoctorAppointmentsPage() {
     loadAppointments(activeFilter);
   }, [router, activeFilter, loadAppointments]);
 
-  const handleStatusUpdate = async (appointmentId: number, status: "Completed" | "Cancelled") => {
+  const normalizeStatus = (status?: string) => (status || "").trim();
+
+  const getDoctorActions = (status?: string) => {
+    const normalized = normalizeStatus(status);
+
+    if (normalized === "Approved") {
+      return {
+        primaryLabel: "Complete Report",
+        canComplete: true,
+        canCancel: true,
+      };
+    }
+
+    if (normalized === "Completed") {
+      return {
+        primaryLabel: "View Report",
+        canComplete: false,
+        canCancel: false,
+      };
+    }
+
+    return {
+      primaryLabel: "View",
+      canComplete: false,
+      canCancel: false,
+    };
+  };
+
+  const getStatusBadgeClass = (status?: string) => {
+    switch (normalizeStatus(status)) {
+      case "Approved":
+        return `${styles.statusBadge} ${styles.badgeApproved}`;
+      case "Pending":
+        return `${styles.statusBadge} ${styles.badgePending}`;
+      case "Completed":
+        return `${styles.statusBadge} ${styles.badgeCompleted}`;
+      case "Declined":
+      case "Cancelled":
+        return `${styles.statusBadge} ${styles.badgeUrgent}`;
+      default:
+        return `${styles.statusBadge} ${styles.badgePending}`;
+    }
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  };
+
+  const formatPercent = (value?: number | null) => {
+    if (typeof value !== "number") return "—";
+    return `${Math.round(value * 100)}%`;
+  };
+
+  const buildImageUrl = (path?: string | null) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `${API_BASE_URL}${path}`;
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setSelectedAppointment(null);
+    setAppointmentLogs([]);
+    setAppointmentAnalyses([]);
+    setDiagnosisReportData(null);
+    setPatientHistoryData(null);
+    setReportForm(emptyReportForm);
+  };
+
+  const openDetails = useCallback(async (appointmentId: number) => {
+    try {
+      setDetailsLoading(true);
+      setDetailsOpen(true);
+
+      const [
+        appointmentData,
+        logsData,
+        analysesData,
+        patientHistoryResult,
+        diagnosisReportResult,
+      ] = await Promise.all([
+        getAppointmentById(appointmentId),
+        getAppointmentLogs(appointmentId),
+        getAppointmentAnalyses(appointmentId),
+        getAppointmentPatientHistory(appointmentId).catch(() => null),
+        getAppointmentDiagnosisReport(appointmentId).catch(() => null),
+      ]);
+
+      const latestAnalysisId =
+        Array.isArray(analysesData) && analysesData.length > 0
+          ? analysesData[0].id
+          : null;
+
+      setSelectedAppointment(appointmentData);
+      setAppointmentLogs(Array.isArray(logsData) ? logsData : []);
+      setAppointmentAnalyses(Array.isArray(analysesData) ? analysesData : []);
+      setPatientHistoryData(patientHistoryResult);
+      setDiagnosisReportData(diagnosisReportResult);
+
+      if (diagnosisReportResult?.report) {
+        setReportForm({
+          skin_analysis_id: diagnosisReportResult.report.skin_analysis_id ?? latestAnalysisId,
+          doctor_final_diagnosis:
+            diagnosisReportResult.report.doctor_final_diagnosis ?? "",
+          doctor_prescription:
+            diagnosisReportResult.report.doctor_prescription ?? "",
+          after_appointment_notes:
+            diagnosisReportResult.report.after_appointment_notes ?? "",
+          follow_up_plan: diagnosisReportResult.report.follow_up_plan ?? "",
+          next_visit_date: diagnosisReportResult.report.next_visit_date ?? "",
+        });
+      } else {
+        setReportForm({
+          ...emptyReportForm,
+          skin_analysis_id: latestAnalysisId,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to open details:", error);
+      alert(error instanceof Error ? error.message : "Failed to load details");
+      closeDetails();
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, []);
+
+  const handleCancel = async (appointmentId: number) => {
     try {
       const appointment = appointments.find((item) => item.id === appointmentId);
 
@@ -95,19 +224,14 @@ export default function DoctorAppointmentsPage() {
       }
 
       if (appointment.status !== "Approved") {
-        alert("Doctors can only complete or cancel approved appointments.");
+        alert("Doctors can only cancel approved appointments.");
         return;
       }
 
-      let cancel_reason: string | undefined;
+      const reason = window.prompt("Enter cancellation reason:");
+      if (!reason || !reason.trim()) return;
 
-      if (status === "Cancelled") {
-        const reason = window.prompt("Enter cancellation reason:");
-        if (!reason || !reason.trim()) return;
-        cancel_reason = reason.trim();
-      }
-
-      await updateDoctorAppointmentStatus(appointmentId, status, cancel_reason);
+      await cancelDoctorAppointment(appointmentId, reason.trim());
       await loadAppointments(activeFilter);
       setCalendarRefreshKey((prev) => prev + 1);
 
@@ -115,60 +239,70 @@ export default function DoctorAppointmentsPage() {
         await openDetails(appointmentId);
       }
     } catch (error) {
-      console.error("Failed to update appointment:", error);
-      alert(error instanceof Error ? error.message : "Failed to update appointment");
+      console.error("Failed to cancel appointment:", error);
+      alert(error instanceof Error ? error.message : "Failed to cancel appointment");
     }
   };
 
-  const openDetails = async (appointmentId: number) => {
+
+  const handleReportFieldChange = (
+    field: keyof CompleteDiagnosisPayload,
+    value: string | number | null
+  ) => {
+    setReportForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCompleteWithReport = async () => {
     try {
-      setDetailsLoading(true);
-      setDetailsOpen(true);
-
-      const token = localStorage.getItem("token");
-
-      const [appointmentRes, logsRes] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/appointments/${appointmentId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch(`http://127.0.0.1:8000/appointments/${appointmentId}/logs`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-      ]);
-
-      const appointmentData = await appointmentRes.json();
-      const logsData = await logsRes.json();
-
-      if (!appointmentRes.ok) {
-        throw new Error(appointmentData.detail || "Failed to load appointment details");
+      if (!selectedAppointment) {
+        alert("No appointment selected.");
+        return;
       }
 
-      if (!logsRes.ok) {
-        throw new Error(logsData.detail || "Failed to load appointment logs");
+      if (selectedAppointment.status !== "Approved") {
+        alert("Only approved appointments can be completed with a diagnosis report.");
+        return;
       }
 
-      setSelectedAppointment(appointmentData);
-      setAppointmentLogs(Array.isArray(logsData) ? logsData : []);
+      if (!reportForm.doctor_final_diagnosis?.trim()) {
+        alert("Final diagnosis is required.");
+        return;
+      }
+
+      setSubmittingReport(true);
+
+      await completeDoctorAppointmentWithReport(selectedAppointment.id, {
+        skin_analysis_id: reportForm.skin_analysis_id || null,
+        doctor_final_diagnosis: reportForm.doctor_final_diagnosis.trim(),
+        doctor_prescription: reportForm.doctor_prescription?.trim() || "",
+        after_appointment_notes: reportForm.after_appointment_notes?.trim() || "",
+        follow_up_plan: reportForm.follow_up_plan?.trim() || "",
+        next_visit_date: reportForm.next_visit_date || null,
+      });
+
+      await loadAppointments(activeFilter);
+      setCalendarRefreshKey((prev) => prev + 1);
+      await openDetails(selectedAppointment.id);
+
+      alert("Appointment completed with diagnosis report successfully.");
     } catch (error) {
-      console.error("Failed to open details:", error);
-      alert(error instanceof Error ? error.message : "Failed to load details");
-      setDetailsOpen(false);
-      setSelectedAppointment(null);
-      setAppointmentLogs([]);
+      console.error("Failed to complete appointment with report:", error);
+      alert(error instanceof Error ? error.message : "Failed to complete appointment");
     } finally {
-      setDetailsLoading(false);
+      setSubmittingReport(false);
     }
   };
 
-  const closeDetails = () => {
-    setDetailsOpen(false);
-    setSelectedAppointment(null);
-    setAppointmentLogs([]);
-  };
+  const previousReports = useMemo(() => {
+    const reports = patientHistoryData?.previous_reports ?? [];
+    if (!selectedAppointment) return reports;
+    return reports.filter(
+      (item) => item.report.appointment_id !== selectedAppointment.id
+    );
+  }, [patientHistoryData, selectedAppointment]);
 
   const calendarStatusFilter =
     activeFilter === "Approved" || activeFilter === "Pending"
@@ -183,7 +317,7 @@ export default function DoctorAppointmentsPage() {
         <div className={styles.headerSection}>
           <h1 className={styles.pageTitle}>Appointments</h1>
           <p className={styles.pageSubtitle}>
-            Review and manage all doctor consultations.
+            Review consultations, see previous diagnosis history, and complete visits with a full diagnosis report.
           </p>
         </div>
 
@@ -243,31 +377,33 @@ export default function DoctorAppointmentsPage() {
                         <td>{appt.date}</td>
                         <td>{appt.time}</td>
                         <td>{appt.services}</td>
-                        <td>{appt.status}</td>
+                        <td>
+                          <span className={getStatusBadgeClass(appt.status)}>
+                            {appt.status}
+                          </span>
+                        </td>
                         <td>
                           <div className={styles.buttonRow}>
-                            {actions.canView && (
-                              <button
-                                className={styles.secondaryButton}
-                                onClick={() => openDetails(appt.id)}
-                              >
-                                View
-                              </button>
-                            )}
+                            <button
+                              className={styles.secondaryButton}
+                              onClick={() => openDetails(appt.id)}
+                            >
+                              {actions.primaryLabel === "View Report" ? "View Report" : "View"}
+                            </button>
 
                             {actions.canComplete && (
                               <button
                                 className={styles.actionButton}
-                                onClick={() => handleStatusUpdate(appt.id, "Completed")}
+                                onClick={() => openDetails(appt.id)}
                               >
-                                Complete
+                                {actions.primaryLabel}
                               </button>
                             )}
 
                             {actions.canCancel && (
                               <button
                                 className={styles.dangerButton}
-                                onClick={() => handleStatusUpdate(appt.id, "Cancelled")}
+                                onClick={() => handleCancel(appt.id)}
                               >
                                 Cancel
                               </button>
@@ -284,94 +420,410 @@ export default function DoctorAppointmentsPage() {
         </section>
 
         {detailsOpen && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.45)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-              padding: "20px",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: "720px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-                background: "#fff",
-                borderRadius: "16px",
-                padding: "24px",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "16px",
-                }}
-              >
-                <h3 style={{ margin: 0 }}>Appointment Details</h3>
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalPanel}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <h3 className={styles.modalTitle}>Appointment Details</h3>
+                  <p className={styles.modalSubtitle}>
+                    Review the appointment, AI output, and patient history before making clinical decisions.
+                  </p>
+                </div>
+
                 <button className={styles.secondaryButton} onClick={closeDetails}>
                   Close
                 </button>
               </div>
 
-              {detailsLoading || !selectedAppointment ? (
-                <p>Loading details...</p>
-              ) : (
-                <>
-                  <div style={{ display: "grid", gap: "10px", marginBottom: "20px" }}>
-                    <p><strong>Patient:</strong> {selectedAppointment.patient_name}</p>
-                    <p><strong>Doctor:</strong> {selectedAppointment.doctor_name}</p>
-                    <p><strong>Date:</strong> {selectedAppointment.date}</p>
-                    <p><strong>Time:</strong> {selectedAppointment.time}</p>
-                    <p><strong>Service:</strong> {selectedAppointment.services}</p>
-                    <p><strong>Status:</strong> {selectedAppointment.status}</p>
+              <div className={styles.modalContent}>
+                {detailsLoading || !selectedAppointment ? (
+                  <div className={styles.emptyState}>Loading details...</div>
+                ) : (
+                  <>
+                    <section className={styles.modalSection}>
+                      <h4 className={styles.modalSectionTitle}>Appointment Summary</h4>
 
-                    {selectedAppointment.cancel_reason && (
-                      <p><strong>Reason:</strong> {selectedAppointment.cancel_reason}</p>
-                    )}
-                  </div>
+                      <div className={styles.modalGrid}>
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Patient</p>
+                          <p className={styles.infoValue}>{selectedAppointment.patient_name}</p>
+                        </div>
 
-                  <div>
-                    <h4 style={{ marginBottom: "12px" }}>Activity Log</h4>
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Doctor</p>
+                          <p className={styles.infoValue}>{selectedAppointment.doctor_name}</p>
+                        </div>
 
-                    {appointmentLogs.length === 0 ? (
-                      <p>No activity log found.</p>
-                    ) : (
-                      <div style={{ display: "grid", gap: "12px" }}>
-                        {appointmentLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            style={{
-                              border: "1px solid #e5e7eb",
-                              borderRadius: "12px",
-                              padding: "12px 14px",
-                            }}
-                          >
-                            <p><strong>Action:</strong> {log.action}</p>
-                            <p>
-                              <strong>By:</strong> {log.performed_by_name} ({log.performed_by_role})
-                            </p>
-                            {log.reason && (
-                              <p><strong>Reason:</strong> {log.reason}</p>
-                            )}
-                            {log.created_at && (
-                              <p><strong>Date:</strong> {new Date(log.created_at).toLocaleString()}</p>
-                            )}
-                          </div>
-                        ))}
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Date</p>
+                          <p className={styles.infoValue}>{selectedAppointment.date}</p>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Time</p>
+                          <p className={styles.infoValue}>{selectedAppointment.time}</p>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Service</p>
+                          <p className={styles.infoValue}>{selectedAppointment.services}</p>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                          <p className={styles.infoLabel}>Status</p>
+                          <p className={styles.infoValue}>
+                            <span className={getStatusBadgeClass(selectedAppointment.status)}>
+                              {selectedAppointment.status}
+                            </span>
+                          </p>
+                        </div>
                       </div>
+
+                      {selectedAppointment.cancel_reason && (
+                        <div className={styles.notePanel}>
+                          <p className={styles.infoLabel}>Cancellation Reason</p>
+                          <p className={styles.infoValue}>{selectedAppointment.cancel_reason}</p>
+                        </div>
+                      )}
+                    </section>
+
+                    <section className={styles.modalSection}>
+                      <h4 className={styles.modalSectionTitle}>Previous Diagnosis Reports</h4>
+
+                      {!patientHistoryData || previousReports.length === 0 ? (
+                        <div className={styles.emptyState}>
+                          No previous diagnosis reports found for this patient.
+                        </div>
+                      ) : (
+                        <div className={styles.stackList}>
+                          {previousReports.map((item) => (
+                            <div key={item.report.id} className={styles.stackCard}>
+                              <div className={styles.stackCardHeader}>
+                                <div>
+                                  <p className={styles.cardTitle}>
+                                    {item.appointment?.date || "Unknown date"} •{" "}
+                                    {item.appointment?.services || "Previous consultation"}
+                                  </p>
+                                  <p className={styles.cardMeta}>
+                                    Doctor: {item.doctor?.name || "Unknown"}
+                                  </p>
+                                </div>
+                                <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
+                                  Completed
+                                </span>
+                              </div>
+
+                              <div className={styles.stackCardBody}>
+                                <p>
+                                  <strong>Final Diagnosis:</strong>{" "}
+                                  {item.report.doctor_final_diagnosis || "—"}
+                                </p>
+                                <p>
+                                  <strong>Prescription:</strong>{" "}
+                                  {item.report.doctor_prescription || "—"}
+                                </p>
+                                <p>
+                                  <strong>After Notes:</strong>{" "}
+                                  {item.report.after_appointment_notes || "—"}
+                                </p>
+                                <p>
+                                  <strong>Follow-up Plan:</strong>{" "}
+                                  {item.report.follow_up_plan || "—"}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+
+
+
+                    <section className={styles.modalSection}>
+                      <h4 className={styles.modalSectionTitle}>AI Analyses</h4>
+
+                      {appointmentAnalyses.length === 0 ? (
+                        <div className={styles.emptyState}>
+                          No AI analyses found for this appointment yet.
+                        </div>
+                      ) : (
+                        <div className={styles.stackList}>
+                          {appointmentAnalyses.map((analysis) => (
+                            <div key={analysis.id} className={styles.stackCard}>
+                              <div className={styles.stackCardHeader}>
+                                <div>
+                                  <p className={styles.cardTitle}>
+                                    {analysis.condition} • {analysis.severity}
+                                  </p>
+                                  <p className={styles.cardMeta}>
+                                    Confidence: {formatPercent(analysis.confidence)} •{" "}
+                                    {analysis.review_status}
+                                  </p>
+                                </div>
+
+                                <span
+                                  className={
+                                    analysis.review_status === "Reviewed"
+                                      ? `${styles.statusBadge} ${styles.badgeCompleted}`
+                                      : `${styles.statusBadge} ${styles.badgePending}`
+                                  }
+                                >
+                                  {analysis.review_status}
+                                </span>
+                              </div>
+
+                              {analysis.image_path && (
+                                <img
+                                  src={buildImageUrl(analysis.image_path)}
+                                  alt={`Analysis ${analysis.id}`}
+                                  className={styles.analysisImage}
+                                />
+                              )}
+
+                              <div className={styles.stackCardBody}>
+                                <p>
+                                  <strong>Recommendation:</strong>{" "}
+                                  {analysis.recommendation || "—"}
+                                </p>
+                                <p>
+                                  <strong>Possible Conditions:</strong>{" "}
+                                  {analysis.possible_conditions || "—"}
+                                </p>
+                                <p>
+                                  <strong>Key Findings:</strong>{" "}
+                                  {analysis.key_findings || "—"}
+                                </p>
+                                <p>
+                                  <strong>Treatment Suggestions:</strong>{" "}
+                                  {analysis.treatment_suggestions || "—"}
+                                </p>
+                                <p>
+                                  <strong>Prescription Suggestions:</strong>{" "}
+                                  {analysis.prescription_suggestions || "—"}
+                                </p>
+                                <p>
+                                  <strong>Follow-up Suggestions:</strong>{" "}
+                                  {analysis.follow_up_suggestions || "—"}
+                                </p>
+                                <p>
+                                  <strong>Red Flags:</strong>{" "}
+                                  {analysis.red_flags || "—"}
+                                </p>
+                                <p>
+                                  <strong>Doctor Note:</strong>{" "}
+                                  {analysis.doctor_note || "No doctor note yet"}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    {diagnosisReportData?.report && (
+                      <section className={styles.modalSection}>
+                        <h4 className={styles.modalSectionTitle}>Diagnosis Report</h4>
+
+                        <div className={styles.reportCard}>
+                          <div className={styles.reportGrid}>
+                            <div className={styles.infoCard}>
+                              <p className={styles.infoLabel}>Final Diagnosis</p>
+                              <p className={styles.infoValue}>
+                                {diagnosisReportData.report.doctor_final_diagnosis || "—"}
+                              </p>
+                            </div>
+
+                            <div className={styles.infoCard}>
+                              <p className={styles.infoLabel}>Next Visit Date</p>
+                              <p className={styles.infoValue}>
+                                {diagnosisReportData.report.next_visit_date || "—"}
+                              </p>
+                            </div>
+
+                            <div className={styles.infoCard}>
+                              <p className={styles.infoLabel}>Prescription</p>
+                              <p className={styles.infoValue}>
+                                {diagnosisReportData.report.doctor_prescription || "—"}
+                              </p>
+                            </div>
+
+                            <div className={styles.infoCard}>
+                              <p className={styles.infoLabel}>Follow-up Plan</p>
+                              <p className={styles.infoValue}>
+                                {diagnosisReportData.report.follow_up_plan || "—"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className={styles.notePanel}>
+                            <p className={styles.infoLabel}>After Appointment Notes</p>
+                            <p className={styles.infoValue}>
+                              {diagnosisReportData.report.after_appointment_notes || "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </section>
                     )}
-                  </div>
-                </>
-              )}
+
+                    {selectedAppointment.status === "Approved" && !diagnosisReportData?.report && (
+                      <section className={styles.modalSection}>
+                        <h4 className={styles.modalSectionTitle}>
+                          Complete Appointment with Diagnosis Report
+                        </h4>
+
+                        <div className={styles.formGrid}>
+                          <div className={styles.inputGroup}>
+                            <label htmlFor="skin_analysis_id">Linked AI Analysis</label>
+                            <select
+                              id="skin_analysis_id"
+                              className={styles.select}
+                              value={reportForm.skin_analysis_id ?? ""}
+                              onChange={(e) =>
+                                handleReportFieldChange(
+                                  "skin_analysis_id",
+                                  e.target.value ? Number(e.target.value) : null
+                                )
+                              }
+                            >
+                              <option value="">No linked analysis</option>
+                              {appointmentAnalyses.map((analysis) => (
+                                <option key={analysis.id} value={analysis.id}>
+                                  #{analysis.id} • {analysis.condition} • {analysis.severity}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className={styles.inputGroup}>
+                            <label htmlFor="next_visit_date">Next Visit Date</label>
+                            <input
+                              id="next_visit_date"
+                              type="date"
+                              className={styles.input}
+                              value={reportForm.next_visit_date ?? ""}
+                              onChange={(e) =>
+                                handleReportFieldChange("next_visit_date", e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+                            <label htmlFor="doctor_final_diagnosis">Final Diagnosis</label>
+                            <textarea
+                              id="doctor_final_diagnosis"
+                              className={styles.textarea}
+                              value={reportForm.doctor_final_diagnosis}
+                              onChange={(e) =>
+                                handleReportFieldChange(
+                                  "doctor_final_diagnosis",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter the doctor's final diagnosis"
+                            />
+                          </div>
+
+                          <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+                            <label htmlFor="doctor_prescription">Prescription</label>
+                            <textarea
+                              id="doctor_prescription"
+                              className={styles.textarea}
+                              value={reportForm.doctor_prescription ?? ""}
+                              onChange={(e) =>
+                                handleReportFieldChange("doctor_prescription", e.target.value)
+                              }
+                              placeholder="Enter prescription details"
+                            />
+                          </div>
+
+                          <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+                            <label htmlFor="after_appointment_notes">
+                              After Appointment Notes
+                            </label>
+                            <textarea
+                              id="after_appointment_notes"
+                              className={styles.textarea}
+                              value={reportForm.after_appointment_notes ?? ""}
+                              onChange={(e) =>
+                                handleReportFieldChange(
+                                  "after_appointment_notes",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter after appointment notes"
+                            />
+                          </div>
+
+                          <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+                            <label htmlFor="follow_up_plan">Follow-up Plan</label>
+                            <textarea
+                              id="follow_up_plan"
+                              className={styles.textarea}
+                              value={reportForm.follow_up_plan ?? ""}
+                              onChange={(e) =>
+                                handleReportFieldChange("follow_up_plan", e.target.value)
+                              }
+                              placeholder="Enter follow-up plan"
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.buttonRow}>
+                          <button
+                            className={styles.saveButton}
+                            onClick={handleCompleteWithReport}
+                            disabled={submittingReport}
+                          >
+                            {submittingReport ? "Saving..." : "Complete Appointment"}
+                          </button>
+
+                          <button
+                            className={styles.dangerButton}
+                            onClick={() => handleCancel(selectedAppointment.id)}
+                            disabled={submittingReport}
+                          >
+                            Cancel Appointment
+                          </button>
+                        </div>
+                      </section>
+                    )}
+
+                    <section className={styles.modalSection}>
+                      <h4 className={styles.modalSectionTitle}>Activity Log</h4>
+
+                      {appointmentLogs.length === 0 ? (
+                        <div className={styles.emptyState}>No activity log found.</div>
+                      ) : (
+                        <div className={styles.stackList}>
+                          {appointmentLogs.map((log) => (
+                            <div key={log.id} className={styles.stackCard}>
+                              <div className={styles.stackCardHeader}>
+                                <p className={styles.cardTitle}>{log.action}</p>
+                                <p className={styles.cardMeta}>
+                                  {formatDateTime(log.created_at)}
+                                </p>
+                              </div>
+
+                              <div className={styles.stackCardBody}>
+                                <p>
+                                  <strong>By:</strong> {log.performed_by_name} (
+                                  {log.performed_by_role})
+                                </p>
+                                {log.reason && (
+                                  <p>
+                                    <strong>Reason:</strong> {log.reason}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
