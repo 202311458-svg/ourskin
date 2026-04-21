@@ -1,19 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta, timezone
 import re
 import secrets
 
 from app.db import SessionLocal
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, ChangePasswordRequest
+from app.schemas.user import (
+    UserCreate,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
     get_current_user,
 )
-from app.core.email import send_verification_email
+from app.core.email import send_verification_email, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -137,3 +143,73 @@ def change_password(
     db.refresh(user)
 
     return {"message": "Password updated successfully"}
+
+
+@router.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email.lower()).first()
+
+    if user:
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.commit()
+
+        try:
+            send_password_reset_email(user.email, token)
+        except Exception as e:
+            print("Password reset email failed:", e)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not send password reset email: {str(e)}",
+            )
+
+    return {
+        "message": "If an account exists for this email, a reset link has been sent."
+    }
+
+
+@router.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email.lower()).first()
+
+    cooldown_seconds = 60
+    now = datetime.now(timezone.utc)
+
+    if user:
+        if user.reset_requested_at:
+            last_request = user.reset_requested_at
+
+            if last_request.tzinfo is None:
+                last_request = last_request.replace(tzinfo=timezone.utc)
+
+            seconds_since_last_request = (now - last_request).total_seconds()
+
+            if seconds_since_last_request < cooldown_seconds:
+                remaining = int(cooldown_seconds - seconds_since_last_request)
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "message": f"Please wait {remaining} seconds before requesting another reset link.",
+                        "retry_after": remaining,
+                    },
+                )
+
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = now + timedelta(hours=1)
+        user.reset_requested_at = now
+        db.commit()
+
+        try:
+            send_password_reset_email(user.email, token)
+        except Exception as e:
+            print("Password reset email failed:", e)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not send password reset email: {str(e)}",
+            )
+
+    return {
+        "message": "If an account exists for this email, a reset link has been sent."
+    }

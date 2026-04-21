@@ -14,13 +14,17 @@ class User(Base):
     role = Column(String, default="patient", nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     verification_token = Column(String, nullable=True)
+
+    reset_token = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+    reset_requested_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     status = Column(String, default="Active", nullable=False)
     department = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
 
-    # doctor profile fields
     specialty = Column(String, nullable=True)
     availability = Column(String, nullable=True)
     bio = Column(String, nullable=True)

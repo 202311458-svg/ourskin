@@ -1024,3 +1024,51 @@
     align-items: flex-start;
   }
 }
+
+.readOnlyInput {
+  background: rgba(130, 51, 76, 0.03);
+  cursor: default;
+}
+
+:global(body.darkMode) .readOnlyInput {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.securityBlock {
+  margin-top: 20px;
+}
+
+.settingsContainer {
+  max-width: 1280px;
+}
+
+.compactSettingsCard {
+  padding: 18px;
+}
+
+.compactFormGrid {
+  gap: 14px;
+}
+
+.compactActions {
+  margin-top: 14px;
+}
+
+.securityBlock {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-light);
+}
+
+:global(body.darkMode) .securityBlock {
+  border-top: 1px solid var(--border-dark);
+}
+
+.readOnlyInput {
+  background: rgba(130, 51, 76, 0.03);
+  cursor: default;
+}
+
+:global(body.darkMode) .readOnlyInput {
+  background: rgba(255, 255, 255, 0.03);
+}
