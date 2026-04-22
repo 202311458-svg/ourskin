@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { FaEye, FaEyeSlash } from "react-icons/fa"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -25,6 +26,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false)
 
   const [openPolicy, setOpenPolicy] = useState<"terms" | "privacy" | null>(null)
+
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     const updateCooldown = () => {
@@ -268,14 +272,22 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
 
           {!isForgot && (
             <>
+            <div className="inputWrapper">
               <input
                 className="authInput"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => setPasswordTouched(true)}
               />
+              <span
+                className="eyeIcon"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
 
               {!isLogin && (
                 <p className={`passwordSummary ${password.length > 0 && isPasswordStrong ? "validText" : "invalidText"}`}>
@@ -287,14 +299,22 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
 
           {!isLogin && !isForgot && (
             <>
+              <div className="inputWrapper">
               <input
                 className="authInput"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 onBlur={() => setConfirmPasswordTouched(true)}
               />
+              <span
+                className="eyeIcon"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
 
               {confirmPasswordTouched && confirmPassword.length > 0 && !passwordsMatch && (
                 <p className="fieldError">Confirm password does not match.</p>

@@ -533,6 +533,7 @@ body.navCollapsed .pageWrapper {
   z-index: 1000;
 }
 
+
 /* Service modal */
 .serviceModal {
   position: relative;
@@ -755,6 +756,30 @@ body.navCollapsed .pageWrapper {
 .authCloseBtn:hover {
   text-decoration: underline;
   color: #5f2437;
+}
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.inputWrapper .authInput {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.eyeIcon {
+  position: absolute;
+  right: 12px;
+  top: 45%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #888;
+  font-size: 16px;
+}
+
+.eyeIcon:hover {
+  color: #6f2940;
 }
 
 /* REGISTER PAGE*/
