@@ -9,7 +9,6 @@ export default function Home() {
   const router = useRouter()
   const [modal, setModal] = useState(false)
 
-  // --- Hero Gallery ---
   const clinicImages = ["/clinic1.jpg", "/clinic2.jpg", "/clinic3.jpg"]
   const [currentImage, setCurrentImage] = useState(0)
 
@@ -18,7 +17,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  // --- Service Gallery Modal ---
   const serviceImages = ["/service1.jpg", "/service2.jpg", "/service3.jpg", "/service4.jpg", "/service5.jpg", "/service6.jpg"]
   const [serviceModalOpen, setServiceModalOpen] = useState(false)
   const [currentService, setCurrentService] = useState(0)
@@ -40,10 +38,9 @@ export default function Home() {
     <div>
       <div className="animatedBackground"></div>
 
-      {/* NAVBAR */}
       <nav className="landingnavbar">
         <div className="landingnavLogo">
-          <Image src="/navlogo.png" alt="OurSkin" width={180} height={70} />
+          <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} />
         </div>
 
         <div className="landingnavLinks">

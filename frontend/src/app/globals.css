@@ -128,6 +128,11 @@ body.navCollapsed .pageWrapper {
   z-index: 100;
 }
 
+.landingnavLogo {
+  width: 100px;
+  height: auto;
+}
+
 .landingnavLinks {
   display: flex;
   gap: 35px;

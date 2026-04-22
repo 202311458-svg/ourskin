@@ -81,7 +81,7 @@ export default function AdminDashboardPage() {
       <div className="staffContent">
         <div className={styles.headerRow}>
           <div>
-            <h1 className={styles.title}>Admin Dashboard</h1>
+            <h1 className={styles.title}>Welcome back, Admin!</h1>
             <p className={styles.subtitle}>
               Overview of users, appointments, and AI activity across the platform.
             </p>
