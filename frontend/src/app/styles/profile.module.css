@@ -1,0 +1,295 @@
+:root {
+  --accent: #6f2940;
+
+  --bg: #ffffff;
+  --text: #111;
+  --card: #ffffff;
+  --border: #eaeaea;
+  --muted: #777;
+  --input: #f6f6f6;
+}
+
+/* DARK MODE (from navbar toggle) */
+body.darkMode {
+  --bg: #0e0e12;
+  --text: #f5f5f5;
+  --card: #17171d;
+  --border: #2a2a2a;
+  --muted: #aaaaaa;
+  --input: #1f1f25;
+}
+
+/* =========================
+   PAGE LAYOUT (KEEP YOUR SYSTEM)
+========================= */
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: 40px 20px;
+
+  margin-left: -250px; /* KEEP YOUR NAV SYSTEM */
+  transition: margin-left 0.3s ease, background 0.3s ease, color 0.3s ease;
+}
+
+body.navCollapsed .page {
+  margin-left: -500px;
+}
+
+@media (max-width: 768px) {
+  .page {
+    margin-left: 0;
+  }
+}
+
+/* =========================
+   CONTAINER
+========================= */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* =========================
+   HEADER
+========================= */
+.header {
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.header p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* =========================
+   GRID LAYOUT
+========================= */
+.grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   CARDS
+========================= */
+.card,
+.cardLarge {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 26px;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================
+   PROFILE HEADER
+========================= */
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* AVATAR */
+.avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+/* NAME SECTION */
+.profileHeader h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.subText {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.photoWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profilePhoto {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.editInput {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+}
+
+/* =========================
+   DIVIDER
+========================= */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* =========================
+   INFO BLOCK (CLEAN LAYOUT)
+========================= */
+.infoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 6px 0;
+}
+
+.infoRow span:first-child {
+  color: var(--muted);
+}
+
+/* =========================
+   SECURITY SECTION
+========================= */
+.card h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.smallText {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* BUTTON */
+.primaryBtn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 11px 14px;
+  border-radius: 10px;
+  margin-top: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.primaryBtn:hover {
+  filter: brightness(1.08);
+}
+
+/* =========================
+   PASSWORD FORM
+========================= */
+.form {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* INPUT GROUP (modern clean UX) */
+.inputGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+/* INPUT FIELD */
+.inputGroup input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* SHOW/HIDE BUTTON */
+.inputGroup button {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* =========================
+   STATES
+========================= */
+.loading {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--muted);
+}
+
+/* =========================
+   RESPONSIVE SAFETY
+========================= */
+@media (max-width: 600px) {
+  .page {
+    padding: 25px 15px;
+  }
+
+  .card,
+  .cardLarge {
+    padding: 20px;
+  }
+
+  .avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 22px;
+  }
+}
