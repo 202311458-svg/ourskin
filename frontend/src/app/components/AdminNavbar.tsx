@@ -9,7 +9,6 @@ import {
   FaCalendarAlt,
   FaRobot,
   FaUserShield,
-  FaCog,
   FaClipboardList,
   FaSignOutAlt,
   FaMoon,
@@ -33,7 +32,6 @@ export default function AdminNavbar() {
     { name: "Appointments", path: "/pages/admin/appointments", icon: <FaCalendarAlt /> },
     { name: "AI Logs", path: "/pages/admin/ai-logs", icon: <FaRobot /> },
     { name: "Staff Management", path: "/pages/admin/staff-mgmt", icon: <FaUserShield /> },
-    { name: "Settings", path: "/pages/admin/settings", icon: <FaCog /> },
     { name: "Audit Logs", path: "/pages/admin/audit-logs", icon: <FaClipboardList /> },
   ];
 
