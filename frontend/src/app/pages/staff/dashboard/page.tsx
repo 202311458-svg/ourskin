@@ -34,6 +34,21 @@ export default function StaffDashboard() {
   const [error, setError] = useState("")
   const [submittingId, setSubmittingId] = useState<number | null>(null)
 
+  // DECLINE MODAL STATES (ADDED ONLY)
+  const [declineOpen, setDeclineOpen] = useState(false)
+  const [declineTargetId, setDeclineTargetId] = useState<number | null>(null)
+  const [selectedReason, setSelectedReason] = useState("")
+  const [otherReason, setOtherReason] = useState("")
+
+  const declineReasons = [
+    "Conflict in schedule. Kindly select a new schedule.",
+    "Doctor is unavailable on the selected date.",
+    "Incomplete patient information. Please update your details.",
+    "Requested service is not available.",
+    "Duplicate appointment detected.",
+    "Other",
+  ]
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
 
@@ -137,6 +152,7 @@ export default function StaffDashboard() {
       .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [data.confirmed])
 
+  // MODIFIED ONLY FOR DECLINE FLOW (approval untouched)
   const updateStatus = async (id: number, status: "Approved" | "Declined") => {
     const token = localStorage.getItem("token")
 
@@ -145,24 +161,14 @@ export default function StaffDashboard() {
       return
     }
 
-    let payload: { status: "Approved" | "Declined"; cancel_reason?: string }
-
+    // OPEN MODAL INSTEAD OF PROMPT
     if (status === "Declined") {
-      const reason = window.prompt("Enter a reason for declining this appointment.")
-
-      if (!reason || !reason.trim()) {
-        return
-      }
-
-      payload = {
-        status: "Declined",
-        cancel_reason: reason.trim(),
-      }
-    } else {
-      payload = {
-        status: "Approved",
-      }
+      setDeclineTargetId(id)
+      setDeclineOpen(true)
+      return
     }
+
+    const payload = { status: "Approved" }
 
     try {
       setSubmittingId(id)
@@ -185,6 +191,58 @@ export default function StaffDashboard() {
       await loadDashboard()
     } catch (err) {
       console.error("Status update failed:", err)
+      alert("Unable to update the appointment status.")
+    } finally {
+      setSubmittingId(null)
+    }
+  }
+
+  // DECLINE CONFIRM ACTION (ADDED ONLY)
+  const confirmDecline = async () => {
+    if (!declineTargetId) return
+
+    const token = localStorage.getItem("token")
+
+    const finalReason =
+      selectedReason === "Other" ? otherReason.trim() : selectedReason
+
+    if (!finalReason) {
+      alert("Please select a reason.")
+      return
+    }
+
+    try {
+      setSubmittingId(declineTargetId)
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/appointments/${declineTargetId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "Declined",
+            cancel_reason: finalReason,
+          }),
+        }
+      )
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        throw new Error(result.detail || "Failed to update appointment")
+      }
+
+      setDeclineOpen(false)
+      setDeclineTargetId(null)
+      setSelectedReason("")
+      setOtherReason("")
+
+      await loadDashboard()
+    } catch (err) {
+      console.error(err)
       alert("Unable to update the appointment status.")
     } finally {
       setSubmittingId(null)
@@ -360,6 +418,65 @@ export default function StaffDashboard() {
           )}
         </div>
       </div>
+
+      {/* DECLINE MODAL (ADDED ONLY) */}
+      {declineOpen && (
+        <div className={styles.modalOverlay} onClick={() => setDeclineOpen(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Decline Appointment</h2>
+              <button
+                className={styles.modalCloseBtn}
+                onClick={() => setDeclineOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {declineReasons.map((r) => (
+                <button
+                key={r}
+                className={
+                  selectedReason === r
+                    ? `${styles.acceptBtn}`
+                    : `${styles.secondaryBtn}`
+                }
+                onClick={() => setSelectedReason(r)}
+              >
+                {r}
+              </button>
+              ))}
+
+              {selectedReason === "Other" && (
+                <textarea
+                  placeholder="Enter reason..."
+                  value={otherReason}
+                  onChange={(e) => setOtherReason(e.target.value)}
+                  style={{
+                    padding: "10px",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    resize: "none",
+                  }}
+                />
+              )}
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+              <button className={styles.declineBtn} onClick={confirmDecline}>
+                Confirm
+              </button>
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => setDeclineOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

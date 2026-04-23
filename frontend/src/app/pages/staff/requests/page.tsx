@@ -383,7 +383,7 @@ export default function AppointmentRequests() {
 
               {selectedReason === "Other" && (
                 <textarea
-                  placeholder="Enter custom reason..."
+                  placeholder="Enter reason..."
                   value={otherReason}
                   onChange={(e) => setOtherReason(e.target.value)}
                   style={{
