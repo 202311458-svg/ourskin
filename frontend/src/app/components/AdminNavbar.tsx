@@ -58,43 +58,42 @@ export default function AdminNavbar() {
     router.push("/");
   };
 
-  return (
-    <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
-      <div className={styles.logoSection}>
-        <Image
-          src="/os-logo.png"
-          alt="OurSkin"
-          width={collapsed ? 50 : 160}
-          height={collapsed ? 50 : 60}
-          onClick={toggleCollapse}
-        />
+return (
+  <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
 
-        <div
-          className={styles.mobileToggle}
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          <FaBars />
-        </div>
+    <div className={styles.logoSection}>
+      <Image
+        src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
+        alt="OurSkin"
+        width={collapsed ? 70 : 170}
+        height={collapsed ? 70 : 65}
+        onClick={toggleCollapse}
+      />
+
+      <div
+        className={styles.mobileToggle}
+        onClick={() => setMobileOpen(!mobileOpen)}
+      >
+        <FaBars />
       </div>
+    </div>
 
-      <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
-        {navItems.map((item, idx) => (
-          <div
-            key={idx}
-            className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
-            onClick={() => {
-              router.push(item.path);
-              setMobileOpen(false);
-            }}
-          >
-            <span className={styles.icon}>{item.icon}</span>
-            {!collapsed && <span className={styles.label}>{item.name}</span>}
-            {path === item.path && !collapsed && (
-              <span className={styles.activeBar}></span>
-            )}
-          </div>
-        ))}
-      </nav>
+    <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
+      {navItems.map((item, idx) => (
+        <div
+          key={idx}
+          className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
+          onClick={() => {
+            router.push(item.path);
+            setMobileOpen(false);
+          }}
+        >
+          <span className={styles.icon}>{item.icon}</span>
+          {!collapsed && <span className={styles.label}>{item.name}</span>}
+          {path === item.path && !collapsed && <span className={styles.activeBar}></span>}
+        </div>
+      ))}
+    </nav>
 
       <div className={styles.navBottom}>
         <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>

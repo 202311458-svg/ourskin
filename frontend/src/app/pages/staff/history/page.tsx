@@ -150,7 +150,9 @@ export default function StaffHistoryPage() {
           (appt.services || "").toLowerCase().includes(keyword)
 
         const matchesStatus =
-          statusFilter === "All" ? true : appt.status === statusFilter
+        statusFilter === "All"
+          ? true
+          : appt.status?.toLowerCase().trim() === statusFilter.toLowerCase()
 
         return matchesSearch && matchesStatus
       })

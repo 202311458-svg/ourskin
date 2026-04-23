@@ -49,7 +49,7 @@ const patients: Patient[] = [
     id: 1,
     name: "Faith",
     email: "faith@email.com",
-    contact: "09123456789",
+    contact: "09275549997",
   },
   {
     id: 2,

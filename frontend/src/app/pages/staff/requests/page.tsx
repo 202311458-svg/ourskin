@@ -40,9 +40,22 @@ export default function AppointmentRequests() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
 
+  const [declineOpen, setDeclineOpen] = useState(false)
+  const [declineTargetId, setDeclineTargetId] = useState<number | null>(null)
+  const [selectedReason, setSelectedReason] = useState("")
+  const [otherReason, setOtherReason] = useState("")
+
+  const declineReasons = [
+    "Conflict in schedule. Kindly select a new schedule.",
+    "Doctor is unavailable on the selected date.",
+    "Incomplete patient information. Please update your details.",
+    "Requested service is not available.",
+    "Duplicate appointment detected.",
+    "Other",
+  ]
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -52,7 +65,6 @@ export default function AppointmentRequests() {
 
   const formatTime = (timeString: string) => {
     const date = new Date(`1970-01-01T${timeString}`)
-
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -122,16 +134,9 @@ export default function AppointmentRequests() {
     let payload: { status: "Approved" | "Declined"; cancel_reason?: string }
 
     if (status === "Declined") {
-      const reason = window.prompt("Enter a reason for declining this appointment.")
-
-      if (!reason || !reason.trim()) {
-        return
-      }
-
-      payload = {
-        status: "Declined",
-        cancel_reason: reason.trim(),
-      }
+      setDeclineTargetId(id)
+      setDeclineOpen(true)
+      return
     } else {
       payload = {
         status: "Approved",
@@ -161,6 +166,59 @@ export default function AppointmentRequests() {
       if (detailsOpen && selectedAppointment?.id === id) {
         await openDetails({ ...selectedAppointment, status })
       }
+    } catch (err) {
+      console.error("Status update failed:", err)
+      alert("Unable to update the appointment status.")
+    } finally {
+      setSubmittingId(null)
+    }
+  }
+
+  const confirmDecline = async () => {
+    if (!declineTargetId) return
+
+    const token = localStorage.getItem("token")
+
+    const finalReason =
+      selectedReason === "Other"
+        ? otherReason.trim()
+        : selectedReason
+
+    if (!finalReason) {
+      alert("Please select or enter a reason.")
+      return
+    }
+
+    try {
+      setSubmittingId(declineTargetId)
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/appointments/${declineTargetId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "Declined",
+            cancel_reason: finalReason,
+          }),
+        }
+      )
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to update appointment")
+      }
+
+      setDeclineOpen(false)
+      setSelectedReason("")
+      setOtherReason("")
+      setDeclineTargetId(null)
+
+      await loadRequests()
     } catch (err) {
       console.error("Status update failed:", err)
       alert("Unable to update the appointment status.")
@@ -294,6 +352,65 @@ export default function AppointmentRequests() {
           </div>
         </div>
       </div>
+
+      {declineOpen && (
+        <div className={styles.modalOverlay} onClick={() => setDeclineOpen(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Decline Appointment</h2>
+              <button
+                className={styles.modalCloseBtn}
+                onClick={() => setDeclineOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <p className={styles.pageSubtext}>Select a reason for declining.</p>
+
+            <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: 10 }}>
+              {declineReasons.map((reason) => (
+                <button
+                  key={reason}
+                  className={`${styles.filterChip} ${
+                    selectedReason === reason ? styles.filterChipActive : ""
+                  }`}
+                  onClick={() => setSelectedReason(reason)}
+                >
+                  {reason}
+                </button>
+              ))}
+
+              {selectedReason === "Other" && (
+                <textarea
+                  placeholder="Enter custom reason..."
+                  value={otherReason}
+                  onChange={(e) => setOtherReason(e.target.value)}
+                  style={{
+                    padding: "10px",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    resize: "none",
+                  }}
+                />
+              )}
+            </div>
+
+            <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+              <button className={styles.declineBtn} onClick={confirmDecline}>
+                Confirm Decline
+              </button>
+
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => setDeclineOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {detailsOpen && (
         <div className={styles.modalOverlay} onClick={closeDetails}>

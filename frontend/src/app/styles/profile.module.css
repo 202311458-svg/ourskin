@@ -9,7 +9,6 @@
   --input: #f6f6f6;
 }
 
-/* DARK MODE (from navbar toggle) */
 body.darkMode {
   --bg: #0e0e12;
   --text: #f5f5f5;
@@ -19,16 +18,13 @@ body.darkMode {
   --input: #1f1f25;
 }
 
-/* =========================
-   PAGE LAYOUT (KEEP YOUR SYSTEM)
-========================= */
 .page {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
   padding: 40px 20px;
 
-  margin-left: -250px; /* KEEP YOUR NAV SYSTEM */
+  margin-left: -250px; 
   transition: margin-left 0.3s ease, background 0.3s ease, color 0.3s ease;
 }
 
@@ -42,17 +38,11 @@ body.navCollapsed .page {
   }
 }
 
-/* =========================
-   CONTAINER
-========================= */
 .container {
   max-width: 1100px;
   margin: 0 auto;
 }
 
-/* =========================
-   HEADER
-========================= */
 .header {
   margin-bottom: 30px;
 }
@@ -70,9 +60,6 @@ body.navCollapsed .page {
   font-size: 14px;
 }
 
-/* =========================
-   GRID LAYOUT
-========================= */
 .grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -86,9 +73,6 @@ body.navCollapsed .page {
   }
 }
 
-/* =========================
-   CARDS
-========================= */
 .card,
 .cardLarge {
   background: var(--card);
@@ -99,16 +83,12 @@ body.navCollapsed .page {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
-/* =========================
-   PROFILE HEADER
-========================= */
 .profileHeader {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* AVATAR */
 .avatar {
   width: 70px;
   height: 70px;
@@ -122,7 +102,6 @@ body.navCollapsed .page {
   font-weight: 600;
 }
 
-/* NAME SECTION */
 .profileHeader h2 {
   margin: 0;
   font-size: 20px;
@@ -160,18 +139,13 @@ body.navCollapsed .page {
   outline: none;
 }
 
-/* =========================
-   DIVIDER
-========================= */
+
 .divider {
   height: 1px;
   background: var(--border);
   margin: 20px 0;
 }
 
-/* =========================
-   INFO BLOCK (CLEAN LAYOUT)
-========================= */
 .infoBlock {
   display: flex;
   flex-direction: column;
@@ -189,9 +163,6 @@ body.navCollapsed .page {
   color: var(--muted);
 }
 
-/* =========================
-   SECURITY SECTION
-========================= */
 .card h3 {
   margin: 0;
   font-size: 18px;
@@ -204,7 +175,6 @@ body.navCollapsed .page {
   color: var(--muted);
 }
 
-/* BUTTON */
 .primaryBtn {
   background: var(--accent);
   color: #fff;
@@ -221,9 +191,6 @@ body.navCollapsed .page {
   filter: brightness(1.08);
 }
 
-/* =========================
-   PASSWORD FORM
-========================= */
 .form {
   margin-top: 18px;
   display: flex;
@@ -231,7 +198,6 @@ body.navCollapsed .page {
   gap: 14px;
 }
 
-/* INPUT GROUP (modern clean UX) */
 .inputGroup {
   display: flex;
   align-items: center;
@@ -243,7 +209,6 @@ body.navCollapsed .page {
   padding: 10px;
 }
 
-/* INPUT FIELD */
 .inputGroup input {
   flex: 1;
   border: none;
@@ -253,7 +218,6 @@ body.navCollapsed .page {
   font-size: 14px;
 }
 
-/* SHOW/HIDE BUTTON */
 .inputGroup button {
   background: transparent;
   border: none;
@@ -263,9 +227,6 @@ body.navCollapsed .page {
   font-weight: 600;
 }
 
-/* =========================
-   STATES
-========================= */
 .loading {
   color: var(--muted);
 }
@@ -274,9 +235,6 @@ body.navCollapsed .page {
   color: var(--muted);
 }
 
-/* =========================
-   RESPONSIVE SAFETY
-========================= */
 @media (max-width: 600px) {
   .page {
     padding: 25px 15px;

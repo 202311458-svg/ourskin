@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-import { FaCamera } from "react-icons/fa";
 import {
   FaCalendarAlt,
   FaHistory,
@@ -46,7 +45,6 @@ const toggleCollapse = () => {
   if (newState) document.body.classList.add("navCollapsed");
   else document.body.classList.remove("navCollapsed");
 
-  // Dispatch event so pages can listen
   window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
 };
 
@@ -58,7 +56,7 @@ const toggleCollapse = () => {
         src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
         alt="OurSkin"
         width={collapsed ? 70 : 170}
-        height={collapsed ? 70 : 150}
+        height={collapsed ? 70 : 65}
         onClick={toggleCollapse}
       />
 

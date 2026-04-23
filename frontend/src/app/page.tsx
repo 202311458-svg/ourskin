@@ -15,7 +15,7 @@ export default function Home() {
   useEffect(() => {
     const interval = setInterval(() => setCurrentImage((prev) => (prev + 1) % clinicImages.length), 3500)
     return () => clearInterval(interval)
-  }, [])
+  }, [clinicImages.length])
 
   const serviceImages = ["/service1.jpg", "/service2.jpg", "/service3.jpg", "/service4.jpg", "/service5.jpg", "/service6.jpg"]
   const [serviceModalOpen, setServiceModalOpen] = useState(false)
