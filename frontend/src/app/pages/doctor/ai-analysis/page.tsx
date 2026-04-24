@@ -1314,106 +1314,153 @@ if (selectedVisitReport || isCompletedTarget) {
   };
 
 
+const parseSavedDoctorPrescription = (value?: string | null) => {
+  if (!value) {
+    return {
+      medication: "—",
+      usage: "—",
+      reason: "—",
+    };
+  }
 
-  const renderHistoryStage = () => {
-    if (loadingPatientHistory) {
-      return (
-        <section className={styles.workflowCard}>
-          <div className={styles.emptyState}>Loading medical history...</div>
-        </section>
-      );
-    }
+  const medicationMatch = value.match(/Medication:\s*([\s\S]*?)(?=\nUsage:|\nReason:|$)/i);
+  const usageMatch = value.match(/Usage:\s*([\s\S]*?)(?=\nReason:|$)/i);
+  const reasonMatch = value.match(/Reason:\s*([\s\S]*)/i);
 
-    const completedMedicalHistory = sortedCompletedReports.filter(
-      (item) =>
-        item.report?.doctor_final_diagnosis ||
-        item.report?.doctor_prescription ||
-        item.linked_analysis
-    );
+  return {
+    medication: medicationMatch?.[1]?.trim() || "—",
+    usage: usageMatch?.[1]?.trim() || "—",
+    reason: reasonMatch?.[1]?.trim() || "—",
+  };
+};
 
-    if (completedMedicalHistory.length === 0) {
-      return (
-        <section className={styles.workflowCard}>
-          <div className={styles.emptyState}>
-            No completed medical history yet.
-          </div>
-        </section>
-      );
-    }
 
+const renderHistoryStage = () => {
+  if (loadingPatientHistory) {
     return (
       <section className={styles.workflowCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <p className={styles.eyebrow}>Medical History</p>
-            <h2>Completed AI Results and Doctor Diagnoses</h2>
-            <p>
-              This section shows completed AI results together with the saved
-              doctor diagnosis.
-            </p>
-          </div>
-        </div>
+        <div className={styles.emptyState}>Loading medical history...</div>
+      </section>
+    );
+  }
 
-        <div className={styles.medicalHistoryGrid}>
-          {completedMedicalHistory.map((item) => {
-            const linkedAnalysis = item.linked_analysis;
+  const completedMedicalHistory = sortedCompletedReports.filter(
+    (item) =>
+      item.report?.doctor_final_diagnosis ||
+      item.report?.doctor_prescription ||
+      item.linked_analysis
+  );
 
-            return (
-              <article key={item.report.id} className={styles.historyCard}>
-                <div className={styles.historyHeader}>
-                  <div>
-                    <strong>
-                      {item.appointment?.date || "Unknown date"} •{" "}
-                      {item.appointment?.services || "Consultation"}
-                    </strong>
-                    <span>Doctor: {item.doctor?.name || "Unknown"}</span>
-                  </div>
-
-                  <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
-                    Completed
-                  </span>
-                </div>
-
-                {linkedAnalysis?.image_path && (
-                  <img
-                    src={buildImageUrl(linkedAnalysis.image_path)}
-                    alt="Completed AI analysis"
-                    className={styles.historyImage}
-                  />
-                )}
-
-                <div className={styles.historyBody}>
-                  <p>
-                    <b>AI Result:</b>{" "}
-                    {linkedAnalysis?.condition
-                      ? `${linkedAnalysis.condition} • ${
-                          linkedAnalysis.severity || "—"
-                        }`
-                      : "No linked AI result"}
-                  </p>
-
-                  <p>
-                    <b>Doctor Diagnosis:</b>{" "}
-                    {item.report.doctor_final_diagnosis || "—"}
-                  </p>
-
-                  <p>
-                    <b>Prescription:</b>{" "}
-                    {item.report.doctor_prescription || "—"}
-                  </p>
-
-                  <p>
-                    <b>Follow-up Plan:</b>{" "}
-                    {item.report.follow_up_plan || "—"}
-                  </p>
-                </div>
-              </article>
-            );
-          })}
+  if (completedMedicalHistory.length === 0) {
+    return (
+      <section className={styles.workflowCard}>
+        <div className={styles.emptyState}>
+          No completed medical history yet.
         </div>
       </section>
     );
-  };
+  }
+
+  return (
+    <section className={styles.workflowCard}>
+      <div className={styles.cardHeader}>
+        <div>
+          <p className={styles.eyebrow}>Medical History</p>
+          <h2>Completed Patient Records</h2>
+          <p>
+            Review completed AI results, doctor diagnosis, prescription details,
+            and follow-up instructions.
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.medicalHistoryList}>
+        {completedMedicalHistory.map((item) => {
+          const linkedAnalysis = item.linked_analysis;
+          const prescription = parseSavedDoctorPrescription(
+            item.report.doctor_prescription
+          );
+
+          return (
+            <article key={item.report.id} className={styles.medicalHistoryCard}>
+              <div className={styles.medicalHistoryTop}>
+                <div>
+                  <p className={styles.historyDate}>
+                    {item.appointment?.date || "Unknown date"}
+                  </p>
+                  <h3>{item.appointment?.services || "Consultation"}</h3>
+                  <span>Doctor: {item.doctor?.name || "Unknown"}</span>
+                </div>
+
+                <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
+                  Completed
+                </span>
+              </div>
+
+              <div className={styles.medicalHistoryContent}>
+                {linkedAnalysis?.image_path && (
+                  <div className={styles.medicalHistoryImageWrap}>
+                    <img
+                      src={buildImageUrl(linkedAnalysis.image_path)}
+                      alt="Completed AI analysis"
+                      className={styles.medicalHistoryImage}
+                    />
+                  </div>
+                )}
+
+                <div className={styles.medicalHistoryDetails}>
+                  <div className={styles.historyInfoGrid}>
+                    <div className={styles.historyInfoBox}>
+                      <span>AI Result</span>
+                      <strong>
+                        {linkedAnalysis?.condition
+                          ? `${linkedAnalysis.condition} • ${
+                              linkedAnalysis.severity || "—"
+                            }`
+                          : "No linked AI result"}
+                      </strong>
+                    </div>
+
+                    <div className={styles.historyInfoBox}>
+                      <span>Doctor Diagnosis</span>
+                      <strong>
+                        {item.report.doctor_final_diagnosis || "—"}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.historyPrescriptionBox}>
+                    <h4>Prescription</h4>
+
+                    <div className={styles.historyPrescriptionRow}>
+                      <span>Medication</span>
+                      <p>{prescription.medication}</p>
+                    </div>
+
+                    <div className={styles.historyPrescriptionRow}>
+                      <span>Usage</span>
+                      <p>{prescription.usage}</p>
+                    </div>
+
+                    <div className={styles.historyPrescriptionRow}>
+                      <span>Reason</span>
+                      <p>{prescription.reason}</p>
+                    </div>
+                  </div>
+
+                  <div className={styles.historyFollowUpBox}>
+                    <span>Follow-up Plan</span>
+                    <p>{item.report.follow_up_plan || "—"}</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
 
   return (
     <>
