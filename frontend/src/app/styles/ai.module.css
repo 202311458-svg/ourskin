@@ -1,0 +1,1205 @@
+.pageShell {
+  min-height: 100vh;
+  padding: 36px 38px 60px 298px;
+  background: #f7f5f6;
+  color: #171316;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #121014;
+}
+
+.pageHeader p {
+  max-width: 780px;
+  margin: 8px 0 0;
+  color: #625a61;
+  font-size: 15px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #93365a;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Patient Picker */
+
+.patientPickerShell {
+  display: grid;
+  place-items: start center;
+  width: 100%;
+}
+
+.patientPickerCard {
+  width: min(980px, 100%);
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #eee5e9;
+  border-radius: 28px;
+  box-shadow: 0 18px 45px rgba(76, 38, 54, 0.08);
+}
+
+.patientPickerHeader {
+  margin-bottom: 22px;
+}
+
+.patientPickerHeader h2 {
+  margin: 0;
+  color: #181216;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.patientPickerHeader p {
+  margin: 8px 0 0;
+  color: #716870;
+  font-size: 14px;
+}
+
+.patientListPicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.patientItem {
+  width: 100%;
+  border: 1px solid #eee3e8;
+  border-radius: 20px;
+  background: #fffafb;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.patientItem:hover {
+  transform: translateY(-2px);
+  border-color: #c98aa1;
+  box-shadow: 0 14px 30px rgba(89, 37, 56, 0.1);
+}
+
+.patientItemTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.patientItemTop strong {
+  display: block;
+  color: #181216;
+  font-size: 15px;
+}
+
+.patientItemTop span {
+  display: block;
+  margin-top: 4px;
+  color: #716870;
+  font-size: 13px;
+}
+
+.patientItemFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+  color: #716870;
+  font-size: 12px;
+}
+
+/* Selected Patient Workspace */
+
+.selectedPatientShell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  min-width: 0;
+}
+
+.patientSummaryCard,
+.workflowCard,
+.stepperCard {
+  background: #ffffff;
+  border: 1px solid #eee5e9;
+  border-radius: 28px;
+  box-shadow: 0 18px 45px rgba(76, 38, 54, 0.08);
+}
+
+.patientSummaryCard {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 22px;
+  padding: 24px;
+}
+
+.patientIdentity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.patientIdentity h2,
+.workflowCard h2,
+.cardHeader h2 {
+  margin: 0;
+  color: #181216;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.patientIdentity p,
+.cardHeader p {
+  margin: 6px 0 0;
+  color: #716870;
+  font-size: 14px;
+}
+
+.avatarCircle {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #93365a, #c46b8c);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.patientHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.summaryMetrics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summaryMetrics div,
+.summaryCard,
+.summaryCardWide {
+  padding: 16px;
+  border: 1px solid #eee5e9;
+  border-radius: 20px;
+  background: #fbf9fa;
+}
+
+.summaryMetrics strong {
+  display: block;
+  margin-top: 8px;
+  color: #171316;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.infoLabel {
+  display: block;
+  color: #7d6d76;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.visitSelector {
+  grid-column: 1 / -1;
+}
+
+/* Forms */
+
+.searchBox,
+.formGroup,
+.formGroupFull,
+.visitSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.searchBox label,
+.formGroup label,
+.formGroupFull label,
+.visitSelector label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #221920;
+}
+
+.searchBox input,
+.formGroup input,
+.formGroup select,
+.formGroupFull textarea,
+.visitSelector select {
+  width: 100%;
+  border: 1px solid #e6dce1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #171316;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchBox input,
+.formGroup input,
+.formGroup select,
+.visitSelector select {
+  min-height: 48px;
+  padding: 0 15px;
+}
+
+.formGroupFull textarea {
+  min-height: 118px;
+  padding: 14px 15px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.searchBox input:focus,
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroupFull textarea:focus,
+.visitSelector select:focus {
+  border-color: #93365a;
+  box-shadow: 0 0 0 4px rgba(147, 54, 90, 0.12);
+}
+
+/* Stepper */
+
+.stepperCard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #625a61;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.stepButton span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f0e5ea;
+  color: #93365a;
+  font-size: 12px;
+}
+
+.stepButton:hover {
+  background: #faf1f4;
+  color: #93365a;
+}
+
+.stepButtonActive {
+  background: #93365a;
+  color: #ffffff;
+}
+
+.stepButtonActive span {
+  background: #ffffff;
+  color: #93365a;
+}
+
+/* Cards and Buttons */
+
+.workflowCard {
+  padding: 24px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.primaryButton {
+  width: fit-content;
+  margin-top: 18px;
+  border: 1px solid #93365a;
+  background: #93365a;
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(147, 54, 90, 0.22);
+}
+
+.secondaryButton {
+  border: 1px solid #d9bcc8;
+  background: #ffffff;
+  color: #93365a;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+/* AI Scan */
+
+.scanStack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+}
+
+.scanUploadCenter {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.scanUploadCenter .workflowCard {
+  width: min(720px, 100%);
+}
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-height: 230px;
+  padding: 30px;
+  border: 2px dashed #d9bcc8;
+  border-radius: 26px;
+  background: #fff8fa;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.dropZone:hover {
+  transform: translateY(-2px);
+  border-color: #93365a;
+  background: #fff2f6;
+}
+
+.dropZone input {
+  display: none;
+}
+
+.dropIcon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 20px;
+  background: #93365a;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dropZone strong {
+  color: #171316;
+  font-size: 16px;
+}
+
+.dropZone small {
+  color: #716870;
+}
+
+/* AI Result */
+
+.aiResultCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.aiResultHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.resultTitle {
+  margin: 0;
+  color: #171316;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.resultMeta {
+  margin: 6px 0 0;
+  color: #716870;
+  font-size: 13px;
+}
+
+.resultBadgeStack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.aiOnlyBadge,
+.confidenceBadge,
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.aiOnlyBadge {
+  background: #f0e5ea;
+  color: #93365a;
+}
+
+.confidenceBadge {
+  background: #edf7f0;
+  color: #237246;
+}
+
+.statusBadge {
+  background: #f0e5ea;
+  color: #7d3b56;
+}
+
+.badgeApproved {
+  background: #eaf8ef;
+  color: #247a4a;
+}
+
+.badgeCompleted {
+  background: #eaf0ff;
+  color: #315bbd;
+}
+
+.badgePending {
+  background: #fff6df;
+  color: #9a6a00;
+}
+
+.badgeUrgent {
+  background: #ffe8e8;
+  color: #b42318;
+}
+
+.aiResultGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.imagePanel {
+  min-width: 0;
+}
+
+.analysisImage {
+  width: 100%;
+  height: 320px;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 24px;
+  border: 1px solid #eee5e9;
+  background: #f5eef1;
+}
+
+.imagePlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 320px;
+  border-radius: 24px;
+  border: 1px dashed #d9bcc8;
+  background: #fff8fa;
+  color: #7d6d76;
+  font-weight: 800;
+}
+
+.aiSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryCard strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+  color: #171316;
+}
+
+.summaryCardWide {
+  grid-column: span 2;
+}
+
+.summaryCardWide p {
+  margin: 8px 0 0;
+  color: #2c252b;
+  line-height: 1.55;
+}
+
+/* AI Details */
+
+.detailSectionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detailBlock {
+  padding: 18px;
+  border: 1px solid #eee5e9;
+  border-radius: 22px;
+  background: #ffffff;
+}
+
+.warningBlock {
+  background: #fff9f6;
+  border-color: #f3d2c4;
+}
+
+.blockHeader h4 {
+  margin: 0;
+  color: #171316;
+  font-size: 17px;
+}
+
+.blockHeader p {
+  margin: 6px 0 14px;
+  color: #716870;
+  font-size: 13px;
+}
+
+.softList,
+.warningList,
+.medicationStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.softListItem,
+.warningItem {
+  padding: 12px 13px;
+  border-radius: 16px;
+  background: #fbf9fa;
+  color: #2b252a;
+  line-height: 1.45;
+}
+
+.warningItem {
+  background: #fff0ec;
+  color: #8f2d1f;
+}
+
+.medicationCard {
+  padding: 14px;
+  border: 1px solid #eee5e9;
+  border-radius: 18px;
+  background: #fbf9fa;
+}
+
+.medicationCard strong {
+  display: block;
+  margin-bottom: 12px;
+  color: #171316;
+}
+
+.medicationRow {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eee5e9;
+}
+
+.medicationRow + .medicationRow {
+  margin-top: 10px;
+}
+
+.medicationRow span {
+  color: #7d6d76;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.medicationRow p {
+  margin: 0;
+  color: #2b252a;
+  line-height: 1.45;
+}
+
+/* Doctor Assessment */
+
+.assessmentForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.formGroupFull,
+.prescriptionBox,
+.formActions {
+  grid-column: 1 / -1;
+}
+
+.prescriptionBox {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #eee5e9;
+  border-radius: 24px;
+  background: #fbf9fa;
+}
+
+.prescriptionHeader {
+  grid-column: 1 / -1;
+}
+
+.prescriptionHeader h3 {
+  margin: 0;
+  color: #171316;
+  font-size: 18px;
+}
+
+.prescriptionHeader p {
+  margin: 5px 0 0;
+  color: #716870;
+  font-size: 13px;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Reports and History */
+
+.reportGrid,
+.medicalHistoryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.historyCard {
+  min-height: 210px;
+  padding: 18px;
+  border: 1px solid #eee5e9;
+  border-radius: 22px;
+  background: #fbf9fa;
+}
+
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.historyHeader strong {
+  display: block;
+  color: #171316;
+  line-height: 1.35;
+}
+
+.historyHeader span {
+  display: block;
+  margin-top: 5px;
+  color: #716870;
+  font-size: 13px;
+}
+
+.historyBody {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.historyBody p {
+  margin: 0;
+  color: #2b252a;
+  line-height: 1.5;
+}
+
+.historyImage {
+  width: 100%;
+  height: 230px;
+  object-fit: cover;
+  margin-top: 16px;
+  border-radius: 18px;
+  border: 1px solid #eee5e9;
+  background: #f7f2f4;
+}
+
+/* States */
+
+.emptyState,
+.emptyStateSmall,
+.readOnlyBanner {
+  border-radius: 20px;
+  background: #fbf9fa;
+  color: #716870;
+  text-align: center;
+}
+
+.emptyState {
+  padding: 34px 20px;
+  font-weight: 800;
+}
+
+.emptyStateSmall {
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.readOnlyBanner {
+  padding: 16px 18px;
+  border: 1px solid #eadce2;
+  color: #7d3b56;
+  font-weight: 800;
+  text-align: left;
+}
+
+/* Responsive */
+
+@media (max-width: 1180px) {
+  .pageShell {
+    padding-left: 270px;
+  }
+
+  .aiResultGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scanUploadCenter .workflowCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .pageShell {
+    padding: 28px 20px 60px;
+  }
+
+  .patientSummaryCard,
+  .summaryMetrics,
+  .stepperCard,
+  .patientListPicker,
+  .aiSummaryGrid,
+  .detailSectionGrid,
+  .assessmentForm,
+  .prescriptionBox,
+  .reportGrid,
+  .medicalHistoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCardWide {
+    grid-column: auto;
+  }
+
+  .stepButton {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  .patientHeaderActions {
+    justify-content: flex-start;
+  }
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.aiSuggestionButton {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d9bcc8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #93365a;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.aiSuggestionButton:hover {
+  background: #fff2f6;
+  transform: translateY(-1px);
+}
+
+.aiSuggestionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.aiSuggestionPreview {
+  padding: 12px 14px;
+  border: 1px solid #eadce2;
+  border-radius: 16px;
+  background: #fff8fa;
+}
+
+.aiSuggestionPreview span {
+  display: block;
+  margin-bottom: 6px;
+  color: #93365a;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.aiSuggestionPreview p {
+  margin: 0;
+  color: #2b252a;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+
+
+
+
+
+.assessmentForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.formGroup,
+.formGroupFull {
+  width: 100%;
+}
+
+.prescriptionBox {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.aiSuggestionPreview {
+  width: 100%;
+}
+
+.assessmentForm input,
+.assessmentForm select,
+.assessmentForm textarea {
+  width: 100%;
+}
+
+
+/* AI Result layout after removing Suggested Treatments */
+.detailSectionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detailSectionGrid .detailBlock:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Keep prescription suggestions wider because it contains medicine, usage, and reason */
+.medicationStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Doctor Assessment prescription fields */
+.prescriptionBox .formGroup input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 15px;
+  border: 1px solid #e6dce1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #171316;
+  font-size: 14px;
+  outline: none;
+}
+
+.prescriptionBox .formGroup input:focus {
+  border-color: #93365a;
+  box-shadow: 0 0 0 4px rgba(147, 54, 90, 0.12);
+}
+
+.prescriptionBox .formGroupFull textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 14px 15px;
+  border: 1px solid #e6dce1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #171316;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+}
+
+.prescriptionBox .formGroupFull textarea:focus {
+  border-color: #93365a;
+  box-shadow: 0 0 0 4px rgba(147, 54, 90, 0.12);
+}
+
+@media (max-width: 980px) {
+  .detailSectionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailSectionGrid .detailBlock:first-child {
+    grid-column: auto;
+  }
+}
+
+/* ================================
+   Cleaner Medical History Layout
+   ================================ */
+
+.medicalHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.medicalHistoryCard {
+  padding: 20px;
+  border: 1px solid #eee5e9;
+  border-radius: 24px;
+  background: #fbf9fa;
+}
+
+.medicalHistoryTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.historyDate {
+  margin: 0 0 4px;
+  color: #93365a;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.medicalHistoryTop h3 {
+  margin: 0;
+  color: #171316;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.medicalHistoryTop span {
+  display: block;
+  margin-top: 6px;
+  color: #716870;
+  font-size: 13px;
+}
+
+.medicalHistoryContent {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.medicalHistoryImageWrap {
+  width: 100%;
+}
+
+.medicalHistoryImage {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  border-radius: 20px;
+  border: 1px solid #eee5e9;
+  background: #f7f2f4;
+}
+
+.medicalHistoryDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.historyInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.historyInfoBox,
+.historyPrescriptionBox,
+.historyFollowUpBox {
+  padding: 16px;
+  border: 1px solid #eee5e9;
+  border-radius: 20px;
+  background: #ffffff;
+}
+
+.historyInfoBox span,
+.historyPrescriptionRow span,
+.historyFollowUpBox span {
+  display: block;
+  color: #7d6d76;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.historyInfoBox strong {
+  display: block;
+  margin-top: 8px;
+  color: #171316;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.historyPrescriptionBox h4 {
+  margin: 0 0 12px;
+  color: #171316;
+  font-size: 17px;
+}
+
+.historyPrescriptionRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eee5e9;
+}
+
+.historyPrescriptionRow + .historyPrescriptionRow {
+  margin-top: 12px;
+}
+
+.historyPrescriptionRow p,
+.historyFollowUpBox p {
+  margin: 0;
+  color: #2b252a;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.historyFollowUpBox p {
+  margin-top: 8px;
+}
+
+@media (max-width: 1100px) {
+  .medicalHistoryContent {
+    grid-template-columns: 1fr;
+  }
+
+  .medicalHistoryImage {
+    height: 260px;
+  }
+}
+
+@media (max-width: 700px) {
+  .medicalHistoryTop,
+  .historyInfoGrid,
+  .historyPrescriptionRow {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .medicalHistoryTop {
+    gap: 10px;
+  }
+}

@@ -1163,3 +1163,42 @@ body.navCollapsed .staffContent {
     left: 12px;
   }
 }
+
+/* ================================
+   Doctor Assessment Single Column Fix
+   ================================ */
+
+.assessmentForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.formGroup,
+.formGroupFull {
+  width: 100%;
+}
+
+.prescriptionBox {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.aiSuggestionPreview {
+  width: 100%;
+}
+
+.assessmentForm input,
+.assessmentForm select,
+.assessmentForm textarea {
+  width: 100%;
+}
