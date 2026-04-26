@@ -22,27 +22,32 @@ body.darkMode {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  padding: 40px 20px;
+  padding: 40px 32px;
 
-  margin-left: -250px; 
-  transition: margin-left 0.3s ease, background 0.3s ease, color 0.3s ease;
+  margin-left: 220px;
+  width: calc(100% - 220px);
+  box-sizing: border-box;
+
+  transition: margin-left 0.3s ease, width 0.3s ease, background 0.3s ease, color 0.3s ease;
 }
 
 body.navCollapsed .page {
-  margin-left: -500px;
+  margin-left: 80px;
+  width: calc(100% - 80px);
 }
 
 @media (max-width: 768px) {
   .page {
     margin-left: 0;
+    width: 100%;
+    padding: 88px 20px 24px;
   }
 }
-
 .container {
   max-width: 1100px;
   margin: 0 auto;
+  width: 100%;
 }
-
 .header {
   margin-bottom: 30px;
 }

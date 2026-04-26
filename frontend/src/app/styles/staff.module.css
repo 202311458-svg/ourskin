@@ -1,8 +1,11 @@
 .staffPage {
   min-height: 100vh;
-  padding: 28px;
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  padding: 40px 48px;
   background: #f6f8fc;
   color: #1f2937;
+  box-sizing: border-box;
 }
 
 .dashboardHeader {

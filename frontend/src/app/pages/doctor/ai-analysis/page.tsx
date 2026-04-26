@@ -8,11 +8,13 @@ import { API_BASE_URL } from "@/lib/api";
 import {
   analyzeAppointmentSkin,
   getAppointmentAnalyses,
+  getAppointmentDiagnosisReport,
   getDoctorAppointments,
   getDoctorPatientHistory,
   getDoctorPatients,
   type Analysis,
   type Appointment,
+  type DiagnosisReport,
   type DoctorPatientHistoryResponse,
   type DoctorPatientListItem,
 } from "@/lib/doctor-api";
@@ -30,6 +32,13 @@ type DoctorAssessmentForm = {
   followUpPlan: string;
   redFlags: string;
   patientInstructions: string;
+};
+
+type PatientVisitHistoryRecord = {
+  appointment: Appointment;
+  analyses: Analysis[];
+  report: DiagnosisReport | null;
+  linked_analysis?: Analysis | null;
 };
 
 const emptyAssessmentForm: DoctorAssessmentForm = {
@@ -54,20 +63,175 @@ const sortAppointmentsDesc = (items: Appointment[]) => {
   });
 };
 
+const getAppointmentDateTime = (appointment: Appointment) => {
+  return new Date(`${appointment.date}T${appointment.time || "00:00:00"}`);
+};
+
+const isBlockedAppointmentStatus = (status?: string | null) => {
+  const normalized = (status || "").trim().toLowerCase();
+
+  return normalized === "declined" || normalized === "cancelled";
+};
+
+const isVisibleAiAppointment = (appointment: Appointment) => {
+  return Boolean(appointment.patient_id) && !isBlockedAppointmentStatus(appointment.status);
+};
+
+const isAiAvailableForAppointment = (appointment: Appointment | null) => {
+  if (!appointment) return false;
+
+  const status = appointment.status?.trim().toLowerCase();
+
+  if (status === "completed") return true;
+  if (status !== "approved") return false;
+
+  const appointmentDateTime = getAppointmentDateTime(appointment);
+  const now = new Date();
+
+  return appointmentDateTime <= now;
+};
+
+const formatAppointmentSchedule = (appointment: Appointment) => {
+  const appointmentDateTime = getAppointmentDateTime(appointment);
+
+  if (Number.isNaN(appointmentDateTime.getTime())) {
+    return `${appointment.date} at ${appointment.time || "the scheduled time"}`;
+  }
+
+  return appointmentDateTime.toLocaleString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const getAiUnavailableMessage = (appointment: Appointment | null) => {
+  if (!appointment) {
+    return "Please select a valid consultation before running an AI skin analysis.";
+  }
+
+  const status = appointment.status?.trim().toLowerCase();
+
+  if (status === "pending") {
+    return "This appointment is still pending approval. AI skin analysis will become available once the consultation is approved and the scheduled time has started.";
+  }
+
+  if (status === "declined" || status === "cancelled") {
+    return "AI skin analysis is not available for declined or cancelled appointments.";
+  }
+
+  if (status === "approved" && !isAiAvailableForAppointment(appointment)) {
+    return `This consultation is scheduled for ${formatAppointmentSchedule(
+      appointment
+    )}. AI skin analysis can only be used during or after the consultation, once the doctor has seen the patient's concern.`;
+  }
+
+  return "";
+};
+
+
+const buildEmptyPatientHistory = (
+  patientItem: DoctorPatientListItem | null
+): DoctorPatientHistoryResponse | null => {
+  if (!patientItem) return null;
+
+  return {
+    patient: patientItem.patient,
+    total_reports: patientItem.total_reports || 0,
+    history: [],
+  };
+};
+
+const buildPatientListFromAppointments = (
+  reportPatients: DoctorPatientListItem[],
+  appointments: Appointment[]
+): DoctorPatientListItem[] => {
+  const map = new Map<number, DoctorPatientListItem>();
+
+  reportPatients.forEach((item) => {
+    if (!item.patient?.id) return;
+
+    map.set(item.patient.id, {
+      ...item,
+      latest_report: item.latest_report || null,
+      latest_appointment: item.latest_appointment || null,
+      total_reports: item.total_reports || 0,
+    });
+  });
+
+  const validAppointments = appointments.filter(isVisibleAiAppointment);
+
+  const sortedAppointments = sortAppointmentsDesc(validAppointments);
+
+  sortedAppointments.forEach((appt) => {
+    if (!appt.patient_id) return;
+
+    const existing = map.get(appt.patient_id);
+
+    if (!existing) {
+      map.set(appt.patient_id, {
+        patient: {
+          id: appt.patient_id,
+          name: appt.patient_name || "Unnamed patient",
+          email: appt.patient_email || null,
+        },
+        latest_report: null,
+        latest_appointment: appt,
+        total_reports: 0,
+      });
+
+      return;
+    }
+
+    if (!existing.latest_appointment) {
+      map.set(appt.patient_id, {
+        ...existing,
+        latest_appointment: appt,
+      });
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    const aDate = a.latest_appointment
+      ? new Date(
+          `${a.latest_appointment.date}T${
+            a.latest_appointment.time || "00:00:00"
+          }`
+        ).getTime()
+      : 0;
+
+    const bDate = b.latest_appointment
+      ? new Date(
+          `${b.latest_appointment.date}T${
+            b.latest_appointment.time || "00:00:00"
+          }`
+        ).getTime()
+      : 0;
+
+    return bDate - aDate;
+  });
+};
+
 const pickBestTargetAppointment = (items: Appointment[]) => {
-  const approved = sortAppointmentsDesc(
-    items.filter((item) => item.status === "Approved")
+  const visibleItems = sortAppointmentsDesc(
+    items.filter((item) => isVisibleAiAppointment(item))
   );
 
-  if (approved.length > 0) return approved[0];
+  if (visibleItems.length === 0) return null;
 
-  const completed = sortAppointmentsDesc(
-    items.filter((item) => item.status === "Completed")
+  const readyApproved = visibleItems.find(
+    (item) => item.status === "Approved" && isAiAvailableForAppointment(item)
   );
 
-  if (completed.length > 0) return completed[0];
+  if (readyApproved) return readyApproved;
 
-  return null;
+  const completed = visibleItems.find((item) => item.status === "Completed");
+
+  if (completed) return completed;
+
+  return visibleItems[0];
 };
 
 const buildImageUrl = (path?: string | null) => {
@@ -101,30 +265,227 @@ const splitMultilineText = (value?: string | null) => {
     .map((item) => item.replace(/^-\s*/, ""));
 };
 
-const parsePrescriptionSuggestions = (value?: string | null) => {
-  const rows = splitMultilineText(value);
+type ParsedPrescriptionItem = {
+  medication: string;
+  usage: string;
+  reason: string;
+};
 
-  return rows.map((row) => {
-    const parts = row.split("|").map((part) => part.trim());
+const cleanPrescriptionText = (value?: string | null) => {
+  return (value || "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim();
+};
 
-    const medication = parts[0] || "Suggested medication";
+const normalizePrescriptionLine = (value: string) => {
+  return value
+    .replace(/^[-•]\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
-    const usage =
-      parts
-        .find((part) => part.toLowerCase().startsWith("usage:"))
-        ?.replace(/^usage:\s*/i, "") || "";
+const splitPrescriptionList = (value: string) => {
+  return value
+    .split(/\n|;/)
+    .map((item) => normalizePrescriptionLine(item))
+    .filter(Boolean)
+    .map((item) => stripPrescriptionLabel(item, "Medication"));
+};
 
-    const reason =
-      parts
-        .find((part) => part.toLowerCase().startsWith("reason:"))
-        ?.replace(/^reason:\s*/i, "") || "";
+const stripPrescriptionLabel = (value: string, label: string) => {
+  const expression = new RegExp(`^${label}:\\s*`, "i");
+  return value.replace(expression, "").trim();
+};
 
-    return {
-      medication,
-      usage,
-      reason,
-    };
+const getLabelIndex = (text: string, label: string) => {
+  const match = text.match(new RegExp(`\\b${label}:\\s*`, "i"));
+  return match?.index ?? -1;
+};
+
+const extractPrescriptionSection = (text: string, label: string) => {
+  const labels = ["Medication", "Usage", "Reason"];
+  const nextLabels = labels.filter(
+    (item) => item.toLowerCase() !== label.toLowerCase()
+  );
+  const nextPattern = nextLabels.map((item) => `${item}:`).join("|");
+  const expression = new RegExp(
+    `${label}:\\s*([\\s\\S]*?)(?=\\s+(?:${nextPattern})|$)`,
+    "i"
+  );
+
+  return text.match(expression)?.[1]?.trim() || "";
+};
+
+const parsePipePrescriptionLine = (
+  rawLine: string,
+  index: number
+): ParsedPrescriptionItem => {
+  const line = normalizePrescriptionLine(rawLine);
+  const parts = line
+    .split("|")
+    .map((part) => normalizePrescriptionLine(part))
+    .filter(Boolean);
+
+  let medication = stripPrescriptionLabel(parts[0] || "", "Medication");
+  let usage = "";
+  let reason = "";
+
+  parts.slice(1).forEach((part) => {
+    if (/^usage:/i.test(part)) {
+      usage = stripPrescriptionLabel(part, "Usage");
+    } else if (/^reason:/i.test(part)) {
+      reason = stripPrescriptionLabel(part, "Reason");
+    }
   });
+
+  if (!usage && !reason && line) {
+    const usageIndex = getLabelIndex(line, "Usage");
+    const reasonIndex = getLabelIndex(line, "Reason");
+    const firstLabelIndex = [usageIndex, reasonIndex]
+      .filter((value) => value >= 0)
+      .sort((a, b) => a - b)[0];
+
+    if (firstLabelIndex !== undefined) {
+      medication = stripPrescriptionLabel(line.slice(0, firstLabelIndex), "Medication");
+
+      if (usageIndex >= 0) {
+        const usageStart =
+          usageIndex + line.slice(usageIndex).match(/^Usage:\s*/i)![0].length;
+        const usageEnd = reasonIndex > usageIndex ? reasonIndex : line.length;
+        usage = line.slice(usageStart, usageEnd).trim();
+      }
+
+      if (reasonIndex >= 0) {
+        const reasonStart =
+          reasonIndex + line.slice(reasonIndex).match(/^Reason:\s*/i)![0].length;
+        reason = line.slice(reasonStart).trim();
+      }
+    }
+  }
+
+  return {
+    medication: medication || `Medication ${index + 1}`,
+    usage,
+    reason,
+  };
+};
+
+const mapDetailsByMedication = (detailText: string, medications: string[]) => {
+  const map = new Map<string, string>();
+  const details = splitPrescriptionList(detailText);
+
+  details.forEach((detail, index) => {
+    const colonIndex = detail.indexOf(":");
+
+    if (colonIndex > 0) {
+      const possibleMedication = detail.slice(0, colonIndex).trim();
+      const value = detail.slice(colonIndex + 1).trim();
+      const matchedMedication = medications.find(
+        (medication) =>
+          medication.toLowerCase() === possibleMedication.toLowerCase()
+      );
+
+      if (matchedMedication && value) {
+        map.set(matchedMedication, value);
+        return;
+      }
+    }
+
+    const medicationByOrder = medications[index];
+
+    if (medicationByOrder && detail) {
+      map.set(medicationByOrder, detail);
+    }
+  });
+
+  return map;
+};
+
+const parsePrescriptionEntries = (
+  value?: string | null
+): ParsedPrescriptionItem[] => {
+  const text = cleanPrescriptionText(value);
+
+  if (!text) return [];
+
+  const normalizedLines = text
+    .split(/\n+/)
+    .map((line) => normalizePrescriptionLine(line))
+    .filter(Boolean);
+
+  const looksLikeAiItemRows =
+    normalizedLines.length > 0 &&
+    normalizedLines.every(
+      (line) =>
+        line.includes("|") ||
+        (!/^Medication:/i.test(line) &&
+          (/\bUsage:/i.test(line) || /\bReason:/i.test(line)))
+    );
+
+  if (looksLikeAiItemRows) {
+    return normalizedLines.map((line, index) =>
+      parsePipePrescriptionLine(line, index)
+    );
+  }
+
+  const medicationSection = extractPrescriptionSection(text, "Medication");
+  const usageSection = extractPrescriptionSection(text, "Usage");
+  const reasonSection = extractPrescriptionSection(text, "Reason");
+
+  if (medicationSection || usageSection || reasonSection) {
+    const medications = splitPrescriptionList(medicationSection || text);
+    const usageMap = mapDetailsByMedication(usageSection, medications);
+    const reasonMap = mapDetailsByMedication(reasonSection, medications);
+
+    return medications.map((medication, index) => ({
+      medication: medication || `Medication ${index + 1}`,
+      usage:
+        usageMap.get(medication) ||
+        (medications.length === 1 ? usageSection : ""),
+      reason:
+        reasonMap.get(medication) ||
+        (medications.length === 1 ? reasonSection : ""),
+    }));
+  }
+
+  return normalizedLines.map((line, index) =>
+    parsePipePrescriptionLine(line, index)
+  );
+};
+
+const parsePrescriptionSuggestions = (value?: string | null) => {
+  return parsePrescriptionEntries(value);
+};
+
+const buildPrescriptionText = (payload: DoctorAssessmentForm) => {
+  const medication = payload.prescriptionMedication.trim();
+  const usage = payload.prescriptionUsage.trim();
+  const reason = payload.prescriptionReason.trim();
+
+  return [
+    medication ? `Medication: ${medication}` : "",
+    usage ? `Usage: ${usage}` : "",
+    reason ? `Reason: ${reason}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+};
+
+const summarizePrescriptionItems = (items: ParsedPrescriptionItem[]) => {
+  if (items.length === 0) return "—";
+
+  return items
+    .map((item) => {
+      const parts = [item.medication];
+
+      if (item.usage) parts.push(`Usage: ${item.usage}`);
+      if (item.reason) parts.push(`Reason: ${item.reason}`);
+
+      return parts.join(" | ");
+    })
+    .join("\n");
 };
 
 const getStatusBadgeClass = (status: string | undefined) => {
@@ -163,28 +524,11 @@ const saveDoctorAssessment = async (
       body: JSON.stringify({
         skin_analysis_id: analysisId,
         doctor_final_diagnosis: payload.finalDiagnosis,
-        doctor_prescription: [
-          payload.prescriptionMedication
-            ? `Medication: ${payload.prescriptionMedication}`
-            : "",
-          payload.prescriptionUsage
-            ? `Usage: ${payload.prescriptionUsage}`
-            : "",
-          payload.prescriptionReason
-            ? `Reason: ${payload.prescriptionReason}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        after_appointment_notes: [
-          payload.severity ? `Severity: ${payload.severity}` : "",
-          payload.redFlags ? `Red Flags: ${payload.redFlags}` : "",
-          payload.patientInstructions
-            ? `Patient Instructions: ${payload.patientInstructions}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
+        doctor_prescription: buildPrescriptionText(payload),
+        // Save only the doctor's own notes here.
+        // AI severity, red flags, and recommendations should stay in skin_analysis
+        // and should only be viewed through the AI Result button.
+        after_appointment_notes: payload.clinicalFindings.trim(),
         follow_up_plan: payload.followUpPlan,
         next_visit_date: null,
       }),
@@ -235,10 +579,14 @@ export default function DoctorAiAnalysisPage() {
     useState<DoctorPatientHistoryResponse | null>(null);
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [patientVisitRecords, setPatientVisitRecords] = useState<
+    PatientVisitHistoryRecord[]
+  >([]);
 
   const [loading, setLoading] = useState(true);
   const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
   const [loadingAnalyses, setLoadingAnalyses] = useState(false);
+  const [loadingVisitRecords, setLoadingVisitRecords] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -246,6 +594,10 @@ export default function DoctorAiAnalysisPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStage, setActiveStage] = useState<WorkspaceStage>("scan");
+  const [selectedAiModal, setSelectedAiModal] = useState<{
+    title: string;
+    analysis: Analysis;
+  } | null>(null);
 
   const [assessmentForm, setAssessmentForm] =
     useState<DoctorAssessmentForm>(emptyAssessmentForm);
@@ -268,13 +620,18 @@ export default function DoctorAiAnalysisPage() {
           getDoctorAppointments("All"),
         ]);
 
-        const patientList = Array.isArray(patientsData) ? patientsData : [];
-        const appointmentList = Array.isArray(appointmentsData)
-          ? appointmentsData
-          : [];
+const reportPatientList = Array.isArray(patientsData) ? patientsData : [];
+const appointmentList = Array.isArray(appointmentsData)
+  ? appointmentsData
+  : [];
 
-        setPatients(patientList);
-        setAllAppointments(appointmentList);
+const patientList = buildPatientListFromAppointments(
+  reportPatientList,
+  appointmentList
+);
+
+setPatients(patientList);
+setAllAppointments(appointmentList);
 
         const nextPatientId = initialSelection.patientId;
 
@@ -292,7 +649,7 @@ export default function DoctorAiAnalysisPage() {
         const matchingAppointments = appointmentList.filter(
           (appt) =>
             appt.patient_id === nextPatientId &&
-            (appt.status === "Approved" || appt.status === "Completed")
+            isVisibleAiAppointment(appt)
         );
 
         if (
@@ -328,6 +685,11 @@ export default function DoctorAiAnalysisPage() {
       return;
     }
 
+    const selectedPatientFallback =
+      patients.find((item) => item.patient.id === selectedPatientId) || null;
+
+    const emptyHistory = buildEmptyPatientHistory(selectedPatientFallback);
+
     const loadPatientHistory = async () => {
       try {
         setLoadingPatientHistory(true);
@@ -335,20 +697,22 @@ export default function DoctorAiAnalysisPage() {
         const data = await getDoctorPatientHistory(selectedPatientId);
         setPatientHistory(data);
       } catch (error) {
-        console.error("Failed to load patient history:", error);
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Failed to load patient history."
-        );
-        setPatientHistory(null);
+        const message = error instanceof Error ? error.message : "";
+
+        // Patient not found usually means there is no saved final doctor report yet.
+        // Keep the page usable and let the all-visits history loader handle AI-only cases.
+        if (message && message !== "Patient not found") {
+          console.warn("Patient history unavailable:", message);
+        }
+
+        setPatientHistory(emptyHistory);
       } finally {
         setLoadingPatientHistory(false);
       }
     };
 
     loadPatientHistory();
-  }, [selectedPatientId]);
+  }, [selectedPatientId, patients]);
 
   useEffect(() => {
     if (!selectedAppointmentId) {
@@ -433,6 +797,10 @@ export default function DoctorAiAnalysisPage() {
     return patients.find((item) => item.patient.id === selectedPatientId) || null;
   }, [patients, selectedPatientId]);
 
+  const selectedPatientEmptyHistory = useMemo(() => {
+    return buildEmptyPatientHistory(selectedPatient);
+  }, [selectedPatient]);
+
   const selectedPatientAllVisits = useMemo(() => {
     if (!selectedPatientId) return [];
 
@@ -440,10 +808,84 @@ export default function DoctorAiAnalysisPage() {
   }, [patientAppointmentsMap, selectedPatientId]);
 
   const selectedPatientValidVisits = useMemo(() => {
-    return selectedPatientAllVisits.filter(
-      (appt) => appt.status === "Approved" || appt.status === "Completed"
-    );
+    return selectedPatientAllVisits.filter(isVisibleAiAppointment);
   }, [selectedPatientAllVisits]);
+
+  useEffect(() => {
+    if (!selectedPatientId) {
+      setPatientVisitRecords([]);
+      return;
+    }
+
+    const patientVisits = (patientAppointmentsMap.get(selectedPatientId) || [])
+      .filter(isVisibleAiAppointment);
+
+    if (patientVisits.length === 0) {
+      setPatientVisitRecords([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPatientVisitRecords = async () => {
+      try {
+        setLoadingVisitRecords(true);
+
+        const records = await Promise.all(
+          patientVisits.map(async (appointment) => {
+            const [analysisResult, reportResult] = await Promise.allSettled([
+              getAppointmentAnalyses(appointment.id),
+              getAppointmentDiagnosisReport(appointment.id),
+            ]);
+
+            const appointmentAnalyses =
+              analysisResult.status === "fulfilled" &&
+              Array.isArray(analysisResult.value)
+                ? analysisResult.value
+                : [];
+
+            const reportResponse =
+              reportResult.status === "fulfilled" ? reportResult.value : null;
+
+            return {
+              appointment,
+              analyses: appointmentAnalyses,
+              report: reportResponse?.report || null,
+              linked_analysis: reportResponse?.linked_analysis || null,
+            };
+          })
+        );
+
+        if (!cancelled) {
+          setPatientVisitRecords(
+            records.sort((a, b) => {
+              const aDate = getAppointmentDateTime(a.appointment).getTime();
+              const bDate = getAppointmentDateTime(b.appointment).getTime();
+
+              return bDate - aDate;
+            })
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to load full patient visit history:", error);
+
+        if (!cancelled) {
+          setPatientVisitRecords([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingVisitRecords(false);
+        }
+      }
+    };
+
+    loadPatientVisitRecords();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPatientId, patientAppointmentsMap]);
+
 
   const targetAppointment = useMemo(() => {
     return (
@@ -492,8 +934,64 @@ export default function DoctorAiAnalysisPage() {
     );
   }, [sortedCompletedReports, selectedAppointmentId]);
 
+  const sortedPatientVisitHistory = useMemo(() => {
+    const reportMap = new Map<number, DiagnosisReport>();
+    const linkedAnalysisMap = new Map<number, Analysis>();
+
+    patientHistory?.history?.forEach((item) => {
+      if (item.appointment?.id && item.report) {
+        reportMap.set(item.appointment.id, item.report);
+      }
+
+      if (item.appointment?.id && item.linked_analysis) {
+        linkedAnalysisMap.set(item.appointment.id, item.linked_analysis);
+      }
+    });
+
+    return patientVisitRecords
+      .map((record) => {
+        const sortedRecordAnalyses = [...record.analyses].sort((a, b) => {
+          const aDate = new Date(a.created_at || "").getTime();
+          const bDate = new Date(b.created_at || "").getTime();
+
+          return bDate - aDate;
+        });
+
+        const historyReport = reportMap.get(record.appointment.id) || null;
+        const historyLinkedAnalysis =
+          linkedAnalysisMap.get(record.appointment.id) || null;
+
+        const report = record.report || historyReport || null;
+
+        const linkedAnalysis =
+          record.linked_analysis ||
+          historyLinkedAnalysis ||
+          sortedRecordAnalyses.find(
+            (analysis) => report?.skin_analysis_id === analysis.id
+          ) ||
+          sortedRecordAnalyses[0] ||
+          null;
+
+        return {
+          ...record,
+          report,
+          linkedAnalysis,
+          sortedAnalyses: sortedRecordAnalyses,
+        };
+      })
+      .filter((record) => record.report || record.linkedAnalysis)
+      .sort((a, b) => {
+        const aDate = getAppointmentDateTime(a.appointment).getTime();
+        const bDate = getAppointmentDateTime(b.appointment).getTime();
+
+        return bDate - aDate;
+      });
+  }, [patientVisitRecords, patientHistory]);
+
   const isCompletedTarget = targetAppointment?.status === "Completed";
   const isApprovedTarget = targetAppointment?.status === "Approved";
+  const aiAvailableForTarget = isAiAvailableForAppointment(targetAppointment);
+  const aiUnavailableMessage = getAiUnavailableMessage(targetAppointment);
 
   const resetWorkspaceDrafts = () => {
     setSelectedFile(null);
@@ -510,14 +1008,23 @@ export default function DoctorAiAnalysisPage() {
     }));
   };
 
+  const openAiResultModal = (title: string, analysis: Analysis) => {
+    setSelectedAiModal({ title, analysis });
+  };
+
+  const closeAiResultModal = () => {
+    setSelectedAiModal(null);
+  };
+
   const selectPatient = (patientId: number) => {
     setSelectedPatientId(patientId);
     setActiveStage("scan");
     resetWorkspaceDrafts();
+    setSelectedAiModal(null);
 
     const matchingAppointments = (
       patientAppointmentsMap.get(patientId) || []
-    ).filter((appt) => appt.status === "Approved" || appt.status === "Completed");
+    ).filter(isVisibleAiAppointment);
 
     const best = pickBestTargetAppointment(matchingAppointments);
     setSelectedAppointmentId(best ? best.id : null);
@@ -528,6 +1035,7 @@ export default function DoctorAiAnalysisPage() {
     setSelectedAppointmentId(null);
     setActiveStage("scan");
     resetWorkspaceDrafts();
+    setSelectedAiModal(null);
 
     router.replace("/pages/doctor/ai-analysis");
   };
@@ -547,6 +1055,11 @@ export default function DoctorAiAnalysisPage() {
         return;
       }
 
+      if (!targetAppointment || !aiAvailableForTarget) {
+        alert(aiUnavailableMessage || "AI skin analysis is not available for this visit yet.");
+        return;
+      }
+
       if (!selectedFile) {
         alert("Please select a skin image first.");
         return;
@@ -562,8 +1075,16 @@ export default function DoctorAiAnalysisPage() {
       setAnalyses(Array.isArray(analysisData) ? analysisData : []);
 
       if (selectedPatientId) {
-        const historyData = await getDoctorPatientHistory(selectedPatientId);
-        setPatientHistory(historyData);
+        if (selectedPatient?.total_reports) {
+          try {
+            const historyData = await getDoctorPatientHistory(selectedPatientId);
+            setPatientHistory(historyData);
+          } catch {
+            setPatientHistory(selectedPatientEmptyHistory);
+          }
+        } else {
+          setPatientHistory(selectedPatientEmptyHistory);
+        }
       }
 
       setActiveStage("scan");
@@ -705,8 +1226,12 @@ const allReason = prescriptions
       );
 
       if (selectedPatientId) {
-        const historyData = await getDoctorPatientHistory(selectedPatientId);
-        setPatientHistory(historyData);
+        try {
+          const historyData = await getDoctorPatientHistory(selectedPatientId);
+          setPatientHistory(historyData);
+        } catch {
+          setPatientHistory(selectedPatientEmptyHistory);
+        }
       }
 
       setActiveStage("history");
@@ -733,40 +1258,48 @@ const allReason = prescriptions
 
   const getPatientListMeta = (patientId: number) => {
     const visits = patientAppointmentsMap.get(patientId) || [];
-    const latestVisit = visits[0];
+    const latestVisit = visits.find((appt) => isVisibleAiAppointment(appt)) || visits[0];
 
-    if (visits.some((appt) => appt.status === "Approved")) {
+    if (!latestVisit) {
       return {
-        label: "Ready for Review",
-        badgeClass: `${styles.statusBadge} ${styles.badgeApproved}`,
-        latestVisitText: latestVisit
-          ? `${latestVisit.date} • ${latestVisit.services}`
-          : "No visit yet",
+        label: "No Visits",
+        badgeClass: `${styles.statusBadge} ${styles.badgePending}`,
+        latestVisitText: "No visit yet",
       };
     }
 
-    if (visits.some((appt) => appt.status === "Completed")) {
+    if (latestVisit.status === "Completed") {
       return {
         label: "Completed",
         badgeClass: `${styles.statusBadge} ${styles.badgeCompleted}`,
-        latestVisitText: latestVisit
-          ? `${latestVisit.date} • ${latestVisit.services}`
-          : "No visit yet",
+        latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
       };
     }
 
-    if (latestVisit) {
+    if (latestVisit.status === "Approved") {
+      const isAvailable = isAiAvailableForAppointment(latestVisit);
+
       return {
-        label: latestVisit.status || "No Valid Visit",
-        badgeClass: getStatusBadgeClass(latestVisit.status),
+        label: isAvailable ? "Ready for Review" : "Scheduled",
+        badgeClass: isAvailable
+          ? `${styles.statusBadge} ${styles.badgeApproved}`
+          : `${styles.statusBadge} ${styles.badgePending}`,
+        latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
+      };
+    }
+
+    if (latestVisit.status === "Pending") {
+      return {
+        label: "Pending Approval",
+        badgeClass: `${styles.statusBadge} ${styles.badgePending}`,
         latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
       };
     }
 
     return {
-      label: "No Visits",
-      badgeClass: `${styles.statusBadge} ${styles.badgePending}`,
-      latestVisitText: "No visit yet",
+      label: latestVisit.status || "Not Available",
+      badgeClass: getStatusBadgeClass(latestVisit.status),
+      latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
     };
   };
 
@@ -992,6 +1525,27 @@ const allReason = prescriptions
             </select>
           </div>
 
+          <div className={styles.formGroupFull}>
+            <div className={styles.fieldHeader}>
+              <label htmlFor="clinicalFindings">Doctor Notes / Clinical Findings</label>
+              {renderUseAiSuggestionButton("clinicalFindings")}
+            </div>
+
+            {renderAiSuggestionPreview(
+              "clinicalFindings",
+              "AI Suggested Clinical Findings"
+            )}
+
+            <textarea
+              id="clinicalFindings"
+              value={assessmentForm.clinicalFindings}
+              onChange={(e) =>
+                updateAssessmentField("clinicalFindings", e.target.value)
+              }
+              placeholder="Enter the doctor's own clinical notes for this visit"
+            />
+          </div>
+
           <div className={styles.prescriptionBox}>
             <div className={styles.prescriptionHeader}>
               <h3>Prescription</h3>
@@ -1034,14 +1588,13 @@ const allReason = prescriptions
     "AI Suggested Usage"
   )}
 
-  <input
+  <textarea
     id="prescriptionUsage"
-    type="text"
     value={assessmentForm.prescriptionUsage}
     onChange={(e) =>
       updateAssessmentField("prescriptionUsage", e.target.value)
     }
-    placeholder="Enter..."
+    placeholder="Example: Apply a thin layer to the affected area twice daily"
   />
 </div>
 
@@ -1193,7 +1746,12 @@ if (selectedVisitReport || isCompletedTarget) {
 
           {!targetAppointment ? (
             <div className={styles.emptyState}>
-              No approved or completed visit is available for this patient yet.
+              No consultation is available for this patient yet.
+            </div>
+          ) : !aiAvailableForTarget || !isApprovedTarget ? (
+            <div className={styles.emptyState}>
+              <strong>AI Skin Analysis Unavailable</strong>
+              <p>{aiUnavailableMessage}</p>
             </div>
           ) : (
             <>
@@ -1220,7 +1778,12 @@ if (selectedVisitReport || isCompletedTarget) {
               <button
                 className={styles.primaryButton}
                 onClick={handleUploadAnalysis}
-                disabled={uploading || !selectedFile || !isApprovedTarget}
+                disabled={
+                  uploading ||
+                  !selectedFile ||
+                  !isApprovedTarget ||
+                  !aiAvailableForTarget
+                }
               >
                 {uploading ? "Analyzing image..." : "Run AI Analysis"}
               </button>
@@ -1299,7 +1862,9 @@ if (selectedVisitReport || isCompletedTarget) {
 
                 <p>
                   <b>Prescription:</b>{" "}
-                  {item.report.doctor_prescription || "—"}
+                  {summarizePrescriptionItems(
+                    parsePrescriptionEntries(item.report.doctor_prescription)
+                  )}
                 </p>
 
                 <p>
@@ -1314,29 +1879,217 @@ if (selectedVisitReport || isCompletedTarget) {
   };
 
 
-const parseSavedDoctorPrescription = (value?: string | null) => {
-  if (!value) {
-    return {
-      medication: "—",
-      usage: "—",
-      reason: "—",
-    };
-  }
 
-  const medicationMatch = value.match(/Medication:\s*([\s\S]*?)(?=\nUsage:|\nReason:|$)/i);
-  const usageMatch = value.match(/Usage:\s*([\s\S]*?)(?=\nReason:|$)/i);
-  const reasonMatch = value.match(/Reason:\s*([\s\S]*)/i);
+const looksLikeAiGeneratedDoctorNote = (value?: string | null) => {
+  const text = (value || "").trim().toLowerCase();
 
-  return {
-    medication: medicationMatch?.[1]?.trim() || "—",
-    usage: usageMatch?.[1]?.trim() || "—",
-    reason: reasonMatch?.[1]?.trim() || "—",
-  };
+  if (!text) return false;
+
+  const aiMarkers = [
+    "severity:",
+    "red flags:",
+    "patient instructions:",
+    "ai recommendation",
+    "needs doctor review",
+    "possible conditions",
+  ];
+
+  return aiMarkers.some((marker) => text.includes(marker));
 };
 
+const getDoctorOnlyNote = (value?: string | null) => {
+  const text = (value || "").trim();
+
+  if (!text) return "—";
+
+  // Some older test records saved AI-style text in after_appointment_notes.
+  // Keep the History card doctor-first by not displaying AI content as doctor notes.
+  if (looksLikeAiGeneratedDoctorNote(text)) {
+    return "No separate doctor notes were saved for this visit.";
+  }
+
+  return text;
+};
+
+const renderAiResultPanel = (
+  linkedAnalysis: Analysis | null | undefined,
+  confidenceValue: number | null
+) => {
+  if (!linkedAnalysis) {
+    return (
+      <div className={styles.emptyStateSmall}>
+        No linked AI result was saved for this visit.
+      </div>
+    );
+  }
+
+  const prescriptionItems = parsePrescriptionSuggestions(
+    linkedAnalysis.prescription_suggestions
+  );
+  const followUpItems = splitMultilineText(linkedAnalysis.follow_up_suggestions);
+  const redFlagItems = splitMultilineText(linkedAnalysis.red_flags);
+
+  return (
+    <div style={{ display: "grid", gap: "18px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: linkedAnalysis.image_path
+            ? "minmax(260px, 380px) 1fr"
+            : "1fr",
+          gap: "18px",
+          alignItems: "start",
+        }}
+      >
+        {linkedAnalysis.image_path && (
+          <div
+            style={{
+              border: "1px solid var(--border, #eadde3)",
+              borderRadius: "18px",
+              overflow: "hidden",
+              background: "#fff7fa",
+            }}
+          >
+            <img
+              src={buildImageUrl(linkedAnalysis.image_path)}
+              alt="AI skin analysis"
+              style={{
+                display: "block",
+                width: "100%",
+                maxHeight: "360px",
+                objectFit: "cover",
+              }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: "grid", gap: "12px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "12px",
+            }}
+          >
+            <div className={styles.historyInfoBox}>
+              <span>AI Condition</span>
+              <strong>{linkedAnalysis.condition || "—"}</strong>
+            </div>
+
+            <div className={styles.historyInfoBox}>
+              <span>Confidence</span>
+              <strong>
+                {confidenceValue !== null
+                  ? `${confidenceValue}% confidence`
+                  : "Confidence unavailable"}
+              </strong>
+            </div>
+
+            <div className={styles.historyInfoBox}>
+              <span>AI Severity</span>
+              <strong>{linkedAnalysis.severity || "—"}</strong>
+            </div>
+
+            <div className={styles.historyInfoBox}>
+              <span>Generated</span>
+              <strong>{formatDateTime(linkedAnalysis.created_at)}</strong>
+            </div>
+          </div>
+
+          <div className={styles.historyFollowUpBox}>
+            <span>Possible Conditions</span>
+            <p>{linkedAnalysis.possible_conditions || "—"}</p>
+          </div>
+
+          <div className={styles.historyFollowUpBox}>
+            <span>Key Findings</span>
+            <p>{linkedAnalysis.key_findings || "—"}</p>
+          </div>
+
+          <div className={styles.historyFollowUpBox}>
+            <span>AI Recommendation</span>
+            <p>{linkedAnalysis.recommendation || "No AI recommendation recorded."}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.historyPrescriptionBox}>
+        <h4>AI Prescription Suggestions</h4>
+
+        {prescriptionItems.length === 0 ? (
+          <div className={styles.emptyStateSmall}>
+            No AI prescription suggestions saved.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: "12px",
+            }}
+          >
+            {prescriptionItems.map((item, index) => (
+              <div
+                key={`${item.medication}-${index}`}
+                style={{
+                  border: "1px solid var(--border, #eadde3)",
+                  borderRadius: "16px",
+                  padding: "14px",
+                  background: "var(--card, #ffffff)",
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 12px",
+                    color: "var(--accent, #6f2940)",
+                    fontSize: "14px",
+                    fontWeight: 800,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {item.medication}
+                </p>
+
+                <div style={{ display: "grid", gap: "10px" }}>
+                  <div>
+                    <span className={styles.infoLabel}>Usage</span>
+                    <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
+                      {item.usage || "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className={styles.infoLabel}>Reason</span>
+                    <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
+                      {item.reason || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.historyFollowUpBox}>
+        <span>AI Follow-up Suggestions</span>
+        <p style={{ whiteSpace: "pre-line" }}>
+          {followUpItems.length === 0 ? "—" : followUpItems.join("\n")}
+        </p>
+      </div>
+
+      <div className={styles.historyFollowUpBox}>
+        <span>AI Red Flags</span>
+        <p style={{ whiteSpace: "pre-line" }}>
+          {redFlagItems.length === 0 ? "—" : redFlagItems.join("\n")}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const renderHistoryStage = () => {
-  if (loadingPatientHistory) {
+  if (loadingPatientHistory || loadingVisitRecords) {
     return (
       <section className={styles.workflowCard}>
         <div className={styles.emptyState}>Loading medical history...</div>
@@ -1344,18 +2097,11 @@ const renderHistoryStage = () => {
     );
   }
 
-  const completedMedicalHistory = sortedCompletedReports.filter(
-    (item) =>
-      item.report?.doctor_final_diagnosis ||
-      item.report?.doctor_prescription ||
-      item.linked_analysis
-  );
-
-  if (completedMedicalHistory.length === 0) {
+  if (sortedPatientVisitHistory.length === 0) {
     return (
       <section className={styles.workflowCard}>
         <div className={styles.emptyState}>
-          No completed medical history yet.
+          No completed medical history or AI analysis history yet.
         </div>
       </section>
     );
@@ -1366,94 +2112,131 @@ const renderHistoryStage = () => {
       <div className={styles.cardHeader}>
         <div>
           <p className={styles.eyebrow}>Medical History</p>
-          <h2>Completed Patient Records</h2>
+          <h2>All Patient Doctor Records</h2>
           <p>
-            Review completed AI results, doctor diagnosis, prescription details,
-            and follow-up instructions.
+            Doctor diagnosis, prescriptions, notes, and follow-up plans are shown
+            first. AI results are kept separate and can be opened when needed.
           </p>
         </div>
       </div>
 
       <div className={styles.medicalHistoryList}>
-        {completedMedicalHistory.map((item) => {
-          const linkedAnalysis = item.linked_analysis;
-          const prescription = parseSavedDoctorPrescription(
-            item.report.doctor_prescription
+        {sortedPatientVisitHistory.map((item) => {
+          const linkedAnalysis = item.linkedAnalysis;
+          const report = item.report;
+          const prescriptionItems = parsePrescriptionEntries(
+            report?.doctor_prescription
           );
+          const recordKey = `${item.appointment.id}-${
+            report?.id || linkedAnalysis?.id || "record"
+          }`;
+          const appointmentTitle = `${item.appointment.date || "Unknown date"} • ${
+            item.appointment.services || "Consultation"
+          }`;
 
           return (
-            <article key={item.report.id} className={styles.medicalHistoryCard}>
+            <article key={recordKey} className={styles.medicalHistoryCard}>
               <div className={styles.medicalHistoryTop}>
                 <div>
                   <p className={styles.historyDate}>
-                    {item.appointment?.date || "Unknown date"}
+                    {item.appointment.date || "Unknown date"}
                   </p>
-                  <h3>{item.appointment?.services || "Consultation"}</h3>
-                  <span>Doctor: {item.doctor?.name || "Unknown"}</span>
+                  <h3>{item.appointment.services || "Consultation"}</h3>
+                  <span>Status: {item.appointment.status || "—"}</span>
                 </div>
 
-                <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
-                  Completed
-                </span>
+                <div className={styles.resultBadgeStack}>
+                  <span
+                    className={`${styles.statusBadge} ${
+                      report ? styles.badgeCompleted : styles.badgePending
+                    }`}
+                  >
+                    {report ? "Doctor Report Saved" : "AI Result Only"}
+                  </span>
+
+                  {linkedAnalysis && (
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() =>
+                        openAiResultModal(appointmentTitle, linkedAnalysis)
+                      }
+                    >
+                      View AI Result
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className={styles.medicalHistoryContent}>
-                {linkedAnalysis?.image_path && (
-                  <div className={styles.medicalHistoryImageWrap}>
-                    <img
-                      src={buildImageUrl(linkedAnalysis.image_path)}
-                      alt="Completed AI analysis"
-                      className={styles.medicalHistoryImage}
-                    />
-                  </div>
-                )}
-
+              {report ? (
                 <div className={styles.medicalHistoryDetails}>
                   <div className={styles.historyInfoGrid}>
                     <div className={styles.historyInfoBox}>
-                      <span>AI Result</span>
-                      <strong>
-                        {linkedAnalysis?.condition
-                          ? `${linkedAnalysis.condition} • ${
-                              linkedAnalysis.severity || "—"
-                            }`
-                          : "No linked AI result"}
-                      </strong>
-                    </div>
-
-                    <div className={styles.historyInfoBox}>
-                      <span>Doctor Diagnosis</span>
-                      <strong>
-                        {item.report.doctor_final_diagnosis || "—"}
-                      </strong>
+                      <span>Doctor Final Diagnosis</span>
+                      <strong>{report.doctor_final_diagnosis || "—"}</strong>
                     </div>
                   </div>
 
                   <div className={styles.historyPrescriptionBox}>
-                    <h4>Prescription</h4>
+                    <h4>Doctor Prescription</h4>
 
-                    <div className={styles.historyPrescriptionRow}>
-                      <span>Medication</span>
-                      <p>{prescription.medication}</p>
-                    </div>
+                    {prescriptionItems.length === 0 ? (
+                      <div className={styles.emptyStateSmall}>
+                        No doctor prescription was saved for this visit.
+                      </div>
+                    ) : (
+                      <div className={styles.medicationStack}>
+                        {prescriptionItems.map((item, index) => (
+                          <div
+                            key={`${item.medication}-${index}`}
+                            className={styles.medicationCard}
+                          >
+                            <strong>{item.medication}</strong>
 
-                    <div className={styles.historyPrescriptionRow}>
-                      <span>Usage</span>
-                      <p>{prescription.usage}</p>
-                    </div>
+                            <div className={styles.medicationRow}>
+                              <span>Usage</span>
+                              <p>{item.usage || "—"}</p>
+                            </div>
 
-                    <div className={styles.historyPrescriptionRow}>
-                      <span>Reason</span>
-                      <p>{prescription.reason}</p>
-                    </div>
+                            <div className={styles.medicationRow}>
+                              <span>Reason</span>
+                              <p>{item.reason || "—"}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.historyFollowUpBox}>
+                    <span>Doctor Notes</span>
+                    <p>{getDoctorOnlyNote(report.after_appointment_notes)}</p>
                   </div>
 
                   <div className={styles.historyFollowUpBox}>
                     <span>Follow-up Plan</span>
-                    <p>{item.report.follow_up_plan || "—"}</p>
+                    <p>{report.follow_up_plan || "—"}</p>
                   </div>
+
+                  {report.next_visit_date && (
+                    <div className={styles.historyFollowUpBox}>
+                      <span>Next Visit Date</span>
+                      <p>{report.next_visit_date}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className={styles.warningBlock}>
+                  <strong>No doctor final report saved yet.</strong>
+                  <p>
+                    This visit has an AI analysis result, but the doctor has not
+                    saved the final diagnosis, prescription, notes, and follow-up
+                    plan yet.
+                  </p>
+                </div>
+              )}
+
+
             </article>
           );
         })}
@@ -1461,6 +2244,8 @@ const renderHistoryStage = () => {
     </section>
   );
 };
+
+
 
   return (
     <>
@@ -1686,6 +2471,82 @@ const renderHistoryStage = () => {
           </section>
         )}
       </main>
+
+      {selectedAiModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="AI skin analysis result"
+          onClick={closeAiResultModal}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(15, 23, 42, 0.62)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "18px",
+          }}
+        >
+          <section
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(1040px, 100%)",
+              maxHeight: "86vh",
+              overflow: "hidden",
+              background: "var(--card, #ffffff)",
+              color: "var(--text, #111111)",
+              borderRadius: "22px",
+              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.32)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "16px",
+                padding: "20px 22px",
+                borderBottom: "1px solid var(--border, #eadde3)",
+                background: "var(--card, #ffffff)",
+              }}
+            >
+              <div>
+                <p className={styles.eyebrow}>Supporting AI Result</p>
+                <h2 style={{ margin: "4px 0 6px" }}>{selectedAiModal.title}</h2>
+                <p style={{ margin: 0, color: "var(--muted, #6b7280)" }}>
+                  This AI result is for reference only. The doctor’s final
+                  diagnosis and prescription remain the official clinical record.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={closeAiResultModal}
+                style={{ flexShrink: 0 }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: "20px 22px 24px",
+                overflowY: "auto",
+              }}
+            >
+              {renderAiResultPanel(
+                selectedAiModal.analysis,
+                normalizeConfidence(selectedAiModal.analysis.confidence)
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }

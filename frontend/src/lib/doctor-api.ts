@@ -102,7 +102,7 @@ export type DoctorPatientHistoryResponse = {
 
 export type DoctorPatientListItem = {
   patient: PatientBasic;
-  latest_report: DiagnosisReport;
+  latest_report?: DiagnosisReport | null;
   latest_appointment: Appointment | null;
   total_reports: number;
 };
