@@ -163,19 +163,21 @@ export default function StaffManagementPage() {
   }
 
   // EDIT
-function handleEdit(member: StaffUser) {
-  setSelectedStaff(member);
+  function handleEdit(member: StaffUser) {
+    setSelectedStaff(member);
 
-  setEditForm({
-    id: member.id,
-    full_name: member.full_name,
-    role: member.role,
-    department: member.department,
-    phone: member.phone,
-  });
+    setEditForm({
+      id: Number(member.id),
+      full_name: member.full_name,
+      role: member.role,
+      department: member.department,
+      phone: member.phone,
+    });
 
-  setShowEditModal(true);
-}
+    setShowEditModal(true);
+  }
+
+  console.log("EDIT ID:", editForm.id);
 
   function capitalizeFirst(str?: string) {
     if (!str) return "";
@@ -183,45 +185,45 @@ function handleEdit(member: StaffUser) {
   }
 
   async function handleUpdateStaff() {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
- if (!editForm.id) {
-    alert("Missing staff ID");
-    return;
-  }
-  
-  const payload = {
-    full_name: editForm.full_name, // backend will format this
-    role: editForm.role?.toLowerCase(), // IMPORTANT FIX
-    department: editForm.department,
-    phone: editForm.phone,
-  };
-
-  const res = await fetch(
-    `http://127.0.0.1:8000/admin/staff/${editForm.id}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
+    if (!editForm.id) {
+      alert("Missing staff ID");
+      return;
     }
-  );
 
-  const data = await res.json();
+    const payload = {
+      full_name: editForm.full_name,
+      role: editForm.role,
+      department: editForm.department,
+      phone: editForm.phone,
+    };
 
-  if (!res.ok) {
-    alert(data.detail || "Update failed");
-    return;
+    const res = await fetch(
+      `http://127.0.0.1:8000/admin/staff/${editForm.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || "Update failed");
+      return;
+    }
+
+    setStaff((prev) =>
+      prev.map((m) => (m.id === data.id ? data : m))
+    );
+
+    setShowEditModal(false);
   }
-
-  setStaff((prev) =>
-    prev.map((m) => (m.id === data.id ? data : m))
-  );
-
-  setShowEditModal(false);
-}
 
   return (
     <div className="staffLayout">
@@ -318,7 +320,7 @@ function handleEdit(member: StaffUser) {
                           className={styles.avatar}
                         />
                         <div>
-                          <strong>{capitalizeFirst(member.full_name)}</strong>
+                          <strong>{(member.full_name)}</strong>
                           <p>{member.email}</p>
                         </div>
                       </div>

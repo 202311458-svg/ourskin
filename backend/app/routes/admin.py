@@ -290,36 +290,6 @@ def update_staff(
 
     return serialize_staff(user)
 
-
-@router.put("/staff/{id}/status")
-def update_staff_status(
-    id: int,
-    payload: StaffStatusUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    user = db.query(User).filter(User.id == id).first()
-
-    if not user or user.role not in ["Admin", "Staff", "Doctor"]:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    allowed_statuses = ["Active", "Inactive", "Suspended"]
-    if payload.status not in allowed_statuses:
-        raise HTTPException(status_code=400, detail="Invalid status")
-
-    user.status = payload.status
-    db.commit()
-    db.refresh(user)
-
-    return serialize_staff(user)
-
-VALID_ROLES = ["admin", "staff", "doctor"]
-
-def to_title_case(text: str):
-    if not text:
-        return ""
-    return " ".join(word.capitalize() for word in text.split())
-
 @router.put("/staff/{id}")
 def update_staff(
     id: int,
@@ -330,31 +300,27 @@ def update_staff(
     user = db.query(User).filter(User.id == id).first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Staff not found")
 
-    # NAME → Title Case
+    # NAME (accept EXACT input, no formatting)
     if "full_name" in payload:
-        user.full_name = to_title_case(payload["full_name"])
+        user.name = payload["full_name"]
 
-    # ROLE → LOWERCASE STORAGE (IMPORTANT)
+    # ROLE (NO LOWERCASE, NO VALIDATION STRIP)
     if "role" in payload:
-        role = payload["role"].lower().strip()
-
-        if role not in VALID_ROLES:
-            raise HTTPException(status_code=400, detail="Invalid staff role")
-
-        user.role = role
+        user.role = payload["role"]
 
     if "department" in payload:
         user.department = payload["department"]
 
     if "phone" in payload:
-        user.phone = payload["phone"]
+        user.contact = payload["phone"]
 
     db.commit()
     db.refresh(user)
 
     return serialize_staff(user)
+
 
 @router.get("/staff/candidates")
 def get_verified_non_staff_users(
