@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import styles from "@/app/styles/doctor.module.css";
 import {
@@ -1012,6 +1012,7 @@ function isCompletedStatus(status: string) {
 
 export default function DoctorPatientRecordsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [records, setRecords] = useState<PatientRecord[]>([]);
   const [diagnosisReports, setDiagnosisReports] = useState<
@@ -1024,6 +1025,14 @@ export default function DoctorPatientRecordsPage() {
   );
   const [selectedAiModal, setSelectedAiModal] =
     useState<SelectedAiModal | null>(null);
+
+  const requestedPatientFromQuery = useMemo(() => {
+    return searchParams.get("patient")?.trim() || "";
+  }, [searchParams]);
+
+  const requestedPatientNormalized = useMemo(() => {
+    return requestedPatientFromQuery.toLowerCase();
+  }, [requestedPatientFromQuery]);
 
   const loadRecords = useCallback(async () => {
     try {
@@ -1148,6 +1157,51 @@ export default function DoctorPatientRecordsPage() {
       patientGroups.find((patient) => patient.id === selectedPatientId) || null
     );
   }, [patientGroups, selectedPatientId]);
+
+  useEffect(() => {
+    if (
+      !requestedPatientNormalized ||
+      patientGroups.length === 0 ||
+      selectedPatientId
+    ) {
+      return;
+    }
+
+    const exactMatch = patientGroups.find(
+      (patient) =>
+        patient.patientName.trim().toLowerCase() === requestedPatientNormalized
+    );
+
+    const partialMatch = patientGroups.find((patient) =>
+      patient.patientName
+        .trim()
+        .toLowerCase()
+        .includes(requestedPatientNormalized)
+    );
+
+    const matchedPatient = exactMatch || partialMatch;
+
+    if (matchedPatient) {
+      setSelectedPatientId(matchedPatient.id);
+      return;
+    }
+
+    setSearchTerm(requestedPatientFromQuery);
+  }, [
+    requestedPatientNormalized,
+    requestedPatientFromQuery,
+    patientGroups,
+    selectedPatientId,
+  ]);
+
+  const handleBackToPatientList = () => {
+    setSelectedPatientId(null);
+    setSearchTerm("");
+
+    if (requestedPatientFromQuery) {
+      router.replace("/pages/doctor/patient-records");
+    }
+  };
 
   return (
     <>
@@ -1329,7 +1383,7 @@ export default function DoctorPatientRecordsPage() {
 
               <button
                 type="button"
-                onClick={() => setSelectedPatientId(null)}
+                onClick={handleBackToPatientList}
                 style={{
                   border: `1px solid ${BORDER}`,
                   borderRadius: 999,
@@ -1627,12 +1681,7 @@ export default function DoctorPatientRecordsPage() {
               }}
             >
               <div>
-                <div
-                  style={{
-                    ...labelStyle,
-                    color: MAROON,
-                  }}
-                >
+                <div style={{ ...labelStyle, color: MAROON }}>
                   Supporting AI Result
                 </div>
 
@@ -1655,7 +1704,7 @@ export default function DoctorPatientRecordsPage() {
                     fontSize: 15,
                   }}
                 >
-                  This AI result is for reference only. The doctor’s final
+                  This AI result is for reference only. The doctor&apos;s final
                   diagnosis and prescription remain the official clinical
                   record.
                 </p>
@@ -1678,12 +1727,7 @@ export default function DoctorPatientRecordsPage() {
               </button>
             </div>
 
-            <div
-              style={{
-                overflowY: "auto",
-                padding: 28,
-              }}
-            >
+            <div style={{ overflowY: "auto", padding: 28 }}>
               {(() => {
                 const analysis = selectedAiModal.analysis;
 
@@ -1791,48 +1835,28 @@ export default function DoctorPatientRecordsPage() {
                       >
                         <div style={softPanelStyle}>
                           <div style={labelStyle}>AI Condition</div>
-                          <div
-                            style={{
-                              ...valueStyle,
-                              fontWeight: 800,
-                            }}
-                          >
+                          <div style={{ ...valueStyle, fontWeight: 800 }}>
                             {analysis.condition || "N/A"}
                           </div>
                         </div>
 
                         <div style={softPanelStyle}>
                           <div style={labelStyle}>Confidence</div>
-                          <div
-                            style={{
-                              ...valueStyle,
-                              fontWeight: 800,
-                            }}
-                          >
+                          <div style={{ ...valueStyle, fontWeight: 800 }}>
                             {formatConfidence(analysis.confidence)}
                           </div>
                         </div>
 
                         <div style={softPanelStyle}>
                           <div style={labelStyle}>AI Severity</div>
-                          <div
-                            style={{
-                              ...valueStyle,
-                              fontWeight: 800,
-                            }}
-                          >
+                          <div style={{ ...valueStyle, fontWeight: 800 }}>
                             {analysis.severity || "N/A"}
                           </div>
                         </div>
 
                         <div style={softPanelStyle}>
                           <div style={labelStyle}>Generated</div>
-                          <div
-                            style={{
-                              ...valueStyle,
-                              fontWeight: 800,
-                            }}
-                          >
+                          <div style={{ ...valueStyle, fontWeight: 800 }}>
                             {formatGeneratedDate(
                               readAny(analysis, [
                                 "created_at",
@@ -1844,32 +1868,17 @@ export default function DoctorPatientRecordsPage() {
                           </div>
                         </div>
 
-                        <div
-                          style={{
-                            ...softPanelStyle,
-                            gridColumn: "1 / -1",
-                          }}
-                        >
+                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
                           <div style={labelStyle}>Possible Conditions</div>
                           <div style={valueStyle}>{possibleConditions}</div>
                         </div>
 
-                        <div
-                          style={{
-                            ...softPanelStyle,
-                            gridColumn: "1 / -1",
-                          }}
-                        >
+                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
                           <div style={labelStyle}>Key Findings</div>
                           <div style={valueStyle}>{keyFindings}</div>
                         </div>
 
-                        <div
-                          style={{
-                            ...softPanelStyle,
-                            gridColumn: "1 / -1",
-                          }}
-                        >
+                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
                           <div style={labelStyle}>AI Recommendation</div>
                           <div style={valueStyle}>{recommendation}</div>
                         </div>
@@ -1960,12 +1969,7 @@ export default function DoctorPatientRecordsPage() {
                                   }}
                                 >
                                   <div style={labelStyle}>Usage</div>
-                                  <div
-                                    style={{
-                                      fontSize: 16,
-                                      lineHeight: 1.5,
-                                    }}
-                                  >
+                                  <div style={{ fontSize: 16, lineHeight: 1.5 }}>
                                     {item.usage}
                                   </div>
                                 </div>
@@ -1979,12 +1983,7 @@ export default function DoctorPatientRecordsPage() {
                                   }}
                                 >
                                   <div style={labelStyle}>Reason</div>
-                                  <div
-                                    style={{
-                                      fontSize: 16,
-                                      lineHeight: 1.5,
-                                    }}
-                                  >
+                                  <div style={{ fontSize: 16, lineHeight: 1.5 }}>
                                     {item.reason}
                                   </div>
                                 </div>

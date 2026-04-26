@@ -71,6 +71,28 @@ def serialize_analysis(analysis: SkinAnalysis):
     }
 
 
+def serialize_analysis_with_appointment(analysis: SkinAnalysis, db: Session):
+    data = serialize_analysis(analysis)
+
+    appointment = None
+    if analysis.appointment_id:
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == analysis.appointment_id)
+            .first()
+        )
+
+    data["patient_name"] = appointment.patient_name if appointment else None
+    data["patient_id"] = appointment.patient_id if appointment else None
+    data["patient_email"] = appointment.patient_email if appointment else None
+    data["appointment_date"] = str(appointment.date) if appointment else None
+    data["appointment_time"] = str(appointment.time) if appointment else None
+    data["appointment_service"] = appointment.services if appointment else None
+    data["appointment_status"] = appointment.status if appointment else None
+
+    return data
+
+
 def serialize_follow_up(item: FollowUp, doctor_name: str | None = None):
     return {
         "id": item.id,
@@ -191,9 +213,9 @@ def doctor_dashboard(
             "completed_today": completed_today,
         },
         "todays_schedule": [serialize_appointment(a) for a in todays_appointments],
-        "ai_queue": [serialize_analysis(a) for a in pending_ai[:5]],
+        "ai_queue": [serialize_analysis_with_appointment(a, db) for a in pending_ai[:5]],
         "recent_records": [serialize_appointment(a) for a in recent_records],
-        "urgent_cases": [serialize_analysis(a) for a in urgent_cases],
+        "urgent_cases": [serialize_analysis_with_appointment(a, db) for a in urgent_cases],
     }
 
 
