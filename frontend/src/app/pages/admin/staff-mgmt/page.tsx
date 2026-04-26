@@ -37,7 +37,6 @@ export default function StaffManagementPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
 
-  // MODALS (added only)
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -69,7 +68,6 @@ export default function StaffManagementPage() {
       .then((data) => setUsers(Array.isArray(data) ? data : []));
   }, [router]);
 
-  // SEARCH + FILTER (UNCHANGED LOGIC)
   const filteredStaff = useMemo(() => {
     return staff.filter((member) => {
       const matchesSearch =
@@ -87,7 +85,6 @@ export default function StaffManagementPage() {
     });
   }, [staff, search, roleFilter, statusFilter]);
 
-  // STATS (UNCHANGED)
   const stats = useMemo(() => {
     return {
       total: staff.length,
@@ -97,7 +94,6 @@ export default function StaffManagementPage() {
     };
   }, [staff]);
 
-  // DEACTIVATE (UNCHANGED UI)
   async function handleDeactivate(id: number) {
     const token = localStorage.getItem("token");
 
@@ -115,7 +111,6 @@ export default function StaffManagementPage() {
     );
   }
 
-  // REACTIVATE (ADDED LOGIC ONLY)
   async function handleReactivate(id: number) {
     const token = localStorage.getItem("token");
 
@@ -231,7 +226,6 @@ export default function StaffManagementPage() {
 
       <div className="staffContent">
 
-        {/* HEADER (UNCHANGED) */}
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Staff Management</h1>
@@ -248,7 +242,6 @@ export default function StaffManagementPage() {
           </button>
         </div>
 
-        {/* STATS (UNCHANGED) */}
         <div className={styles.statsGrid}>
           <div className={styles.statCard}><span>Total Staff</span><strong>{stats.total}</strong></div>
           <div className={styles.statCard}><span>Active</span><strong>{stats.active}</strong></div>
@@ -256,7 +249,6 @@ export default function StaffManagementPage() {
           <div className={styles.statCard}><span>Inactive</span><strong>{stats.inactive}</strong></div>
         </div>
 
-        {/* SEARCH + FILTER (UNCHANGED UI) */}
         <div className={styles.filtersRow}>
           <input
             type="text"
@@ -288,7 +280,6 @@ export default function StaffManagementPage() {
           </select>
         </div>
 
-        {/* TABLE (UNCHANGED UI) */}
         <div className={styles.tableCard}>
           {loading ? (
             <p className={styles.message}>Loading staff records...</p>
@@ -388,7 +379,6 @@ export default function StaffManagementPage() {
           )}
         </div>
 
-        {/* ADD MODAL */}
         {showAddModal && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
@@ -417,6 +407,7 @@ export default function StaffManagementPage() {
             </div>
           </div>
         )}
+
 
         {showViewModal && selectedStaff && (
           <div className={styles.modalOverlay}>
@@ -462,7 +453,7 @@ export default function StaffManagementPage() {
           </div>
         )}
 
-        {/* EDIT MODAL */}
+
         {showEditModal && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
@@ -471,7 +462,6 @@ export default function StaffManagementPage() {
 
               <div className={styles.editGrid}>
 
-                {/* NAME */}
                 <label>Full Name</label>
                 <input
                   value={editForm.full_name || ""}
@@ -480,7 +470,6 @@ export default function StaffManagementPage() {
                   }
                 />
 
-                {/* ROLE */}
                 <label>Role</label>
                 <input
                   value={editForm.role || ""}
@@ -489,7 +478,6 @@ export default function StaffManagementPage() {
                   }
                 />
 
-                {/* DEPARTMENT */}
                 <label>Department</label>
                 <input
                   value={editForm.department || ""}
@@ -498,7 +486,6 @@ export default function StaffManagementPage() {
                   }
                 />
 
-                {/* PHONE */}
                 <label>Phone</label>
                 <input
                   value={editForm.phone || ""}
@@ -507,7 +494,6 @@ export default function StaffManagementPage() {
                   }
                 />
 
-                {/* LOCKED FIELDS */}
                 <label>Email (Locked)</label>
                 <input value={editForm.email || ""} disabled />
 

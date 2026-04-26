@@ -9,6 +9,8 @@ from app.models.appointment import AppointmentModel
 from app.models.skin_analysis import SkinAnalysis
 from app.core.security import get_current_user
 from app.schemas.user import StaffCreate, StaffUpdate, StaffStatusUpdate
+from app.models.audit_log import AuditLog
+from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -147,6 +149,7 @@ def update_appointment_status(
         payload.cancel_reason if payload.status == "Declined" else None
     )
 
+
     db.commit()
     db.refresh(appointment)
 
@@ -157,6 +160,7 @@ def update_appointment_status(
         "cancel_reason": appointment.cancel_reason,
     }
 
+    
 
 @router.get("/ai-logs")
 def get_ai_logs(
@@ -244,51 +248,17 @@ def create_staff(
     db.commit()
     db.refresh(new_staff)
 
+    log_action(
+        db=db,
+        action="CREATE_STAFF",
+        description=f"Created new staff: {new_staff.name} with role {new_staff.role}",
+        admin=current_user
+    )
+
     return serialize_staff(new_staff)
 
 
-@router.put("/staff/{id}")
-def update_staff(
-    id: int,
-    payload: StaffUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    user = db.query(User).filter(User.id == id).first()
-
-    if not user or user.role not in ["Admin", "Staff", "Doctor"]:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    if payload.email and payload.email.lower() != user.email:
-        existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
-        if existing_user:
-            raise HTTPException(status_code=400, detail="Email already exists")
-        user.email = payload.email.lower()
-
-    if payload.name is not None:
-        user.name = payload.name
-
-    if payload.role is not None:
-        if payload.role not in ["Admin", "Staff", "Doctor"]:
-            raise HTTPException(status_code=400, detail="Invalid staff role")
-        user.role = payload.role
-
-    if payload.department is not None:
-        user.department = payload.department
-
-    if payload.contact is not None:
-        user.contact = payload.contact
-
-    if payload.profile_image is not None:
-        user.profile_image = payload.profile_image
-
-    if payload.status is not None:
-        user.status = payload.status
-
-    db.commit()
-    db.refresh(user)
-
-    return serialize_staff(user)
+from app.services.audit_service import log_action
 
 @router.put("/staff/{id}")
 def update_staff(
@@ -302,13 +272,14 @@ def update_staff(
     if not user:
         raise HTTPException(status_code=404, detail="Staff not found")
 
-    # NAME (accept EXACT input, no formatting)
     if "full_name" in payload:
         user.name = payload["full_name"]
 
-    # ROLE (NO LOWERCASE, NO VALIDATION STRIP)
     if "role" in payload:
-        user.role = payload["role"]
+        role = payload["role"].lower()
+        if role not in ["admin", "staff", "doctor"]:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        user.role = role
 
     if "department" in payload:
         user.department = payload["department"]
@@ -319,15 +290,21 @@ def update_staff(
     db.commit()
     db.refresh(user)
 
-    return serialize_staff(user)
+    log_action(
+        db=db,
+        action="UPDATE_STAFF",
+        description=f"Updated staff {user.name}",
+        actor_id=current_user.id,
+        target_id=user.id
+    )
 
+    return serialize_staff(user)
 
 @router.get("/staff/candidates")
 def get_verified_non_staff_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    # users who are VERIFIED but NOT already staff/admin/doctor
     candidates = (
         db.query(User)
         .filter(User.is_verified == True)
@@ -376,4 +353,31 @@ def create_staff_from_user(
     db.commit()
     db.refresh(user)
 
+    log_action(
+        db=db,
+        action="PROMOTE_TO_STAFF",
+        description=f"Promoted user {user.name} to staff with role {user.role}",
+        admin=current_user
+    )
+
     return serialize_staff(user)
+
+@router.get("/audit-logs")
+def get_audit_logs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).all()
+
+    return [
+        {
+            "id": l.id,
+            "action": l.action,
+            "description": l.description,
+            "actor_id": l.actor_id,
+            "target_id": l.target_id,
+            "created_at": l.created_at.isoformat() if l.created_at else None
+        }
+        for l in logs
+    ]
+

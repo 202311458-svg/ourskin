@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 # local db for offline-first
 #DATABASE_URL = "sqlite:///./clinic.db"
 
-
 # for supabase
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -24,6 +23,8 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+from app.models.audit_log import AuditLog
 
 def get_db():
     db = SessionLocal()
