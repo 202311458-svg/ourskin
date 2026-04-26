@@ -442,13 +442,15 @@ export default function BookAppointment() {
                 </div>
 
                 <div className={styles.navButtons}>
-                  <button
-                    className={selectedTime ? styles.navButton : styles.navButtonDisabled}
-                    disabled={!selectedTime}
-                    onClick={() => setStep(2)}
-                  >
-                    Next
-                  </button>
+                 <button
+  className={`${styles.navButton} ${
+    !selectedTime ? styles.navButtonDisabled : ""
+  }`}
+  disabled={!selectedTime}
+  onClick={() => setStep(2)}
+>
+  Next
+</button>
                 </div>
               </div>
 

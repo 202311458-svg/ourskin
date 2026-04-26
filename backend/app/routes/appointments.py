@@ -4,6 +4,7 @@ from datetime import date
 
 from app.db import SessionLocal
 from app.models.appointment import AppointmentModel
+from app.models.diagnosis_report import DiagnosisReport
 from app.models.skin_analysis import SkinAnalysis
 from app.models.user import User
 from app.models.appointment_log import AppointmentLog
@@ -172,8 +173,17 @@ def get_my_appointments(
         .all()
     )
 
-    return [
-        {
+    results = []
+
+    for a in appointments:
+        diagnosis_report = (
+            db.query(DiagnosisReport)
+            .filter(DiagnosisReport.appointment_id == a.id)
+            .order_by(DiagnosisReport.created_at.desc())
+            .first()
+        )
+
+        results.append({
             "id": a.id,
             "patient_id": a.patient_id,
             "doctor_id": a.doctor_id,
@@ -185,9 +195,50 @@ def get_my_appointments(
             "services": a.services,
             "status": a.status,
             "cancel_reason": a.cancel_reason,
-        }
-        for a in appointments
-    ]
+
+            # Doctor diagnosis fields for patient medical records
+            "diagnosis_report_id": diagnosis_report.id if diagnosis_report else None,
+
+            "final_diagnosis": (
+                diagnosis_report.doctor_final_diagnosis
+                if diagnosis_report else None
+            ),
+            "doctor_final_diagnosis": (
+                diagnosis_report.doctor_final_diagnosis
+                if diagnosis_report else None
+            ),
+
+            "prescription": (
+                diagnosis_report.doctor_prescription
+                if diagnosis_report else None
+            ),
+            "doctor_prescription": (
+                diagnosis_report.doctor_prescription
+                if diagnosis_report else None
+            ),
+
+            "doctor_notes": (
+                diagnosis_report.after_appointment_notes
+                if diagnosis_report else None
+            ),
+            "after_appointment_notes": (
+                diagnosis_report.after_appointment_notes
+                if diagnosis_report else None
+            ),
+
+            "follow_up_plan": (
+                diagnosis_report.follow_up_plan
+                if diagnosis_report else None
+            ),
+
+            "next_visit_date": (
+                str(diagnosis_report.next_visit_date)
+                if diagnosis_report and diagnosis_report.next_visit_date
+                else None
+            ),
+        })
+
+    return results
 
 
 @router.put("/{id}/status")

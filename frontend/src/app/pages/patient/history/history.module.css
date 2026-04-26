@@ -7,40 +7,158 @@
   transition: margin-left 0.3s ease;
 }
 
-/* Title */
+.contentWrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8f315b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .historyContainer h1 {
   font-size: 2rem;
-  margin-bottom: 20px;
+  margin: 0 0 8px;
   color: #333;
 }
 
-/* Cards wrapper */
+.subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+.primaryButton,
+.secondaryButton {
+  padding: 11px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: 0.2s ease;
+}
+
+.primaryButton {
+  background: #8f315b;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(143, 49, 91, 0.2);
+}
+
+.primaryButton:hover {
+  background: #752648;
+}
+
+.secondaryButton {
+  background: #fff;
+  color: #8f315b;
+  border: 1px solid #efc3d5;
+}
+
+.secondaryButton:hover {
+  background: #fff1f6;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.summaryCard {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.summaryLabel {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 700;
+}
+
+.summaryValue {
+  margin: 0;
+  color: #8f315b;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.searchBox {
+  margin-bottom: 22px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.searchInput {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  outline: none;
+  border-radius: 14px;
+  padding: 13px 15px;
+  font-size: 15px;
+  color: #111827;
+  background: #f9fafb;
+}
+
+.searchInput:focus {
+  border-color: #8f315b;
+  background: #fff;
+}
+
 .cards {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* Single appointment card */
 .card {
   background: #fff;
   border-radius: 15px;
-  padding: 20px;
+  padding: 22px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: default;
 }
 
-/* Hover effect same as Book Appointment */
 .card:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
-/* Card text */
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
 .card h2 {
   font-size: 1.3rem;
-  margin-bottom: 8px;
+  margin: 0 0 6px;
   color: #1a1a1a;
 }
 
@@ -52,4 +170,203 @@
 
 .card strong {
   color: #333;
+}
+
+.serviceText {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.detailBox {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.detailLabel {
+  margin: 0 0 5px;
+  font-size: 12px;
+  color: #888;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detailValue {
+  margin: 0;
+  color: #333;
+  font-weight: 700;
+}
+
+.statusBadge {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusCompleted {
+  background: #e9f8ef;
+  color: #207a3d;
+  border: 1px solid #bfe7ca;
+}
+
+.statusApproved {
+  background: #fff1f6;
+  color: #8f315b;
+  border: 1px solid #efc3d5;
+}
+
+.statusPending {
+  background: #fff7e8;
+  color: #9a6200;
+  border: 1px solid #f2d39a;
+}
+
+.statusCancelled {
+  background: #fdecec;
+  color: #a72828;
+  border: 1px solid #f2b8b8;
+}
+
+.statusDefault {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.noticeBox {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reasonBox {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.recordSection {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.recordSection h3 {
+  margin: 0 0 14px;
+  color: #1a1a1a;
+  font-size: 1.1rem;
+}
+
+.recordFields {
+  display: grid;
+  gap: 14px;
+}
+
+.recordField {
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.recordFieldHighlight {
+  background: #fff1f6;
+  border: 1px solid #efc3d5;
+}
+
+.recordLabel {
+  margin: 0 0 6px;
+  color: #666;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recordValue {
+  margin: 0;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.recordValueHighlight {
+  color: #8f315b;
+  font-weight: 700;
+}
+
+.emptyState {
+  background: #fff;
+  border-radius: 18px;
+  padding: 34px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.emptyState h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.emptyState p {
+  margin: 0 auto;
+  color: #666;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+.inlineLink {
+  color: #8f315b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .historyContainer {
+    padding: 24px 16px;
+  }
+
+  .headerRow {
+    flex-direction: column;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    text-align: center;
+  }
+
+  .cardTop {
+    flex-direction: column;
+  }
 }
