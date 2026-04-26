@@ -340,24 +340,42 @@ def get_diagnosis_report_by_appointment(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
+    appointment = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.id == appointment_id)
+        .first()
+    )
 
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    if appointment.doctor_id and appointment.doctor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You can only view diagnosis reports for your own appointments")
+    # Capstone testing note:
+    # Do not block by assigned doctor for now.
+    # This lets any logged-in doctor account view saved diagnosis reports.
+    #
+    # Restore this later when real doctor assignment is required:
+    #
+    # if appointment.doctor_id and appointment.doctor_id != current_user.id:
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="You can only view diagnosis reports for your own appointments"
+    #     )
 
     report = (
         db.query(DiagnosisReport)
         .filter(DiagnosisReport.appointment_id == appointment_id)
+        .order_by(DiagnosisReport.created_at.desc())
         .first()
     )
 
     if not report:
-        raise HTTPException(status_code=404, detail="Diagnosis report not found for this appointment")
+        raise HTTPException(
+            status_code=404,
+            detail="Diagnosis report not found for this appointment"
+        )
 
     linked_analysis = None
+
     if report.skin_analysis_id:
         linked_analysis = (
             db.query(SkinAnalysis)
@@ -366,8 +384,22 @@ def get_diagnosis_report_by_appointment(
         )
 
     return {
+        "appointment_id": appointment.id,
         "appointment": serialize_appointment(appointment),
+
+        # Keep the original nested report.
         "report": serialize_diagnosis_report(report),
+
+        # Also return flattened fields so the frontend can read them easily.
+        "final_diagnosis": report.doctor_final_diagnosis,
+        "doctor_final_diagnosis": report.doctor_final_diagnosis,
+        "doctor_prescription": report.doctor_prescription,
+        "prescription": report.doctor_prescription,
+        "after_appointment_notes": report.after_appointment_notes,
+        "doctor_notes": report.after_appointment_notes,
+        "follow_up_plan": report.follow_up_plan,
+        "next_visit_date": str(report.next_visit_date) if report.next_visit_date else None,
+
         "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
     }
 

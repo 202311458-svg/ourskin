@@ -1838,41 +1838,71 @@ if (selectedVisitReport || isCompletedTarget) {
         </div>
 
         <div className={styles.reportGrid}>
-          {sortedCompletedReports.map((item) => (
-            <article key={item.report.id} className={styles.historyCard}>
-              <div className={styles.historyHeader}>
-                <div>
-                  <strong>
-                    {item.appointment?.date || "Unknown date"} •{" "}
-                    {item.appointment?.services || "Consultation"}
-                  </strong>
-                  <span>Doctor: {item.doctor?.name || "Unknown"}</span>
+          {sortedCompletedReports.map((item) => {
+            const prescriptionItems = parsePrescriptionEntries(
+              item.report.doctor_prescription
+            );
+
+            return (
+              <article key={item.report.id} className={styles.historyCard}>
+                <div className={styles.historyHeader}>
+                  <div>
+                    <strong>
+                      {item.appointment?.date || "Unknown date"} •{" "}
+                      {item.appointment?.services || "Consultation"}
+                    </strong>
+                    <span>Doctor: {item.doctor?.name || "Unknown"}</span>
+                  </div>
+
+                  <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
+                    Completed
+                  </span>
                 </div>
 
-                <span className={`${styles.statusBadge} ${styles.badgeCompleted}`}>
-                  Completed
-                </span>
-              </div>
+                <div className={styles.historyBody}>
+                  <p>
+                    <b>Diagnosis:</b>{" "}
+                    {item.report.doctor_final_diagnosis || "—"}
+                  </p>
 
-              <div className={styles.historyBody}>
-                <p>
-                  <b>Diagnosis:</b>{" "}
-                  {item.report.doctor_final_diagnosis || "—"}
-                </p>
+                  <div className={styles.historyPrescriptionBox}>
+                    <h4>Prescription</h4>
 
-                <p>
-                  <b>Prescription:</b>{" "}
-                  {summarizePrescriptionItems(
-                    parsePrescriptionEntries(item.report.doctor_prescription)
-                  )}
-                </p>
+                    {prescriptionItems.length === 0 ? (
+                      <div className={styles.emptyStateSmall}>
+                        No prescription saved for this report.
+                      </div>
+                    ) : (
+                      <div className={styles.medicationStack}>
+                        {prescriptionItems.map((prescription, index) => (
+                          <div
+                            key={`${prescription.medication}-${index}`}
+                            className={styles.medicationCard}
+                          >
+                            <strong>{prescription.medication}</strong>
 
-                <p>
-                  <b>Follow-up:</b> {item.report.follow_up_plan || "—"}
-                </p>
-              </div>
-            </article>
-          ))}
+                            <div className={styles.medicationRow}>
+                              <span>Usage</span>
+                              <p>{prescription.usage || "—"}</p>
+                            </div>
+
+                            <div className={styles.medicationRow}>
+                              <span>Reason</span>
+                              <p>{prescription.reason || "—"}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <p>
+                    <b>Follow-up:</b> {item.report.follow_up_plan || "—"}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     );
