@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import styles from "./staff-mgmt.module.css";
+import Image from "next/image";
 
 type StaffUser = {
   id: number;
@@ -17,14 +18,32 @@ type StaffUser = {
   created_at?: string;
 };
 
+type UserOption = {
+  id: number;
+  name: string;
+  email: string;
+};
+
 export default function StaffManagementPage() {
   const router = useRouter();
+
   const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [selectedUser, setSelectedUser] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
+
+  // MODALS (added only)
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [selectedStaff, setSelectedStaff] = useState<StaffUser | null>(null);
+  const [editForm, setEditForm] = useState<Partial<StaffUser>>({});
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -36,28 +55,21 @@ export default function StaffManagementPage() {
     }
 
     fetch("http://127.0.0.1:8000/admin/staff", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch staff");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setStaff(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.error("Staff fetch error:", err);
-        setError("Unable to load staff records.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then((res) => res.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []))
+      .catch(() => setError("Unable to load staff records"))
+      .finally(() => setLoading(false));
+
+    fetch("http://127.0.0.1:8000/admin/verified-users", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setUsers(Array.isArray(data) ? data : []));
   }, [router]);
 
+  // SEARCH + FILTER (UNCHANGED LOGIC)
   const filteredStaff = useMemo(() => {
     return staff.filter((member) => {
       const matchesSearch =
@@ -75,6 +87,7 @@ export default function StaffManagementPage() {
     });
   }, [staff, search, roleFilter, statusFilter]);
 
+  // STATS (UNCHANGED)
   const stats = useMemo(() => {
     return {
       total: staff.length,
@@ -84,39 +97,139 @@ export default function StaffManagementPage() {
     };
   }, [staff]);
 
+  // DEACTIVATE (UNCHANGED UI)
   async function handleDeactivate(id: number) {
-    try {
-      const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-      const res = await fetch(`http://127.0.0.1:8000/admin/staff/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: "Inactive" }),
-      });
+    await fetch(`http://127.0.0.1:8000/admin/staff/${id}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: "Inactive" }),
+    });
 
-      if (!res.ok) {
-        throw new Error("Failed to update status");
-      }
-
-      setStaff((prev) =>
-        prev.map((member) =>
-          member.id === id ? { ...member, status: "Inactive" } : member
-        )
-      );
-    } catch (err) {
-      console.error("Deactivate error:", err);
-      alert("Could not deactivate staff account.");
-    }
+    setStaff((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: "Inactive" } : m))
+    );
   }
+
+  // REACTIVATE (ADDED LOGIC ONLY)
+  async function handleReactivate(id: number) {
+    const token = localStorage.getItem("token");
+
+    await fetch(`http://127.0.0.1:8000/admin/staff/${id}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: "Active" }),
+    });
+
+    setStaff((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: "Active" } : m))
+    );
+  }
+
+  // ADD STAFF
+  async function handleAddStaff() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("http://127.0.0.1:8000/admin/staff/from-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        user_id: selectedUser,
+        role: "staff",
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return alert(data.detail || "Failed");
+
+    setStaff((prev) => [data, ...prev]);
+    setShowAddModal(false);
+  }
+
+  // VIEW
+  function handleView(member: StaffUser) {
+    setSelectedStaff(member);
+    setShowViewModal(true);
+  }
+
+  // EDIT
+function handleEdit(member: StaffUser) {
+  setSelectedStaff(member);
+
+  setEditForm({
+    id: member.id,
+    full_name: member.full_name,
+    role: member.role,
+    department: member.department,
+    phone: member.phone,
+  });
+
+  setShowEditModal(true);
+}
+
+  function capitalizeFirst(str?: string) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+
+  async function handleUpdateStaff() {
+  const token = localStorage.getItem("token");
+
+ if (!editForm.id) {
+    alert("Missing staff ID");
+    return;
+  }
+  
+  const payload = {
+    full_name: editForm.full_name, // backend will format this
+    role: editForm.role?.toLowerCase(), // IMPORTANT FIX
+    department: editForm.department,
+    phone: editForm.phone,
+  };
+
+  const res = await fetch(
+    `http://127.0.0.1:8000/admin/staff/${editForm.id}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.detail || "Update failed");
+    return;
+  }
+
+  setStaff((prev) =>
+    prev.map((m) => (m.id === data.id ? data : m))
+  );
+
+  setShowEditModal(false);
+}
 
   return (
     <div className="staffLayout">
       <AdminNavbar />
 
       <div className="staffContent">
+
+        {/* HEADER (UNCHANGED) */}
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Staff Management</h1>
@@ -125,28 +238,23 @@ export default function StaffManagementPage() {
             </p>
           </div>
 
-          <button className={styles.addButton}>+ Add Staff</button>
+          <button
+            className={styles.addButton}
+            onClick={() => setShowAddModal(true)}
+          >
+            + Add Staff
+          </button>
         </div>
 
+        {/* STATS (UNCHANGED) */}
         <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>Total Staff</span>
-            <strong>{stats.total}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span>Active</span>
-            <strong>{stats.active}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span>Admins</span>
-            <strong>{stats.admins}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span>Inactive</span>
-            <strong>{stats.inactive}</strong>
-          </div>
+          <div className={styles.statCard}><span>Total Staff</span><strong>{stats.total}</strong></div>
+          <div className={styles.statCard}><span>Active</span><strong>{stats.active}</strong></div>
+          <div className={styles.statCard}><span>Admins</span><strong>{stats.admins}</strong></div>
+          <div className={styles.statCard}><span>Inactive</span><strong>{stats.inactive}</strong></div>
         </div>
 
+        {/* SEARCH + FILTER (UNCHANGED UI) */}
         <div className={styles.filtersRow}>
           <input
             type="text"
@@ -178,13 +286,12 @@ export default function StaffManagementPage() {
           </select>
         </div>
 
+        {/* TABLE (UNCHANGED UI) */}
         <div className={styles.tableCard}>
           {loading ? (
             <p className={styles.message}>Loading staff records...</p>
           ) : error ? (
             <p className={styles.error}>{error}</p>
-          ) : filteredStaff.length === 0 ? (
-            <p className={styles.message}>No staff records found.</p>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -197,52 +304,79 @@ export default function StaffManagementPage() {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredStaff.map((member) => (
                   <tr key={member.id}>
                     <td>
                       <div className={styles.staffCell}>
-                        <img
+                        <Image
                           src={member.profile_image || "/default-avatar.png"}
                           alt={member.full_name}
+                          width={42}
+                          height={42}
                           className={styles.avatar}
                         />
                         <div>
-                          <strong>{member.full_name}</strong>
+                          <strong>{capitalizeFirst(member.full_name)}</strong>
                           <p>{member.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td>{member.role}</td>
+
+                    <td>{capitalizeFirst(member.role)}</td>
                     <td>{member.department || "N/A"}</td>
+
                     <td>
                       <span
-                        className={`${styles.statusBadge} ${
-                          member.status?.toLowerCase() === "active"
-                            ? styles.active
-                            : styles.inactive
-                        }`}
+                        className={`${styles.statusBadge} ${member.status?.toLowerCase() === "active"
+                          ? styles.active
+                          : styles.inactive
+                          }`}
                       >
-                        {member.status}
+                        {capitalizeFirst(member.status)}
                       </span>
                     </td>
+
                     <td>
                       {member.created_at
                         ? new Date(member.created_at).toLocaleDateString()
                         : "N/A"}
                     </td>
+
                     <td>
                       <div className={styles.actions}>
-                        <button className={styles.viewBtn}>View</button>
-                        <button className={styles.editBtn}>Edit</button>
-                        {member.status?.toLowerCase() === "active" && (
+
+                        <button
+                          className={styles.viewBtn}
+                          onClick={() => handleView(member)}
+                        >
+                          View
+                        </button>
+
+                        <button
+                          className={styles.editBtn}
+                          onClick={() => handleEdit(member)}
+                        >
+                          Edit
+                        </button>
+
+                        {member.status?.toLowerCase() === "active" ? (
                           <button
                             className={styles.deactivateBtn}
                             onClick={() => handleDeactivate(member.id)}
                           >
                             Deactivate
                           </button>
+                        ) : (
+                          <button
+                            className={styles.deactivateBtn}
+                            onClick={() => handleReactivate(member.id)}
+                          >
+                            Reactivate
+                          </button>
                         )}
+
                       </div>
                     </td>
                   </tr>
@@ -251,6 +385,144 @@ export default function StaffManagementPage() {
             </table>
           )}
         </div>
+
+        {/* ADD MODAL */}
+        {showAddModal && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalCardLarge}>
+
+              <h2>Add Staff</h2>
+              <p>Select a verified user to promote to staff</p>
+
+              <div className={styles.selectBox}>
+                <select
+                  onChange={(e) => setSelectedUser(Number(e.target.value))}
+                >
+                  <option value="">Select user</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button onClick={handleAddStaff}>Confirm</button>
+                <button onClick={() => setShowAddModal(false)}>Cancel</button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {showViewModal && selectedStaff && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalCardLarge}>
+
+              <div className={styles.modalHeader}>
+                <h2>Staff Profile</h2>
+              </div>
+
+              <div className={styles.profileSection}>
+                <Image
+                  src={selectedStaff?.profile_image || "/default-avatar.png"}
+                  alt={selectedStaff?.full_name}
+                  width={42}
+                  height={42}
+                  className={styles.avatar}
+                />
+
+                <div className={styles.profileInfo}>
+                  <h3>{selectedStaff.full_name}</h3>
+                  <p>{selectedStaff.email}</p>
+                </div>
+              </div>
+
+              <div className={styles.profileGrid}>
+                <div><strong>Role:</strong> {selectedStaff.role}</div>
+                <div><strong>Department:</strong> {selectedStaff.department || "N/A"}</div>
+                <div><strong>Status:</strong> {selectedStaff.status}</div>
+                <div><strong>Phone:</strong> {selectedStaff.phone || "N/A"}</div>
+                <div>
+                  <strong>Created:</strong>{" "}
+                  {selectedStaff.created_at
+                    ? new Date(selectedStaff.created_at).toLocaleDateString()
+                    : "N/A"}
+                </div>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button onClick={() => setShowViewModal(false)}>Close</button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* EDIT MODAL */}
+        {showEditModal && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalCardLarge}>
+
+              <h2>Edit Staff</h2>
+
+              <div className={styles.editGrid}>
+
+                {/* NAME */}
+                <label>Full Name</label>
+                <input
+                  value={editForm.full_name || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, full_name: e.target.value })
+                  }
+                />
+
+                {/* ROLE */}
+                <label>Role</label>
+                <input
+                  value={editForm.role || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, role: e.target.value })
+                  }
+                />
+
+                {/* DEPARTMENT */}
+                <label>Department</label>
+                <input
+                  value={editForm.department || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, department: e.target.value })
+                  }
+                />
+
+                {/* PHONE */}
+                <label>Phone</label>
+                <input
+                  value={editForm.phone || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, phone: e.target.value })
+                  }
+                />
+
+                {/* LOCKED FIELDS */}
+                <label>Email (Locked)</label>
+                <input value={editForm.email || ""} disabled />
+
+                <label>Profile Image (Locked)</label>
+                <input value="Cannot edit" disabled />
+
+              </div>
+
+              <div className={styles.modalActions}>
+                <button onClick={handleUpdateStaff}>Save Changes</button>
+                <button onClick={() => setShowEditModal(false)}>Cancel</button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

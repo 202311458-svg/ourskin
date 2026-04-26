@@ -256,7 +256,7 @@ def update_staff(
 ):
     user = db.query(User).filter(User.id == id).first()
 
-    if not user or user.role not in ["admin", "staff", "doctor"]:
+    if not user or user.role not in ["Admin", "Staff", "Doctor"]:
         raise HTTPException(status_code=404, detail="Staff not found")
 
     if payload.email and payload.email.lower() != user.email:
@@ -269,7 +269,7 @@ def update_staff(
         user.name = payload.name
 
     if payload.role is not None:
-        if payload.role not in ["admin", "staff", "doctor"]:
+        if payload.role not in ["Admin", "Staff", "Doctor"]:
             raise HTTPException(status_code=400, detail="Invalid staff role")
         user.role = payload.role
 
@@ -300,7 +300,7 @@ def update_staff_status(
 ):
     user = db.query(User).filter(User.id == id).first()
 
-    if not user or user.role not in ["admin", "staff", "doctor"]:
+    if not user or user.role not in ["Admin", "Staff", "Doctor"]:
         raise HTTPException(status_code=404, detail="Staff not found")
 
     allowed_statuses = ["Active", "Inactive", "Suspended"]
@@ -308,6 +308,105 @@ def update_staff_status(
         raise HTTPException(status_code=400, detail="Invalid status")
 
     user.status = payload.status
+    db.commit()
+    db.refresh(user)
+
+    return serialize_staff(user)
+
+VALID_ROLES = ["admin", "staff", "doctor"]
+
+def to_title_case(text: str):
+    if not text:
+        return ""
+    return " ".join(word.capitalize() for word in text.split())
+
+@router.put("/staff/{id}")
+def update_staff(
+    id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # NAME → Title Case
+    if "full_name" in payload:
+        user.full_name = to_title_case(payload["full_name"])
+
+    # ROLE → LOWERCASE STORAGE (IMPORTANT)
+    if "role" in payload:
+        role = payload["role"].lower().strip()
+
+        if role not in VALID_ROLES:
+            raise HTTPException(status_code=400, detail="Invalid staff role")
+
+        user.role = role
+
+    if "department" in payload:
+        user.department = payload["department"]
+
+    if "phone" in payload:
+        user.phone = payload["phone"]
+
+    db.commit()
+    db.refresh(user)
+
+    return serialize_staff(user)
+
+@router.get("/staff/candidates")
+def get_verified_non_staff_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    # users who are VERIFIED but NOT already staff/admin/doctor
+    candidates = (
+        db.query(User)
+        .filter(User.is_verified == True)
+        .filter(~User.role.in_(["admin", "staff", "doctor"]))
+        .order_by(User.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "contact": u.contact,
+        }
+        for u in candidates
+    ]
+
+@router.get("/verified-users")
+def get_verified_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    users = db.query(User).filter(User.is_verified == True).all()
+
+    return [
+        {"id": u.id, "name": u.name, "email": u.email}
+        for u in users
+    ]
+
+
+@router.post("/staff/from-user")
+def create_staff_from_user(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == payload["user_id"]).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.role = payload.get("role", "staff")
+    user.status = "Active"
+
     db.commit()
     db.refresh(user)
 
