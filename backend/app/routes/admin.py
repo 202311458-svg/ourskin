@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from typing import Optional
+from collections import Counter, defaultdict
+from datetime import datetime
 
 from app.db import SessionLocal
 from app.models.user import User
@@ -381,6 +383,311 @@ def get_ai_logs(
         )
 
     return results
+
+
+@router.get("/reports")
+def get_admin_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    appointments = db.query(AppointmentModel).all()
+    users = db.query(User).all()
+    ai_records = db.query(SkinAnalysis).all()
+    diagnosis_reports = db.query(DiagnosisReport).all()
+
+    # -------------------------------------------------
+    # Monthly Appointment Summary
+    # -------------------------------------------------
+    monthly_data = defaultdict(
+        lambda: {
+            "total": 0,
+            "pending": 0,
+            "approved": 0,
+            "completed": 0,
+            "cancelled": 0,
+            "declined": 0,
+        }
+    )
+
+    for appointment in appointments:
+        appointment_date = getattr(appointment, "date", None)
+
+        if isinstance(appointment_date, str):
+            try:
+                appointment_date = datetime.fromisoformat(appointment_date).date()
+            except ValueError:
+                appointment_date = None
+
+        if appointment_date:
+            month_label = appointment_date.strftime("%B %Y")
+            sort_key = appointment_date.strftime("%Y-%m")
+        else:
+            month_label = "No Date"
+            sort_key = "0000-00"
+
+        status = (appointment.status or "").strip().lower()
+
+        monthly_data[(sort_key, month_label)]["total"] += 1
+
+        if status == "pending":
+            monthly_data[(sort_key, month_label)]["pending"] += 1
+        elif status == "approved":
+            monthly_data[(sort_key, month_label)]["approved"] += 1
+        elif status == "completed":
+            monthly_data[(sort_key, month_label)]["completed"] += 1
+        elif status == "cancelled":
+            monthly_data[(sort_key, month_label)]["cancelled"] += 1
+        elif status == "declined":
+            monthly_data[(sort_key, month_label)]["declined"] += 1
+
+    monthly_appointments = []
+
+    for (sort_key, month_label), values in monthly_data.items():
+        monthly_appointments.append(
+            {
+                "month": month_label,
+                "total": values["total"],
+                "pending": values["pending"],
+                "approved": values["approved"],
+                "completed": values["completed"],
+                "cancelled": values["cancelled"],
+                "declined": values["declined"],
+                "_sort_key": sort_key,
+            }
+        )
+
+    monthly_appointments.sort(key=lambda item: item["_sort_key"], reverse=True)
+
+    for item in monthly_appointments:
+        item.pop("_sort_key", None)
+
+    # -------------------------------------------------
+    # AI Skin Condition Summary
+    # -------------------------------------------------
+    condition_groups = defaultdict(
+        lambda: {
+            "cases": 0,
+            "confidence_values": [],
+            "severity_values": [],
+        }
+    )
+
+    for record in ai_records:
+        condition = record.condition or "Unspecified"
+        severity = record.severity or "Unspecified"
+        confidence = record.confidence
+
+        condition_groups[condition]["cases"] += 1
+        condition_groups[condition]["severity_values"].append(severity)
+
+        if confidence is not None:
+            try:
+                condition_groups[condition]["confidence_values"].append(
+                    float(confidence)
+                )
+            except (TypeError, ValueError):
+                pass
+
+    ai_condition_summary = []
+
+    for condition, values in condition_groups.items():
+        confidence_values = values["confidence_values"]
+        severity_values = values["severity_values"]
+
+        average_confidence = None
+
+        if confidence_values:
+            average_confidence = sum(confidence_values) / len(confidence_values)
+
+        common_severity = "Unspecified"
+
+        if severity_values:
+            common_severity = Counter(severity_values).most_common(1)[0][0]
+
+        ai_condition_summary.append(
+            {
+                "condition": condition,
+                "cases": values["cases"],
+                "average_confidence": average_confidence,
+                "common_severity": common_severity,
+            }
+        )
+
+    ai_condition_summary.sort(key=lambda item: item["cases"], reverse=True)
+
+    # -------------------------------------------------
+    # User Growth / User Summary
+    # -------------------------------------------------
+    user_groups = defaultdict(
+        lambda: {
+            "total": 0,
+            "active": 0,
+            "inactive": 0,
+            "verified": 0,
+            "unverified": 0,
+        }
+    )
+
+    for user in users:
+        role = user.role or "unknown"
+        status = (user.status or "Active").strip().lower()
+        is_verified = bool(user.is_verified)
+
+        user_groups[role]["total"] += 1
+
+        if status == "active":
+            user_groups[role]["active"] += 1
+        else:
+            user_groups[role]["inactive"] += 1
+
+        if is_verified:
+            user_groups[role]["verified"] += 1
+        else:
+            user_groups[role]["unverified"] += 1
+
+    user_growth = []
+
+    for role, values in user_groups.items():
+        user_growth.append(
+            {
+                "role": role,
+                "total": values["total"],
+                "active": values["active"],
+                "inactive": values["inactive"],
+                "verified": values["verified"],
+                "unverified": values["unverified"],
+            }
+        )
+
+    user_growth.sort(key=lambda item: item["role"])
+
+    # -------------------------------------------------
+    # Completed vs Cancelled Appointments
+    # -------------------------------------------------
+    completed_count = 0
+    cancelled_count = 0
+
+    for appointment in appointments:
+        status = (appointment.status or "").strip().lower()
+
+        if status == "completed":
+            completed_count += 1
+        elif status == "cancelled":
+            cancelled_count += 1
+
+    completed_cancelled_total = completed_count + cancelled_count
+
+    completion_rate = 0
+    cancellation_rate = 0
+
+    if completed_cancelled_total > 0:
+        completion_rate = (completed_count / completed_cancelled_total) * 100
+        cancellation_rate = (cancelled_count / completed_cancelled_total) * 100
+
+    completed_vs_cancelled = {
+        "completed": completed_count,
+        "cancelled": cancelled_count,
+        "total": completed_cancelled_total,
+        "completion_rate": completion_rate,
+        "cancellation_rate": cancellation_rate,
+    }
+
+    # -------------------------------------------------
+    # Doctor Activity
+    # -------------------------------------------------
+    doctor_activity_map = {}
+
+    doctors = [
+        user for user in users if (user.role or "").strip().lower() == "doctor"
+    ]
+
+    for doctor in doctors:
+        doctor_name = doctor.name or doctor.email or f"Doctor #{doctor.id}"
+
+        doctor_activity_map[doctor_name] = {
+            "doctor_name": doctor_name,
+            "assigned_appointments": 0,
+            "completed_appointments": 0,
+            "pending_ai_reviews": 0,
+            "reviewed_ai_cases": 0,
+        }
+
+    appointments_by_id = {}
+
+    for appointment in appointments:
+        appointments_by_id[appointment.id] = appointment
+
+        doctor_name = appointment.doctor_name or "Unassigned"
+
+        if doctor_name not in doctor_activity_map:
+            doctor_activity_map[doctor_name] = {
+                "doctor_name": doctor_name,
+                "assigned_appointments": 0,
+                "completed_appointments": 0,
+                "pending_ai_reviews": 0,
+                "reviewed_ai_cases": 0,
+            }
+
+        doctor_activity_map[doctor_name]["assigned_appointments"] += 1
+
+        status = (appointment.status or "").strip().lower()
+
+        if status == "completed":
+            doctor_activity_map[doctor_name]["completed_appointments"] += 1
+
+    report_appointment_ids = {
+        report.appointment_id
+        for report in diagnosis_reports
+        if report.appointment_id is not None
+    }
+
+    for record in ai_records:
+        appointment = appointments_by_id.get(record.appointment_id)
+
+        if not appointment:
+            continue
+
+        doctor_name = appointment.doctor_name or "Unassigned"
+
+        if doctor_name not in doctor_activity_map:
+            doctor_activity_map[doctor_name] = {
+                "doctor_name": doctor_name,
+                "assigned_appointments": 0,
+                "completed_appointments": 0,
+                "pending_ai_reviews": 0,
+                "reviewed_ai_cases": 0,
+            }
+
+        review_status = (getattr(record, "review_status", "") or "").strip().lower()
+        reviewed_at = getattr(record, "reviewed_at", None)
+
+        has_diagnosis_report = record.appointment_id in report_appointment_ids
+
+        is_reviewed = (
+            review_status in ["reviewed", "completed", "done"]
+            or reviewed_at is not None
+            or has_diagnosis_report
+        )
+
+        if is_reviewed:
+            doctor_activity_map[doctor_name]["reviewed_ai_cases"] += 1
+        else:
+            doctor_activity_map[doctor_name]["pending_ai_reviews"] += 1
+
+    doctor_activity = list(doctor_activity_map.values())
+
+    doctor_activity.sort(
+        key=lambda item: item["assigned_appointments"],
+        reverse=True,
+    )
+
+    return {
+        "monthly_appointments": monthly_appointments,
+        "ai_condition_summary": ai_condition_summary,
+        "user_growth": user_growth,
+        "completed_vs_cancelled": completed_vs_cancelled,
+        "doctor_activity": doctor_activity,
+    }
 
 
 @router.get("/staff")

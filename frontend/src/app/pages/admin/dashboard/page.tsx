@@ -113,6 +113,7 @@ export default function AdminDashboardPage() {
 
   const dashboardInsights = useMemo(() => {
     const internalUsers = stats.total_staff + stats.total_doctors;
+
     const appointmentApprovalRate = getPercent(
       stats.approved_appointments,
       stats.total_appointments
@@ -140,28 +141,24 @@ export default function AdminDashboardPage() {
       label: "Total Users",
       value: stats.total_users,
       helper: "All registered accounts",
-      icon: "👥",
       className: styles.pinkAccent,
     },
     {
       label: "Patients",
       value: stats.total_patients,
       helper: `${dashboardInsights.patientShare}% of total users`,
-      icon: "🧴",
       className: styles.greenAccent,
     },
     {
       label: "Doctors",
       value: stats.total_doctors,
       helper: "Active clinical users",
-      icon: "🩺",
       className: styles.blueAccent,
     },
     {
       label: "Staff",
       value: stats.total_staff,
       helper: "Internal support users",
-      icon: "📋",
       className: styles.orangeAccent,
     },
   ];
@@ -171,7 +168,6 @@ export default function AdminDashboardPage() {
       label: "Total Appointments",
       value: stats.total_appointments,
       helper: "All appointment records",
-      icon: "📅",
       className: styles.pinkAccent,
     },
     {
@@ -181,7 +177,6 @@ export default function AdminDashboardPage() {
         stats.pending_appointments > 0
           ? "Needs admin review"
           : "No pending requests",
-      icon: "⏳",
       className:
         stats.pending_appointments > 0 ? styles.orangeAccent : styles.greenAccent,
     },
@@ -189,14 +184,12 @@ export default function AdminDashboardPage() {
       label: "Approved",
       value: stats.approved_appointments,
       helper: `${dashboardInsights.appointmentApprovalRate}% approval share`,
-      icon: "✅",
       className: styles.greenAccent,
     },
     {
-      label: "AI Logs",
+      label: "AI Review Monitor",
       value: stats.total_ai_logs,
       helper: "Skin analysis records",
-      icon: "🤖",
       className: styles.blueAccent,
     },
   ];
@@ -246,10 +239,9 @@ export default function AdminDashboardPage() {
             <section className={styles.statsGrid}>
               {primaryCards.map((card) => (
                 <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-                  <div className={styles.statTop}>
-                    <span className={styles.statIcon}>{card.icon}</span>
-                    <span className={styles.statLabel}>{card.label}</span>
-                  </div>
+<div className={styles.statTop}>
+  <span className={styles.statLabel}>{card.label}</span>
+</div>
 
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>
@@ -260,10 +252,9 @@ export default function AdminDashboardPage() {
             <section className={styles.statsGrid}>
               {operationalCards.map((card) => (
                 <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-                  <div className={styles.statTop}>
-                    <span className={styles.statIcon}>{card.icon}</span>
-                    <span className={styles.statLabel}>{card.label}</span>
-                  </div>
+<div className={styles.statTop}>
+  <span className={styles.statLabel}>{card.label}</span>
+</div>
 
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>
@@ -351,12 +342,12 @@ export default function AdminDashboardPage() {
                     <h2>AI Activity</h2>
                   </div>
 
-                  <Link href="/pages/admin/ai-logs">Open AI Logs</Link>
+                  <Link href="/pages/admin/ai-logs">Open AI Review Monitor</Link>
                 </div>
 
                 <div className={styles.aiBox}>
                   <div>
-                    <span>Total AI Logs</span>
+                    <span>Total AI Records</span>
                     <strong>{stats.total_ai_logs}</strong>
                     <p>
                       AI analysis records available for review and monitoring.
@@ -364,7 +355,7 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className={styles.aiBadge}>
-                    {stats.total_ai_logs > 0 ? "Active" : "No logs yet"}
+                    {stats.total_ai_logs > 0 ? "Active" : "No records yet"}
                   </div>
                 </div>
               </div>
@@ -381,7 +372,7 @@ export default function AdminDashboardPage() {
                   <Link href="/pages/admin/staff-mgmt">Manage Staff</Link>
                   <Link href="/pages/admin/appointments">Review Appointments</Link>
                   <Link href="/pages/admin/audit-logs">Check Audit Logs</Link>
-                  <Link href="/pages/admin/ai-logs">Monitor AI Logs</Link>
+                  <Link href="/pages/admin/records">Look Over Records</Link>
                 </div>
               </div>
             </section>

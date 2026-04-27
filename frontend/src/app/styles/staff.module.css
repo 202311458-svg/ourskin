@@ -1,7 +1,8 @@
 .staffPage {
+  width: 100%;
   min-height: 100vh;
-  padding: 28px;
-  background: #f6f8fc;
+  padding: 0;
+  background: transparent;
   color: #1f2937;
 }
 
@@ -477,7 +478,7 @@
 /* Dark mode support */
 
 :global(body.darkMode) .staffPage {
-  background: var(--bg-main);
+  background: transparent;
   color: var(--text-main);
 }
 

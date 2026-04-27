@@ -33,7 +33,6 @@ export default function StaffNavbar() {
     { name: "Appointments", path: "/pages/staff/appointments", icon: <FaUserMd /> },
     { name: "History", path: "/pages/staff/history", icon: <FaUserMd /> },
     { name: "Profile", path: "/pages/staff/profile", icon: <FaUsers /> },
-    { name: "Notifications", path: "/pages/staff/updates", icon: <FaBell /> },
   ];
 
   const toggleCollapse = () => {

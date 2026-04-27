@@ -36,6 +36,7 @@ export default function AdminNavbar() {
     { name: "AI Review Monitor", path: "/pages/admin/ai-logs", icon: <FaRobot /> },
     { name: "Staff Management", path: "/pages/admin/staff-mgmt", icon: <FaUserShield /> },
     { name: "Audit Logs", path: "/pages/admin/audit-logs", icon: <FaClipboardList /> },
+    { name: "Reports", path: "/pages/admin/reports", icon: <FaClipboardList /> },
   ];
 
   // sync sidebar state globally

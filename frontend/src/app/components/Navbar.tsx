@@ -53,11 +53,6 @@ export default function Navbar() {
       path: "/pages/patient/profile",
       icon: <FaUser />,
     },
-    {
-      name: "Updates",
-      path: "/pages/patient/updates",
-      icon: <FaBell />,
-    },
   ];
 
   const toggleCollapse = () => {
