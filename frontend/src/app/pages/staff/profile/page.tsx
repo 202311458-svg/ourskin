@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
-import styles from "@/app/styles/staff.module.css"
+import styles from "@/app/styles/profile.module.css"
 
 type StaffProfile = {
   id?: number
@@ -13,13 +13,18 @@ type StaffProfile = {
   status?: string
   contact?: string | null
   created_at?: string
+  photo?: string | null
+  profile_image?: string | null
 }
 
 export default function StaffProfilePage() {
   const router = useRouter()
+
   const [profile, setProfile] = useState<StaffProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  const [collapsed, setCollapsed] = useState(false)
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -27,19 +32,10 @@ export default function StaffProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [updatingPassword, setUpdatingPassword] = useState(false)
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Not available"
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
-    const date = new Date(dateString)
-
-    if (Number.isNaN(date.getTime())) return "Not available"
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
 
   const loadProfile = useCallback(async () => {
     const token = localStorage.getItem("token")
@@ -60,7 +56,7 @@ export default function StaffProfilePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error("Failed to fetch profile")
+        throw new Error(data.detail || "Failed to fetch profile")
       }
 
       setProfile(data)
@@ -84,11 +80,25 @@ export default function StaffProfilePage() {
     loadProfile()
   }, [loadProfile, router])
 
+  useEffect(() => {
+    const sync = () => {
+      setCollapsed(document.body.classList.contains("navCollapsed"))
+    }
+
+    sync()
+    window.addEventListener("navbarToggle", sync)
+
+    return () => window.removeEventListener("navbarToggle", sync)
+  }, [])
+
   const resetPasswordForm = () => {
     setShowPasswordForm(false)
     setCurrentPassword("")
     setNewPassword("")
     setConfirmPassword("")
+    setShowCurrent(false)
+    setShowNew(false)
+    setShowConfirm(false)
   }
 
   const handleChangePassword = async () => {
@@ -141,207 +151,162 @@ export default function StaffProfilePage() {
     }
   }
 
+  const profileImage = profile?.photo || profile?.profile_image || null
+  const displayName = profile?.name || "Staff User"
+  const firstLetter = displayName.charAt(0).toUpperCase()
+
   return (
-    <div className="staffLayout">
+    <>
       <StaffNavbar />
 
-      <div className="staffContent">
-        <div className={styles.staffPage}>
-          <div className={styles.dashboardHeader}>
-            <div>
-              <h1>Profile</h1>
-              <p className={styles.pageSubtext}>
-                View your staff account details and portal access information.
-              </p>
-            </div>
-
-            <button className={styles.secondaryBtn} onClick={loadProfile}>
-              Refresh
-            </button>
+      <main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <h1>Staff Profile</h1>
+            <p>View your account details and manage your login security</p>
           </div>
 
           {loading ? (
-            <div className={styles.emptyState}>Loading profile...</div>
+            <p>Loading...</p>
           ) : error ? (
-            <div className={styles.emptyState}>{error}</div>
+            <p>{error}</p>
           ) : !profile ? (
-            <div className={styles.emptyState}>No profile details found.</div>
+            <p>Unable to load profile</p>
           ) : (
-            <>
-              <div className={styles.dashboardGrid}>
-                <div className={styles.listCard}>
-                  <div className={styles.listHeader}>
-                    <h2>Account Information</h2>
+            <div className={styles.grid}>
+              <div className={styles.cardLarge}>
+                <div className={styles.profileHeader}>
+                  <div className={styles.photoWrapper}>
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        className={styles.profilePhoto}
+                        alt="Staff profile"
+                      />
+                    ) : (
+                      <div className={styles.avatar}>{firstLetter}</div>
+                    )}
                   </div>
 
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Full Name</span>
-                    <span className={styles.infoValue}>{profile.name || "Not available"}</span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Email</span>
-                    <span className={styles.infoValue}>{profile.email || "Not available"}</span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Contact</span>
-                    <span className={styles.infoValue}>
-                      {profile.contact || "Not available"}
-                    </span>
+                  <div>
+                    <h2>{displayName}</h2>
+                    <p className={styles.subText}>
+                      {profile.role ? `${profile.role} Account` : "Staff Account"}
+                    </p>
                   </div>
                 </div>
 
-                <div className={styles.listCard}>
-                  <div className={styles.listHeader}>
-                    <h2>Portal Access</h2>
+                <div className={styles.divider}></div>
+
+                <div className={styles.infoBlock}>
+                  <div className={styles.infoRow}>
+                    <span>Email</span>
+                    <span>{profile.email || "Not available"}</span>
                   </div>
 
                   <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Role</span>
-                    <span className={styles.infoValue}>{profile.role || "Not available"}</span>
+                    <span>Contact</span>
+                    <span>{profile.contact || "Not provided"}</span>
                   </div>
 
                   <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Status</span>
-                    <span className={styles.infoValue}>{profile.status || "Not available"}</span>
+                    <span>Status</span>
+                    <span>{profile.status || "Not available"}</span>
                   </div>
 
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Member Since</span>
-                    <span className={styles.infoValue}>
-                      {formatDate(profile.created_at)}
-                    </span>
-                  </div>
+
                 </div>
+
+                <button className={styles.primaryBtn} onClick={loadProfile}>
+                  Refresh Profile
+                </button>
               </div>
 
-              <div className={styles.listCard} style={{ marginTop: "20px" }}>
-                <div className={styles.listHeader}>
-                  <h2>Security</h2>
-                </div>
+              <div className={styles.card}>
+                <h3>Security</h3>
+                <p className={styles.smallText}>
+                  Update your password to keep your staff account protected.
+                </p>
 
-                {!showPasswordForm ? (
-                  <button
-                    className={styles.secondaryBtn}
-                    onClick={() => setShowPasswordForm(true)}
-                  >
-                    Change Password
-                  </button>
-                ) : (
-                  <div style={{ marginTop: "10px" }}>
-                    <div style={{ display: "grid", gap: "14px" }}>
-                      <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontWeight: 600,
-                            marginBottom: "6px",
-                          }}
-                        >
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="Enter current password"
-                          style={{
-                            width: "100%",
-                            padding: "12px 14px",
-                            borderRadius: "10px",
-                            border: "1px solid #d1d5db",
-                            outline: "none",
-                          }}
-                        />
-                      </div>
+                <button
+                  className={styles.primaryBtn}
+                  onClick={() => setShowPasswordForm(!showPasswordForm)}
+                >
+                  {showPasswordForm ? "Hide Password Form" : "Change Password"}
+                </button>
 
-                      <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontWeight: 600,
-                            marginBottom: "6px",
-                          }}
-                        >
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Enter new password"
-                          style={{
-                            width: "100%",
-                            padding: "12px 14px",
-                            borderRadius: "10px",
-                            border: "1px solid #d1d5db",
-                            outline: "none",
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontWeight: 600,
-                            marginBottom: "6px",
-                          }}
-                        >
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Confirm new password"
-                          style={{
-                            width: "100%",
-                            padding: "12px 14px",
-                            borderRadius: "10px",
-                            border: "1px solid #d1d5db",
-                            outline: "none",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        marginTop: "16px",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <button
-                        className={styles.secondaryBtn}
-                        onClick={handleChangePassword}
-                        disabled={updatingPassword}
-                      >
-                        {updatingPassword ? "Updating..." : "Update Password"}
-                      </button>
+                {showPasswordForm && (
+                  <div className={styles.form}>
+                    <div className={styles.inputGroup}>
+                      <input
+                        type={showCurrent ? "text" : "password"}
+                        placeholder="Current Password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                      />
 
                       <button
-                        className={styles.secondaryBtn}
-                        onClick={resetPasswordForm}
                         type="button"
-                        style={{
-                          background: "#e5e7eb",
-                          color: "#111827",
-                        }}
+                        onClick={() => setShowCurrent(!showCurrent)}
                       >
-                        Cancel
+                        {showCurrent ? "Hide" : "Show"}
                       </button>
                     </div>
+
+                    <div className={styles.inputGroup}>
+                      <input
+                        type={showNew ? "text" : "password"}
+                        placeholder="New Password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowNew(!showNew)}
+                      >
+                        {showNew ? "Hide" : "Show"}
+                      </button>
+                    </div>
+
+                    <div className={styles.inputGroup}>
+                      <input
+                        type={showConfirm ? "text" : "password"}
+                        placeholder="Confirm New Password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                      >
+                        {showConfirm ? "Hide" : "Show"}
+                      </button>
+                    </div>
+
+                    <button
+                      className={styles.primaryBtn}
+                      onClick={handleChangePassword}
+                      disabled={updatingPassword}
+                    >
+                      {updatingPassword ? "Updating..." : "Update Password"}
+                    </button>
+
+                    <button
+                      className={styles.primaryBtn}
+                      type="button"
+                      onClick={resetPasswordForm}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
-      </div>
-    </div>
+      </main>
+    </>
   )
 }
