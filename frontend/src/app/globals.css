@@ -1211,3 +1211,242 @@ body {
   color: var(--text-main);
   transition: background 0.25s ease, color 0.25s ease;
 }
+
+
+
+/* =========================================
+   LANDING PAGE DARK MODE BUTTON
+   ========================================= */
+
+.landingThemeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #ead5dd;
+  background: #ffffff;
+  color: #8b2f55;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.landingThemeBtn:hover {
+  background: #fff3f7;
+  transform: translateY(-1px);
+}
+
+.landingThemeBtn svg {
+  font-size: 14px;
+}
+
+.landingThemeBtn span {
+  font-size: 14px;
+}
+
+/* =========================================
+   LANDING PAGE DARK MODE
+   ========================================= */
+
+body.darkMode .landingPage {
+  background: #0f1117 !important;
+  color: #f8fafc !important;
+}
+
+body.darkMode .landingPage .animatedBackground {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(147, 52, 93, 0.28), transparent 28%),
+    radial-gradient(circle at 85% 15%, rgba(244, 114, 182, 0.18), transparent 28%),
+    linear-gradient(135deg, #0f1117 0%, #20111a 50%, #321827 100%) !important;
+}
+
+/* Navbar */
+
+body.darkMode .landingPage .landingnavbar {
+  background: #111827 !important;
+  border-bottom: 1px solid #2d3340 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22) !important;
+}
+
+body.darkMode .landingPage .landingnavLinks a {
+  color: #e5e7eb !important;
+}
+
+body.darkMode .landingPage .landingnavLinks a:hover,
+body.darkMode .landingPage .loginBtn {
+  color: #f9a8d4 !important;
+}
+
+body.darkMode .landingPage .landingThemeBtn {
+  background: #1f2937 !important;
+  color: #f9a8d4 !important;
+  border-color: #374151 !important;
+}
+
+body.darkMode .landingPage .landingThemeBtn:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+  border-color: rgba(244, 114, 182, 0.45) !important;
+}
+
+/* Sections */
+
+body.darkMode .landingPage .hero,
+body.darkMode .landingPage .section,
+body.darkMode .landingPage .altSection,
+body.darkMode .landingPage .ctaSection {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+body.darkMode .landingPage h1,
+body.darkMode .landingPage h2,
+body.darkMode .landingPage h3,
+body.darkMode .landingPage h4 {
+  color: #f9a8d4 !important;
+}
+
+body.darkMode .landingPage p,
+body.darkMode .landingPage li {
+  color: #d1d5db !important;
+}
+
+/* Cards */
+
+body.darkMode .landingPage .heroCard,
+body.darkMode .landingPage .featureStrip,
+body.darkMode .landingPage .doctorCard,
+body.darkMode .landingPage .serviceCard,
+body.darkMode .landingPage .contactCard {
+  background: #171923 !important;
+  color: #f8fafc !important;
+  border: 1px solid #2d3340 !important;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.darkMode .landingPage .feature h4,
+body.darkMode .landingPage .doctorCard h3,
+body.darkMode .landingPage .contactCard h3,
+body.darkMode .landingPage .serviceCard h3 {
+  color: #f9a8d4 !important;
+}
+
+body.darkMode .landingPage .feature p,
+body.darkMode .landingPage .doctorCard p,
+body.darkMode .landingPage .contactCard p,
+body.darkMode .landingPage .contactInfo p,
+body.darkMode .landingPage .heroStats p {
+  color: #cbd5e1 !important;
+}
+
+body.darkMode .landingPage .heroStats h3 {
+  color: #f9a8d4 !important;
+}
+
+/* Buttons */
+
+body.darkMode .landingPage .bookBtn,
+body.darkMode .landingPage .mainBtn {
+  background: #93345d !important;
+  color: #ffffff !important;
+  border-color: #93345d !important;
+}
+
+body.darkMode .landingPage .bookBtn:hover,
+body.darkMode .landingPage .mainBtn:hover {
+  background: #a83d6b !important;
+}
+
+body.darkMode .landingPage .outlineBtn {
+  background: transparent !important;
+  color: #f9a8d4 !important;
+  border: 1px solid #f472b6 !important;
+}
+
+body.darkMode .landingPage .outlineBtn:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
+
+/* Service modal */
+
+body.darkMode .landingPage .modal {
+  background: rgba(15, 23, 42, 0.68) !important;
+}
+
+body.darkMode .landingPage .serviceModal {
+  background: #171923 !important;
+  color: #f8fafc !important;
+  border: 1px solid #2d3340 !important;
+}
+
+body.darkMode .landingPage .serviceModal h1 {
+  color: #f9a8d4 !important;
+}
+
+body.darkMode .landingPage .closeBtn,
+body.darkMode .landingPage .arrowPrev,
+body.darkMode .landingPage .arrowNext {
+  background: #93345d !important;
+  color: #ffffff !important;
+}
+
+/* Footer */
+
+body.darkMode .landingPage .footer,
+body.darkMode .landingPage .footer p {
+  background: #93345d !important;
+  color: #ffffff !important;
+}
+
+/* Mobile polish */
+
+@media (max-width: 768px) {
+  .landingThemeBtn span {
+    display: none;
+  }
+
+  .landingThemeBtn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+  }
+}
+
+
+
+.landingPage .doctorCard {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  text-align: center !important;
+}
+
+.landingPage .doctorCard .doctorPhoto {
+  display: block !important;
+  margin: 0 auto 22px !important;
+}
+
+.landingPage .doctorCard h3 {
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  text-align: center !important;
+}
+
+.landingPage .doctorCard p {
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: center !important;
+  display: block !important;
+}
+
+/* Dark mode support */
+body.darkMode .landingPage .doctorCard h3,
+body.darkMode .landingPage .doctorCard p {
+  text-align: center !important;
+}
