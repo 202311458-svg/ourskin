@@ -1450,3 +1450,229 @@ body.darkMode .landingPage .doctorCard h3,
 body.darkMode .landingPage .doctorCard p {
   text-align: center !important;
 }
+
+
+/* LANDING PAGE ABOUT AND CONTACT CLEANUP */
+
+.sectionHeaderBlock {
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.sectionLead {
+  max-width: 760px !important;
+  margin: 12px auto 0 !important;
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+  color: #5b6472;
+  text-align: center !important;
+  opacity: 0.9 !important;
+}
+
+/* ABOUT */
+.aboutSection {
+  background: linear-gradient(135deg, #ffe6ec 0%, #fff4f7 100%);
+}
+
+.aboutGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 32px;
+  align-items: stretch;
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.aboutMain {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #f4d6df;
+  border-radius: 28px;
+  padding: 34px;
+  box-shadow: 0 16px 42px rgba(130, 51, 76, 0.08);
+}
+
+.aboutMain p {
+  max-width: none !important;
+  margin: 0 0 18px !important;
+  font-size: 1.02rem !important;
+  line-height: 1.8 !important;
+  color: #374151;
+  text-align: left !important;
+  opacity: 0.9 !important;
+}
+
+.aboutMain p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.aboutHighlights {
+  display: grid;
+  gap: 16px;
+}
+
+.aboutHighlightCard {
+  background: #ffffff;
+  border: 1px solid #f2d9e2;
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 12px 30px rgba(130, 51, 76, 0.08);
+  text-align: left;
+}
+
+.aboutHighlightCard h3 {
+  margin: 0 0 8px;
+  color: #82334c;
+  font-size: 1.05rem;
+}
+
+.aboutHighlightCard p {
+  max-width: none !important;
+  margin: 0 !important;
+  color: #5b6472;
+  font-size: 0.95rem !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  opacity: 0.9 !important;
+}
+
+/* CONTACT */
+.contactSection {
+  background: linear-gradient(135deg, #fff4ee 0%, #fff8f4 100%);
+}
+
+.contactSection .contactGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.contactSection .contactCard {
+  width: auto;
+  min-height: 310px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.contactSection .contactCard h3 {
+  margin: 0 0 18px;
+  color: #1f2937;
+  font-size: 1.35rem;
+  text-align: center;
+}
+
+.contactCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  align-items: center;
+}
+
+.contactMainText {
+  max-width: none !important;
+  margin: 0 !important;
+  color: #4b5563;
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+  text-align: center !important;
+  opacity: 0.9 !important;
+}
+
+.contactInfoGroup {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  text-align: center;
+}
+
+.contactLabel {
+  color: #82334c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.contactInfoGroup p {
+  max-width: none !important;
+  margin: 0 !important;
+  color: #4b5563;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+  opacity: 0.9 !important;
+}
+
+.contactSection .contactButtons {
+  width: 100%;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contactSection .contactButtons a,
+.contactSection .contactCard a {
+  width: 100%;
+  text-decoration: none;
+}
+
+.contactSection .mainBtn {
+  width: 100%;
+}
+
+.contactSection .contactInfo {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* DARK MODE FOR NEW LANDING SECTIONS */
+body.darkMode .landingPage .aboutSection,
+body.darkMode .landingPage .contactSection {
+  background: transparent !important;
+}
+
+body.darkMode .landingPage .sectionLead {
+  color: #d1d5db !important;
+}
+
+body.darkMode .landingPage .aboutMain,
+body.darkMode .landingPage .aboutHighlightCard {
+  background: #171923 !important;
+  border-color: #2d3340 !important;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.darkMode .landingPage .aboutMain p,
+body.darkMode .landingPage .aboutHighlightCard p,
+body.darkMode .landingPage .contactMainText,
+body.darkMode .landingPage .contactInfoGroup p {
+  color: #d1d5db !important;
+}
+
+body.darkMode .landingPage .aboutHighlightCard h3,
+body.darkMode .landingPage .contactLabel {
+  color: #f9a8d4 !important;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+  .aboutGrid,
+  .contactSection .contactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .aboutMain {
+    padding: 28px;
+  }
+
+  .contactSection .contactCard {
+    min-height: auto;
+  }
+}

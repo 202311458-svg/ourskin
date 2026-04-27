@@ -195,18 +195,58 @@ export default function Home() {
       </section>
 
       {/* ABOUT */}
-      <section id="about" className="section">
-        <h2>About Our Skin</h2>
+      <section id="about" className="section aboutSection">
+        <div className="sectionHeaderBlock">
+          <h2>About Our Skin</h2>
+          <p className="sectionLead">
+            Professional dermatology care focused on healthy skin, safe
+            treatment, and patient-centered consultation.
+          </p>
+        </div>
 
-        <p>
-          OurSkin Dermatology Center is a medical and aesthetic clinic led by a
-          dedicated team of PDS board-certified dermatologists and PSCS cosmetic
-          surgeons. We are committed to providing safe, effective, and
-          personalized treatments designed to support both skin health and
-          aesthetic goals. Through expert care, advanced medical techniques, and
-          patient-focused consultations, we help every client achieve healthier
-          and more confident skin.
-        </p>
+        <div className="aboutGrid">
+          <div className="aboutMain">
+            <p>
+              OurSkin Dermatology Center is a medical and aesthetic clinic led by
+              a dedicated team of PDS board-certified dermatologists and PSCS
+              cosmetic surgeons. The clinic provides safe, effective, and
+              personalized treatment plans for different skin, hair, and
+              aesthetic concerns.
+            </p>
+
+            <p>
+              Through expert consultation, modern clinical techniques, and a
+              patient-focused approach, OurSkin helps clients receive care that
+              supports healthier skin and greater confidence.
+            </p>
+          </div>
+
+          <div className="aboutHighlights">
+            <div className="aboutHighlightCard">
+              <h3>Expert Care</h3>
+              <p>
+                Board-certified specialists provide professional guidance for
+                both medical and aesthetic dermatology needs.
+              </p>
+            </div>
+
+            <div className="aboutHighlightCard">
+              <h3>Personalized Treatment</h3>
+              <p>
+                Each consultation is tailored to the patient’s skin condition,
+                concern, goals, and treatment needs.
+              </p>
+            </div>
+
+            <div className="aboutHighlightCard">
+              <h3>Modern Clinical Support</h3>
+              <p>
+                OurSkin combines dermatology expertise with updated tools and
+                digital patient monitoring.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* SERVICES */}
@@ -309,65 +349,102 @@ export default function Home() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" className="section">
-        <h2>Visit Our Clinic</h2>
+      <section id="contact" className="section contactSection">
+        <div className="sectionHeaderBlock">
+          <h2>Visit Our Clinic</h2>
+          <p className="sectionLead">
+            Find our clinic location, operating hours, and online contact
+            channels.
+          </p>
+        </div>
 
         <div className="contactGrid">
           <div className="contactCard">
             <h3>Location</h3>
 
-            <p>3rd Floor, C&amp;C Commercial Hub, No. 730 Rizal Avenue,</p>
-            <p>East Tapinac, Olongapo City, Olongapo, Philippines, 2200</p>
+            <div className="contactCardBody">
+              <p className="contactMainText">
+                3rd Floor, C&amp;C Commercial Hub, No. 730 Rizal Avenue, East
+                Tapinac, Olongapo City, Philippines, 2200
+              </p>
 
-            <a
-              href="https://www.google.com/maps/place/OurSkin+Dermatology+Center/@14.8310851,120.2780988,17z/data=!4m6!3m5!1s0x3396715b43c93d4f:0x2fb387e5aeae1007!8m2!3d14.8310799!4d120.2806737!16s%2Fg%2F11xv4qj05q?entry=ttu&g_ep=EgoyMDI2MDMwNC4xIKXMDSoASAFQAw%3D%3D"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <button type="button" className="mainBtn">
-                View on Google Maps
-              </button>
-            </a>
+              <a
+                href="https://www.google.com/maps/place/OurSkin+Dermatology+Center/@14.8310851,120.2780988,17z/data=!4m6!3m5!1s0x3396715b43c93d4f:0x2fb387e5aeae1007!8m2!3d14.8310799!4d120.2806737!16s%2Fg%2F11xv4qj05q?entry=ttu&g_ep=EgoyMDI2MDMwNC4xIKXMDSoASAFQAw%3D%3D"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <button type="button" className="mainBtn">
+                  View on Google Maps
+                </button>
+              </a>
+            </div>
           </div>
 
           <div className="contactCard">
             <h3>Clinic Hours</h3>
 
-            <p>Monday to Saturday</p>
-            <p>12:00 NN to 7:00 PM</p>
-            <p>
-              Doctors&apos; clinic hours vary by schedule and may change
-              unexpectedly.
-            </p>
+            <div className="contactCardBody">
+              <div className="contactInfoGroup">
+                <span className="contactLabel">Open Days</span>
+                <p>Monday to Saturday</p>
+              </div>
+
+              <div className="contactInfoGroup">
+                <span className="contactLabel">Clinic Hours</span>
+                <p>12:00 NN to 7:00 PM</p>
+              </div>
+
+              <div className="contactInfoGroup">
+                <span className="contactLabel">Important Note</span>
+                <p>
+                  Doctors&apos; clinic hours may vary depending on their schedule
+                  and may change unexpectedly.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="contactCard">
             <h3>Online Inquiry</h3>
 
-            <div className="contactButtons">
-              <a
-                href="https://www.facebook.com/profile.php?id=61574827784283"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <button type="button" className="mainBtn">
-                  Message us on Facebook
-                </button>
-              </a>
+            <div className="contactCardBody">
+              <div className="contactButtons">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61574827784283"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <button type="button" className="mainBtn">
+                    Message us on Facebook
+                  </button>
+                </a>
 
-              <a
-                href="https://www.instagram.com/ourskin.center"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <button type="button" className="mainBtn">
-                  Message us on Instagram
-                </button>
-              </a>
+                <a
+                  href="https://www.instagram.com/ourskin.center"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <button type="button" className="mainBtn">
+                    Message us on Instagram
+                  </button>
+                </a>
+              </div>
 
               <div className="contactInfo">
-                <p>Email: ourskincenter@gmail.com</p>
-                <p>Call: 0998 887 8050 . Ms. Lanie</p>
+                <div className="contactInfoGroup">
+                  <span className="contactLabel">Email</span>
+                  <p>ourskincenter@gmail.com</p>
+                </div>
+
+                <div className="contactInfoGroup">
+                  <span className="contactLabel">Call</span>
+                  <p>0998 887 8050</p>
+                </div>
+
+                <div className="contactInfoGroup">
+                  <span className="contactLabel">Contact Person</span>
+                  <p>Ms. Lanie</p>
+                </div>
               </div>
             </div>
           </div>
