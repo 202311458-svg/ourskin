@@ -22,8 +22,8 @@ body.darkMode textarea {
   margin-bottom: 10px;
   text-align: center;
   color: var(--primary-color);
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 34px;
+  font-weight: 800;
 }
 .container {
   display: flex;

@@ -1117,3 +1117,100 @@
     display: none;
   }
 }
+
+/* =========================================
+   DOCTOR CALENDAR DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .wrapper {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .title,
+:global(body.darkMode) .monthTitle,
+:global(body.darkMode) .dayNumber,
+:global(body.darkMode) .modalTitle,
+:global(body.darkMode) .detailValue,
+:global(body.darkMode) .eventTime,
+:global(body.darkMode) .eventPatient {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .legendItem,
+:global(body.darkMode) .modalSubtitle,
+:global(body.darkMode) .detailLabel,
+:global(body.darkMode) .eventService {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .weekDay,
+:global(body.darkMode) .outsideMonth,
+:global(body.darkMode) .stateBox,
+:global(body.darkMode) .detailCard,
+:global(body.darkMode) .secondaryButton,
+:global(body.darkMode) .navButton,
+:global(body.darkMode) .closeButton {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .dayCell {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .today {
+  border-color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .modalCard {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:global(body.darkMode) .eventButton {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .eventButton[data-status="approved"] {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+:global(body.darkMode) .eventButton[data-status="pending"] {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+:global(body.darkMode) .eventButton[data-status="completed"] {
+  background: rgba(59, 130, 246, 0.14) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+:global(body.darkMode) .eventButton[data-status="cancelled"] {
+  background: rgba(107, 114, 128, 0.16) !important;
+  border-color: rgba(107, 114, 128, 0.35) !important;
+}
+
+:global(body.darkMode) .eventButton[data-status="declined"] {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+:global(body.darkMode) .primaryButton {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+:global(body.darkMode) .primaryButton:hover {
+  background: var(--primary-hover) !important;
+}

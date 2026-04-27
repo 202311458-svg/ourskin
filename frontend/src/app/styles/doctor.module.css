@@ -1126,3 +1126,396 @@
     gap: 7px;
   }
 }
+
+
+/* Main doctor page background */
+:global(body.darkMode) .pageWrapper {
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+/* Fix section cards */
+:global(body.darkMode) .sectionCard,
+:global(body.darkMode) .dashboardCard,
+:global(body.darkMode) .modalPanel {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/* Fix inline white sections/cards/articles/buttons inside doctor pages */
+:global(body.darkMode) .pageWrapper section[style*="background"],
+:global(body.darkMode) .pageWrapper article[style*="background"],
+:global(body.darkMode) .pageWrapper button[style*="background"],
+:global(body.darkMode) .pageWrapper div[style*="background: rgb(255, 255, 255)"],
+:global(body.darkMode) .pageWrapper div[style*="background: #ffffff"],
+:global(body.darkMode) .pageWrapper div[style*="background: white"],
+:global(body.darkMode) .pageWrapper div[style*="background-color: rgb(255, 255, 255)"],
+:global(body.darkMode) .pageWrapper div[style*="background-color: #ffffff"],
+:global(body.darkMode) .pageWrapper div[style*="background-color: white"] {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/* Fix softer inline panels */
+:global(body.darkMode) .pageWrapper div[style*="background: rgb(251"],
+:global(body.darkMode) .pageWrapper div[style*="background: #fb"],
+:global(body.darkMode) .pageWrapper div[style*="background-color: rgb(251"],
+:global(body.darkMode) .pageWrapper div[style*="background-color: #fb"] {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Fix Patient Records patient buttons */
+:global(body.darkMode) .pageWrapper button[style*="background"] {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Fix search input inside Patient Records */
+:global(body.darkMode) .pageWrapper input {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .pageWrapper input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Headings inside inline cards */
+:global(body.darkMode) .pageWrapper section[style*="background"] h1,
+:global(body.darkMode) .pageWrapper section[style*="background"] h2,
+:global(body.darkMode) .pageWrapper section[style*="background"] h3,
+:global(body.darkMode) .pageWrapper section[style*="background"] h4,
+:global(body.darkMode) .pageWrapper article[style*="background"] h1,
+:global(body.darkMode) .pageWrapper article[style*="background"] h2,
+:global(body.darkMode) .pageWrapper article[style*="background"] h3,
+:global(body.darkMode) .pageWrapper article[style*="background"] h4,
+:global(body.darkMode) .pageWrapper button[style*="background"] h1,
+:global(body.darkMode) .pageWrapper button[style*="background"] h2,
+:global(body.darkMode) .pageWrapper button[style*="background"] h3,
+:global(body.darkMode) .pageWrapper button[style*="background"] h4,
+:global(body.darkMode) .pageWrapper div[style*="background"] h1,
+:global(body.darkMode) .pageWrapper div[style*="background"] h2,
+:global(body.darkMode) .pageWrapper div[style*="background"] h3,
+:global(body.darkMode) .pageWrapper div[style*="background"] h4,
+:global(body.darkMode) .pageWrapper div[style*="background"] strong {
+  color: var(--text-heading) !important;
+}
+
+/* Paragraphs and small text inside inline cards */
+:global(body.darkMode) .pageWrapper section[style*="background"] p,
+:global(body.darkMode) .pageWrapper section[style*="background"] span,
+:global(body.darkMode) .pageWrapper article[style*="background"] p,
+:global(body.darkMode) .pageWrapper article[style*="background"] span,
+:global(body.darkMode) .pageWrapper button[style*="background"] p,
+:global(body.darkMode) .pageWrapper button[style*="background"] span,
+:global(body.darkMode) .pageWrapper div[style*="background"] p,
+:global(body.darkMode) .pageWrapper div[style*="background"] span {
+  color: var(--text-muted) !important;
+}
+
+/* Fix inline color styles directly */
+:global(body.darkMode) .pageWrapper div[style*="color: rgb(31"],
+:global(body.darkMode) .pageWrapper div[style*="color: #1f"],
+:global(body.darkMode) .pageWrapper div[style*="color: #111"],
+:global(body.darkMode) .pageWrapper div[style*="color: #171"],
+:global(body.darkMode) .pageWrapper h1[style*="color"],
+:global(body.darkMode) .pageWrapper h2[style*="color"],
+:global(body.darkMode) .pageWrapper h3[style*="color"],
+:global(body.darkMode) .pageWrapper h4[style*="color"] {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .pageWrapper p[style*="color"],
+:global(body.darkMode) .pageWrapper span[style*="color"] {
+  color: var(--text-muted) !important;
+}
+
+/* Keep important value text readable */
+:global(body.darkMode) .pageWrapper div[style*="font-weight: 800"],
+:global(body.darkMode) .pageWrapper div[style*="font-weight:800"],
+:global(body.darkMode) .pageWrapper p[style*="font-weight: 800"],
+:global(body.darkMode) .pageWrapper p[style*="font-weight:800"] {
+  color: var(--text-heading) !important;
+}
+
+/* Doctor prescription and diagnosis panels */
+:global(body.darkMode) .pageWrapper article div[style*="border"],
+:global(body.darkMode) .pageWrapper section div[style*="border"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Status badges should stay readable */
+:global(body.darkMode) .statusBadge,
+:global(body.darkMode) .badgeApproved,
+:global(body.darkMode) .badgePending,
+:global(body.darkMode) .badgeCompleted,
+:global(body.darkMode) .badgeUrgent {
+  font-weight: 800 !important;
+}
+
+/* Declined / danger badges */
+:global(body.darkMode) .pageWrapper span[style*="fee2e2"],
+:global(body.darkMode) .pageWrapper span[style*="Declined"] {
+  background: rgba(248, 113, 113, 0.14) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+/* Completed / success badges */
+:global(body.darkMode) .pageWrapper span[style*="dcfce7"] {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #86efac !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+/* View buttons */
+:global(body.darkMode) .pageWrapper button {
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .pageWrapper button:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
+
+/* Urgent case inner card on dashboard */
+:global(body.darkMode) .sectionCard div[style*="background"],
+:global(body.darkMode) .dashboardCard div[style*="background"] {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .sectionCard div[style*="background"] strong,
+:global(body.darkMode) .dashboardCard div[style*="background"] strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .sectionCard div[style*="background"] p,
+:global(body.darkMode) .sectionCard div[style*="background"] span,
+:global(body.darkMode) .dashboardCard div[style*="background"] p,
+:global(body.darkMode) .dashboardCard div[style*="background"] span {
+  color: var(--text-muted) !important;
+}
+
+/* =========================================
+   FINAL FIX - Doctor Patient Records Status Badges
+   Put this at the VERY BOTTOM of doctor.module.css
+   ========================================= */
+
+/* Generic badge/pill reset */
+:global(body.darkMode) .pageWrapper span[style*="border-radius"],
+:global(body.darkMode) .pageWrapper button[style*="border-radius"] {
+  font-weight: 800 !important;
+  color: var(--text-heading) !important;
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Approved / Completed badges */
+:global(body.darkMode) .pageWrapper span[style*="dcfce7"],
+:global(body.darkMode) .pageWrapper button[style*="dcfce7"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(220, 252, 231)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(220, 252, 231)"],
+:global(body.darkMode) .pageWrapper span[style*="e9f8ef"],
+:global(body.darkMode) .pageWrapper button[style*="e9f8ef"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(233, 248, 239)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(233, 248, 239)"] {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+  border: 1px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+/* Declined / Cancelled badges */
+:global(body.darkMode) .pageWrapper span[style*="fee2e2"],
+:global(body.darkMode) .pageWrapper button[style*="fee2e2"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(254, 226, 226)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(254, 226, 226)"],
+:global(body.darkMode) .pageWrapper span[style*="fdeaea"],
+:global(body.darkMode) .pageWrapper button[style*="fdeaea"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(253, 234, 234)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(253, 234, 234)"] {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(248, 113, 113, 0.45) !important;
+}
+
+/* Pending badges */
+:global(body.darkMode) .pageWrapper span[style*="fef3c7"],
+:global(body.darkMode) .pageWrapper button[style*="fef3c7"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(254, 243, 199)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(254, 243, 199)"],
+:global(body.darkMode) .pageWrapper span[style*="fff6e5"],
+:global(body.darkMode) .pageWrapper button[style*="fff6e5"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(255, 246, 229)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(255, 246, 229)"] {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+}
+
+/* Blue/info badges */
+:global(body.darkMode) .pageWrapper span[style*="dbeafe"],
+:global(body.darkMode) .pageWrapper button[style*="dbeafe"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(219, 234, 254)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(219, 234, 254)"],
+:global(body.darkMode) .pageWrapper span[style*="eef4ff"],
+:global(body.darkMode) .pageWrapper button[style*="eef4ff"],
+:global(body.darkMode) .pageWrapper span[style*="rgb(238, 244, 255)"],
+:global(body.darkMode) .pageWrapper button[style*="rgb(238, 244, 255)"] {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(59, 130, 246, 0.45) !important;
+}
+
+/* View AI Result / View buttons */
+:global(body.darkMode) .pageWrapper button {
+  font-weight: 800 !important;
+}
+
+/* Protect text inside badge-like buttons/spans */
+:global(body.darkMode) .pageWrapper span[style*="border-radius"] *,
+:global(body.darkMode) .pageWrapper button[style*="border-radius"] * {
+  color: inherit !important;
+}
+
+.doctorStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.doctorDashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 22px;
+  align-items: start;
+  margin-bottom: 22px;
+}
+
+.calendarOverviewGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  align-items: start;
+  margin-top: 22px;
+}
+
+.doctorStatValue {
+  margin: 8px 0 0;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+:global(body.darkMode) .doctorStatValue {
+  color: var(--text-heading) !important;
+}
+
+.urgentCaseCard {
+  width: 100%;
+  text-align: left;
+  background: rgba(130, 51, 76, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 18px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(87, 47, 68, 0.05);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.urgentCaseCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(130, 51, 76, 0.35);
+  background: rgba(130, 51, 76, 0.06);
+}
+
+.urgentCaseTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.urgentCaseName {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.3;
+}
+
+.urgentCaseMeta,
+.urgentCaseText {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.urgentCaseText strong {
+  color: var(--text-dark);
+}
+
+.followUpSummaryCard {
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(130, 51, 76, 0.03);
+}
+
+.followUpSummaryCard .secondaryButton {
+  margin-top: 14px;
+}
+
+:global(body.darkMode) .urgentCaseCard,
+:global(body.darkMode) .followUpSummaryCard {
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .urgentCaseName,
+:global(body.darkMode) .urgentCaseText strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .urgentCaseMeta,
+:global(body.darkMode) .urgentCaseText {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .badgeUrgent {
+  background: rgba(248, 113, 113, 0.18) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(248, 113, 113, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 1100px) {
+  .doctorDashboardGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .doctorStatsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .urgentCaseTop {
+    flex-direction: column;
+  }
+}

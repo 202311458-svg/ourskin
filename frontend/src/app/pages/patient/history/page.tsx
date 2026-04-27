@@ -146,7 +146,7 @@ export default function PatientHistory() {
           <div className={styles.headerRow}>
             <div>
               <p className={styles.eyebrow}>Patient Portal</p>
-              <h1>Appointment History</h1>
+              <h1 className={styles.h1}>Appointment History</h1>
 
               <p className={styles.subtitle}>
                 View your past and current appointments, including booking

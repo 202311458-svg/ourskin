@@ -221,7 +221,7 @@ export default function PatientMedicalRecords() {
             <div>
               <p className={styles.eyebrow}>Patient Portal</p>
 
-              <h1>My Medical Records</h1>
+              <h1 className={styles.h1}>My Medical Records</h1>
 
               <p className={styles.subtitle}>
                 View your completed consultation records, including your

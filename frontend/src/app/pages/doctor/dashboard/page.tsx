@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import Calendar from "@/app/components/Calendar";
@@ -70,7 +64,7 @@ function getStatusBadgeClass(status?: string) {
   }
 }
 
-function getSeverityBadgeStyle(severity?: string): CSSProperties {
+function getSeverityBadgeClass(severity?: string) {
   const normalized = (severity || "").toLowerCase();
 
   if (
@@ -78,26 +72,14 @@ function getSeverityBadgeStyle(severity?: string): CSSProperties {
     normalized.includes("high") ||
     normalized.includes("urgent")
   ) {
-    return {
-      background: "#fff1f3",
-      color: "#c01048",
-      border: "1px solid #fecdd6",
-    };
+    return `${styles.statusBadge} ${styles.badgeUrgent}`;
   }
 
   if (normalized.includes("moderate")) {
-    return {
-      background: "#fffaeb",
-      color: "#b54708",
-      border: "1px solid #fedf89",
-    };
+    return `${styles.statusBadge} ${styles.badgePending}`;
   }
 
-  return {
-    background: "#ecfdf3",
-    color: "#027a48",
-    border: "1px solid #abefc6",
-  };
+  return `${styles.statusBadge} ${styles.badgeCompleted}`;
 }
 
 function formatConfidence(value?: number) {
@@ -229,44 +211,30 @@ export default function DoctorDashboardPage() {
           </p>
         </div>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-            marginBottom: 22,
-          }}
-        >
+        <section className={styles.doctorStatsGrid}>
           <div className={styles.sectionCard}>
             <p className={styles.listSecondary}>Today&apos;s Appointments</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 32 }}>
+            <h2 className={styles.doctorStatValue}>
               {stats.todays_appointments ?? todaysAppointments.length}
             </h2>
           </div>
 
           <div className={styles.sectionCard}>
             <p className={styles.listSecondary}>Pending AI Reviews</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 32 }}>
+            <h2 className={styles.doctorStatValue}>
               {stats.pending_ai_reviews ?? pendingAiReviews.length}
             </h2>
           </div>
 
           <div className={styles.sectionCard}>
             <p className={styles.listSecondary}>Follow-ups Due</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 32 }}>
+            <h2 className={styles.doctorStatValue}>
               {stats.follow_ups_due ?? 0}
             </h2>
           </div>
         </section>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)",
-            gap: 22,
-            alignItems: "start",
-          }}
-        >
+        <div className={styles.doctorDashboardGrid}>
           <section className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div>
@@ -307,15 +275,7 @@ export default function DoctorDashboardPage() {
                       </div>
                     </div>
 
-                    <div
-                      className={styles.listRight}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
+                    <div className={styles.listRight}>
                       <span className={getStatusBadgeClass(appt.status)}>
                         {appt.status || "Pending"}
                       </span>
@@ -390,15 +350,7 @@ export default function DoctorDashboardPage() {
           </section>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(340px, 1fr) minmax(320px, 0.75fr)",
-            gap: 22,
-            alignItems: "start",
-            marginTop: 22,
-          }}
-        >
+        <div className={styles.doctorDashboardGrid}>
           <section className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div>
@@ -409,7 +361,7 @@ export default function DoctorDashboardPage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gap: 14 }}>
+            <div className={styles.list}>
               {highPriorityCases.length === 0 ? (
                 <div className={styles.emptyState}>
                   No urgent AI cases detected.
@@ -420,83 +372,32 @@ export default function DoctorDashboardPage() {
                     key={item.id}
                     type="button"
                     onClick={() => openPatientRecord(item.patient_name)}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      background: "#ffffff",
-                      border: "1px solid #eadde4",
-                      borderRadius: 18,
-                      padding: 18,
-                      cursor: "pointer",
-                      boxShadow: "0 6px 18px rgba(87, 47, 68, 0.05)",
-                    }}
+                    className={styles.urgentCaseCard}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 14,
-                        alignItems: "flex-start",
-                        marginBottom: 10,
-                      }}
-                    >
+                    <div className={styles.urgentCaseTop}>
                       <div>
-                        <div
-                          style={{
-                            fontSize: 17,
-                            fontWeight: 800,
-                            color: "#1f1f1f",
-                            lineHeight: 1.3,
-                          }}
-                        >
+                        <div className={styles.urgentCaseName}>
                           {item.patient_name || "Unnamed Patient"}
                         </div>
 
-                        <div
-                          style={{
-                            marginTop: 6,
-                            fontSize: 14,
-                            color: "#6b7280",
-                            lineHeight: 1.5,
-                          }}
-                        >
+                        <div className={styles.urgentCaseMeta}>
                           {item.condition || "Unknown Condition"} •{" "}
                           {item.appointment_service || "Consultation"}
                         </div>
                       </div>
 
-                      <span
-                        className={styles.statusBadge}
-                        style={getSeverityBadgeStyle(item.severity)}
-                      >
+                      <span className={getSeverityBadgeClass(item.severity)}>
                         {item.severity || "Urgent"}
                       </span>
                     </div>
 
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "#6b7280",
-                        lineHeight: 1.5,
-                      }}
-                    >
+                    <div className={styles.urgentCaseText}>
                       Generated: {formatDateTime(item.created_at)}
                     </div>
 
                     {item.red_flags && (
-                      <div
-                        style={{
-                          marginTop: 10,
-                          fontSize: 14,
-                          color: "#6b7280",
-                          lineHeight: 1.5,
-                          whiteSpace: "pre-line",
-                        }}
-                      >
-                        <strong style={{ color: "#4b5563" }}>
-                          Red flags:
-                        </strong>{" "}
-                        {item.red_flags}
+                      <div className={styles.urgentCaseText}>
+                        <strong>Red flags:</strong> {item.red_flags}
                       </div>
                     )}
                   </button>
@@ -515,23 +416,10 @@ export default function DoctorDashboardPage() {
               </div>
             </div>
 
-            <div
-              style={{
-                border: "1px solid #eadde4",
-                borderRadius: 18,
-                padding: 18,
-                background: "#fbf8fa",
-              }}
-            >
+            <div className={styles.followUpSummaryCard}>
               <p className={styles.listSecondary}>Due follow-ups</p>
 
-              <h2
-                style={{
-                  margin: "8px 0 12px",
-                  fontSize: 34,
-                  color: "#111827",
-                }}
-              >
+              <h2 className={styles.doctorStatValue}>
                 {stats.follow_ups_due ?? 0}
               </h2>
 
@@ -543,7 +431,6 @@ export default function DoctorDashboardPage() {
               <button
                 type="button"
                 className={styles.secondaryButton}
-                style={{ marginTop: 14 }}
                 onClick={() => router.push("/pages/doctor/follow-ups")}
               >
                 View Follow-ups
@@ -552,15 +439,7 @@ export default function DoctorDashboardPage() {
           </section>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: 22,
-            alignItems: "start",
-            marginTop: 22,
-          }}
-        >
+        <div className={styles.calendarOverviewGrid}>
           <section className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div>

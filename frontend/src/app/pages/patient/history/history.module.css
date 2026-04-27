@@ -29,6 +29,14 @@
   letter-spacing: 0.08em;
 }
 
+.h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-heading);
+}
+
 .historyContainer h1 {
   font-size: 2rem;
   margin: 0 0 8px;
@@ -259,7 +267,7 @@
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: #7b113f;
+  background: #fff1f7;
   border: 1px solid #fecdd3;
   color: #9f1239;
   font-size: 14px;

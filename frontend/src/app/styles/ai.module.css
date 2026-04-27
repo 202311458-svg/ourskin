@@ -1203,3 +1203,278 @@
     gap: 10px;
   }
 }
+
+/* =========================================
+   DOCTOR AI ANALYSIS DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .pageShell {
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .pageHeader h1,
+:global(body.darkMode) .patientPickerHeader h2,
+:global(body.darkMode) .patientItemTop strong,
+:global(body.darkMode) .patientIdentity h2,
+:global(body.darkMode) .workflowCard h2,
+:global(body.darkMode) .cardHeader h2,
+:global(body.darkMode) .summaryMetrics strong,
+:global(body.darkMode) .summaryCard strong,
+:global(body.darkMode) .resultTitle,
+:global(body.darkMode) .blockHeader h4,
+:global(body.darkMode) .medicationCard strong,
+:global(body.darkMode) .prescriptionHeader h3,
+:global(body.darkMode) .historyHeader strong,
+:global(body.darkMode) .medicalHistoryTop h3,
+:global(body.darkMode) .historyInfoBox strong,
+:global(body.darkMode) .historyPrescriptionBox h4 {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .pageHeader p,
+:global(body.darkMode) .patientPickerHeader p,
+:global(body.darkMode) .patientItemTop span,
+:global(body.darkMode) .patientItemFooter,
+:global(body.darkMode) .patientIdentity p,
+:global(body.darkMode) .cardHeader p,
+:global(body.darkMode) .infoLabel,
+:global(body.darkMode) .resultMeta,
+:global(body.darkMode) .blockHeader p,
+:global(body.darkMode) .dropZone small,
+:global(body.darkMode) .historyHeader span,
+:global(body.darkMode) .medicalHistoryTop span,
+:global(body.darkMode) .historyInfoBox span,
+:global(body.darkMode) .historyPrescriptionRow span,
+:global(body.darkMode) .historyFollowUpBox span {
+  color: var(--text-muted) !important;
+}
+
+/* Main cards and panels */
+:global(body.darkMode) .patientPickerCard,
+:global(body.darkMode) .patientSummaryCard,
+:global(body.darkMode) .workflowCard,
+:global(body.darkMode) .stepperCard,
+:global(body.darkMode) .summaryMetrics div,
+:global(body.darkMode) .summaryCard,
+:global(body.darkMode) .summaryCardWide,
+:global(body.darkMode) .detailBlock,
+:global(body.darkMode) .medicationCard,
+:global(body.darkMode) .prescriptionBox,
+:global(body.darkMode) .historyCard,
+:global(body.darkMode) .medicalHistoryCard,
+:global(body.darkMode) .historyInfoBox,
+:global(body.darkMode) .historyPrescriptionBox,
+:global(body.darkMode) .historyFollowUpBox,
+:global(body.darkMode) .emptyState,
+:global(body.darkMode) .emptyStateSmall,
+:global(body.darkMode) .readOnlyBanner {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/* Patient picker list */
+:global(body.darkMode) .patientItem {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .patientItem:hover {
+  background: rgba(244, 114, 182, 0.1) !important;
+  border-color: rgba(244, 114, 182, 0.35) !important;
+}
+
+/* Forms */
+:global(body.darkMode) .searchBox label,
+:global(body.darkMode) .formGroup label,
+:global(body.darkMode) .formGroupFull label,
+:global(body.darkMode) .visitSelector label {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .searchBox input,
+:global(body.darkMode) .formGroup input,
+:global(body.darkMode) .formGroup select,
+:global(body.darkMode) .formGroupFull textarea,
+:global(body.darkMode) .visitSelector select,
+:global(body.darkMode) .prescriptionBox .formGroup input,
+:global(body.darkMode) .prescriptionBox .formGroupFull textarea {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchBox input::placeholder,
+:global(body.darkMode) .formGroup input::placeholder,
+:global(body.darkMode) .formGroupFull textarea::placeholder,
+:global(body.darkMode) .prescriptionBox .formGroup input::placeholder,
+:global(body.darkMode) .prescriptionBox .formGroupFull textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Stepper */
+:global(body.darkMode) .stepButton {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .stepButton span {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .stepButton:hover {
+  background: rgba(244, 114, 182, 0.1) !important;
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .stepButtonActive {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+:global(body.darkMode) .stepButtonActive span {
+  background: #ffffff !important;
+  color: var(--primary-color) !important;
+}
+
+/* Upload area */
+:global(body.darkMode) .dropZone {
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .dropZone:hover {
+  background: rgba(244, 114, 182, 0.1) !important;
+  border-color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .dropZone strong {
+  color: var(--text-heading) !important;
+}
+
+/* AI result image panels */
+:global(body.darkMode) .analysisImage,
+:global(body.darkMode) .historyImage,
+:global(body.darkMode) .medicalHistoryImage {
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .imagePlaceholder {
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-muted) !important;
+}
+
+/* AI detail lists */
+:global(body.darkMode) .softListItem,
+:global(body.darkMode) .historyBody p,
+:global(body.darkMode) .summaryCardWide p,
+:global(body.darkMode) .medicationRow p,
+:global(body.darkMode) .historyPrescriptionRow p,
+:global(body.darkMode) .historyFollowUpBox p {
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .softListItem {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .warningBlock {
+  background: rgba(251, 146, 60, 0.08) !important;
+  border-color: rgba(251, 146, 60, 0.35) !important;
+}
+
+:global(body.darkMode) .warningItem {
+  background: rgba(248, 113, 113, 0.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* Medication rows */
+:global(body.darkMode) .medicationRow,
+:global(body.darkMode) .historyPrescriptionRow,
+:global(body.darkMode) .recordSection {
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .medicationRow span {
+  color: var(--text-muted) !important;
+}
+
+/* AI suggestion */
+:global(body.darkMode) .aiSuggestionButton {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .aiSuggestionButton:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
+
+:global(body.darkMode) .aiSuggestionPreview {
+  background: var(--bg-soft) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .aiSuggestionPreview p {
+  color: var(--text-main) !important;
+}
+
+/* Buttons */
+:global(body.darkMode) .secondaryButton {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .secondaryButton:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
+
+:global(body.darkMode) .primaryButton {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Status badges stay readable */
+:global(body.darkMode) .aiOnlyBadge,
+:global(body.darkMode) .statusBadge {
+  background: rgba(244, 114, 182, 0.14) !important;
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .confidenceBadge,
+:global(body.darkMode) .badgeApproved {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .badgeCompleted {
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: #93c5fd !important;
+}
+
+:global(body.darkMode) .badgePending {
+  background: rgba(245, 158, 11, 0.14) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .badgeUrgent {
+  background: rgba(248, 113, 113, 0.14) !important;
+  color: #fca5a5 !important;
+}
+
+/* Medical history */
+:global(body.darkMode) .medicalHistoryList {
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .historyDate {
+  color: var(--primary-color) !important;
+}
