@@ -1,7 +1,6 @@
 "use client";
 
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -13,95 +12,144 @@ import {
   FaMoon,
   FaSun,
   FaBell,
-  FaBars
+  FaBars,
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 
 export default function Navbar() {
   const router = useRouter();
   const path = usePathname();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const { darkMode, toggleDarkMode } = useDarkMode();
+
   const navItems = [
-    { name: "Dashboard", path: "/pages/patient/dashboard", icon: <FaCalendarAlt /> },
-    { name: "Book Appointment", path: "/pages/patient/book", icon: <FaPlusCircle /> },
-    { name: "Appointment History", path: "/pages/patient/history", icon: <FaHistory /> },
-    { name: "Medical Records", path: "/pages/patient/records", icon: <FaHistory /> },
-    { name: "Profile", path: "/pages/patient/profile", icon: <FaUser /> },
-    { name: "Updates", path: "/pages/patient/updates", icon: <FaBell /> },
+    {
+      name: "Dashboard",
+      path: "/pages/patient/dashboard",
+      icon: <FaCalendarAlt />,
+    },
+    {
+      name: "Book Appointment",
+      path: "/pages/patient/book",
+      icon: <FaPlusCircle />,
+    },
+    {
+      name: "Appointment History",
+      path: "/pages/patient/history",
+      icon: <FaHistory />,
+    },
+    {
+      name: "Medical Records",
+      path: "/pages/patient/records",
+      icon: <FaHistory />,
+    },
+    {
+      name: "Profile",
+      path: "/pages/patient/profile",
+      icon: <FaUser />,
+    },
+    {
+      name: "Updates",
+      path: "/pages/patient/updates",
+      icon: <FaBell />,
+    },
   ];
 
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("darkMode");
-    else document.body.classList.remove("darkMode");
-  }, [darkMode]);
+  const toggleCollapse = () => {
+    const newState = !collapsed;
 
-const toggleCollapse = () => {
-  const newState = !collapsed;
-  setCollapsed(newState);
-  if (newState) document.body.classList.add("navCollapsed");
-  else document.body.classList.remove("navCollapsed");
+    setCollapsed(newState);
 
-  window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
-};
+    if (newState) {
+      document.body.classList.add("navCollapsed");
+    } else {
+      document.body.classList.remove("navCollapsed");
+    }
 
- return (
-  <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
+    window.dispatchEvent(
+      new CustomEvent("navbarToggle", {
+        detail: newState,
+      })
+    );
+  };
 
-    <div className={styles.logoSection}>
-      <Image
-        src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
-        alt="OurSkin"
-        width={collapsed ? 70 : 170}
-        height={collapsed ? 70 : 65}
-        onClick={toggleCollapse}
-      />
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    router.push("/");
+  };
 
-      <div
-        className={styles.mobileToggle}
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        <FaBars />
-      </div>
-    </div>
+  return (
+    <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
+      <div className={styles.logoSection}>
+        <Image
+          src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
+          alt="OurSkin"
+          width={collapsed ? 70 : 170}
+          height={collapsed ? 70 : 65}
+          onClick={toggleCollapse}
+        />
 
-    <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
-      {navItems.map((item, idx) => (
         <div
-          key={idx}
-          className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
-          onClick={() => {
-            router.push(item.path);
-            setMobileOpen(false);
-          }}
+          className={styles.mobileToggle}
+          onClick={() => setMobileOpen(!mobileOpen)}
         >
-          <span className={styles.icon}>{item.icon}</span>
-          {!collapsed && <span className={styles.label}>{item.name}</span>}
-          {path === item.path && !collapsed && <span className={styles.activeBar}></span>}
+          <FaBars />
         </div>
-      ))}
-    </nav>
+      </div>
+
+      <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
+        {navItems.map((item, idx) => (
+          <div
+            key={idx}
+            className={`${styles.navItem} ${
+              path === item.path ? styles.active : ""
+            }`}
+            onClick={() => {
+              router.push(item.path);
+              setMobileOpen(false);
+            }}
+          >
+            <span className={styles.icon}>{item.icon}</span>
+
+            {!collapsed && <span className={styles.label}>{item.name}</span>}
+
+            {path === item.path && !collapsed && (
+              <span className={styles.activeBar}></span>
+            )}
+          </div>
+        ))}
+      </nav>
 
       <div className={styles.navBottom}>
-        <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
-          <span className={styles.icon}>{darkMode ? <FaSun /> : <FaMoon />}</span>
-          {!collapsed && <span className={styles.label}>{darkMode ? "Light Mode" : "Dark Mode"}</span>}
+        <div className={styles.navItem} onClick={toggleDarkMode}>
+          <span className={styles.icon}>
+            {darkMode ? <FaSun /> : <FaMoon />}
+          </span>
+
+          {!collapsed && (
+            <span className={styles.label}>
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </span>
+          )}
         </div>
-        <div className={styles.navItem} onClick={() => router.push("/")}>
-          <span className={styles.icon}><FaSignOutAlt /></span>
+
+        <div className={styles.navItem} onClick={handleLogout}>
+          <span className={styles.icon}>
+            <FaSignOutAlt />
+          </span>
+
           {!collapsed && <span className={styles.label}>Logout</span>}
         </div>
       </div>
 
       {mobileOpen && (
-        <div
-          className={styles.navLogoutMobile}
-          onClick={() => router.push("/")}
-        >
+        <div className={styles.navLogoutMobile} onClick={handleLogout}>
           <FaSignOutAlt />
           <span>Logout</span>
         </div>

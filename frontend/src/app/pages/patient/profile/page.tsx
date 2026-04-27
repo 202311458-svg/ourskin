@@ -49,16 +49,16 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    const sync = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"));
-    };
+useEffect(() => {
+  const sync = () => {
+    setCollapsed(document.body.classList.contains("navCollapsed"));
+  };
 
-    sync();
-    window.addEventListener("sidebarChange", sync);
+  sync();
+  window.addEventListener("navbarToggle", sync);
 
-    return () => window.removeEventListener("sidebarChange", sync);
-  }, []);
+  return () => window.removeEventListener("navbarToggle", sync);
+}, []);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

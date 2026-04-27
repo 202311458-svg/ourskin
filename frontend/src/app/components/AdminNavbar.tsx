@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -24,8 +25,9 @@ export default function AdminNavbar() {
   const path = usePathname();
 
   const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { darkMode, toggleDarkMode } = useDarkMode();
+
 
   const navItems = [
     { name: "Dashboard", path: "/pages/admin/dashboard", icon: <FaTachometerAlt /> },
@@ -42,10 +44,6 @@ export default function AdminNavbar() {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("darkMode");
-    else document.body.classList.remove("darkMode");
-  }, [darkMode]);
 
   const toggleCollapse = () => {
     sidebarState.toggle();
@@ -97,7 +95,7 @@ export default function AdminNavbar() {
 
       {/* BOTTOM */}
       <div className={styles.navBottom}>
-        <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
+        <div className={styles.navItem} onClick={toggleDarkMode}>
           <span className={styles.icon}>
             {darkMode ? <FaSun /> : <FaMoon />}
           </span>

@@ -111,3 +111,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Patient Updates Dark Mode Cleanup */
+
+:global(body.darkMode) .contentArea {
+  background: var(--bg-main);
+  color: var(--text-main);
+  min-height: 100vh;
+}
+
+:global(body.darkMode) .updatesContainer {
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .subtitle {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .mainPost {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+:global(body.darkMode) .recentFrame,
+:global(body.darkMode) .featuredFrame {
+  box-shadow: var(--shadow-soft);
+}

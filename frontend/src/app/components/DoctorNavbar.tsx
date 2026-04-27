@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -23,9 +24,9 @@ export default function DoctorNavbar() {
   const path = usePathname();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
+  const { darkMode, toggleDarkMode } = useDarkMode();
+  
   const navItems = [
     { name: "Dashboard", path: "/pages/doctor/dashboard", icon: <FaTachometerAlt /> },
     { name: "Appointments", path: "/pages/doctor/appointments", icon: <FaCalendarAlt /> },
@@ -35,10 +36,6 @@ export default function DoctorNavbar() {
     { name: "Settings", path: "/pages/doctor/settings", icon: <FaCog /> },
   ];
 
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("darkMode");
-    else document.body.classList.remove("darkMode");
-  }, [darkMode]);
 
   const toggleCollapse = () => {
     const newState = !collapsed;
@@ -94,7 +91,7 @@ return (
     </nav>
 
       <div className={styles.navBottom}>
-        <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
+        <div className={styles.navItem} onClick={toggleDarkMode}>
           <span className={styles.icon}>{darkMode ? <FaSun /> : <FaMoon />}</span>
           {!collapsed && (
             <span className={styles.label}>

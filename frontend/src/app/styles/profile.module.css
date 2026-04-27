@@ -256,3 +256,48 @@ body.navCollapsed .page {
     font-size: 22px;
   }
 }
+
+/* Patient Profile Dark Mode Cleanup */
+
+:global(body.darkMode) .page {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .card,
+:global(body.darkMode) .cardLarge {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+:global(body.darkMode) .header h1,
+:global(body.darkMode) .profileHeader h2,
+:global(body.darkMode) .card h3,
+:global(body.darkMode) .infoRow span:last-child {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .header p,
+:global(body.darkMode) .subText,
+:global(body.darkMode) .smallText,
+:global(body.darkMode) .infoRow span:first-child,
+:global(body.darkMode) .loading,
+:global(body.darkMode) .error {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .editInput,
+:global(body.darkMode) .inputGroup {
+  background: var(--input-bg);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .inputGroup input {
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .divider {
+  background: var(--border-color);
+}

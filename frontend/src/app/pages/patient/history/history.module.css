@@ -259,7 +259,7 @@
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: #fff1f2;
+  background: #7b113f;
   border: 1px solid #fecdd3;
   color: #9f1239;
   font-size: 14px;
@@ -369,4 +369,76 @@
   .cardTop {
     flex-direction: column;
   }
+}
+
+/* Patient History Dark Mode Cleanup */
+
+:global(body.darkMode) .historyContainer {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .historyContainer h1,
+:global(body.darkMode) .card h2,
+:global(body.darkMode) .card strong,
+:global(body.darkMode) .detailValue,
+:global(body.darkMode) .recordSection h3,
+:global(body.darkMode) .emptyState h2 {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .summaryLabel,
+:global(body.darkMode) .card p,
+:global(body.darkMode) .serviceText,
+:global(body.darkMode) .detailLabel,
+:global(body.darkMode) .recordLabel,
+:global(body.darkMode) .emptyState p,
+:global(body.darkMode) .noticeBox {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .summaryCard,
+:global(body.darkMode) .searchBox,
+:global(body.darkMode) .card,
+:global(body.darkMode) .detailBox,
+:global(body.darkMode) .recordField,
+:global(body.darkMode) .emptyState,
+:global(body.darkMode) .noticeBox {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+:global(body.darkMode) .searchInput {
+  background: var(--input-bg);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .recordSection {
+  border-top-color: var(--border-color);
+}
+
+:global(body.darkMode) .recordValue {
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .recordFieldHighlight {
+  background: rgba(244, 114, 182, 0.1);
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+:global(body.darkMode) .secondaryButton {
+  background: var(--bg-card);
+  color: var(--primary-color);
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+:global(body.darkMode) .secondaryButton:hover {
+  background: rgba(244, 114, 182, 0.12);
 }

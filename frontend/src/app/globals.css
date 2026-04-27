@@ -1164,3 +1164,50 @@ body.navCollapsed .staffContent {
   }
 }
 
+:root {
+  --navbar-width: 220px;
+  --navbar-bg: #6f2940;
+
+  --bg-main: #f6f8fc;
+  --bg-card: #ffffff;
+  --bg-soft: #f8fafc;
+
+  --text-main: #1f2937;
+  --text-heading: #0f172a;
+  --text-muted: #64748b;
+
+  --border-color: #e5e7eb;
+  --input-bg: #ffffff;
+
+  --primary-color: #82334c;
+  --primary-hover: #6f2940;
+
+  --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+body.darkMode {
+  --navbar-bg: #25131a;
+
+  --bg-main: #0f1117;
+  --bg-card: #171a22;
+  --bg-soft: #1f2430;
+
+  --text-main: #f8fafc;
+  --text-heading: #ffffff;
+  --text-muted: #cbd5e1;
+
+  --border-color: #2d3442;
+  --input-bg: #1f2430;
+
+  --primary-color: #f472b6;
+  --primary-hover: #ec4899;
+
+  --shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  margin: 0;
+  background: var(--bg-main);
+  color: var(--text-main);
+  transition: background 0.25s ease, color 0.25s ease;
+}

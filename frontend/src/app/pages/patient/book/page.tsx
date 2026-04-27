@@ -69,7 +69,6 @@ export default function BookAppointment() {
   const today = new Date();
 
   const [step, setStep] = useState(1);
-  const [darkMode, setDarkMode] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
@@ -106,10 +105,6 @@ export default function BookAppointment() {
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
 
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("darkMode");
-    else document.body.classList.remove("darkMode");
-  }, [darkMode]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -338,22 +333,15 @@ export default function BookAppointment() {
     "Confirm Appointment",
   ];
 
-  return (
-    <>
-      <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
+return (
+  <>
+    <Navbar />
 
-      <div
-        style={{
-          marginLeft: navCollapsed ? "80px" : "220px",
-          transition: "margin-left 0.3s ease",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          padding: "30px 40px 40px 20px",
-        }}
-      >
+    <main
+      className={`${styles.bookPage} ${
+        navCollapsed ? styles.bookPageCollapsed : ""
+      }`}
+    >
         <h1 className={styles.pageTitle}>{stepTitles[step - 1]}</h1>
 
         <div className={styles.container}>
@@ -638,7 +626,7 @@ export default function BookAppointment() {
             </>
           )}
         </div>
-      </div>
-    </>
-  );
+    </main>
+  </>
+);
 }

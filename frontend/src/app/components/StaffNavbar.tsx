@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -16,14 +16,16 @@ import {
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 
 export default function StaffNavbar() {
   const router = useRouter();
   const path = usePathname();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { darkMode, toggleDarkMode } = useDarkMode();
 
   const navItems = [
     { name: "Dashboard", path: "/pages/staff/dashboard", icon: <FaCalendarAlt /> },
@@ -33,11 +35,6 @@ export default function StaffNavbar() {
     { name: "Profile", path: "/pages/staff/profile", icon: <FaUsers /> },
     { name: "Notifications", path: "/pages/staff/updates", icon: <FaBell /> },
   ];
-
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("darkMode");
-    else document.body.classList.remove("darkMode");
-  }, [darkMode]);
 
   const toggleCollapse = () => {
     const newState = !collapsed;
@@ -49,46 +46,56 @@ export default function StaffNavbar() {
     window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
   };
 
- return (
-  <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    router.push("/");
+  };
 
-    <div className={styles.logoSection}>
-      <Image
-        src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
-        alt="OurSkin"
-        width={collapsed ? 70 : 170}
-        height={collapsed ? 70 : 65}
-        onClick={toggleCollapse}
-      />
+  return (
+    <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
+      <div className={styles.logoSection}>
+        <Image
+          src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
+          alt="OurSkin"
+          width={collapsed ? 70 : 170}
+          height={collapsed ? 70 : 65}
+          onClick={toggleCollapse}
+        />
 
-      <div
-        className={styles.mobileToggle}
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        <FaBars />
-      </div>
-    </div>
-
-    <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
-      {navItems.map((item, idx) => (
         <div
-          key={idx}
-          className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
-          onClick={() => {
-            router.push(item.path);
-            setMobileOpen(false);
-          }}
+          className={styles.mobileToggle}
+          onClick={() => setMobileOpen(!mobileOpen)}
         >
-          <span className={styles.icon}>{item.icon}</span>
-          {!collapsed && <span className={styles.label}>{item.name}</span>}
-          {path === item.path && !collapsed && <span className={styles.activeBar}></span>}
+          <FaBars />
         </div>
-      ))}
-    </nav>
+      </div>
+
+      <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
+        {navItems.map((item, idx) => (
+          <div
+            key={idx}
+            className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
+            onClick={() => {
+              router.push(item.path);
+              setMobileOpen(false);
+            }}
+          >
+            <span className={styles.icon}>{item.icon}</span>
+            {!collapsed && <span className={styles.label}>{item.name}</span>}
+            {path === item.path && !collapsed && (
+              <span className={styles.activeBar}></span>
+            )}
+          </div>
+        ))}
+      </nav>
 
       <div className={styles.navBottom}>
-        <div className={styles.navItem} onClick={() => setDarkMode(!darkMode)}>
-          <span className={styles.icon}>{darkMode ? <FaSun /> : <FaMoon />}</span>
+        <div className={styles.navItem} onClick={toggleDarkMode}>
+          <span className={styles.icon}>
+            {darkMode ? <FaSun /> : <FaMoon />}
+          </span>
+
           {!collapsed && (
             <span className={styles.label}>
               {darkMode ? "Light Mode" : "Dark Mode"}
@@ -96,7 +103,7 @@ export default function StaffNavbar() {
           )}
         </div>
 
-        <div className={styles.navItem} onClick={() => router.push("/")}>
+        <div className={styles.navItem} onClick={handleLogout}>
           <span className={styles.icon}>
             <FaSignOutAlt />
           </span>
@@ -105,10 +112,7 @@ export default function StaffNavbar() {
       </div>
 
       {mobileOpen && (
-        <div
-          className={styles.navLogoutMobile}
-          onClick={() => router.push("/")}
-        >
+        <div className={styles.navLogoutMobile} onClick={handleLogout}>
           <FaSignOutAlt />
           <span>Logout</span>
         </div>

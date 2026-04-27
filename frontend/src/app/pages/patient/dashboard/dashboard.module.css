@@ -1,266 +1,482 @@
-:root {
-  --primary-color: #82334c;
-  --bg-light: #ffffff;
-  --bg-dark: #1e1e1e;
-  --text-light: #fff;
-  --text-dark: #222;
-  --text-secondary: #555;
-  --btn-bg: #82334c;
-  --btn-hover: #a04861;
-}
-
-body.darkMode {
-  background: var(--bg-dark);
-  color: var(--text-light);
-}
+/* ================================
+   Patient Dashboard Layout
+   ================================ */
 
 .pageWrapper {
-  padding: 30px 40px;
   min-height: 100vh;
-  background: var(--bg-light);
+  margin-left: 220px;
+  padding: 32px 42px 60px;
+  background: var(--bg-main);
+  color: var(--text-main);
   transition:
     margin-left 0.3s ease,
-    background 0.3s ease,
-    color 0.3s ease;
-}
-body.darkMode .pageWrapper {
-  background: var(--bg-dark);
-  color: var(--text-light);
+    background 0.25s ease,
+    color 0.25s ease;
 }
 
-/* NAVBAR AWARE */
 .pageWrapper.navCollapsed {
   margin-left: 80px;
 }
-.pageWrapper:not(.navCollapsed) {
-  margin-left: 220px;
-}
 
-/* GREETING */
+/* ================================
+   Greeting
+   ================================ */
+
 .greetingSection {
-  margin-bottom: 10px;
+  margin-bottom: 22px;
 }
+
 .greetingTitle {
-  font-size: 2.5rem;
-  margin-bottom: 4px;
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-heading);
 }
+
 .greetingSubtitle {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: var(--text-muted);
 }
 
-/* GRID LAYOUT */
+/* ================================
+   Main Grid
+   ================================ */
+
 .dashboardGrid {
-  display: flex;
-  gap: 30px;
-  flex-wrap: wrap;
-}
-.leftColumn {
-  flex: 1.3;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.rightColumn {
-  flex: 0.9;
-  min-width: 320px;
-  max-width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(330px, 0.65fr);
+  gap: 28px;
+  align-items: start;
 }
 
-/* SUMMARY CARDS */
-.summaryGrid {
+.leftColumn,
+.rightColumn {
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
 }
+
+/* ================================
+   Summary Cards
+   ================================ */
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .summaryCard {
-  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
-  border-radius: 16px;
+  gap: 16px;
+  min-height: 110px;
+  padding: 22px;
+  border-radius: 20px;
   background: var(--primary-color);
-  color: var(--text-light);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
+  color: #ffffff;
+  box-shadow: var(--shadow-soft);
 }
-.summaryCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-}
+
 .summaryIcon {
-  font-size: 2rem;
+  flex-shrink: 0;
+  font-size: 34px;
+  color: #ffffff;
 }
 
-/* GENERAL CARDS */
-.card {
-  background: var(--bg-light);
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  width: 100%;
-  box-sizing: border-box;
-}
-body.darkMode .card {
-  background: #2a2a2a;
-  color: var(--text-light);
-}
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+.summaryCard h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #ffffff;
 }
 
-/* UPCOMING HIGHLIGHT */
+.summaryCard p {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ================================
+   General Cards
+   ================================ */
+
+.card,
 .cardHighlight {
   width: 100%;
-  padding: 25px;
-  border-radius: 16px;
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  padding: 24px;
+  border-radius: 22px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-soft);
+  box-sizing: border-box;
 }
-body.darkMode .cardHighlight {
-  background: #2a2a2a;
-  color: var(--text-light);
+
+.cardTitle {
+  margin: 0 0 18px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-heading);
 }
+
+/* ================================
+   Recent Appointments
+   ================================ */
+
+.recentAppointmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.recentAppointmentCard {
+  position: relative;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--bg-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+.recentAppointmentTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.recentAppointmentDoctor {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--text-heading);
+}
+
+.recentAppointmentService {
+  margin: 5px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.recentAppointmentDate {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.reasonBox {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.reasonBox strong {
+  color: #fecaca;
+}
+
+/* ================================
+   Status Badges
+   ================================ */
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.badgeApproved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badgePending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badgeCompleted {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badgeDeclined {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badgeDefault {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ================================
+   Upcoming Appointment
+   ================================ */
 
 .upcomingHighlight {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
+}
+
+.doctorPhotoLarge {
+  margin-bottom: 16px;
 }
 
 .doctorPhotoLarge img {
   border-radius: 50%;
   object-fit: cover;
-  margin-top: 20px;
+  border: 4px solid rgba(244, 114, 182, 0.25);
 }
 
 .upcomingTextLarge h2 {
-  font-size: 1.8rem;
-  color: var(--text-dark);
-}
-body.darkMode .upcomingTextLarge h2 {
-  color: var(--text-light);
-}
-
-.upcomingTextLarge p {
-  margin: 4px 0;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-}
-body.darkMode .upcomingTextLarge p {
-  color: var(--text-light);
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--text-heading);
 }
 
-/* APPOINTMENTS */
-.appointmentList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.upcomingTextLarge p,
+.upcomingSpecialty,
+.upcomingDate,
+.upcomingNote {
+  margin: 5px 0;
+  font-size: 15px;
+  color: var(--text-muted);
 }
-.appointmentItem {
+
+/* ================================
+   Pending Requests
+   ================================ */
+
+.pendingList {
   display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
-}
-body.darkMode .appointmentItem {
-  border-color: #444;
-}
-.appointmentDoctor {
-  font-weight: 600;
-}
-.appointmentSpecialty,
-.appointmentDate {
-  color: var(--text-dark);
-}
-body.darkMode .appointmentSpecialty,
-body.darkMode .appointmentDate {
-  color: var(--text-light);
-}
-
-/* BUTTON */
-.btnBook {
-  width: 100%;
-  padding: 12px 18px;
-  border-radius: 10px;
-  background: var(--btn-bg);
-  color: var(--text-light);
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-.btnBook:hover {
-  background: var(--btn-hover);
-}
-
-/* RESPONSIVE */
-@media (max-width: 1024px) {
-  .pageWrapper {
-    margin-left: 0 !important;
-    padding: 20px;
-  }
-  .dashboardGrid {
-    flex-direction: column;
-  }
-  .summaryGrid {
-    flex-direction: column;
-  }
-  .rightColumn {
-    align-items: center;
-  }
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .pendingCard {
-  background: #f8f5f7;
-  border: 1px solid #eadfe5;
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin: 12px 0 16px;
-  width: 100%;
-  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-color);
 }
 
-.pendingCard h4 {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--text-dark);
+.pendingTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.pendingCard p {
-  margin: 0 0 6px;
-  font-size: 15px;
-  line-height: 1.45;
-  color: var(--text-secondary);
+.pendingDoctor {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-heading);
 }
 
-.pendingStatus {
-  display: inline-block;
-  margin-bottom: 10px;
-  padding: 4px 10px;
+.pendingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
-  background: #f3e3a2;
-  color: #6f5600;
+  background: #fef3c7;
+  color: #92400e;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
+
+.pendingService,
+.pendingDateTime {
+  margin: 5px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cancelRequestButton {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.1);
+  color: #ef4444;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.cancelRequestButton:hover {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+/* ================================
+   Empty Text and Buttons
+   ================================ */
 
 .emptyStateText {
-  margin: 12px 0 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.btnBook {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary-color);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btnBook:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   Dark Mode Specific Polish
+   ================================ */
+
+:global(body.darkMode) .pageWrapper {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .card,
+:global(body.darkMode) .cardHighlight {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .recentAppointmentCard,
+:global(body.darkMode) .pendingCard {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .recentAppointmentDoctor,
+:global(body.darkMode) .pendingDoctor,
+:global(body.darkMode) .cardTitle,
+:global(body.darkMode) .greetingTitle,
+:global(body.darkMode) .upcomingTextLarge h2 {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .recentAppointmentService,
+:global(body.darkMode) .recentAppointmentDate,
+:global(body.darkMode) .pendingService,
+:global(body.darkMode) .pendingDateTime,
+:global(body.darkMode) .emptyStateText,
+:global(body.darkMode) .greetingSubtitle,
+:global(body.darkMode) .upcomingTextLarge p {
+  color: var(--text-muted);
+}
+
+/* ================================
+   Responsive
+   ================================ */
+
+@media (max-width: 1180px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .rightColumn {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .pageWrapper,
+  .pageWrapper.navCollapsed {
+    margin-left: 0;
+    padding: 88px 20px 40px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recentAppointmentTop,
+  .pendingTopRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .statusBadge {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .pageWrapper,
+  .pageWrapper.navCollapsed {
+    padding: 88px 16px 32px;
+  }
+
+  .greetingTitle {
+    font-size: 28px;
+  }
+
+  .greetingSubtitle {
+    font-size: 14px;
+  }
+
+  .card,
+  .cardHighlight {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .summaryCard {
+    padding: 18px;
+  }
+
+  .summaryCard h3 {
+    font-size: 18px;
+  }
+
+  .recentAppointmentCard,
+  .pendingCard {
+    padding: 16px;
+  }
 }

@@ -288,3 +288,156 @@ body.darkMode textarea {
     flex-direction: column;
   }
 }
+
+/* ================================
+   Patient Book Appointment Page Wrapper
+   ================================ */
+
+.bookPage {
+  margin-left: 220px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 30px 40px 40px 20px;
+  background: var(--bg-main);
+  color: var(--text-main);
+  transition:
+    margin-left 0.3s ease,
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+.bookPageCollapsed {
+  margin-left: 80px;
+}
+
+:global(body.darkMode) .bookPage {
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+/* ================================
+   Patient Book Appointment Dark Mode
+   ================================ */
+
+:global(body.darkMode) .pageTitle {
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .container {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .calendarHeader,
+:global(body.darkMode) .weekLabel,
+:global(body.darkMode) .formGroup label,
+:global(body.darkMode) .doctorSidebar h4,
+:global(body.darkMode) .container h3,
+:global(body.darkMode) .container strong {
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .container p {
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .stepCircle {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:global(body.darkMode) .activeCircle {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+  border-color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .stepLine {
+  background: var(--border-color) !important;
+}
+
+:global(body.darkMode) .activeLine {
+  background: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .dayCell,
+:global(body.darkMode) .timeSlot,
+:global(body.darkMode) .serviceCard,
+:global(body.darkMode) .doctorCardLarge {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .dayCell:hover,
+:global(body.darkMode) .timeSlot:hover,
+:global(body.darkMode) .serviceCard:hover {
+  background: rgba(244, 114, 182, 0.14) !important;
+}
+
+:global(body.darkMode) .selectedDay,
+:global(body.darkMode) .selectedTime,
+:global(body.darkMode) .serviceActive {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+  border-color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .disabledDay,
+:global(body.darkMode) .disabledTime {
+  opacity: 0.35;
+}
+
+:global(body.darkMode) .formGroup input,
+:global(body.darkMode) .formGroup textarea {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .formGroup input:disabled {
+  background: var(--bg-soft) !important;
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .formGroup input::placeholder,
+:global(body.darkMode) .formGroup textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .doctorSidebar {
+  background: rgba(244, 114, 182, 0.08) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:global(body.darkMode) .doctorName {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .navButton {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+:global(body.darkMode) .navButton:hover {
+  background: var(--primary-hover) !important;
+}
+
+:global(body.darkMode) .navButtonDisabled {
+  background: #3a3f4b !important;
+  color: var(--text-muted) !important;
+}
+
+@media (max-width: 768px) {
+  .bookPage,
+  .bookPageCollapsed {
+    margin-left: 0;
+    padding: 88px 20px 24px;
+  }
+}

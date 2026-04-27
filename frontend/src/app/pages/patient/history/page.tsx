@@ -219,7 +219,7 @@ export default function PatientHistory() {
                   {(appt.status === "Declined" ||
                     appt.status === "Cancelled") &&
                     appt.cancel_reason && (
-                      <div className={styles.reasonBox}>
+                      <div className={styles.noticeBox}>
                         <strong>Reason:</strong> {appt.cancel_reason}
                       </div>
                     )}

@@ -473,3 +473,93 @@
   font-size: 22px;
   cursor: pointer;
 }
+
+/* Dark mode support */
+
+:global(body.darkMode) .staffPage {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .dashboardHeader h1,
+:global(body.darkMode) .sectionTitle,
+:global(body.darkMode) .statValue,
+:global(body.darkMode) .requestCard b,
+:global(body.darkMode) .listHeader h2,
+:global(body.darkMode) .infoValue,
+:global(body.darkMode) .quickActionTitle {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .pageSubtext,
+:global(body.darkMode) .statLabel,
+:global(body.darkMode) .statMeta,
+:global(body.darkMode) .requestCard p,
+:global(body.darkMode) .requestCard span,
+:global(body.darkMode) .metaText,
+:global(body.darkMode) .detailText,
+:global(body.darkMode) .infoLabel,
+:global(body.darkMode) .quickActionText {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .card,
+:global(body.darkMode) .listCard,
+:global(body.darkMode) .quickActionCard,
+:global(body.darkMode) .modalCard {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+:global(body.darkMode) .requestCard,
+:global(body.darkMode) .infoRow {
+  border-bottom-color: var(--border-color);
+}
+
+:global(body.darkMode) .searchInput {
+  background: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .filterChip {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .filterChip:hover {
+  background: var(--bg-soft);
+  border-color: var(--primary-color);
+}
+
+:global(body.darkMode) .filterChipActive {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+:global(body.darkMode) .emptyState {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .secondaryBtn,
+:global(body.darkMode) .actionBtn,
+:global(body.darkMode) .modalCloseBtn {
+  background: var(--bg-soft);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .secondaryBtn:hover,
+:global(body.darkMode) .actionBtn:hover,
+:global(body.darkMode) .modalCloseBtn:hover {
+  background: #2a3040;
+}
