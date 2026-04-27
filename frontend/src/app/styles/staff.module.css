@@ -1,16 +1,8 @@
 .staffPage {
   min-height: 100vh;
-  margin-left: 240px;
-  width: calc(100% - 240px);
-  padding: 40px 48px;
+  padding: 28px;
   background: #f6f8fc;
   color: #1f2937;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.staffPage > * {
-  max-width: none;
 }
 
 .dashboardHeader {
@@ -468,13 +460,13 @@
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #0f172a;
+  color: #6f2940;
 }
 
 .modalCloseBtn {
   border: none;
   background: #e2e8f0;
-  color: #1e293b;
+  color: #6f2940;
   width: 38px;
   height: 38px;
   border-radius: 999px;
