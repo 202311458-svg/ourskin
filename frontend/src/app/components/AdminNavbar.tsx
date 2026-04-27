@@ -33,7 +33,7 @@ export default function AdminNavbar() {
     { name: "Dashboard", path: "/pages/admin/dashboard", icon: <FaTachometerAlt /> },
     { name: "Users", path: "/pages/admin/users", icon: <FaUsers /> },
     { name: "Appointments", path: "/pages/admin/appointments", icon: <FaCalendarAlt /> },
-    { name: "AI Logs", path: "/pages/admin/ai-logs", icon: <FaRobot /> },
+    { name: "AI Review Monitor", path: "/pages/admin/ai-logs", icon: <FaRobot /> },
     { name: "Staff Management", path: "/pages/admin/staff-mgmt", icon: <FaUserShield /> },
     { name: "Audit Logs", path: "/pages/admin/audit-logs", icon: <FaClipboardList /> },
   ];
