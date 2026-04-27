@@ -328,6 +328,7 @@
 .dataTable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
 }
 
 .dataTable th,
@@ -1073,3 +1074,55 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.actionsHeader {
+  width: 300px;
+  min-width: 300px;
+}
+
+.actionsCell {
+  width: 300px;
+  min-width: 300px;
+}
+
+.appointmentActionGroup {
+  display: grid;
+  grid-template-columns: 78px 122px 78px;
+  gap: 8px;
+  align-items: center;
+}
+
+.tableActionButton {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1.1;
+  margin: 0 !important;
+}
+
+.emptyActionSlot {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  display: block;
+  visibility: hidden;
+}
+
+@media (max-width: 1000px) {
+  .actionsHeader,
+  .actionsCell {
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .appointmentActionGroup {
+    grid-template-columns: 72px 116px 72px;
+    gap: 7px;
+  }
+}

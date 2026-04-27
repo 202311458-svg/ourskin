@@ -166,6 +166,41 @@ export default function DoctorAppointmentsPage() {
     return `${Math.round(value * 100)}%`;
   };
 
+
+const getAppointmentTimestamp = (appointment: Appointment) => {
+  const datePart = appointment.date || "1900-01-01";
+  const timePart = appointment.time || "00:00:00";
+
+  const timestamp = new Date(`${datePart}T${timePart}`).getTime();
+
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const sortedAppointments = useMemo(() => {
+  return [...appointments].sort((a, b) => {
+    return getAppointmentTimestamp(b) - getAppointmentTimestamp(a);
+  });
+}, [appointments]);
+
+const formatTime = (timeValue?: string | null) => {
+  if (!timeValue) return "N/A";
+
+  const [hour, minute] = timeValue.split(":");
+
+  if (!hour || !minute) return timeValue;
+
+  const date = new Date();
+  date.setHours(Number(hour), Number(minute), 0, 0);
+
+  if (Number.isNaN(date.getTime())) return timeValue;
+
+  return date.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+
   const buildImageUrl = (path?: string | null) => {
     if (!path) return "";
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -414,7 +449,7 @@ export default function DoctorAppointmentsPage() {
 
             {loading ? (
               <div className={styles.emptyState}>Loading appointments...</div>
-            ) : appointments.length === 0 ? (
+            ) : sortedAppointments.length === 0 ? (
               <div className={styles.emptyState}>No appointments found.</div>
             ) : (
               <div className={styles.tableWrapper}>
@@ -431,59 +466,63 @@ export default function DoctorAppointmentsPage() {
                     </tr>
                   </thead>
 
-                  <tbody>
-                    {appointments.map((appt) => {
-                      const actions = getDoctorActions(appt.status);
+<tbody>
+  {sortedAppointments.map((appt) => {
+    const actions = getDoctorActions(appt.status);
 
-                      return (
-                        <tr key={appt.id}>
-                          <td>{appt.patient_name}</td>
-                          <td>{appt.doctor_name}</td>
-                          <td>{appt.date}</td>
-                          <td>{appt.time}</td>
-                          <td>{appt.services}</td>
-                          <td>
-                            <span className={getStatusBadgeClass(appt.status)}>
-                              {appt.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className={styles.buttonRow}>
-                              <button
-                                type="button"
-                                className={styles.secondaryButton}
-                                onClick={() => openDetails(appt.id)}
-                              >
-                                {actions.primaryLabel === "View Report"
-                                  ? "View Report"
-                                  : "View"}
-                              </button>
+    return (
+      <tr key={appt.id}>
+        <td>{appt.patient_name}</td>
+        <td>{appt.doctor_name}</td>
+        <td>{appt.date}</td>
+        <td>{formatTime(appt.time)}</td>
+        <td>{appt.services}</td>
 
-                              {actions.canComplete && (
-                                <button
-                                  type="button"
-                                  className={styles.actionButton}
-                                  onClick={() => openDetails(appt.id)}
-                                >
-                                  {actions.primaryLabel}
-                                </button>
-                              )}
+        <td>
+          <span className={getStatusBadgeClass(appt.status)}>
+            {appt.status}
+          </span>
+        </td>
 
-                              {actions.canCancel && (
-                                <button
-                                  type="button"
-                                  className={styles.dangerButton}
-                                  onClick={() => handleCancel(appt.id)}
-                                >
-                                  Cancel
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+        <td className={styles.actionsCell}>
+          <div className={styles.appointmentActionGroup}>
+            <button
+              type="button"
+              className={`${styles.secondaryButton} ${styles.tableActionButton}`}
+              onClick={() => openDetails(appt.id)}
+            >
+              {actions.primaryLabel === "View Report" ? "View Report" : "View"}
+            </button>
+
+            {actions.canComplete ? (
+              <button
+                type="button"
+                className={`${styles.actionButton} ${styles.tableActionButton}`}
+                onClick={() => openDetails(appt.id)}
+              >
+                {actions.primaryLabel}
+              </button>
+            ) : (
+              <span className={styles.emptyActionSlot} aria-hidden="true" />
+            )}
+
+            {actions.canCancel ? (
+              <button
+                type="button"
+                className={`${styles.dangerButton} ${styles.tableActionButton}`}
+                onClick={() => handleCancel(appt.id)}
+              >
+                Cancel
+              </button>
+            ) : (
+              <span className={styles.emptyActionSlot} aria-hidden="true" />
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
                 </table>
               </div>
             )}

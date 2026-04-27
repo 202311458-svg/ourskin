@@ -1,0 +1,523 @@
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 20px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 0;
+}
+
+.subtitle {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: #6b7280;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.refreshButton {
+  border: none;
+  background: #8b2f55;
+  color: #ffffff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.refreshButton:hover {
+  background: #7a284a;
+}
+
+.refreshButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  border: 1px solid #eef0f3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statCard span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.statCard strong {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.filtersRow {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 22px;
+  align-items: center;
+}
+
+.searchInput,
+.selectInput {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 0 14px;
+  outline: none;
+  font-size: 0.92rem;
+}
+
+.searchInput {
+  flex: 1;
+}
+
+.selectInput {
+  min-width: 170px;
+}
+
+.searchInput:focus,
+.selectInput:focus {
+  border-color: #1f2937;
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.12);
+}
+
+.tableCard {
+  background: #ffffff;
+  border-radius: 18px;
+  overflow-x: auto;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  border: 1px solid #eef0f3;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1050px;
+}
+
+.table th {
+  text-align: left;
+  padding: 16px;
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #f9fafb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td {
+  padding: 16px;
+  border-top: 1px solid #eef0f3;
+  color: #374151;
+  font-size: 0.92rem;
+  vertical-align: middle;
+}
+
+.table tr:hover td {
+  background: #f9fafb;
+}
+
+.patientCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patientCell strong {
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.patientCell p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 86px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.severe {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.moderate {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.mild {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.neutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.reviewed {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.viewBtn {
+  border: none;
+  background: #8b2f55;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.viewBtn:hover {
+  background: #7a284a;
+}
+
+.message,
+.error {
+  padding: 36px 20px;
+  text-align: center;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(17, 24, 39, 0.48);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.modalCardLarge {
+  width: min(900px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.25);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.35rem;
+}
+
+.modalHeader p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.topCloseButton {
+  border: none;
+  background: #8b2f55;
+  color: #ffffff;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topCloseButton:hover {
+  background: #7a284a;
+}
+
+.profileSection {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f9fafb;
+  border: 1px solid #eef0f3;
+  margin-bottom: 18px;
+}
+
+.profileInitial {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1f2937;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.profileInfo h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.profileInfo p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.profileGrid div {
+  background: #ffffff;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  padding: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.infoBlock {
+  border: 1px solid #eef0f3;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+}
+
+.infoBlock h3 {
+  margin: 0 0 12px;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.structuredSection {
+  display: grid;
+  gap: 14px;
+}
+
+.assessmentGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.prescriptionTable {
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.prescriptionHeader,
+.prescriptionRow {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+}
+
+.prescriptionHeader {
+  background: #f9fafb;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.prescriptionHeader span {
+  padding: 12px 14px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prescriptionRow {
+  border-top: 1px solid #eef0f3;
+}
+
+.prescriptionRow:first-of-type {
+  border-top: none;
+}
+
+.prescriptionRow p {
+  margin: 0;
+  padding: 14px;
+  color: #374151;
+  line-height: 1.5;
+  border-right: 1px solid #eef0f3;
+}
+
+.prescriptionRow p:last-child {
+  border-right: none;
+}
+
+.detailMiniBlock {
+  background: #f9fafb;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.detailMiniBlock strong {
+  display: block;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.detailMiniBlock p {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.detailList {
+  margin: 0;
+  padding-left: 18px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.detailList li {
+  margin-bottom: 6px;
+}
+
+.emptyMiniText {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.modalActions button {
+  border: none;
+  background: #8b2f55;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modalActions button:hover {
+  background: #7a284a;
+}
+
+@media (max-width: 1100px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filtersRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .selectInput {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .prescriptionHeader {
+    display: none;
+  }
+
+  .prescriptionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .prescriptionRow p {
+    border-right: none;
+    border-bottom: 1px solid #eef0f3;
+  }
+
+  .prescriptionRow p:last-child {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .headerRow {
+    flex-direction: column;
+  }
+
+  .refreshButton {
+    width: 100%;
+  }
+
+  .statsGrid,
+  .profileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalHeader {
+    flex-direction: column;
+  }
+
+  .topCloseButton {
+    width: 100%;
+  }
+}

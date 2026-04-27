@@ -227,11 +227,19 @@ def get_doctor_appointments(
 ):
     query = db.query(AppointmentModel)
 
-    if status:
+    if status and status != "All":
         query = query.filter(AppointmentModel.status == status)
 
-    appointments = query.order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc()).all()
-    return [serialize_appointment(a) for a in appointments]
+    appointments = (
+        query
+        .order_by(
+            AppointmentModel.date.asc(),
+            AppointmentModel.time.asc()
+        )
+        .all()
+    )
+
+    return [serialize_appointment(appointment) for appointment in appointments]
 
 
 @router.put("/appointments/{appointment_id}/status")

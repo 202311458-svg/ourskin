@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import styles from "./admindash.module.css";
@@ -15,6 +16,37 @@ type DashboardStats = {
   approved_appointments: number;
   total_ai_logs: number;
 };
+
+type DashboardApiResponse = Partial<DashboardStats> & {
+  detail?: string;
+  message?: string;
+};
+
+const API_BASE = "http://127.0.0.1:8000";
+
+async function safeJson<T>(res: Response): Promise<T | null> {
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+function getApiErrorMessage(data: DashboardApiResponse | null, fallback: string) {
+  if (data?.detail) return data.detail;
+  if (data?.message) return data.message;
+  return fallback;
+}
+
+function getPercent(value: number, total: number) {
+  if (!total || total <= 0) return 0;
+  return Math.round((value / total) * 100);
+}
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -42,174 +74,320 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    fetch("http://127.0.0.1:8000/admin/dashboard", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setStats({
-          total_users: data.total_users || 0,
-          total_patients: data.total_patients || 0,
-          total_staff: data.total_staff || 0,
-          total_doctors: data.total_doctors || 0,
-          total_appointments: data.total_appointments || 0,
-          pending_appointments: data.pending_appointments || 0,
-          approved_appointments: data.approved_appointments || 0,
-          total_ai_logs: data.total_ai_logs || 0,
+    async function loadDashboard() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await fetch(`${API_BASE}/admin/dashboard`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-      })
-      .catch((err) => {
-        console.error("Dashboard fetch error:", err);
-        setError("Unable to load dashboard data.");
-      })
-      .finally(() => {
+
+        const data = await safeJson<DashboardApiResponse>(res);
+
+        if (!res.ok) {
+          throw new Error(getApiErrorMessage(data, "Unable to load dashboard data."));
+        }
+
+        setStats({
+          total_users: data?.total_users || 0,
+          total_patients: data?.total_patients || 0,
+          total_staff: data?.total_staff || 0,
+          total_doctors: data?.total_doctors || 0,
+          total_appointments: data?.total_appointments || 0,
+          pending_appointments: data?.pending_appointments || 0,
+          approved_appointments: data?.approved_appointments || 0,
+          total_ai_logs: data?.total_ai_logs || 0,
+        });
+      } catch (loadError: unknown) {
+        setError(getErrorMessage(loadError, "Unable to load dashboard data."));
+      } finally {
         setLoading(false);
-      });
+      }
+    }
+
+    loadDashboard();
   }, [router]);
+
+  const dashboardInsights = useMemo(() => {
+    const internalUsers = stats.total_staff + stats.total_doctors;
+    const appointmentApprovalRate = getPercent(
+      stats.approved_appointments,
+      stats.total_appointments
+    );
+
+    const pendingRate = getPercent(
+      stats.pending_appointments,
+      stats.total_appointments
+    );
+
+    const patientShare = getPercent(stats.total_patients, stats.total_users);
+    const internalShare = getPercent(internalUsers, stats.total_users);
+
+    return {
+      internalUsers,
+      appointmentApprovalRate,
+      pendingRate,
+      patientShare,
+      internalShare,
+    };
+  }, [stats]);
+
+  const primaryCards = [
+    {
+      label: "Total Users",
+      value: stats.total_users,
+      helper: "All registered accounts",
+      icon: "👥",
+      className: styles.pinkAccent,
+    },
+    {
+      label: "Patients",
+      value: stats.total_patients,
+      helper: `${dashboardInsights.patientShare}% of total users`,
+      icon: "🧴",
+      className: styles.greenAccent,
+    },
+    {
+      label: "Doctors",
+      value: stats.total_doctors,
+      helper: "Active clinical users",
+      icon: "🩺",
+      className: styles.blueAccent,
+    },
+    {
+      label: "Staff",
+      value: stats.total_staff,
+      helper: "Internal support users",
+      icon: "📋",
+      className: styles.orangeAccent,
+    },
+  ];
+
+  const operationalCards = [
+    {
+      label: "Total Appointments",
+      value: stats.total_appointments,
+      helper: "All appointment records",
+      icon: "📅",
+      className: styles.pinkAccent,
+    },
+    {
+      label: "Pending Requests",
+      value: stats.pending_appointments,
+      helper:
+        stats.pending_appointments > 0
+          ? "Needs admin review"
+          : "No pending requests",
+      icon: "⏳",
+      className:
+        stats.pending_appointments > 0 ? styles.orangeAccent : styles.greenAccent,
+    },
+    {
+      label: "Approved",
+      value: stats.approved_appointments,
+      helper: `${dashboardInsights.appointmentApprovalRate}% approval share`,
+      icon: "✅",
+      className: styles.greenAccent,
+    },
+    {
+      label: "AI Logs",
+      value: stats.total_ai_logs,
+      helper: "Skin analysis records",
+      icon: "🤖",
+      className: styles.blueAccent,
+    },
+  ];
 
   return (
     <div className="staffLayout">
       <AdminNavbar />
 
-      <div className="staffContent">
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Welcome back, Admin!</h1>
-            <p className={styles.subtitle}>
-              Overview of users, appointments, and AI activity across the platform.
+      <main className="staffContent">
+        <section className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <p className={styles.eyebrow}>Admin Control Center</p>
+            <h1>Welcome back, Admin!</h1>
+            <p>
+              Monitor OurSkin users, appointments, staff activity, and AI-assisted
+              dermatology records in one clean workspace.
             </p>
+
+            <div className={styles.heroActions}>
+              <Link href="/pages/admin/appointments" className={styles.primaryAction}>
+                Review Appointments
+              </Link>
+
+              <Link href="/pages/admin/audit-logs" className={styles.secondaryAction}>
+                View Audit Logs
+              </Link>
+            </div>
           </div>
-        </div>
+
+          <div className={styles.heroPanel}>
+            <span>Appointment Overview</span>
+            <strong>{stats.total_appointments}</strong>
+            <p>Total appointment records monitored by the admin portal.</p>
+          </div>
+        </section>
 
         {loading ? (
-          <div className={styles.tableCard}>
+          <div className={styles.stateCard}>
             <p className={styles.message}>Loading dashboard...</p>
           </div>
         ) : error ? (
-          <div className={styles.tableCard}>
+          <div className={styles.stateCard}>
             <p className={styles.error}>{error}</p>
           </div>
         ) : (
           <>
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <span>Total Users</span>
-                <strong>{stats.total_users}</strong>
-              </div>
+            <section className={styles.statsGrid}>
+              {primaryCards.map((card) => (
+                <div key={card.label} className={`${styles.statCard} ${card.className}`}>
+                  <div className={styles.statTop}>
+                    <span className={styles.statIcon}>{card.icon}</span>
+                    <span className={styles.statLabel}>{card.label}</span>
+                  </div>
 
-              <div className={styles.statCard}>
-                <span>Total Patients</span>
-                <strong>{stats.total_patients}</strong>
-              </div>
+                  <strong>{card.value}</strong>
+                  <p>{card.helper}</p>
+                </div>
+              ))}
+            </section>
 
-              <div className={styles.statCard}>
-                <span>Total Staff</span>
-                <strong>{stats.total_staff}</strong>
-              </div>
+            <section className={styles.statsGrid}>
+              {operationalCards.map((card) => (
+                <div key={card.label} className={`${styles.statCard} ${card.className}`}>
+                  <div className={styles.statTop}>
+                    <span className={styles.statIcon}>{card.icon}</span>
+                    <span className={styles.statLabel}>{card.label}</span>
+                  </div>
 
-              <div className={styles.statCard}>
-                <span>Total Doctors</span>
-                <strong>{stats.total_doctors}</strong>
-              </div>
+                  <strong>{card.value}</strong>
+                  <p>{card.helper}</p>
+                </div>
+              ))}
+            </section>
 
-              <div className={styles.statCard}>
-                <span>Total Appointments</span>
-                <strong>{stats.total_appointments}</strong>
-              </div>
+            <section className={styles.dashboardGrid}>
+              <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.panelEyebrow}>Appointments</p>
+                    <h2>Appointment Pipeline</h2>
+                  </div>
 
-              <div className={styles.statCard}>
-                <span>Pending Appointments</span>
-                <strong>{stats.pending_appointments}</strong>
-              </div>
-
-              <div className={styles.statCard}>
-                <span>Approved Appointments</span>
-                <strong>{stats.approved_appointments}</strong>
-              </div>
-
-              <div className={styles.statCard}>
-                <span>Total AI Logs</span>
-                <strong>{stats.total_ai_logs}</strong>
-              </div>
-            </div>
-
-            <div className={styles.dashboardGrid}>
-              <div className={styles.tableCard}>
-                <div className={styles.cardHeader}>
-                  <h2>User Summary</h2>
+                  <Link href="/pages/admin/appointments">Manage</Link>
                 </div>
 
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Total Users</td>
-                      <td>{stats.total_users}</td>
-                    </tr>
-                    <tr>
-                      <td>Patients</td>
-                      <td>{stats.total_patients}</td>
-                    </tr>
-                    <tr>
-                      <td>Staff</td>
-                      <td>{stats.total_staff}</td>
-                    </tr>
-                    <tr>
-                      <td>Doctors</td>
-                      <td>{stats.total_doctors}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className={styles.pipelineList}>
+                  <div className={styles.pipelineItem}>
+                    <div>
+                      <span>Approved Appointments</span>
+                      <strong>{stats.approved_appointments}</strong>
+                    </div>
+
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={`${styles.progressBar} ${styles.greenBar}`}
+                        style={{
+                          width: `${dashboardInsights.appointmentApprovalRate}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p>{dashboardInsights.appointmentApprovalRate}% of all appointments</p>
+                  </div>
+
+                  <div className={styles.pipelineItem}>
+                    <div>
+                      <span>Pending Requests</span>
+                      <strong>{stats.pending_appointments}</strong>
+                    </div>
+
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={`${styles.progressBar} ${styles.orangeBar}`}
+                        style={{ width: `${dashboardInsights.pendingRate}%` }}
+                      />
+                    </div>
+
+                    <p>{dashboardInsights.pendingRate}% still waiting for action</p>
+                  </div>
+                </div>
               </div>
 
-              <div className={styles.tableCard}>
-                <div className={styles.cardHeader}>
-                  <h2>Appointment Summary</h2>
+              <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.panelEyebrow}>Accounts</p>
+                    <h2>User Distribution</h2>
+                  </div>
+
+                  <Link href="/pages/admin/users">View Users</Link>
                 </div>
 
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Status</th>
-                      <th>Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Total Appointments</td>
-                      <td>{stats.total_appointments}</td>
-                    </tr>
-                    <tr>
-                      <td>Pending</td>
-                      <td>{stats.pending_appointments}</td>
-                    </tr>
-                    <tr>
-                      <td>Approved</td>
-                      <td>{stats.approved_appointments}</td>
-                    </tr>
-                    <tr>
-                      <td>AI Logs</td>
-                      <td>{stats.total_ai_logs}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className={styles.breakdownGrid}>
+                  <div className={styles.breakdownItem}>
+                    <span>Patients</span>
+                    <strong>{stats.total_patients}</strong>
+                    <p>{dashboardInsights.patientShare}% of all users</p>
+                  </div>
+
+                  <div className={styles.breakdownItem}>
+                    <span>Internal Users</span>
+                    <strong>{dashboardInsights.internalUsers}</strong>
+                    <p>{dashboardInsights.internalShare}% staff and doctors</p>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.panelEyebrow}>AI Monitoring</p>
+                    <h2>AI Activity</h2>
+                  </div>
+
+                  <Link href="/pages/admin/ai-logs">Open AI Logs</Link>
+                </div>
+
+                <div className={styles.aiBox}>
+                  <div>
+                    <span>Total AI Logs</span>
+                    <strong>{stats.total_ai_logs}</strong>
+                    <p>
+                      AI analysis records available for review and monitoring.
+                    </p>
+                  </div>
+
+                  <div className={styles.aiBadge}>
+                    {stats.total_ai_logs > 0 ? "Active" : "No logs yet"}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.panelCard}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.panelEyebrow}>Quick Actions</p>
+                    <h2>Admin Shortcuts</h2>
+                  </div>
+                </div>
+
+                <div className={styles.quickActions}>
+                  <Link href="/pages/admin/staff-mgmt">Manage Staff</Link>
+                  <Link href="/pages/admin/appointments">Review Appointments</Link>
+                  <Link href="/pages/admin/audit-logs">Check Audit Logs</Link>
+                  <Link href="/pages/admin/ai-logs">Monitor AI Logs</Link>
+                </div>
+              </div>
+            </section>
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

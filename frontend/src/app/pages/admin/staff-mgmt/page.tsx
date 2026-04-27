@@ -2,18 +2,34 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import styles from "./staff-mgmt.module.css";
-import Image from "next/image";
 
 type StaffUser = {
   id: number;
   full_name: string;
+  name?: string;
   email: string;
   role: string;
   status: string;
   department?: string;
   phone?: string;
+  contact?: string;
+  profile_image?: string | null;
+  created_at?: string;
+};
+
+type StaffApiResponse = {
+  id?: number | string;
+  full_name?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  department?: string | null;
+  phone?: string | null;
+  contact?: string | null;
   profile_image?: string | null;
   created_at?: string;
 };
@@ -24,6 +40,62 @@ type UserOption = {
   email: string;
 };
 
+type EditStaffForm = {
+  id: number | null;
+  full_name: string;
+  email: string;
+  role: string;
+  department: string;
+  phone: string;
+};
+
+type ConfirmAction = {
+  type: "deactivate" | "reactivate";
+  member: StaffUser;
+} | null;
+
+type ApiErrorResponse = {
+  detail?: string;
+  message?: string;
+};
+
+const API_BASE = "http://127.0.0.1:8000";
+
+function normalizeStaff(raw: StaffApiResponse): StaffUser {
+  return {
+    id: Number(raw.id),
+    full_name: raw.full_name || raw.name || "Unnamed User",
+    name: raw.name || raw.full_name || "Unnamed User",
+    email: raw.email || "",
+    role: raw.role || "staff",
+    status: raw.status || "Active",
+    department: raw.department || "",
+    phone: raw.phone || raw.contact || "",
+    contact: raw.contact || raw.phone || "",
+    profile_image: raw.profile_image || null,
+    created_at: raw.created_at,
+  };
+}
+
+async function safeJson<T>(res: Response): Promise<T | null> {
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
+  if (data?.detail) return data.detail;
+  if (data?.message) return data.message;
+  return fallback;
+}
+
 export default function StaffManagementPage() {
   const router = useRouter();
 
@@ -32,6 +104,7 @@ export default function StaffManagementPage() {
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -42,7 +115,16 @@ export default function StaffManagementPage() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [selectedStaff, setSelectedStaff] = useState<StaffUser | null>(null);
-  const [editForm, setEditForm] = useState<Partial<StaffUser>>({});
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+
+  const [editForm, setEditForm] = useState<EditStaffForm>({
+    id: null,
+    full_name: "",
+    email: "",
+    role: "staff",
+    department: "",
+    phone: "",
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -53,33 +135,59 @@ export default function StaffManagementPage() {
       return;
     }
 
-    fetch("http://127.0.0.1:8000/admin/staff", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setStaff(Array.isArray(data) ? data : []))
-      .catch(() => setError("Unable to load staff records"))
-      .finally(() => setLoading(false));
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError("");
 
-    fetch("http://127.0.0.1:8000/admin/verified-users", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setUsers(Array.isArray(data) ? data : []));
+        const staffRes = await fetch(`${API_BASE}/admin/staff`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const staffData = await safeJson<
+          StaffApiResponse[] & ApiErrorResponse
+        >(staffRes);
+
+        if (!staffRes.ok) {
+          throw new Error(
+            getApiErrorMessage(staffData, "Unable to load staff records")
+          );
+        }
+
+        setStaff(Array.isArray(staffData) ? staffData.map(normalizeStaff) : []);
+
+        const usersRes = await fetch(`${API_BASE}/admin/verified-users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const usersData = await safeJson<UserOption[]>(usersRes);
+
+        setUsers(Array.isArray(usersData) ? usersData : []);
+      } catch (loadError: unknown) {
+        setError(getErrorMessage(loadError, "Unable to load admin records"));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
   }, [router]);
 
   const filteredStaff = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
+
     return staff.filter((member) => {
       const matchesSearch =
-        member.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        member.email?.toLowerCase().includes(search.toLowerCase()) ||
-        member.department?.toLowerCase().includes(search.toLowerCase());
+        member.full_name.toLowerCase().includes(keyword) ||
+        member.email.toLowerCase().includes(keyword) ||
+        (member.department || "").toLowerCase().includes(keyword);
 
       const matchesRole =
-        roleFilter === "all" || member.role?.toLowerCase() === roleFilter;
+        roleFilter === "all" || member.role.toLowerCase() === roleFilter;
 
       const matchesStatus =
-        statusFilter === "all" || member.status?.toLowerCase() === statusFilter;
+        statusFilter === "all" ||
+        member.status.toLowerCase() === statusFilter;
 
       return matchesSearch && matchesRole && matchesStatus;
     });
@@ -88,136 +196,227 @@ export default function StaffManagementPage() {
   const stats = useMemo(() => {
     return {
       total: staff.length,
-      active: staff.filter((s) => s.status?.toLowerCase() === "active").length,
-      admins: staff.filter((s) => s.role?.toLowerCase() === "admin").length,
-      inactive: staff.filter((s) => s.status?.toLowerCase() !== "active").length,
+      active: staff.filter((item) => item.status.toLowerCase() === "active")
+        .length,
+      admins: staff.filter((item) => item.role.toLowerCase() === "admin")
+        .length,
+      inactive: staff.filter((item) => item.status.toLowerCase() !== "active")
+        .length,
     };
   }, [staff]);
 
-  async function handleDeactivate(id: number) {
-    const token = localStorage.getItem("token");
-
-    await fetch(`http://127.0.0.1:8000/admin/staff/${id}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: "Inactive" }),
-    });
-
-    setStaff((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: "Inactive" } : m))
-    );
+  function capitalizeFirst(value?: string) {
+    if (!value) return "";
+    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   }
 
-  async function handleReactivate(id: number) {
-    const token = localStorage.getItem("token");
-
-    await fetch(`http://127.0.0.1:8000/admin/staff/${id}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: "Active" }),
-    });
-
-    setStaff((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: "Active" } : m))
-    );
+  function closeEditModal() {
+    if (actionLoading) return;
+    setShowEditModal(false);
+    setSelectedStaff(null);
   }
 
-  // ADD STAFF
-  async function handleAddStaff() {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch("http://127.0.0.1:8000/admin/staff/from-user", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        user_id: selectedUser,
-        role: "staff",
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) return alert(data.detail || "Failed");
-
-    setStaff((prev) => [data, ...prev]);
-    setShowAddModal(false);
-  }
-
-  // VIEW
   function handleView(member: StaffUser) {
     setSelectedStaff(member);
     setShowViewModal(true);
   }
 
-  // EDIT
   function handleEdit(member: StaffUser) {
-    setSelectedStaff(member);
+    const normalized = normalizeStaff(member);
+
+    setSelectedStaff(normalized);
 
     setEditForm({
-      id: Number(member.id),
-      full_name: member.full_name,
-      role: member.role,
-      department: member.department,
-      phone: member.phone,
+      id: normalized.id,
+      full_name: normalized.full_name,
+      email: normalized.email,
+      role: normalized.role,
+      department: normalized.department || "",
+      phone: normalized.phone || normalized.contact || "",
     });
 
     setShowEditModal(true);
   }
 
-  console.log("EDIT ID:", editForm.id);
+  async function handleAddStaff() {
+    if (!selectedUser) {
+      alert("Please select a verified user first.");
+      return;
+    }
 
-  function capitalizeFirst(str?: string) {
-    if (!str) return "";
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const token = localStorage.getItem("token");
+
+    try {
+      setActionLoading(true);
+
+      const res = await fetch(`${API_BASE}/admin/staff/from-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: selectedUser,
+          role: "staff",
+        }),
+      });
+
+      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
+
+      if (!res.ok) {
+        alert(getApiErrorMessage(data, "Failed to add staff"));
+        return;
+      }
+
+      if (data) {
+        setStaff((prev) => [normalizeStaff(data), ...prev]);
+      }
+
+      setSelectedUser(null);
+      setShowAddModal(false);
+    } catch (addError: unknown) {
+      alert(getErrorMessage(addError, "Something went wrong while adding staff."));
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   async function handleUpdateStaff() {
     const token = localStorage.getItem("token");
 
     if (!editForm.id) {
-      alert("Missing staff ID");
+      alert("Missing staff ID.");
+      return;
+    }
+
+    if (!editForm.full_name.trim()) {
+      alert("Full name is required.");
+      return;
+    }
+
+    if (!editForm.role.trim()) {
+      alert("Role is required.");
       return;
     }
 
     const payload = {
-      full_name: editForm.full_name,
-      role: editForm.role,
-      department: editForm.department,
-      phone: editForm.phone,
+      full_name: editForm.full_name.trim(),
+      name: editForm.full_name.trim(),
+      role: editForm.role.trim().toLowerCase(),
+      department: editForm.department.trim() || null,
+      phone: editForm.phone.trim() || null,
+      contact: editForm.phone.trim() || null,
     };
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/admin/staff/${editForm.id}`,
-      {
+    try {
+      setActionLoading(true);
+
+      const res = await fetch(`${API_BASE}/admin/staff/${editForm.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
+      });
+
+      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
+
+      if (!res.ok) {
+        alert(getApiErrorMessage(data, "Update failed"));
+        return;
       }
-    );
 
-    const data = await res.json();
+      const updatedStaff = data ? normalizeStaff(data) : null;
 
-    if (!res.ok) {
-      alert(data.detail || "Update failed");
-      return;
+      setStaff((prev) =>
+        prev.map((member) =>
+          member.id === editForm.id
+            ? updatedStaff || {
+                ...member,
+                full_name: payload.full_name,
+                name: payload.name,
+                role: payload.role,
+                department: payload.department || "",
+                phone: payload.phone || "",
+                contact: payload.contact || "",
+              }
+            : member
+        )
+      );
+
+      setShowEditModal(false);
+      setSelectedStaff(null);
+    } catch (updateError: unknown) {
+      alert(
+        getErrorMessage(
+          updateError,
+          "Something went wrong while updating staff."
+        )
+      );
+    } finally {
+      setActionLoading(false);
     }
+  }
 
-    setStaff((prev) =>
-      prev.map((m) => (m.id === data.id ? data : m))
-    );
+  function requestStatusChange(
+    member: StaffUser,
+    type: "deactivate" | "reactivate"
+  ) {
+    setConfirmAction({ type, member });
+  }
 
-    setShowEditModal(false);
+  async function confirmStatusChange() {
+    if (!confirmAction) return;
+
+    const token = localStorage.getItem("token");
+    const newStatus = confirmAction.type === "deactivate" ? "Inactive" : "Active";
+
+    try {
+      setActionLoading(true);
+
+      const res = await fetch(
+        `${API_BASE}/admin/staff/${confirmAction.member.id}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
+
+      if (!res.ok) {
+        alert(
+          getApiErrorMessage(data, `Failed to ${confirmAction.type} account`)
+        );
+        return;
+      }
+
+      const updatedStaff = data ? normalizeStaff(data) : null;
+
+      setStaff((prev) =>
+        prev.map((member) =>
+          member.id === confirmAction.member.id
+            ? updatedStaff || { ...member, status: newStatus }
+            : member
+        )
+      );
+
+      setConfirmAction(null);
+    } catch (statusError: unknown) {
+      alert(
+        getErrorMessage(
+          statusError,
+          "Something went wrong while updating account status."
+        )
+      );
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   return (
@@ -225,28 +424,46 @@ export default function StaffManagementPage() {
       <AdminNavbar />
 
       <div className="staffContent">
-
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Staff Management</h1>
             <p className={styles.subtitle}>
-              Manage internal users, roles, and account status.
+              Manage internal users, roles, and account access.
             </p>
           </div>
 
           <button
+            type="button"
             className={styles.addButton}
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setSelectedUser(null);
+              setShowAddModal(true);
+            }}
           >
             + Add Staff
           </button>
         </div>
 
         <div className={styles.statsGrid}>
-          <div className={styles.statCard}><span>Total Staff</span><strong>{stats.total}</strong></div>
-          <div className={styles.statCard}><span>Active</span><strong>{stats.active}</strong></div>
-          <div className={styles.statCard}><span>Admins</span><strong>{stats.admins}</strong></div>
-          <div className={styles.statCard}><span>Inactive</span><strong>{stats.inactive}</strong></div>
+          <div className={styles.statCard}>
+            <span>Total Staff</span>
+            <strong>{stats.total}</strong>
+          </div>
+
+          <div className={styles.statCard}>
+            <span>Active</span>
+            <strong>{stats.active}</strong>
+          </div>
+
+          <div className={styles.statCard}>
+            <span>Admins</span>
+            <strong>{stats.admins}</strong>
+          </div>
+
+          <div className={styles.statCard}>
+            <span>Inactive</span>
+            <strong>{stats.inactive}</strong>
+          </div>
         </div>
 
         <div className={styles.filtersRow}>
@@ -254,13 +471,13 @@ export default function StaffManagementPage() {
             type="text"
             placeholder="Search by name, email, or department"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             className={styles.searchInput}
           />
 
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(event) => setRoleFilter(event.target.value)}
             className={styles.selectInput}
           >
             <option value="all">All Roles</option>
@@ -271,7 +488,7 @@ export default function StaffManagementPage() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(event) => setStatusFilter(event.target.value)}
             className={styles.selectInput}
           >
             <option value="all">All Status</option>
@@ -285,6 +502,8 @@ export default function StaffManagementPage() {
             <p className={styles.message}>Loading staff records...</p>
           ) : error ? (
             <p className={styles.error}>{error}</p>
+          ) : filteredStaff.length === 0 ? (
+            <p className={styles.message}>No staff records found.</p>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -310,8 +529,9 @@ export default function StaffManagementPage() {
                           height={42}
                           className={styles.avatar}
                         />
+
                         <div>
-                          <strong>{(member.full_name)}</strong>
+                          <strong>{member.full_name}</strong>
                           <p>{member.email}</p>
                         </div>
                       </div>
@@ -322,10 +542,11 @@ export default function StaffManagementPage() {
 
                     <td>
                       <span
-                        className={`${styles.statusBadge} ${member.status?.toLowerCase() === "active"
-                          ? styles.active
-                          : styles.inactive
-                          }`}
+                        className={`${styles.statusBadge} ${
+                          member.status.toLowerCase() === "active"
+                            ? styles.active
+                            : styles.inactive
+                        }`}
                       >
                         {capitalizeFirst(member.status)}
                       </span>
@@ -339,8 +560,8 @@ export default function StaffManagementPage() {
 
                     <td>
                       <div className={styles.actions}>
-
                         <button
+                          type="button"
                           className={styles.viewBtn}
                           onClick={() => handleView(member)}
                         >
@@ -348,28 +569,34 @@ export default function StaffManagementPage() {
                         </button>
 
                         <button
+                          type="button"
                           className={styles.editBtn}
                           onClick={() => handleEdit(member)}
                         >
                           Edit
                         </button>
 
-                        {member.status?.toLowerCase() === "active" ? (
+                        {member.status.toLowerCase() === "active" ? (
                           <button
+                            type="button"
                             className={styles.deactivateBtn}
-                            onClick={() => handleDeactivate(member.id)}
+                            onClick={() =>
+                              requestStatusChange(member, "deactivate")
+                            }
                           >
                             Deactivate
                           </button>
                         ) : (
                           <button
+                            type="button"
                             className={styles.deactivateBtn}
-                            onClick={() => handleReactivate(member.id)}
+                            onClick={() =>
+                              requestStatusChange(member, "reactivate")
+                            }
                           >
                             Reactivate
                           </button>
                         )}
-
                       </div>
                     </td>
                   </tr>
@@ -382,45 +609,59 @@ export default function StaffManagementPage() {
         {showAddModal && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
-
               <h2>Add Staff</h2>
-              <p>Select a verified user to promote to staff</p>
+              <p>Select a verified user to promote to staff.</p>
 
               <div className={styles.selectBox}>
                 <select
-                  onChange={(e) => setSelectedUser(Number(e.target.value))}
+                  value={selectedUser || ""}
+                  onChange={(event) =>
+                    setSelectedUser(
+                      event.target.value ? Number(event.target.value) : null
+                    )
+                  }
                 >
                   <option value="">Select user</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className={styles.modalActions}>
-                <button onClick={handleAddStaff}>Confirm</button>
-                <button onClick={() => setShowAddModal(false)}>Cancel</button>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleAddStaff}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "Adding..." : "Confirm"}
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-
         {showViewModal && selectedStaff && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
-
               <div className={styles.modalHeader}>
                 <h2>Staff Profile</h2>
               </div>
 
               <div className={styles.profileSection}>
                 <Image
-                  src={selectedStaff?.profile_image || "/default-avatar.png"}
-                  alt={selectedStaff?.full_name}
+                  src={selectedStaff.profile_image || "/default-avatar.png"}
+                  alt={selectedStaff.full_name}
                   width={42}
                   height={42}
                   className={styles.avatar}
@@ -433,10 +674,25 @@ export default function StaffManagementPage() {
               </div>
 
               <div className={styles.profileGrid}>
-                <div><strong>Role:</strong> {selectedStaff.role}</div>
-                <div><strong>Department:</strong> {selectedStaff.department || "N/A"}</div>
-                <div><strong>Status:</strong> {selectedStaff.status}</div>
-                <div><strong>Phone:</strong> {selectedStaff.phone || "N/A"}</div>
+                <div>
+                  <strong>Role:</strong> {capitalizeFirst(selectedStaff.role)}
+                </div>
+
+                <div>
+                  <strong>Department:</strong>{" "}
+                  {selectedStaff.department || "N/A"}
+                </div>
+
+                <div>
+                  <strong>Status:</strong>{" "}
+                  {capitalizeFirst(selectedStaff.status)}
+                </div>
+
+                <div>
+                  <strong>Phone:</strong>{" "}
+                  {selectedStaff.phone || selectedStaff.contact || "N/A"}
+                </div>
+
                 <div>
                   <strong>Created:</strong>{" "}
                   {selectedStaff.created_at
@@ -446,71 +702,194 @@ export default function StaffManagementPage() {
               </div>
 
               <div className={styles.modalActions}>
-                <button onClick={() => setShowViewModal(false)}>Close</button>
+                <button
+                  type="button"
+                  onClick={() => setShowViewModal(false)}
+                >
+                  Close
+                </button>
               </div>
-
             </div>
           </div>
         )}
-
 
         {showEditModal && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
-
               <h2>Edit Staff</h2>
+              <p>Update staff details, role, and department information.</p>
 
               <div className={styles.editGrid}>
-
                 <label>Full Name</label>
                 <input
-                  value={editForm.full_name || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, full_name: e.target.value })
+                  value={editForm.full_name}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      full_name: event.target.value,
+                    }))
                   }
                 />
 
+                <label>Email Locked</label>
+                <input value={editForm.email} disabled />
+
                 <label>Role</label>
-                <input
-                  value={editForm.role || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, role: e.target.value })
+                <select
+                  value={editForm.role}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      role: event.target.value,
+                    }))
                   }
-                />
+                >
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="doctor">Doctor</option>
+                </select>
 
                 <label>Department</label>
                 <input
-                  value={editForm.department || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, department: e.target.value })
+                  value={editForm.department}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      department: event.target.value,
+                    }))
                   }
+                  placeholder="Example: Front Desk"
                 />
 
                 <label>Phone</label>
                 <input
-                  value={editForm.phone || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
+                  value={editForm.phone}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      phone: event.target.value,
+                    }))
                   }
+                  placeholder="Example: 09123456789"
                 />
 
-                <label>Email (Locked)</label>
-                <input value={editForm.email || ""} disabled />
-
-                <label>Profile Image (Locked)</label>
-                <input value="Cannot edit" disabled />
-
+                <label>Profile Image Locked</label>
+                <input
+                  value="Cannot edit from admin staff management"
+                  disabled
+                />
               </div>
 
               <div className={styles.modalActions}>
-                <button onClick={handleUpdateStaff}>Save Changes</button>
-                <button onClick={() => setShowEditModal(false)}>Cancel</button>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleUpdateStaff}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "Saving..." : "Save Changes"}
+                </button>
 
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
 
+        {confirmAction && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.confirmCard}>
+              <div className={styles.confirmTop}>
+                <div
+                  className={`${styles.confirmIcon} ${
+                    confirmAction.type === "deactivate"
+                      ? styles.warningIcon
+                      : styles.successIcon
+                  }`}
+                >
+                  {confirmAction.type === "deactivate" ? "!" : "✓"}
+                </div>
+
+                <div>
+                  <p className={styles.confirmEyebrow}>
+                    {confirmAction.type === "deactivate"
+                      ? "Account Deactivation"
+                      : "Account Reactivation"}
+                  </p>
+
+                  <h2>
+                    {confirmAction.type === "deactivate"
+                      ? "Deactivate this account?"
+                      : "Reactivate this account?"}
+                  </h2>
+                </div>
+              </div>
+
+              <p className={styles.confirmText}>
+                {confirmAction.type === "deactivate"
+                  ? "This user will no longer be able to access the OurSkin system. Their profile, appointment history, and activity records will remain saved for tracking."
+                  : "This user will regain access to the OurSkin system based on their assigned role."}
+              </p>
+
+              <div className={styles.confirmUserBox}>
+                <div>
+                  <span>Name</span>
+                  <strong>{confirmAction.member.full_name}</strong>
+                </div>
+
+                <div>
+                  <span>Email</span>
+                  <strong>{confirmAction.member.email}</strong>
+                </div>
+
+                <div>
+                  <span>Role</span>
+                  <strong>{capitalizeFirst(confirmAction.member.role)}</strong>
+                </div>
+
+                <div>
+                  <span>Status</span>
+                  <strong>
+                    {capitalizeFirst(confirmAction.member.status)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className={styles.confirmActions}>
+                <button
+                  type="button"
+                  className={styles.cancelConfirmBtn}
+                  onClick={() => setConfirmAction(null)}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className={
+                    confirmAction.type === "deactivate"
+                      ? styles.dangerConfirmBtn
+                      : styles.successConfirmBtn
+                  }
+                  onClick={confirmStatusChange}
+                  disabled={actionLoading}
+                >
+                  {actionLoading
+                    ? "Processing..."
+                    : confirmAction.type === "deactivate"
+                    ? "Yes, Deactivate"
+                    : "Yes, Reactivate"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

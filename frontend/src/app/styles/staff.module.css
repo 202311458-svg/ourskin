@@ -6,6 +6,11 @@
   background: #f6f8fc;
   color: #1f2937;
   box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.staffPage > * {
+  max-width: none;
 }
 
 .dashboardHeader {
