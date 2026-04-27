@@ -335,7 +335,7 @@ export default function StaffDashboard() {
                   <div className={styles.listHeader}>
                     <h2>Needs Action</h2>
                     <span className={`${styles.badge} ${styles.statusPending}`}>
-                      {pendingRequests.length} pending
+                      {pendingRequests.length} Pending
                     </span>
                   </div>
 
@@ -387,7 +387,7 @@ export default function StaffDashboard() {
                 <div className={styles.listHeader}>
                   <h2>Upcoming Confirmed Appointments</h2>
                   <span className={`${styles.badge} ${styles.statusApproved}`}>
-                    {upcomingConfirmed.length} upcoming
+                    {upcomingConfirmed.length} Upcoming
                   </span>
                 </div>
 

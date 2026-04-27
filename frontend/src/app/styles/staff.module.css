@@ -563,3 +563,96 @@
 :global(body.darkMode) .modalCloseBtn:hover {
   background: #2a3040;
 }
+
+
+/* General badge reset */
+:global(body.darkMode) .badge {
+  font-weight: 800 !important;
+  border: 1px solid transparent !important;
+}
+
+/* Pending badge */
+:global(body.darkMode) .statusPending {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+/* Approved badge */
+:global(body.darkMode) .statusApproved {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+/* Completed badge */
+:global(body.darkMode) .statusCompleted {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+}
+
+/* Declined and Cancelled badges */
+:global(body.darkMode) .statusDeclined,
+:global(body.darkMode) .statusCancelled {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+}
+
+/* Protect badge text from requestCard span override */
+:global(body.darkMode) .badge,
+:global(body.darkMode) .badge span,
+:global(body.darkMode) .statusPending,
+:global(body.darkMode) .statusApproved,
+:global(body.darkMode) .statusCompleted,
+:global(body.darkMode) .statusDeclined,
+:global(body.darkMode) .statusCancelled {
+  color: inherit;
+}
+
+/* Main staff action buttons */
+:global(body.darkMode) .acceptBtn {
+  background: rgba(16, 185, 129, 0.9) !important;
+  color: #ffffff !important;
+}
+
+:global(body.darkMode) .acceptBtn:hover {
+  background: rgba(5, 150, 105, 1) !important;
+}
+
+:global(body.darkMode) .declineBtn {
+  background: rgba(220, 38, 38, 0.9) !important;
+  color: #ffffff !important;
+}
+
+:global(body.darkMode) .declineBtn:hover {
+  background: rgba(185, 28, 28, 1) !important;
+}
+
+/* View Details, Refresh, secondary buttons */
+:global(body.darkMode) .secondaryBtn,
+:global(body.darkMode) .actionBtn {
+  background: var(--bg-soft) !important;
+  color: var(--text-heading) !important;
+  border: 1px solid var(--border-color) !important;
+  font-weight: 800 !important;
+}
+
+:global(body.darkMode) .secondaryBtn:hover,
+:global(body.darkMode) .actionBtn:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+  color: var(--primary-color) !important;
+  border-color: rgba(244, 114, 182, 0.35) !important;
+}
+
+/* Modal close button */
+:global(body.darkMode) .modalCloseBtn {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:global(body.darkMode) .modalCloseBtn:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
