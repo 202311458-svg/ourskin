@@ -521,3 +521,122 @@
     width: 100%;
   }
 }
+
+/* =========================================
+   ADMIN AI LOGS DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .title {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .message {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .tableCard,
+:global(body.darkMode) .modalCardLarge,
+:global(body.darkMode) .profileSection,
+:global(body.darkMode) .profileGrid div,
+:global(body.darkMode) .infoBlock,
+:global(body.darkMode) .prescriptionTable,
+:global(body.darkMode) .detailMiniBlock {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .profileSection,
+:global(body.darkMode) .detailMiniBlock,
+:global(body.darkMode) .prescriptionHeader {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .statCard span,
+:global(body.darkMode) .modalHeader p,
+:global(body.darkMode) .profileInfo p,
+:global(body.darkMode) .emptyMiniText,
+:global(body.darkMode) .detailList {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard strong,
+:global(body.darkMode) .modalHeader h2,
+:global(body.darkMode) .profileInfo h3,
+:global(body.darkMode) .infoBlock h3,
+:global(body.darkMode) .detailMiniBlock strong,
+:global(body.darkMode) .profileGrid div,
+:global(body.darkMode) .patientCell strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .table th {
+  background: var(--bg-soft) !important;
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .table td {
+  color: var(--text-main) !important;
+  border-top-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table tr:hover td {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .prescriptionHeader,
+:global(body.darkMode) .prescriptionRow,
+:global(body.darkMode) .prescriptionRow p {
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .prescriptionHeader span {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .prescriptionRow p,
+:global(body.darkMode) .detailMiniBlock p {
+  color: var(--text-main) !important;
+}
+
+/* Severity and status badges */
+:global(body.darkMode) .severe {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .moderate,
+:global(body.darkMode) .pending {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .mild,
+:global(body.darkMode) .completed {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .reviewed {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #93c5fd !important;
+}
+
+:global(body.darkMode) .neutral {
+  background: rgba(148, 163, 184, 0.16) !important;
+  color: #cbd5e1 !important;
+}

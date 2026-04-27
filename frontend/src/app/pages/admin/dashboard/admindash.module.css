@@ -491,3 +491,78 @@
     flex-direction: column;
   }
 }
+
+/* =========================================
+   ADMIN DASHBOARD DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .heroSection,
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .panelCard,
+:global(body.darkMode) .stateCard {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .heroPanel,
+:global(body.darkMode) .pipelineItem,
+:global(body.darkMode) .breakdownItem,
+:global(body.darkMode) .aiBox,
+:global(body.darkMode) .quickActions a {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .heroContent h1,
+:global(body.darkMode) .panelHeader h2,
+:global(body.darkMode) .pipelineItem strong,
+:global(body.darkMode) .breakdownItem strong,
+:global(body.darkMode) .aiBox strong,
+:global(body.darkMode) .quickActions a {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .heroContent p,
+:global(body.darkMode) .heroPanel p,
+:global(body.darkMode) .statLabel,
+:global(body.darkMode) .statCard p,
+:global(body.darkMode) .pipelineItem span,
+:global(body.darkMode) .pipelineItem p,
+:global(body.darkMode) .breakdownItem p,
+:global(body.darkMode) .aiBox p,
+:global(body.darkMode) .message {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .heroPanel span,
+:global(body.darkMode) .panelEyebrow,
+:global(body.darkMode) .breakdownItem span,
+:global(body.darkMode) .aiBox span,
+:global(body.darkMode) .eyebrow {
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .heroPanel strong,
+:global(body.darkMode) .statCard strong {
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .secondaryAction,
+:global(body.darkMode) .panelHeader a {
+  background: var(--bg-soft) !important;
+  color: var(--primary-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .secondaryAction:hover,
+:global(body.darkMode) .panelHeader a:hover,
+:global(body.darkMode) .quickActions a:hover {
+  background: rgba(244, 114, 182, 0.12) !important;
+}
+
+:global(body.darkMode) .progressTrack {
+  background: var(--border-color) !important;
+}

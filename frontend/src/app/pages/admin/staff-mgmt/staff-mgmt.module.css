@@ -623,3 +623,115 @@
     min-width: 46px;
   }
 }
+
+/* =========================================
+   ADMIN STAFF MANAGEMENT DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .title,
+:global(body.darkMode) .staffCell strong,
+:global(body.darkMode) .modalCardLarge h2,
+:global(body.darkMode) .profileInfo h3,
+:global(body.darkMode) .confirmTop h2,
+:global(body.darkMode) .confirmUserBox strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .statCard span,
+:global(body.darkMode) .staffCell p,
+:global(body.darkMode) .modalCardLarge p,
+:global(body.darkMode) .profileInfo p,
+:global(body.darkMode) .confirmText,
+:global(body.darkMode) .message {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .tableCard,
+:global(body.darkMode) .modalCardLarge,
+:global(body.darkMode) .confirmCard,
+:global(body.darkMode) .profileSection,
+:global(body.darkMode) .profileGrid div,
+:global(body.darkMode) .confirmUserBox {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .profileSection,
+:global(body.darkMode) .profileGrid div,
+:global(body.darkMode) .confirmUserBox {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .statCard strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .table th {
+  color: var(--text-muted) !important;
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  color: var(--text-main) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table tbody tr:hover {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput,
+:global(body.darkMode) .editGrid input,
+:global(body.darkMode) .editGrid select,
+:global(body.darkMode) .selectBox select {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder,
+:global(body.darkMode) .editGrid input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .editGrid label,
+:global(body.darkMode) .confirmUserBox span,
+:global(body.darkMode) .confirmEyebrow {
+  color: var(--primary-color) !important;
+}
+
+:global(body.darkMode) .active {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .inactive {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .viewBtn {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #c4b5fd !important;
+}
+
+:global(body.darkMode) .editBtn {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .deactivateBtn {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .cancelConfirmBtn,
+:global(body.darkMode) .modalActions button:last-child {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+}

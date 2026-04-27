@@ -156,3 +156,109 @@
     min-width: 100%;
   }
 }
+
+/* =========================================
+   ADMIN USERS DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .title {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .message {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .tableCard {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .statCard span {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard strong {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .table th,
+:global(body.darkMode) .table td {
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table th {
+  color: var(--text-muted) !important;
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .table tbody tr:hover {
+  background: var(--bg-soft) !important;
+}
+
+/* Badge readability */
+:global(body.darkMode) .patient,
+:global(body.darkMode) .doctor,
+:global(body.darkMode) .staff,
+:global(body.darkMode) .admin,
+:global(body.darkMode) .verified,
+:global(body.darkMode) .unverified,
+:global(body.darkMode) .active,
+:global(body.darkMode) .inactive {
+  font-weight: 800 !important;
+}
+
+:global(body.darkMode) .patient {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #c4b5fd !important;
+}
+
+:global(body.darkMode) .doctor {
+  background: rgba(14, 165, 233, 0.16) !important;
+  color: #7dd3fc !important;
+}
+
+:global(body.darkMode) .staff {
+  background: rgba(168, 85, 247, 0.16) !important;
+  color: #d8b4fe !important;
+}
+
+:global(body.darkMode) .admin {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .verified,
+:global(body.darkMode) .active {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .unverified {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .inactive {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}

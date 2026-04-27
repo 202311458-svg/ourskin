@@ -1260,3 +1260,130 @@
     width: 100%;
   }
 }
+
+/* =========================================
+   ADMIN APPOINTMENTS DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .title {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .mutedText,
+:global(body.darkMode) .reasonText,
+:global(body.darkMode) .noReason,
+:global(body.darkMode) .message {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .tableCard,
+:global(body.darkMode) .appointmentCard,
+:global(body.darkMode) .emptyState,
+:global(body.darkMode) .fullWidthCard,
+:global(body.darkMode) .modalCard {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .detailItem,
+:global(body.darkMode) .modalAppointmentBox {
+  background: var(--bg-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .statCard span,
+:global(body.darkMode) .detailItem span,
+:global(body.darkMode) .modalAppointmentBox span {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard strong,
+:global(body.darkMode) .patientName,
+:global(body.darkMode) .cardTop h3,
+:global(body.darkMode) .detailItem strong,
+:global(body.darkMode) .modalAppointmentBox strong,
+:global(body.darkMode) .modalCard h3,
+:global(body.darkMode) .emptyState h3 {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .cardTop,
+:global(body.darkMode) .cardFooter {
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput,
+:global(body.darkMode) .textArea {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder,
+:global(body.darkMode) .textArea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Status badges */
+:global(body.darkMode) .approved,
+:global(body.darkMode) .completed,
+:global(body.darkMode) .pending,
+:global(body.darkMode) .declined,
+:global(body.darkMode) .cancelled {
+  font-weight: 800 !important;
+}
+
+:global(body.darkMode) .approved {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .completed {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #93c5fd !important;
+}
+
+:global(body.darkMode) .pending {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .declined {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .cancelled {
+  background: rgba(148, 163, 184, 0.16) !important;
+  color: #cbd5e1 !important;
+}
+
+/* Action buttons */
+:global(body.darkMode) .approveBtn {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .declineBtn,
+:global(body.darkMode) .confirmDeclineBtn {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .cancelAppointmentBtn,
+:global(body.darkMode) .confirmCancelBtn {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .cancelBtn,
+:global(body.darkMode) .noAction {
+  background: var(--bg-soft) !important;
+  color: var(--text-muted) !important;
+}

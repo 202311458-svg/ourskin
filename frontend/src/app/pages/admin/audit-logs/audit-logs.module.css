@@ -252,3 +252,92 @@
     min-width: 100%;
   }
 }
+
+/* =========================================
+   ADMIN AUDIT LOGS DARK MODE CLEANUP
+   ========================================= */
+
+:global(body.darkMode) .title,
+:global(body.darkMode) .statCard strong,
+:global(body.darkMode) .personCell strong,
+:global(body.darkMode) .emptyState h3 {
+  color: var(--text-heading) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .statCard span,
+:global(body.darkMode) .personCell span,
+:global(body.darkMode) .idText,
+:global(body.darkMode) .message,
+:global(body.darkMode) .emptyState p {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .tableCard {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:global(body.darkMode) .table th {
+  color: var(--text-muted) !important;
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  color: var(--text-main) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table tbody tr:hover {
+  background: var(--bg-soft) !important;
+}
+
+:global(body.darkMode) .descriptionCell,
+:global(body.darkMode) .dateCell {
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .moduleBadge {
+  background: rgba(244, 114, 182, 0.14) !important;
+  color: var(--primary-color) !important;
+  border-color: rgba(244, 114, 182, 0.35) !important;
+}
+
+:global(body.darkMode) .create {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .update {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #c4b5fd !important;
+}
+
+:global(body.darkMode) .status {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .danger {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .system {
+  background: rgba(148, 163, 184, 0.16) !important;
+  color: #cbd5e1 !important;
+}
