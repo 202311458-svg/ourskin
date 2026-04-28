@@ -1214,3 +1214,389 @@
 :global(body.darkMode) .primaryButton:hover {
   background: var(--primary-hover) !important;
 }
+/* =========================================================
+   OURSKIN RESPONSIVE STABILITY PATCH
+   Keep this block at the bottom of calendar.module.css.
+   ========================================================= */
+
+.calendarScroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .monthControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .monthTitle {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .calendarScroll {
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+
+  .weekHeader,
+  .grid {
+    min-width: 720px;
+  }
+
+  .compactMode .weekHeader,
+  .compactMode .grid {
+    min-width: 0;
+  }
+
+  .dayCell {
+    height: 140px;
+  }
+
+  .compactMode .dayCell {
+    height: 64px;
+  }
+
+  .modalOverlay {
+    padding: 14px;
+    align-items: flex-start;
+  }
+
+  .modalCard {
+    max-height: calc(100vh - 28px);
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .modalFooter,
+  .modalActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modalFooter button,
+  .modalActions button {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
+   DOCTOR CALENDAR RESPONSIVE PATCH - SEPARATE CONTAINER ONLY
+   Paste at the bottom of calendar.module.css
+   ========================================================= */
+
+.wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.calendarScroll {
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .monthControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .monthTitle {
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+  }
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  .wrapper {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .title {
+    font-size: 1.2rem;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+
+  .calendarScroll {
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+
+  .weekHeader,
+  .grid {
+    min-width: 700px;
+  }
+
+  .compactMode .weekHeader,
+  .compactMode .grid {
+    min-width: 0;
+  }
+
+  .compactMode .dayCell {
+    height: 62px;
+  }
+
+  .modalOverlay {
+    padding: 14px;
+    align-items: flex-start;
+  }
+
+  .modalCard {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 28px);
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .modalHeader,
+  .modalFooter,
+  .modalActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalFooter button,
+  .modalActions button {
+    width: 100%;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .wrapper {
+    padding: 14px;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .compactMode .dayCell {
+    height: 56px;
+  }
+
+  .compactMode .eventTime {
+    font-size: 0.44rem;
+  }
+
+  .fullMode .eventPatient {
+    display: none;
+  }
+}
+
+
+
+/* =========================================================
+   DOCTOR APPOINTMENT CALENDAR MOBILE FIT FIX
+   Keeps calendar inside the container on phone screens.
+   Do not change navbar.module.css.
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .calendarScroll {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    padding-bottom: 0 !important;
+  }
+
+  .weekHeader,
+  .grid,
+  .fullMode .weekHeader,
+  .fullMode .grid,
+  .compactMode .weekHeader,
+  .compactMode .grid {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .weekHeader,
+  .grid,
+  .fullMode .weekHeader,
+  .fullMode .grid,
+  .compactMode .weekHeader,
+  .compactMode .grid {
+    gap: 3px !important;
+  }
+
+  .weekDay,
+  .fullMode .weekDay,
+  .compactMode .weekDay {
+    padding: 5px 1px !important;
+    font-size: 0.5rem !important;
+    border-radius: 7px !important;
+    min-width: 0 !important;
+  }
+
+  .dayCell,
+  .fullMode .dayCell,
+  .compactMode .dayCell {
+    height: 68px !important;
+    min-width: 0 !important;
+    padding: 3px !important;
+    border-radius: 8px !important;
+  }
+
+  .dayHeader,
+  .fullMode .dayHeader,
+  .compactMode .dayHeader {
+    margin-bottom: 2px !important;
+  }
+
+  .dayNumber,
+  .fullMode .dayNumber,
+  .compactMode .dayNumber {
+    font-size: 0.58rem !important;
+    line-height: 1 !important;
+  }
+
+  .countBadge,
+  .fullMode .countBadge,
+  .compactMode .countBadge {
+    min-width: 12px !important;
+    height: 12px !important;
+    padding: 0 2px !important;
+    font-size: 0.42rem !important;
+  }
+
+  .events,
+  .fullMode .events,
+  .compactMode .events {
+    gap: 2px !important;
+    overflow: hidden !important;
+  }
+
+  .eventButton,
+  .fullMode .eventButton,
+  .compactMode .eventButton {
+    padding: 2px !important;
+    border-radius: 5px !important;
+    min-width: 0 !important;
+  }
+
+  .eventTime,
+  .fullMode .eventTime,
+  .compactMode .eventTime {
+    font-size: 0.42rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .eventPatient,
+  .eventService,
+  .fullMode .eventPatient,
+  .fullMode .eventService,
+  .compactMode .eventPatient,
+  .compactMode .eventService {
+    display: none !important;
+  }
+
+  .moreText,
+  .fullMode .moreText,
+  .compactMode .moreText {
+    font-size: 0.42rem !important;
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .wrapper {
+    padding: 14px !important;
+  }
+
+  .weekHeader,
+  .grid,
+  .fullMode .weekHeader,
+  .fullMode .grid,
+  .compactMode .weekHeader,
+  .compactMode .grid {
+    gap: 2px !important;
+  }
+
+  .weekDay,
+  .fullMode .weekDay,
+  .compactMode .weekDay {
+    font-size: 0.46rem !important;
+    padding: 4px 1px !important;
+  }
+
+  .dayCell,
+  .fullMode .dayCell,
+  .compactMode .dayCell {
+    height: 62px !important;
+    padding: 2px !important;
+  }
+
+  .dayNumber,
+  .fullMode .dayNumber,
+  .compactMode .dayNumber {
+    font-size: 0.54rem !important;
+  }
+
+  .eventTime,
+  .fullMode .eventTime,
+  .compactMode .eventTime {
+    font-size: 0.38rem !important;
+  }
+}

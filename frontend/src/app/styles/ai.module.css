@@ -849,7 +849,11 @@
 
 @media (max-width: 980px) {
   .pageShell {
-    padding: 28px 20px 60px;
+    padding: 28px 20px 60px 280px;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 112px;
   }
 
   .patientSummaryCard,
@@ -1477,4 +1481,212 @@
 
 :global(body.darkMode) .historyDate {
   color: var(--primary-color) !important;
+}
+
+
+.pageShell {
+  padding: 36px 38px 60px 280px !important;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+:global(body.navCollapsed) .pageShell {
+  padding-left: 124px !important;
+}
+
+/* Keep AI content containers responsive */
+.patientPickerCard,
+.patientSummaryCard,
+.workflowCard,
+.stepperCard,
+.medicalHistoryCard {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Desktop/tablet with sidebar still visible */
+@media (max-width: 1180px) {
+  .pageShell {
+    padding: 30px 24px 50px 280px !important;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 124px !important;
+  }
+
+  .aiResultGrid,
+  .medicalHistoryContent {
+    grid-template-columns: 1fr;
+  }
+
+  .scanUploadCenter .workflowCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .pageShell {
+    padding: 28px 20px 50px 280px !important;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 124px !important;
+  }
+
+  .patientSummaryCard,
+  .summaryMetrics,
+  .stepperCard,
+  .patientListPicker,
+  .aiSummaryGrid,
+  .detailSectionGrid,
+  .assessmentForm,
+  .prescriptionBox,
+  .reportGrid,
+  .medicalHistoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCardWide {
+    grid-column: auto;
+  }
+
+  .stepButton {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  .patientHeaderActions {
+    justify-content: flex-start;
+  }
+}
+
+/* Real mobile only. Use this when navbar becomes top/mobile menu */
+@media (max-width: 700px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding: 92px 16px 34px !important;
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pageHeader h1 {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .pageHeader p {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .patientPickerCard,
+  .patientSummaryCard,
+  .workflowCard,
+  .stepperCard,
+  .medicalHistoryCard,
+  .summaryCard,
+  .summaryCardWide,
+  .detailBlock,
+  .historyInfoBox,
+  .historyPrescriptionBox,
+  .historyFollowUpBox {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .patientSummaryCard,
+  .patientListPicker,
+  .summaryMetrics,
+  .stepperCard,
+  .aiSummaryGrid,
+  .detailSectionGrid,
+  .prescriptionBox,
+  .reportGrid,
+  .medicalHistoryGrid,
+  .historyInfoGrid,
+  .historyPrescriptionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .patientHeaderActions,
+  .formActions,
+  .resultBadgeStack,
+  .fieldHeader,
+  .medicalHistoryTop,
+  .historyHeader {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .aiSuggestionButton {
+    width: 100%;
+  }
+
+  .stepperCard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stepButton {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .analysisImage,
+  .imagePlaceholder {
+    height: 250px;
+    max-height: 250px;
+  }
+
+  .medicalHistoryImage,
+  .historyImage {
+    height: 230px;
+    max-height: 230px;
+  }
+
+  .medicationRow,
+  .historyPrescriptionRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .pageHeader h1,
+  .patientPickerHeader h2 {
+    font-size: 23px;
+  }
+
+  .patientIdentity h2,
+  .workflowCard h2,
+  .cardHeader h2,
+  .resultTitle {
+    font-size: 20px;
+  }
+
+  .analysisImage,
+  .imagePlaceholder {
+    height: 210px;
+    max-height: 210px;
+  }
+
+  .medicalHistoryImage,
+  .historyImage {
+    height: 200px;
+    max-height: 200px;
+  }
 }

@@ -452,81 +452,85 @@ const formatTime = (timeValue?: string | null) => {
             ) : sortedAppointments.length === 0 ? (
               <div className={styles.emptyState}>No appointments found.</div>
             ) : (
-              <div className={styles.tableWrapper}>
-                <table className={styles.dataTable}>
-                  <thead>
-                    <tr>
-                      <th>Patient</th>
-                      <th>Doctor</th>
-                      <th>Date</th>
-                      <th>Time</th>
-                      <th>Service</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
+              <div className={styles.doctorAppointmentsList}>
+  {sortedAppointments.map((appt) => (
+    <article key={appt.id} className={styles.doctorAppointmentCard}>
+      <div className={styles.doctorAppointmentTop}>
+        <div>
+          <h3>{appt.patient_name || "Unknown Patient"}</h3>
+          <p>
+            {appt.patient_email || "No email provided"}
+          </p>
+        </div>
 
-<tbody>
-  {sortedAppointments.map((appt) => {
-    const actions = getDoctorActions(appt.status);
+        <span className={getStatusBadgeClass(appt.status)}>
+          {appt.status || "Pending"}
+        </span>
+      </div>
 
-    return (
-      <tr key={appt.id}>
-        <td>{appt.patient_name}</td>
-        <td>{appt.doctor_name}</td>
-        <td>{appt.date}</td>
-        <td>{formatTime(appt.time)}</td>
-        <td>{appt.services}</td>
+      <div className={styles.doctorAppointmentDetails}>
+        <div className={styles.doctorAppointmentInfoBox}>
+          <span>Date</span>
+          <strong>{appt.date || "No date"}</strong>
+        </div>
 
-        <td>
-          <span className={getStatusBadgeClass(appt.status)}>
-            {appt.status}
-          </span>
-        </td>
+        <div className={styles.doctorAppointmentInfoBox}>
+          <span>Time</span>
+          <strong>{appt.time || "No time"}</strong>
+        </div>
 
-        <td className={styles.actionsCell}>
-          <div className={styles.appointmentActionGroup}>
+        <div className={styles.doctorAppointmentInfoBox}>
+          <span>Service</span>
+          <strong>{appt.services || "No service listed"}</strong>
+        </div>
+
+        <div className={styles.doctorAppointmentInfoBox}>
+          <span>Doctor</span>
+          <strong>{appt.doctor_name || "Not assigned"}</strong>
+        </div>
+
+        {(appt.cancel_reason || appt.status === "Cancelled" || appt.status === "Declined") && (
+          <div className={`${styles.doctorAppointmentInfoBox} ${styles.fullWidth}`}>
+            <span>Reason / Notes</span>
+            <strong>{appt.cancel_reason || "No reason provided"}</strong>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.doctorAppointmentFooter}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => openDetails(appt.id)}
+        >
+          View
+        </button>
+
+        {appt.status === "Approved" && (
+          <>
             <button
               type="button"
-              className={`${styles.secondaryButton} ${styles.tableActionButton}`}
+              className={styles.actionButton}
               onClick={() => openDetails(appt.id)}
             >
-              {actions.primaryLabel === "View Report" ? "View Report" : "View"}
+              Complete
             </button>
 
-            {actions.canComplete ? (
-              <button
-                type="button"
-                className={`${styles.actionButton} ${styles.tableActionButton}`}
-                onClick={() => openDetails(appt.id)}
-              >
-                {actions.primaryLabel}
-              </button>
-            ) : (
-              <span className={styles.emptyActionSlot} aria-hidden="true" />
-            )}
-
-            {actions.canCancel ? (
-              <button
-                type="button"
-                className={`${styles.dangerButton} ${styles.tableActionButton}`}
-                onClick={() => handleCancel(appt.id)}
-              >
-                Cancel
-              </button>
-            ) : (
-              <span className={styles.emptyActionSlot} aria-hidden="true" />
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-                </table>
-              </div>
-            )}
-          </section>
+            <button
+              type="button"
+              className={styles.dangerButton}
+              onClick={() => handleCancel(appt.id)}
+            >
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    </article>
+  ))}
+</div>
+             )}
+              </section>
         )}
 
         {activeView === "calendar" && (

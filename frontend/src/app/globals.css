@@ -1939,110 +1939,53 @@ textarea {
   }
 }
 
-/* ADMIN MOBILE LAYOUT FIX
-   Fixes admin content being pushed to the right on mobile*/
-
-@media (max-width: 768px) {
-  body:not(.navCollapsed) .mainContent,
-  body.navCollapsed .mainContent,
-  .mainContent,
-  body:not(.navCollapsed) .pageWrapper,
-  body.navCollapsed .pageWrapper,
-  .pageWrapper {
-    margin-left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .mainContent {
-    padding-top: 70px !important;
-    overflow-x: hidden !important;
-  }
-
-  body {
-    overflow-x: hidden !important;
-  }
-}
-
-@media (max-width: 560px) {
-  .mainContent,
-  .pageWrapper {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
-}
-
 /* =========================================================
-   ADMIN MOBILE CONTENT OFFSET FIX
+   GLOBAL PORTAL LAYOUT FIX
+   Scoped layout only. Avoids breaking doctor module pages.
    ========================================================= */
 
-@media (max-width: 900px) {
-  body:not(.navCollapsed) .mainContent,
-  body.navCollapsed .mainContent,
-  .mainContent,
-  body:not(.navCollapsed) .pageWrapper,
-  body.navCollapsed .pageWrapper,
-  .pageWrapper,
-  .staffContent {
-    margin-left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .mainContent,
-  .pageWrapper,
-  .staffContent {
-    padding-top: 92px !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-  }
+html {
+  width: 100%;
+  min-width: 320px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
-@media (max-width: 560px) {
-  .mainContent,
-  .pageWrapper,
-  .staffContent {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
+body {
+  min-width: 320px;
+  overflow-x: hidden;
 }
 
-/* =========================================================
-   ADMIN CONTENT OFFSET FIX
-   Keeps content beside sidebar on desktop/tablet.
-   Moves content below top navbar only on real mobile.
-   ========================================================= */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
 
-/* Sidebar mode */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  max-width: 100%;
+}
+
+/* Only apply this to pages using the actual global pageWrapper class */
 @media (min-width: 901px) {
+  body:not(.navCollapsed) > .pageWrapper,
   body:not(.navCollapsed) .mainContent,
   body:not(.navCollapsed) .staffContent {
     margin-left: 240px !important;
     width: calc(100% - 240px) !important;
     max-width: calc(100% - 240px) !important;
-    padding: 32px !important;
     box-sizing: border-box !important;
-    overflow-x: hidden !important;
   }
 
+  body.navCollapsed > .pageWrapper,
   body.navCollapsed .mainContent,
   body.navCollapsed .staffContent {
-    margin-left: 90px !important;
-    width: calc(100% - 90px) !important;
-    max-width: calc(100% - 90px) !important;
-    padding: 32px !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-  }
-
-  body:not(.navCollapsed) .pageWrapper {
-    margin-left: 240px !important;
-    width: calc(100% - 240px) !important;
-    max-width: calc(100% - 240px) !important;
-    box-sizing: border-box !important;
-  }
-
-  body.navCollapsed .pageWrapper {
     margin-left: 90px !important;
     width: calc(100% - 90px) !important;
     max-width: calc(100% - 90px) !important;
@@ -2050,17 +1993,11 @@ textarea {
   }
 }
 
-/* Top navbar mode */
 @media (max-width: 900px) {
-  body:not(.navCollapsed) .mainContent,
-  body.navCollapsed .mainContent,
-  body:not(.navCollapsed) .staffContent,
-  body.navCollapsed .staffContent,
+  body:not(.navCollapsed) > .pageWrapper,
+  body.navCollapsed > .pageWrapper,
   .mainContent,
-  .staffContent,
-  body:not(.navCollapsed) .pageWrapper,
-  body.navCollapsed .pageWrapper,
-  .pageWrapper {
+  .staffContent {
     margin-left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -2075,9 +2012,10 @@ textarea {
 }
 
 @media (max-width: 520px) {
+  body:not(.navCollapsed) > .pageWrapper,
+  body.navCollapsed > .pageWrapper,
   .mainContent,
-  .staffContent,
-  .pageWrapper {
+  .staffContent {
     padding-left: 12px !important;
     padding-right: 12px !important;
   }

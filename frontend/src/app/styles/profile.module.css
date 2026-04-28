@@ -1,94 +1,91 @@
 :root {
-  --accent: #6f2940;
+  --profile-accent: #6f2940;
 
-  --bg: #ffffff;
-  --text: #111;
-  --card: #ffffff;
-  --border: #eaeaea;
-  --muted: #777;
-  --input: #f6f6f6;
+  --profile-bg: #ffffff;
+  --profile-text: #111111;
+  --profile-card: #ffffff;
+  --profile-border: #eaeaea;
+  --profile-muted: #777777;
+  --profile-input: #f6f6f6;
+
+  --doctor-nav-width: 260px;
+  --doctor-nav-collapsed-width: 100px;
 }
 
-
-
-
 body.darkMode {
-  --bg: #0e0e12;
-  --text: #f5f5f5;
-  --card: #17171d;
-  --border: #2a2a2a;
-  --muted: #aaaaaa;
-  --input: #1f1f25;
+  --profile-bg: #0e0e12;
+  --profile-text: #f5f5f5;
+  --profile-card: #17171d;
+  --profile-border: #2a2a2a;
+  --profile-muted: #aaaaaa;
+  --profile-input: #1f1f25;
 }
 
 .page {
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--profile-bg);
+  color: var(--profile-text);
   padding: 40px 32px;
-
-  margin-left: 220px;
-  width: calc(100% - 220px);
+  margin-left: var(--doctor-nav-width);
+  width: calc(100% - var(--doctor-nav-width));
+  max-width: calc(100% - var(--doctor-nav-width));
   box-sizing: border-box;
-
-  transition: margin-left 0.3s ease, width 0.3s ease, background 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease,
+    max-width 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
 }
 
-body.navCollapsed .page {
-  margin-left: 80px;
-  width: calc(100% - 80px);
+.collapsed {
+  margin-left: var(--doctor-nav-collapsed-width);
+  width: calc(100% - var(--doctor-nav-collapsed-width));
+  max-width: calc(100% - var(--doctor-nav-collapsed-width));
 }
 
-@media (max-width: 768px) {
-  .page {
-    margin-left: 0;
-    width: 100%;
-    padding: 88px 20px 24px;
-  }
-}
 .container {
+  width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  width: 100%;
 }
+
 .header {
   margin-bottom: 30px;
 }
 
 .header h1 {
   margin: 0;
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--accent);
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--profile-accent);
+  letter-spacing: -0.03em;
 }
 
 .header p {
   margin-top: 6px;
-  color: var(--muted);
+  color: var(--profile-muted);
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   gap: 24px;
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .card,
 .cardLarge {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--profile-card);
+  border: 1px solid var(--profile-border);
+  border-radius: 22px;
   padding: 26px;
-
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .profileHeader {
@@ -101,25 +98,14 @@ body.navCollapsed .page {
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
+  background: var(--profile-accent);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26px;
-  font-weight: 600;
-}
-
-.profileHeader h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.subText {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--muted);
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
 .photoWrapper {
@@ -135,68 +121,94 @@ body.navCollapsed .page {
   object-fit: cover;
 }
 
-.editInput {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--input);
-  color: var(--text);
-  outline: none;
+.profileHeader h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--profile-text);
 }
 
+.subText {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--profile-muted);
+}
 
 .divider {
   height: 1px;
-  background: var(--border);
-  margin: 20px 0;
+  background: var(--profile-border);
+  margin: 22px 0;
 }
 
 .infoBlock {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .infoRow {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  gap: 18px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--profile-border);
   font-size: 14px;
-  padding: 6px 0;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
 }
 
 .infoRow span:first-child {
-  color: var(--muted);
+  color: var(--profile-muted);
+  font-weight: 700;
+}
+
+.infoRow span:last-child {
+  color: var(--profile-text);
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
 }
 
 .card h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--profile-text);
 }
 
 .smallText {
   margin-top: 6px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--profile-muted);
+  line-height: 1.5;
 }
 
 .primaryBtn {
-  background: var(--accent);
-  color: #fff;
+  background: var(--profile-accent);
+  color: #ffffff;
   border: none;
   padding: 11px 14px;
-  border-radius: 10px;
+  border-radius: 11px;
   margin-top: 14px;
   cursor: pointer;
-  font-weight: 600;
-  transition: 0.2s ease;
+  font-weight: 800;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
 }
 
 .primaryBtn:hover {
+  transform: translateY(-1px);
   filter: brightness(1.08);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .form {
@@ -210,57 +222,38 @@ body.navCollapsed .page {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  background: var(--input);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: var(--profile-input);
+  border: 1px solid var(--profile-border);
+  border-radius: 12px;
   padding: 10px;
 }
 
 .inputGroup input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
-  color: var(--text);
+  color: var(--profile-text);
   font-size: 14px;
 }
 
 .inputGroup button {
   background: transparent;
   border: none;
-  color: var(--accent);
+  color: var(--profile-accent);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
-.loading {
-  color: var(--muted);
-}
-
+.loading,
 .error {
-  color: var(--muted);
+  color: var(--profile-muted);
 }
 
-@media (max-width: 600px) {
-  .page {
-    padding: 25px 15px;
-  }
-
-  .card,
-  .cardLarge {
-    padding: 20px;
-  }
-
-  .avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 22px;
-  }
-}
-
-/* Patient Profile Dark Mode Cleanup */
+/* Dark mode cleanup */
 
 :global(body.darkMode) .page {
   background: var(--bg-main);
@@ -301,6 +294,91 @@ body.navCollapsed .page {
   color: var(--text-main);
 }
 
+:global(body.darkMode) .divider,
+:global(body.darkMode) .infoRow {
+  border-color: var(--border-color);
+}
+
 :global(body.darkMode) .divider {
   background: var(--border-color);
+}
+
+/* Tablet. Sidebar is still vertical, so keep space for it. */
+
+@media (max-width: 1100px) {
+  .page {
+    margin-left: var(--doctor-nav-width);
+    width: calc(100% - var(--doctor-nav-width));
+    max-width: calc(100% - var(--doctor-nav-width));
+    padding: 32px 24px;
+  }
+
+  .collapsed {
+    margin-left: var(--doctor-nav-collapsed-width);
+    width: calc(100% - var(--doctor-nav-collapsed-width));
+    max-width: calc(100% - var(--doctor-nav-collapsed-width));
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile only. Use this when sidebar becomes mobile/top behavior. */
+
+@media (max-width: 700px) {
+  .page,
+  .collapsed {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 92px 16px 32px;
+  }
+
+  .header h1 {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .card,
+  .cardLarge {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .profileHeader {
+    align-items: flex-start;
+  }
+
+  .infoRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .infoRow span:last-child {
+    text-align: left;
+  }
+
+  .primaryBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .page,
+  .collapsed {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .profileHeader {
+    flex-direction: column;
+  }
+
+  .avatar,
+  .profilePhoto {
+    width: 62px;
+    height: 62px;
+    font-size: 22px;
+  }
 }
