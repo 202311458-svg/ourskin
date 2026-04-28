@@ -330,4 +330,309 @@
   .rateGrid {
     grid-template-columns: 1fr;
   }
+}/* =========================================================
+   ADMIN RESPONSIVE FIX
+   Paste this at the bottom of admin CSS modules.
+   ========================================================= */
+
+.headerRow,
+.filtersRow,
+.tableCard,
+.statCard,
+.reportCard,
+.message,
+.error,
+.emptyState,
+.modalCardLarge,
+.confirmCard,
+.profileSection,
+.profileGrid,
+.confirmUserBox,
+.rateGrid,
+.twoColumnGrid,
+.statsGrid {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tableCard,
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.searchInput,
+.selectInput,
+.refreshButton,
+.addButton {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .twoColumnGrid,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 92px 16px 24px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .headerRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .title {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  .subtitle {
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+  }
+
+  .statsGrid,
+  .profileGrid,
+  .confirmUserBox,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .statCard,
+  .tableCard,
+  .reportCard,
+  .message,
+  .error,
+  .emptyState,
+  .profileSection,
+  .confirmUserBox,
+  .rateGrid div {
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+
+  .filtersRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .searchInput,
+  .selectInput,
+  .refreshButton,
+  .addButton {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .tableCard,
+  .tableWrapper {
+    padding: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .table {
+    min-width: 760px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+
+  .modalOverlay {
+    padding: 14px !important;
+    align-items: flex-start !important;
+  }
+
+  .modalCardLarge,
+  .confirmCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .modalHeader,
+  .confirmTop,
+  .profileSection {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .modalActions,
+  .confirmActions,
+  .actions {
+    width: 100% !important;
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+  }
+
+  .modalActions button,
+  .cancelConfirmBtn,
+  .dangerConfirmBtn,
+  .successConfirmBtn,
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn,
+  .topCloseButton {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .title {
+    font-size: 22px !important;
+  }
+
+  .statCard strong {
+    font-size: 1.55rem !important;
+  }
+
+  .table {
+    min-width: 700px;
+  }
+}
+
+
+/* =========================================================
+   REPORTS MOBILE RESPONSIVE FIX
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .page,
+  .collapsed {
+    margin-left: 0;
+    width: 100%;
+    padding: 92px 16px 28px;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .container {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .refreshButton {
+    width: 100%;
+  }
+
+  .statsGrid,
+  .rateGrid,
+  .twoColumnGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .statCard,
+  .reportCard,
+  .rateGrid div,
+  .message,
+  .error {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .sectionHeader h2 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .sectionHeader p {
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 680px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .page,
+  .collapsed {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .statCard strong,
+  .rateGrid strong {
+    font-size: 1.5rem;
+  }
+}
+
+:global(body.darkMode) .page {
+  background: var(--main-bg) !important;
 }

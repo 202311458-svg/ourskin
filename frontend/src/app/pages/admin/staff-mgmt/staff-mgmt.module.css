@@ -734,4 +734,553 @@
 :global(body.darkMode) .modalActions button:last-child {
   background: var(--bg-soft) !important;
   color: var(--text-main) !important;
+}/* =========================================================
+   ADMIN RESPONSIVE FIX
+   Paste this at the bottom of admin CSS modules.
+   ========================================================= */
+
+.headerRow,
+.filtersRow,
+.tableCard,
+.statCard,
+.reportCard,
+.message,
+.error,
+.emptyState,
+.modalCardLarge,
+.confirmCard,
+.profileSection,
+.profileGrid,
+.confirmUserBox,
+.rateGrid,
+.twoColumnGrid,
+.statsGrid {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tableCard,
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.searchInput,
+.selectInput,
+.refreshButton,
+.addButton {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .twoColumnGrid,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 92px 16px 24px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .headerRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .title {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  .subtitle {
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+  }
+
+  .statsGrid,
+  .profileGrid,
+  .confirmUserBox,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .statCard,
+  .tableCard,
+  .reportCard,
+  .message,
+  .error,
+  .emptyState,
+  .profileSection,
+  .confirmUserBox,
+  .rateGrid div {
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+
+  .filtersRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .searchInput,
+  .selectInput,
+  .refreshButton,
+  .addButton {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .tableCard,
+  .tableWrapper {
+    padding: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .table {
+    min-width: 760px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+
+  .modalOverlay {
+    padding: 14px !important;
+    align-items: flex-start !important;
+  }
+
+  .modalCardLarge,
+  .confirmCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .modalHeader,
+  .confirmTop,
+  .profileSection {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .modalActions,
+  .confirmActions,
+  .actions {
+    width: 100% !important;
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+  }
+
+  .modalActions button,
+  .cancelConfirmBtn,
+  .dangerConfirmBtn,
+  .successConfirmBtn,
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn,
+  .topCloseButton {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .title {
+    font-size: 22px !important;
+  }
+
+  .statCard strong {
+    font-size: 1.55rem !important;
+  }
+
+  .table {
+    min-width: 700px;
+  }
+}
+
+
+/* =========================================================
+   STAFF MANAGEMENT MOBILE CARD RESPONSIVE FIX
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .pageWrapper {
+    padding: 16px;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .addButton {
+    width: 100%;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .statCard {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .filtersRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .searchInput,
+  .selectInput {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .tableCard {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 16px;
+  }
+
+  .table tr {
+    background: #ffffff;
+    border: 1px solid #f0e6ea;
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1edf0;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+  }
+
+  .table td::before {
+    flex: 0 0 42%;
+    text-align: left;
+    color: #8a6a78;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .table td:nth-child(1)::before {
+    content: "Staff";
+  }
+
+  .table td:nth-child(2)::before {
+    content: "Role";
+  }
+
+  .table td:nth-child(3)::before {
+    content: "Department";
+  }
+
+  .table td:nth-child(4)::before {
+    content: "Status";
+  }
+
+  .table td:nth-child(5)::before {
+    content: "Created";
+  }
+
+  .table td:nth-child(6)::before {
+    content: "Actions";
+  }
+
+  .staffCell {
+    min-width: 0;
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn {
+    width: 100%;
+  }
+
+  .modalOverlay {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .modalCardLarge,
+  .confirmCard {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 28px);
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .profileGrid,
+  .confirmUserBox {
+    grid-template-columns: 1fr;
+  }
+
+  .modalActions,
+  .confirmActions {
+    flex-direction: column-reverse;
+  }
+
+  .modalActions button,
+  .cancelConfirmBtn,
+  .dangerConfirmBtn,
+  .successConfirmBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .table td {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .table td::before {
+    flex: unset;
+  }
+
+  .staffCell {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
+:global(body.darkMode) .table tr {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table td::before {
+  color: var(--text-muted) !important;
+}
+
+/* =========================================================
+   STAFF MANAGEMENT TABLE TO CARD . TABLET + SMALL DESKTOP FIX
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .tableCard {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .table thead {
+    display: none !important;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 16px;
+  }
+
+  .table tr {
+    background: #ffffff;
+    border: 1px solid #f0e6ea;
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0 !important;
+    border-bottom: 1px solid #f1edf0 !important;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .table td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .table td::before {
+    flex: 0 0 42%;
+    text-align: left;
+    color: #8a6a78;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .table td:nth-child(1)::before {
+    content: "Staff";
+  }
+
+  .table td:nth-child(2)::before {
+    content: "Role";
+  }
+
+  .table td:nth-child(3)::before {
+    content: "Department";
+  }
+
+  .table td:nth-child(4)::before {
+    content: "Status";
+  }
+
+  .table td:nth-child(5)::before {
+    content: "Created";
+  }
+
+  .table td:nth-child(6)::before {
+    content: "Actions";
+  }
+
+  .staffCell {
+    justify-content: flex-end;
+    min-width: 0 !important;
+    text-align: right;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .table td {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .table td::before {
+    flex: unset;
+  }
+
+  .staffCell {
+    justify-content: flex-start;
+    text-align: left;
+  }
 }

@@ -327,25 +327,13 @@ export default function AdminAiReviewMonitorPage() {
     }
   }, [logs])
 
-  const pageStyle = {
-    minHeight: "100vh",
-    marginLeft: collapsed ? "90px" : "240px",
-    padding: "32px",
-    transition: "margin-left 0.3s ease",
-  }
-
-  const containerStyle = {
-    width: "100%",
-    maxWidth: "1500px",
-    margin: "0 auto",
-  }
+ 
 
   return (
     <>
       <AdminNavbar />
-
-      <main style={pageStyle}>
-        <div style={containerStyle}>
+<main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
+  <div className={styles.container}>
           <div className={styles.headerRow}>
             <div>
               <h1 className={styles.title}>AI Review Monitor</h1>

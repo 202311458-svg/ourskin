@@ -639,4 +639,785 @@
 :global(body.darkMode) .neutral {
   background: rgba(148, 163, 184, 0.16) !important;
   color: #cbd5e1 !important;
+}/* =========================================================
+   ADMIN RESPONSIVE FIX
+   Paste this at the bottom of admin CSS modules.
+   ========================================================= */
+
+.headerRow,
+.filtersRow,
+.tableCard,
+.statCard,
+.reportCard,
+.message,
+.error,
+.emptyState,
+.modalCardLarge,
+.confirmCard,
+.profileSection,
+.profileGrid,
+.confirmUserBox,
+.rateGrid,
+.twoColumnGrid,
+.statsGrid {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tableCard,
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.searchInput,
+.selectInput,
+.refreshButton,
+.addButton {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .twoColumnGrid,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 92px 16px 24px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .headerRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .title {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  .subtitle {
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+  }
+
+  .statsGrid,
+  .profileGrid,
+  .confirmUserBox,
+  .rateGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .statCard,
+  .tableCard,
+  .reportCard,
+  .message,
+  .error,
+  .emptyState,
+  .profileSection,
+  .confirmUserBox,
+  .rateGrid div {
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+
+  .filtersRow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .searchInput,
+  .selectInput,
+  .refreshButton,
+  .addButton {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .tableCard,
+  .tableWrapper {
+    padding: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .table {
+    min-width: 760px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+
+  .modalOverlay {
+    padding: 14px !important;
+    align-items: flex-start !important;
+  }
+
+  .modalCardLarge,
+  .confirmCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .modalHeader,
+  .confirmTop,
+  .profileSection {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .modalActions,
+  .confirmActions,
+  .actions {
+    width: 100% !important;
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+  }
+
+  .modalActions button,
+  .cancelConfirmBtn,
+  .dangerConfirmBtn,
+  .successConfirmBtn,
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn,
+  .topCloseButton {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .pageWrapper,
+  .page,
+  .collapsed {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .title {
+    font-size: 22px !important;
+  }
+
+  .statCard strong {
+    font-size: 1.55rem !important;
+  }
+
+  .table {
+    min-width: 700px;
+  }
+}
+
+
+.headerRow,
+.filtersRow,
+.tableCard,
+.statsGrid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tableCard {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    max-width: 100%;
+    line-height: 1.55;
+  }
+
+  .refreshButton,
+  .topCloseButton,
+  .viewBtn {
+    width: 100%;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .statCard {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .filtersRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .searchInput,
+  .selectInput {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* Turn the table into separate white cards on mobile */
+  .tableCard {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .table {
+    border-collapse: separate;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 16px;
+  }
+
+  .table tr {
+    background: #ffffff;
+    border: 1px solid #f0e6ea;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .table tr:hover td {
+    background: transparent;
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    border-top: 0;
+    border-bottom: 1px solid #f1edf0;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .table td::before {
+    flex: 0 0 42%;
+    text-align: left;
+    color: #8a6a78;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .table td:nth-child(1)::before {
+    content: "Patient";
+  }
+
+  .table td:nth-child(2)::before {
+    content: "Doctor";
+  }
+
+  .table td:nth-child(3)::before {
+    content: "Condition";
+  }
+
+  .table td:nth-child(4)::before {
+    content: "Severity";
+  }
+
+  .table td:nth-child(5)::before {
+    content: "Confidence";
+  }
+
+  .table td:nth-child(6)::before {
+    content: "Review Status";
+  }
+
+  .table td:nth-child(7)::before {
+    content: "Date Analyzed";
+  }
+
+  .table td:nth-child(8)::before {
+    content: "Action";
+  }
+
+  .patientCell {
+    align-items: flex-end;
+    text-align: right;
+    min-width: 0;
+  }
+
+  .statusBadge {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Modal cleanup */
+  .modalOverlay {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .modalCardLarge {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 28px);
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .modalHeader,
+  .profileSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profileGrid,
+  .prescriptionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .prescriptionHeader {
+    display: none;
+  }
+
+  .prescriptionRow p {
+    border-right: 0;
+    border-bottom: 1px solid #eef0f3;
+  }
+
+  .prescriptionRow p:last-child {
+    border-bottom: 0;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+  }
+
+  .modalActions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .table td {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .table td::before {
+    flex: unset;
+  }
+
+  .patientCell {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+/* Dark mode support for mobile cards */
+:global(body.darkMode) .table tr {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table td::before {
+  color: var(--text-muted) !important;
+}
+
+/* =========================================================
+   AI REVIEW MONITOR FINAL RESPONSIVE FIX
+   Sidebar-safe layout + tablet card conversion
+   ========================================================= */
+
+.page {
+  min-height: 100vh;
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  max-width: calc(100% - 240px);
+  padding: 32px;
+  background: #f6f8fc;
+  color: #1f2937;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.collapsed {
+  margin-left: 90px;
+  width: calc(100% - 90px);
+  max-width: calc(100% - 90px);
+}
+
+.container {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Keep stats and filters clean before mobile mode */
+.headerRow,
+.filtersRow,
+.statsGrid,
+.tableCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Tablet / narrow desktop: convert AI table to cards */
+@media (max-width: 1200px) {
+  .tableCard {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .table thead {
+    display: none !important;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 16px;
+  }
+
+  .table tr {
+    background: #ffffff;
+    border: 1px solid #f0e6ea;
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .table tr:hover td {
+    background: transparent !important;
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0 !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid #f1edf0 !important;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .table td:last-child {
+    border-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .table td::before {
+    flex: 0 0 42%;
+    text-align: left;
+    color: #8a6a78;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .table td:nth-child(1)::before {
+    content: "Patient";
+  }
+
+  .table td:nth-child(2)::before {
+    content: "Assigned Doctor";
+  }
+
+  .table td:nth-child(3)::before {
+    content: "AI Detected Condition";
+  }
+
+  .table td:nth-child(4)::before {
+    content: "Severity Level";
+  }
+
+  .table td:nth-child(5)::before {
+    content: "AI Confidence";
+  }
+
+  .table td:nth-child(6)::before {
+    content: "Doctor Review Status";
+  }
+
+  .table td:nth-child(7)::before {
+    content: "Analysis Date";
+  }
+
+  .table td:nth-child(8)::before {
+    content: "Action";
+  }
+
+  .patientCell {
+    align-items: flex-end;
+    text-align: right;
+    min-width: 0 !important;
+  }
+
+  .statusBadge {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .viewBtn {
+    width: 100%;
+  }
+}
+
+/* Actual mobile top-navbar mode */
+@media (max-width: 900px) {
+  .page,
+  .collapsed {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 92px 16px 28px;
+  }
+
+  .container {
+    max-width: 100%;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    max-width: 100%;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .refreshButton {
+    width: 100%;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .filtersRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .searchInput,
+  .selectInput {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .modalOverlay {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .modalCardLarge {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 28px);
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .modalHeader,
+  .profileSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .topCloseButton,
+  .modalActions button {
+    width: 100%;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+  }
+}
+
+@media (max-width: 520px) {
+  .page,
+  .collapsed {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .table td {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .table td::before {
+    flex: unset;
+  }
+
+  .patientCell {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+/* Dark mode support */
+:global(body.darkMode) .page {
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+:global(body.darkMode) .table tr {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+:global(body.darkMode) .table td {
+  color: var(--text-main) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+:global(body.darkMode) .table td::before {
+  color: var(--text-muted) !important;
+}
+
+/* =========================================================
+   AI REVIEW MONITOR SIDEBAR COLLAPSE SYNC FIX
+   Makes the page move correctly when OurSkin logo is clicked.
+   ========================================================= */
+
+@media (min-width: 901px) {
+  :global(body:not(.navCollapsed)) .page {
+    margin-left: 240px !important;
+    width: calc(100% - 240px) !important;
+    max-width: calc(100% - 240px) !important;
+  }
+
+  :global(body.navCollapsed) .page {
+    margin-left: 90px !important;
+    width: calc(100% - 90px) !important;
+    max-width: calc(100% - 90px) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  :global(body:not(.navCollapsed)) .page,
+  :global(body.navCollapsed) .page,
+  .page,
+  .collapsed {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 92px 16px 28px !important;
+  }
+}
+
+:global(body.darkMode) .page {
+  background: var(--main-bg) !important;
 }
