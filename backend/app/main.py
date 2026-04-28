@@ -74,6 +74,12 @@ def get_db():
         db.close()
 
 
+@app.get("/healthz")
+def healthz_check():
+    return {"status": "ok", "service": "OurSkin API"}
+
+
+
 @app.get("/db-check")
 def db_check(db: Session = Depends(get_db)):
     try:
