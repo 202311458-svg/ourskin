@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
@@ -21,10 +24,24 @@ def root():
     return {"message": "Welcome to the OurSkin API!"}
 
 
+frontend_url = os.getenv("FRONTEND_URL")
+
+extra_origins = os.getenv("CORS_ORIGINS", "")
+extra_origins_list = [
+    origin.strip()
+    for origin in extra_origins.split(",")
+    if origin.strip()
+]
+
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+if frontend_url:
+    origins.append(frontend_url)
+
+origins.extend(extra_origins_list)
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +77,7 @@ def get_db():
 @app.get("/db-check")
 def db_check(db: Session = Depends(get_db)):
     try:
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {"db": "connected"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}")
