@@ -7,7 +7,6 @@ from app.models.skin_analysis import SkinAnalysis
 from app.models.appointment import AppointmentModel
 from app.models.user import User
 from app.core.security import get_current_user
-from app.ml.predict_skin import predict_skin_condition
 from app.core.storage import (
     get_safe_extension,
     save_temp_image,
@@ -196,7 +195,11 @@ async def analyze_skin_image(
 
     temp_file_path = save_temp_image(file_bytes, extension)
 
+    temp_file_path = save_temp_image(file_bytes, extension)
+
     try:
+        from app.ml.predict_skin import predict_skin_condition
+
         raw_result = predict_skin_condition(temp_file_path)
 
         patient_id = getattr(appointment, "patient_id", None)
