@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -57,7 +58,7 @@ export default function StaffAppointments() {
     setError("")
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/appointments/confirmed", {
+      const res = await fetch(`${API_BASE_URL}/appointments/confirmed`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 

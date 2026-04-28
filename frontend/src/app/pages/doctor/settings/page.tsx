@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import DoctorNavbar from "@/app/components/DoctorNavbar"
+import { API_BASE_URL } from "@/lib/api";       
 import styles from "@/app/styles/profile.module.css"
 import { getDoctorSettings, type DoctorSettings } from "@/lib/doctor-api"
 
@@ -74,55 +75,57 @@ export default function DoctorSettingsPage() {
     setShowConfirm(false)
   }
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.")
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      alert("Passwords do not match.")
-      return
-    }
-
-    const token = localStorage.getItem("token")
-
-    if (!token) {
-      alert("You are not logged in.")
-      router.push("/")
-      return
-    }
-
-    setUpdatingPassword(true)
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword,
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Password update failed.")
-      }
-
-      alert("Password updated successfully.")
-      resetPasswordForm()
-    } catch (err) {
-      console.error("Password change failed:", err)
-      alert(err instanceof Error ? err.message : "Password update failed.")
-    } finally {
-      setUpdatingPassword(false)
-    }
+const handleChangePassword = async () => {
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    alert("Please fill in all password fields.")
+    return
   }
+
+  if (newPassword !== confirmPassword) {
+    alert("Passwords do not match.")
+    return
+  }
+
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    alert("You are not logged in.")
+    router.push("/")
+    return
+  }
+
+  setUpdatingPassword(true)
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    })
+
+    const data = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      throw new Error(
+        data?.detail || data?.message || "Password update failed."
+      )
+    }
+
+    alert("Password updated successfully.")
+    resetPasswordForm()
+  } catch (err) {
+    console.error("Password change failed:", err)
+    alert(err instanceof Error ? err.message : "Password update failed.")
+  } finally {
+    setUpdatingPassword(false)
+  }
+}
 
   const displayName = form?.name || "Doctor User"
   const firstLetter = displayName.charAt(0).toUpperCase()

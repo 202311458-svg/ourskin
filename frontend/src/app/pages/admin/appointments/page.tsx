@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./adminappt.module.css";
 
 type AppointmentStatus =
@@ -31,7 +32,7 @@ type ApiErrorResponse = {
 
 type ModalAction = "decline" | "cancel";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = API_BASE_URL;
 
 async function safeJson<T>(res: Response): Promise<T | null> {
   try {

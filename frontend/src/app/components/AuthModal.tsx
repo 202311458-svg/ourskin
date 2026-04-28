@@ -1,5 +1,6 @@
 "use client"
 
+import { API_BASE_URL } from "@/lib/api";
 import { useEffect, useState } from "react"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
 
@@ -81,7 +82,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   }
 
   const login = async () => {
-    const res = await fetch("http://127.0.0.1:8000/auth/login", {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -128,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       return
     }
 
-    const res = await fetch("http://127.0.0.1:8000/auth/register", {
+    const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -165,7 +166,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       return
     }
 
-    const res = await fetch("http://127.0.0.1:8000/auth/forgot-password", {
+    const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

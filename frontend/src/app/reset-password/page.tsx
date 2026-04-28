@@ -1,9 +1,11 @@
 "use client"
 
-import { useSearchParams, useRouter } from "next/navigation"
-import { useState } from "react"
 
-export default function ResetPasswordPage() {
+import { API_BASE_URL } from "@/lib/api";
+import { useSearchParams, useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+
+function ResetPasswordContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get("token") || ""
@@ -37,7 +39,7 @@ export default function ResetPasswordPage() {
     try {
       setLoading(true)
 
-      const res = await fetch("http://127.0.0.1:8000/auth/reset-password", {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -143,4 +145,28 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   )
+}
+
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            background: "#fff7fa",
+            color: "#82334c",
+            fontWeight: 700,
+          }}
+        >
+          Loading reset password page...
+        </main>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/app/components/Navbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/profile.module.css";
 
 type User = {
@@ -36,7 +37,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    fetch("http://127.0.0.1:8000/users/me", {
+    fetch(`${API_BASE_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -74,7 +75,7 @@ useEffect(() => {
   const saveProfile = async () => {
     const token = localStorage.getItem("token");
 
-    await fetch("http://127.0.0.1:8000/users/update-profile", {
+    await fetch(`${API_BASE_URL}/users/update-profile`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

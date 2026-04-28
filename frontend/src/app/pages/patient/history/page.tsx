@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./history.module.css";
 
 interface Appointment {
@@ -99,7 +100,7 @@ export default function PatientHistory() {
         }
 
         const appointmentsRes = await fetch(
-          "http://127.0.0.1:8000/appointments/my",
+          `${API_BASE_URL}/appointments/my`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

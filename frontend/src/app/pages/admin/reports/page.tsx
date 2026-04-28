@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import AdminNavbar from "@/app/components/AdminNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./reports.module.css"
 
 type MonthlyAppointmentSummary = {
@@ -60,7 +61,7 @@ type ApiErrorResponse = {
   message?: string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
+const API_BASE = API_BASE_URL;
 
 async function safeJson<T>(res: Response): Promise<T | null> {
   try {

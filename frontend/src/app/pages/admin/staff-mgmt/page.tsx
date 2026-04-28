@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./staff-mgmt.module.css";
 
 type StaffUser = {
@@ -59,7 +60,7 @@ type ApiErrorResponse = {
   message?: string;
 };
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = API_BASE_URL;
 
 function normalizeStaff(raw: StaffApiResponse): StaffUser {
   return {

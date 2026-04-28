@@ -1,5 +1,6 @@
 "use client";
 
+import { API_BASE_URL } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 type User = {
@@ -28,7 +29,7 @@ export default function ProfileContent() {
           return;
         }
 
-        const res = await fetch("http://127.0.0.1:8000/users/me", {
+        const res = await fetch(`${API_BASE_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -65,7 +66,7 @@ export default function ProfileContent() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/change-password", {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

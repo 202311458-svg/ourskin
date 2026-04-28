@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import styles from "@/app/styles/ai.module.css";
@@ -546,7 +546,7 @@ const saveDoctorAssessment = async (
   return response.json().catch(() => null);
 };
 
-export default function DoctorAiAnalysisPage() {
+function DoctorAiAnalysisContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -2578,5 +2578,27 @@ const renderHistoryStage = () => {
         </div>
       )}
     </>
+  );
+}
+export default function DoctorAiAnalysisPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            background: "#fff7fa",
+            color: "#82334c",
+            fontWeight: 700,
+          }}
+        >
+          Loading AI analysis...
+        </main>
+      }
+    >
+      <DoctorAiAnalysisContent />
+    </Suspense>
   );
 }

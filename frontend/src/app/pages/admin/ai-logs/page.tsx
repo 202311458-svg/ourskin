@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import AdminNavbar from "@/app/components/AdminNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./ailogs.module.css"
 
 type AiLog = {
@@ -31,7 +32,7 @@ type ApiErrorResponse = {
 type SeverityFilter = "all" | "mild" | "moderate" | "severe" | "unspecified"
 type ReviewFilter = "all" | "pending" | "reviewed"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
+const API_BASE = API_BASE_URL;
 
 const AI_REVIEW_ENDPOINTS = [
   `${API_BASE}/admin/ai-logs`,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/profile.module.css"
 
 type StaffProfile = {
@@ -49,7 +50,7 @@ export default function StaffProfilePage() {
     setError("")
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/users/me", {
+      const res = await fetch(`${API_BASE_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/app/components/Navbar";
+import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import styles from "./bookAppointment.module.css";
@@ -118,7 +119,7 @@ export default function BookAppointment() {
       try {
         setLoadingUser(true);
 
-        const res = await fetch("http://127.0.0.1:8000/users/me", {
+        const res = await fetch(`${API_BASE_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -291,7 +292,7 @@ export default function BookAppointment() {
     try {
       setSubmitting(true);
 
-      const res = await fetch("http://127.0.0.1:8000/appointments/", {
+      const res = await fetch(`${API_BASE_URL}/appointments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

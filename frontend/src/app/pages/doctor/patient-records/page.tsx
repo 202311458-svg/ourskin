@@ -2,6 +2,7 @@
 
 import {
   type CSSProperties,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -9,6 +10,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/doctor.module.css";
 import {
   getDoctorPatientRecords,
@@ -40,9 +42,6 @@ type SelectedAiModal = {
   appointment: PatientRecord["appointment"];
   analysis: AnalysisRecord;
 };
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const MAROON = "#8a3456";
 const MAROON_DARK = "#6f2642";
@@ -1010,7 +1009,7 @@ function isCompletedStatus(status: string) {
   return status.toLowerCase() === "completed";
 }
 
-export default function DoctorPatientRecordsPage() {
+function DoctorPatientRecordsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -2011,5 +2010,28 @@ export default function DoctorPatientRecordsPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function DoctorPatientRecordsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            background: "#fff7fa",
+            color: "#82334c",
+            fontWeight: 700,
+          }}
+        >
+          Loading patient records...
+        </main>
+      }
+    >
+      <DoctorPatientRecordsContent />
+    </Suspense>
   );
 }

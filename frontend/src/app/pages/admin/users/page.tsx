@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./users.module.css";
 
 type User = {

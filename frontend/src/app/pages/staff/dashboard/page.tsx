@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -86,13 +87,13 @@ export default function StaffDashboard() {
 
     try {
       const [todayRes, requestsRes, confirmedRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/appointments/today", {
+        fetch(`${API_BASE_URL}/appointments/today`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch("http://127.0.0.1:8000/appointments/requests", {
+       fetch(`${API_BASE_URL}/appointments/requests`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch("http://127.0.0.1:8000/appointments/confirmed", {
+       fetch(`${API_BASE_URL}/appointments/confirmed`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
@@ -173,7 +174,7 @@ export default function StaffDashboard() {
     try {
       setSubmittingId(id)
 
-      const res = await fetch(`http://127.0.0.1:8000/appointments/${id}/status`, {
+      const res = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -215,7 +216,7 @@ export default function StaffDashboard() {
       setSubmittingId(declineTargetId)
 
       const res = await fetch(
-        `http://127.0.0.1:8000/appointments/${declineTargetId}/status`,
+        `${API_BASE_URL}/appointments/${declineTargetId}/status`,
         {
           method: "PUT",
           headers: {

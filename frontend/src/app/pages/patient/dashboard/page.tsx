@@ -1,6 +1,7 @@
 "use client";
 
 import Navbar from "@/app/components/Navbar";
+import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -101,7 +102,7 @@ export default function PatientDashboard() {
       try {
         setLoading(true);
 
-        const userRes = await fetch("http://127.0.0.1:8000/users/me", {
+        const userRes = await fetch(`${API_BASE_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -115,7 +116,7 @@ export default function PatientDashboard() {
         setPatientName(userData.name || "Patient");
 
         const appointmentsRes = await fetch(
-          "http://127.0.0.1:8000/appointments/my",
+          `${API_BASE_URL}/appointments/my`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -229,7 +230,7 @@ export default function PatientDashboard() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/appointments/${appointmentId}/status`,
+        `${API_BASE_URL}/appointments/${appointmentId}/status`,
         {
           method: "PUT",
           headers: {

@@ -1301,7 +1301,7 @@ body.darkMode .landingPage .section,
 body.darkMode .landingPage .altSection,
 body.darkMode .landingPage .ctaSection {
   background: transparent !important;
-  color: #f8fafc !important;
+  color: #8a8c8e !important;
 }
 
 body.darkMode .landingPage h1,

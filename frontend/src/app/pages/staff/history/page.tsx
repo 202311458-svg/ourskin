@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
+import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -103,7 +104,7 @@ export default function StaffHistoryPage() {
     setError("")
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/appointments/history", {
+      const res = await fetch(`${API_BASE_URL}/appointments/history`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -172,10 +173,10 @@ export default function StaffHistoryPage() {
       setDetailsOpen(true)
 
       const [appointmentRes, logsRes] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/appointments/${appointment.id}`, {
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`http://127.0.0.1:8000/appointments/${appointment.id}/logs`, {
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}/logs`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ])
