@@ -99,7 +99,7 @@ useEffect(() => {
 
     const token = localStorage.getItem("token");
 
-    await fetch("http://127.0.0.1:8000/auth/change-password", {
+    await fetch(`${API_BASE_URL}/auth/change-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

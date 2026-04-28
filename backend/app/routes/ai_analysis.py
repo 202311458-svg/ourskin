@@ -1,9 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Depends, Form, HTTPException
 from sqlalchemy.orm import Session
-import os
-import shutil
-import uuid
 
 from app.db import SessionLocal
 from app.models.skin_analysis import SkinAnalysis
@@ -11,6 +8,13 @@ from app.models.appointment import AppointmentModel
 from app.models.user import User
 from app.core.security import get_current_user
 from app.ml.predict_skin import predict_skin_condition
+from app.core.storage import (
+    get_safe_extension,
+    save_temp_image,
+    delete_temp_file,
+    upload_skin_bytes_to_supabase,
+    create_signed_image_url,
+)
 
 router = APIRouter(prefix="/ai", tags=["AI Analysis"])
 
@@ -114,6 +118,33 @@ def build_ai_support_fields(result: dict) -> dict:
     }
 
 
+def serialize_analysis(analysis: SkinAnalysis) -> dict:
+    return {
+        "id": analysis.id,
+        "appointment_id": analysis.appointment_id,
+        "uploaded_by_id": analysis.uploaded_by_id,
+        "image_path": create_signed_image_url(analysis.image_path),
+        "condition": analysis.condition,
+        "confidence": analysis.confidence,
+        "severity": analysis.severity,
+        "recommendation": analysis.recommendation,
+        "doctor_note": analysis.doctor_note,
+        "review_status": analysis.review_status,
+        "reviewed_at": analysis.reviewed_at.isoformat()
+        if analysis.reviewed_at
+        else None,
+        "possible_conditions": analysis.possible_conditions,
+        "key_findings": analysis.key_findings,
+        "treatment_suggestions": analysis.treatment_suggestions,
+        "prescription_suggestions": analysis.prescription_suggestions,
+        "follow_up_suggestions": analysis.follow_up_suggestions,
+        "red_flags": analysis.red_flags,
+        "created_at": analysis.created_at.isoformat()
+        if analysis.created_at
+        else None,
+    }
+
+
 @router.post("/analyze/{appointment_id}")
 async def analyze_skin_image(
     appointment_id: int,
@@ -149,83 +180,68 @@ async def analyze_skin_image(
             detail="AI analysis already exists for this consultation.",
         )
 
-    upload_dir = "app/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-
-    ext = os.path.splitext(file.filename or "")[1].lower()
-
-    if not ext:
-        ext = ".jpg"
-
     allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    extension = get_safe_extension(file.filename, file.content_type)
 
-    if ext not in allowed_extensions:
+    if extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
             detail="Invalid image format. Please upload JPG, PNG, or WEBP.",
         )
 
-    file_id = str(uuid.uuid4())
-    file_path = os.path.join(upload_dir, f"{file_id}{ext}")
-    public_path = f"/uploads/{file_id}{ext}"
+    file_bytes = await file.read()
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded image is empty.")
 
-    raw_result = predict_skin_condition(file_path)
-    ai_support = build_ai_support_fields(raw_result)
+    temp_file_path = save_temp_image(file_bytes, extension)
 
-    record = SkinAnalysis(
-        user_id=user.id,
-        uploaded_by_id=user.id,
-        appointment_id=appointment_id,
-        image_path=public_path,
-        condition=ai_support["condition"],
-        confidence=raw_result.get("confidence", 0),
-        severity=ai_support["severity"],
-        recommendation=ai_support["recommendation"],
-        doctor_note=doctor_note,
-        review_status="Pending Review",
-        possible_conditions=ai_support["possible_conditions"],
-        key_findings=ai_support["key_findings"],
-        treatment_suggestions=ai_support["treatment_suggestions"],
-        prescription_suggestions=ai_support["prescription_suggestions"],
-        follow_up_suggestions=ai_support["follow_up_suggestions"],
-        red_flags=ai_support["red_flags"],
-    )
+    try:
+        raw_result = predict_skin_condition(temp_file_path)
 
-    db.add(record)
-    db.commit()
-    db.refresh(record)
+        patient_id = getattr(appointment, "patient_id", None)
 
-    return {
-        "status": "success",
-        "message": "AI analysis created successfully.",
-        "analysis": {
-            "id": record.id,
-            "appointment_id": record.appointment_id,
-            "uploaded_by_id": record.uploaded_by_id,
-            "image_path": record.image_path,
-            "condition": record.condition,
-            "confidence": record.confidence,
-            "severity": record.severity,
-            "recommendation": record.recommendation,
-            "doctor_note": record.doctor_note,
-            "review_status": record.review_status,
-            "reviewed_at": record.reviewed_at.isoformat()
-            if record.reviewed_at
-            else None,
-            "possible_conditions": record.possible_conditions,
-            "key_findings": record.key_findings,
-            "treatment_suggestions": record.treatment_suggestions,
-            "prescription_suggestions": record.prescription_suggestions,
-            "follow_up_suggestions": record.follow_up_suggestions,
-            "red_flags": record.red_flags,
-            "created_at": record.created_at.isoformat()
-            if record.created_at
-            else None,
-        },
-    }
+        storage_path = upload_skin_bytes_to_supabase(
+            file_bytes=file_bytes,
+            appointment_id=appointment_id,
+            filename=file.filename,
+            content_type=file.content_type,
+            patient_id=patient_id,
+        )
+
+        ai_support = build_ai_support_fields(raw_result)
+
+        record = SkinAnalysis(
+            user_id=user.id,
+            uploaded_by_id=user.id,
+            appointment_id=appointment_id,
+            image_path=storage_path,
+            condition=ai_support["condition"],
+            confidence=raw_result.get("confidence", 0),
+            severity=ai_support["severity"],
+            recommendation=ai_support["recommendation"],
+            doctor_note=doctor_note,
+            review_status="Pending Review",
+            possible_conditions=ai_support["possible_conditions"],
+            key_findings=ai_support["key_findings"],
+            treatment_suggestions=ai_support["treatment_suggestions"],
+            prescription_suggestions=ai_support["prescription_suggestions"],
+            follow_up_suggestions=ai_support["follow_up_suggestions"],
+            red_flags=ai_support["red_flags"],
+        )
+
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+
+        return {
+            "status": "success",
+            "message": "AI analysis created successfully.",
+            "analysis": serialize_analysis(record),
+        }
+
+    finally:
+        delete_temp_file(temp_file_path)
 
 
 @router.get("/appointment/{appointment_id}")
@@ -250,7 +266,7 @@ def get_analysis_by_appointment(
         .all()
     )
 
-    return analyses
+    return [serialize_analysis(analysis) for analysis in analyses]
 
 
 @router.put("/review/{analysis_id}")
@@ -301,28 +317,5 @@ def review_analysis(
 
     return {
         "message": "Analysis updated successfully",
-        "analysis": {
-            "id": analysis.id,
-            "appointment_id": analysis.appointment_id,
-            "uploaded_by_id": analysis.uploaded_by_id,
-            "image_path": analysis.image_path,
-            "condition": analysis.condition,
-            "confidence": analysis.confidence,
-            "severity": analysis.severity,
-            "recommendation": analysis.recommendation,
-            "doctor_note": analysis.doctor_note,
-            "review_status": analysis.review_status,
-            "reviewed_at": analysis.reviewed_at.isoformat()
-            if analysis.reviewed_at
-            else None,
-            "possible_conditions": analysis.possible_conditions,
-            "key_findings": analysis.key_findings,
-            "treatment_suggestions": analysis.treatment_suggestions,
-            "prescription_suggestions": analysis.prescription_suggestions,
-            "follow_up_suggestions": analysis.follow_up_suggestions,
-            "red_flags": analysis.red_flags,
-            "created_at": analysis.created_at.isoformat()
-            if analysis.created_at
-            else None,
-        },
+        "analysis": serialize_analysis(analysis),
     }

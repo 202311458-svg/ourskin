@@ -41,6 +41,10 @@ type PatientVisitHistoryRecord = {
   linked_analysis?: Analysis | null;
 };
 
+type CompletedReportHistoryItem = DoctorPatientHistoryResponse["history"][number] & {
+  report: DiagnosisReport;
+};
+
 const emptyAssessmentForm: DoctorAssessmentForm = {
   finalDiagnosis: "",
   severity: "Needs Further Review",
@@ -131,7 +135,6 @@ const getAiUnavailableMessage = (appointment: Appointment | null) => {
   return "";
 };
 
-
 const buildEmptyPatientHistory = (
   patientItem: DoctorPatientListItem | null
 ): DoctorPatientHistoryResponse | null => {
@@ -162,7 +165,6 @@ const buildPatientListFromAppointments = (
   });
 
   const validAppointments = appointments.filter(isVisibleAiAppointment);
-
   const sortedAppointments = sortAppointmentsDesc(validAppointments);
 
   sortedAppointments.forEach((appt) => {
@@ -286,17 +288,17 @@ const normalizePrescriptionLine = (value: string) => {
     .trim();
 };
 
+const stripPrescriptionLabel = (value: string, label: string) => {
+  const expression = new RegExp(`^${label}:\\s*`, "i");
+  return value.replace(expression, "").trim();
+};
+
 const splitPrescriptionList = (value: string) => {
   return value
     .split(/\n|;/)
     .map((item) => normalizePrescriptionLine(item))
     .filter(Boolean)
     .map((item) => stripPrescriptionLabel(item, "Medication"));
-};
-
-const stripPrescriptionLabel = (value: string, label: string) => {
-  const expression = new RegExp(`^${label}:\\s*`, "i");
-  return value.replace(expression, "").trim();
 };
 
 const getLabelIndex = (text: string, label: string) => {
@@ -473,21 +475,6 @@ const buildPrescriptionText = (payload: DoctorAssessmentForm) => {
     .join("\n");
 };
 
-const summarizePrescriptionItems = (items: ParsedPrescriptionItem[]) => {
-  if (items.length === 0) return "—";
-
-  return items
-    .map((item) => {
-      const parts = [item.medication];
-
-      if (item.usage) parts.push(`Usage: ${item.usage}`);
-      if (item.reason) parts.push(`Reason: ${item.reason}`);
-
-      return parts.join(" | ");
-    })
-    .join("\n");
-};
-
 const getStatusBadgeClass = (status: string | undefined) => {
   switch ((status || "").trim()) {
     case "Reviewed":
@@ -525,9 +512,6 @@ const saveDoctorAssessment = async (
         skin_analysis_id: analysisId,
         doctor_final_diagnosis: payload.finalDiagnosis,
         doctor_prescription: buildPrescriptionText(payload),
-        // Save only the doctor's own notes here.
-        // AI severity, red flags, and recommendations should stay in skin_analysis
-        // and should only be viewed through the AI Result button.
         after_appointment_notes: payload.clinicalFindings.trim(),
         follow_up_plan: payload.followUpPlan,
         next_visit_date: null,
@@ -566,18 +550,14 @@ function DoctorAiAnalysisContent() {
 
   const [patients, setPatients] = useState<DoctorPatientListItem[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
-
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
     null
   );
-
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<
     number | null
   >(null);
-
   const [patientHistory, setPatientHistory] =
     useState<DoctorPatientHistoryResponse | null>(null);
-
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [patientVisitRecords, setPatientVisitRecords] = useState<
     PatientVisitHistoryRecord[]
@@ -620,18 +600,18 @@ function DoctorAiAnalysisContent() {
           getDoctorAppointments("All"),
         ]);
 
-const reportPatientList = Array.isArray(patientsData) ? patientsData : [];
-const appointmentList = Array.isArray(appointmentsData)
-  ? appointmentsData
-  : [];
+        const reportPatientList = Array.isArray(patientsData) ? patientsData : [];
+        const appointmentList = Array.isArray(appointmentsData)
+          ? appointmentsData
+          : [];
 
-const patientList = buildPatientListFromAppointments(
-  reportPatientList,
-  appointmentList
-);
+        const patientList = buildPatientListFromAppointments(
+          reportPatientList,
+          appointmentList
+        );
 
-setPatients(patientList);
-setAllAppointments(appointmentList);
+        setPatients(patientList);
+        setAllAppointments(appointmentList);
 
         const nextPatientId = initialSelection.patientId;
 
@@ -699,8 +679,6 @@ setAllAppointments(appointmentList);
       } catch (error) {
         const message = error instanceof Error ? error.message : "";
 
-        // Patient not found usually means there is no saved final doctor report yet.
-        // Keep the page usable and let the all-visits history loader handle AI-only cases.
         if (message && message !== "Patient not found") {
           console.warn("Patient history unavailable:", message);
         }
@@ -886,7 +864,6 @@ setAllAppointments(appointmentList);
     };
   }, [selectedPatientId, patientAppointmentsMap]);
 
-
   const targetAppointment = useMemo(() => {
     return (
       selectedPatientValidVisits.find(
@@ -909,19 +886,21 @@ setAllAppointments(appointmentList);
   }, [sortedAnalyses]);
 
   const sortedCompletedReports = useMemo(() => {
-    if (!patientHistory) return [];
+    if (!patientHistory?.history) return [];
 
-    return [...patientHistory.history].sort((a, b) => {
-      const aDate = new Date(
-        `${a.appointment?.date || ""}T${a.appointment?.time || "00:00:00"}`
-      ).getTime();
+    return patientHistory.history
+      .filter((item): item is CompletedReportHistoryItem => Boolean(item.report))
+      .sort((a, b) => {
+        const aDate = new Date(
+          `${a.appointment?.date || ""}T${a.appointment?.time || "00:00:00"}`
+        ).getTime();
 
-      const bDate = new Date(
-        `${b.appointment?.date || ""}T${b.appointment?.time || "00:00:00"}`
-      ).getTime();
+        const bDate = new Date(
+          `${b.appointment?.date || ""}T${b.appointment?.time || "00:00:00"}`
+        ).getTime();
 
-      return bDate - aDate;
-    });
+        return bDate - aDate;
+      });
   }, [patientHistory]);
 
   const selectedVisitReport = useMemo(() => {
@@ -1106,20 +1085,20 @@ setAllAppointments(appointmentList);
       latestAnalysis.prescription_suggestions
     );
 
-const allMedication = prescriptions
-  .map((item) => item.medication)
-  .filter(Boolean)
-  .join("; ");
+    const allMedication = prescriptions
+      .map((item) => item.medication)
+      .filter(Boolean)
+      .join("; ");
 
-const allUsage = prescriptions
-  .map((item) => (item.usage ? `${item.medication}: ${item.usage}` : ""))
-  .filter(Boolean)
-  .join("; ");
+    const allUsage = prescriptions
+      .map((item) => (item.usage ? `${item.medication}: ${item.usage}` : ""))
+      .filter(Boolean)
+      .join("; ");
 
-const allReason = prescriptions
-  .map((item) => (item.reason ? `${item.medication}: ${item.reason}` : ""))
-  .filter(Boolean)
-  .join("\n");
+    const allReason = prescriptions
+      .map((item) => (item.reason ? `${item.medication}: ${item.reason}` : ""))
+      .filter(Boolean)
+      .join("\n");
 
     switch (field) {
       case "finalDiagnosis":
@@ -1555,48 +1534,48 @@ const allReason = prescriptions
               </p>
             </div>
 
-<div className={styles.formGroup}>
-  <div className={styles.fieldHeader}>
-    <label htmlFor="prescriptionMedication">Medication</label>
-    {renderUseAiSuggestionButton("prescriptionMedication")}
-  </div>
+            <div className={styles.formGroup}>
+              <div className={styles.fieldHeader}>
+                <label htmlFor="prescriptionMedication">Medication</label>
+                {renderUseAiSuggestionButton("prescriptionMedication")}
+              </div>
 
-  {renderAiSuggestionPreview(
-    "prescriptionMedication",
-    "AI Suggested Medication"
-  )}
+              {renderAiSuggestionPreview(
+                "prescriptionMedication",
+                "AI Suggested Medication"
+              )}
 
-  <input
-    id="prescriptionMedication"
-    type="text"
-    value={assessmentForm.prescriptionMedication}
-    onChange={(e) =>
-      updateAssessmentField("prescriptionMedication", e.target.value)
-    }
-    placeholder="Medication name"
-  />
-</div>
+              <input
+                id="prescriptionMedication"
+                type="text"
+                value={assessmentForm.prescriptionMedication}
+                onChange={(e) =>
+                  updateAssessmentField("prescriptionMedication", e.target.value)
+                }
+                placeholder="Medication name"
+              />
+            </div>
 
-<div className={styles.formGroup}>
-  <div className={styles.fieldHeader}>
-    <label htmlFor="prescriptionUsage">Usage</label>
-    {renderUseAiSuggestionButton("prescriptionUsage")}
-  </div>
+            <div className={styles.formGroup}>
+              <div className={styles.fieldHeader}>
+                <label htmlFor="prescriptionUsage">Usage</label>
+                {renderUseAiSuggestionButton("prescriptionUsage")}
+              </div>
 
-  {renderAiSuggestionPreview(
-    "prescriptionUsage",
-    "AI Suggested Usage"
-  )}
+              {renderAiSuggestionPreview(
+                "prescriptionUsage",
+                "AI Suggested Usage"
+              )}
 
-  <textarea
-    id="prescriptionUsage"
-    value={assessmentForm.prescriptionUsage}
-    onChange={(e) =>
-      updateAssessmentField("prescriptionUsage", e.target.value)
-    }
-    placeholder="Example: Apply a thin layer to the affected area twice daily"
-  />
-</div>
+              <textarea
+                id="prescriptionUsage"
+                value={assessmentForm.prescriptionUsage}
+                onChange={(e) =>
+                  updateAssessmentField("prescriptionUsage", e.target.value)
+                }
+                placeholder="Example: Apply a thin layer to the affected area twice daily"
+              />
+            </div>
 
             <div className={styles.formGroupFull}>
               <div className={styles.fieldHeader}>
@@ -1693,124 +1672,124 @@ const allReason = prescriptions
     );
   };
 
-const renderScanStage = () => {
-  if (loadingPatientHistory && isCompletedTarget) {
-    return (
-      <section className={styles.workflowCard}>
-        <div className={styles.emptyState}>Checking completed case...</div>
-      </section>
-    );
-  }
+  const renderScanStage = () => {
+    if (loadingPatientHistory && isCompletedTarget) {
+      return (
+        <section className={styles.workflowCard}>
+          <div className={styles.emptyState}>Checking completed case...</div>
+        </section>
+      );
+    }
 
-if (selectedVisitReport || isCompletedTarget) {
-  return (
-    <div className={styles.scanStack}>
-      <section className={styles.workflowCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <p className={styles.eyebrow}>Completed Case</p>
-            <h2>This Consultation Is Already Completed</h2>
-            <p>
-              The AI analysis and doctor assessment for this consultation have
-              already been saved. Please review the completed record in History.
-            </p>
-          </div>
+    if (selectedVisitReport || isCompletedTarget) {
+      return (
+        <div className={styles.scanStack}>
+          <section className={styles.workflowCard}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.eyebrow}>Completed Case</p>
+                <h2>This Consultation Is Already Completed</h2>
+                <p>
+                  The AI analysis and doctor assessment for this consultation have
+                  already been saved. Please review the completed record in History.
+                </p>
+              </div>
 
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => setActiveStage("history")}
-          >
-            View in History
-          </button>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setActiveStage("history")}
+              >
+                View in History
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
-    </div>
-  );
-}
+      );
+    }
 
-  return (
-    <div className={styles.scanStack}>
-      <div className={styles.scanUploadCenter}>
+    return (
+      <div className={styles.scanStack}>
+        <div className={styles.scanUploadCenter}>
+          <section className={styles.workflowCard}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.eyebrow}>Step 1</p>
+                <h2>Upload Skin Image</h2>
+                <p>
+                  Upload the patient image for the selected approved visit. The AI
+                  result will appear below after processing.
+                </p>
+              </div>
+            </div>
+
+            {!targetAppointment ? (
+              <div className={styles.emptyState}>
+                No consultation is available for this patient yet.
+              </div>
+            ) : !aiAvailableForTarget || !isApprovedTarget ? (
+              <div className={styles.emptyState}>
+                <strong>AI Skin Analysis Unavailable</strong>
+                <p>{aiUnavailableMessage}</p>
+              </div>
+            ) : (
+              <>
+                <label className={styles.dropZone} htmlFor="skin_file">
+                  <input
+                    id="skin_file"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSelectedFile(file);
+                    }}
+                  />
+
+                  <span className={styles.dropIcon}>＋</span>
+                  <strong>
+                    {selectedFile
+                      ? selectedFile.name
+                      : "Choose or drop skin image"}
+                  </strong>
+                  <small>Accepted formats: JPG, PNG, WEBP</small>
+                </label>
+
+                <button
+                  className={styles.primaryButton}
+                  onClick={handleUploadAnalysis}
+                  disabled={
+                    uploading ||
+                    !selectedFile ||
+                    !isApprovedTarget ||
+                    !aiAvailableForTarget
+                  }
+                >
+                  {uploading ? "Analyzing image..." : "Run AI Analysis"}
+                </button>
+              </>
+            )}
+          </section>
+        </div>
+
         <section className={styles.workflowCard}>
           <div className={styles.cardHeader}>
             <div>
-              <p className={styles.eyebrow}>Step 1</p>
-              <h2>Upload Skin Image</h2>
+              <p className={styles.eyebrow}>Pending Case</p>
+              <h2>Latest AI Result</h2>
               <p>
-                Upload the patient image for the selected approved visit. The AI
-                result will appear below after processing.
+                This AI-generated result stays here until the doctor completes the
+                assessment below.
               </p>
             </div>
           </div>
 
-          {!targetAppointment ? (
-            <div className={styles.emptyState}>
-              No consultation is available for this patient yet.
-            </div>
-          ) : !aiAvailableForTarget || !isApprovedTarget ? (
-            <div className={styles.emptyState}>
-              <strong>AI Skin Analysis Unavailable</strong>
-              <p>{aiUnavailableMessage}</p>
-            </div>
-          ) : (
-            <>
-              <label className={styles.dropZone} htmlFor="skin_file">
-                <input
-                  id="skin_file"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSelectedFile(file);
-                  }}
-                />
-
-                <span className={styles.dropIcon}>＋</span>
-                <strong>
-                  {selectedFile
-                    ? selectedFile.name
-                    : "Choose or drop skin image"}
-                </strong>
-                <small>Accepted formats: JPG, PNG, WEBP</small>
-              </label>
-
-              <button
-                className={styles.primaryButton}
-                onClick={handleUploadAnalysis}
-                disabled={
-                  uploading ||
-                  !selectedFile ||
-                  !isApprovedTarget ||
-                  !aiAvailableForTarget
-                }
-              >
-                {uploading ? "Analyzing image..." : "Run AI Analysis"}
-              </button>
-            </>
-          )}
+          {renderAiReadOnlyResult()}
         </section>
+
+        {renderDoctorAssessmentForm()}
       </div>
-
-      <section className={styles.workflowCard}>
-        <div className={styles.cardHeader}>
-          <div>
-            <p className={styles.eyebrow}>Pending Case</p>
-            <h2>Latest AI Result</h2>
-            <p>
-              This AI-generated result stays here until the doctor completes the
-              assessment below.
-            </p>
-          </div>
-        </div>
-
-        {renderAiReadOnlyResult()}
-      </section>
-
-      {renderDoctorAssessmentForm()}
-    </div>
-  );
-};
+    );
+  };
 
   const renderReportsStage = () => {
     if (loadingPatientHistory) {
@@ -1839,12 +1818,14 @@ if (selectedVisitReport || isCompletedTarget) {
 
         <div className={styles.reportGrid}>
           {sortedCompletedReports.map((item) => {
+            const report = item.report;
+
             const prescriptionItems = parsePrescriptionEntries(
-              item.report.doctor_prescription
+              report.doctor_prescription
             );
 
             return (
-              <article key={item.report.id} className={styles.historyCard}>
+              <article key={report.id} className={styles.historyCard}>
                 <div className={styles.historyHeader}>
                   <div>
                     <strong>
@@ -1862,7 +1843,7 @@ if (selectedVisitReport || isCompletedTarget) {
                 <div className={styles.historyBody}>
                   <p>
                     <b>Diagnosis:</b>{" "}
-                    {item.report.doctor_final_diagnosis || "—"}
+                    {report.doctor_final_diagnosis || "—"}
                   </p>
 
                   <div className={styles.historyPrescriptionBox}>
@@ -1897,7 +1878,7 @@ if (selectedVisitReport || isCompletedTarget) {
                   </div>
 
                   <p>
-                    <b>Follow-up:</b> {item.report.follow_up_plan || "—"}
+                    <b>Follow-up:</b> {report.follow_up_plan || "—"}
                   </p>
                 </div>
               </article>
@@ -1908,374 +1889,366 @@ if (selectedVisitReport || isCompletedTarget) {
     );
   };
 
+  const looksLikeAiGeneratedDoctorNote = (value?: string | null) => {
+    const text = (value || "").trim().toLowerCase();
 
+    if (!text) return false;
 
-const looksLikeAiGeneratedDoctorNote = (value?: string | null) => {
-  const text = (value || "").trim().toLowerCase();
+    const aiMarkers = [
+      "severity:",
+      "red flags:",
+      "patient instructions:",
+      "ai recommendation",
+      "needs doctor review",
+      "possible conditions",
+    ];
 
-  if (!text) return false;
+    return aiMarkers.some((marker) => text.includes(marker));
+  };
 
-  const aiMarkers = [
-    "severity:",
-    "red flags:",
-    "patient instructions:",
-    "ai recommendation",
-    "needs doctor review",
-    "possible conditions",
-  ];
+  const getDoctorOnlyNote = (value?: string | null) => {
+    const text = (value || "").trim();
 
-  return aiMarkers.some((marker) => text.includes(marker));
-};
+    if (!text) return "—";
 
-const getDoctorOnlyNote = (value?: string | null) => {
-  const text = (value || "").trim();
+    if (looksLikeAiGeneratedDoctorNote(text)) {
+      return "No separate doctor notes were saved for this visit.";
+    }
 
-  if (!text) return "—";
+    return text;
+  };
 
-  // Some older test records saved AI-style text in after_appointment_notes.
-  // Keep the History card doctor-first by not displaying AI content as doctor notes.
-  if (looksLikeAiGeneratedDoctorNote(text)) {
-    return "No separate doctor notes were saved for this visit.";
-  }
+  const renderAiResultPanel = (
+    linkedAnalysis: Analysis | null | undefined,
+    confidenceValue: number | null
+  ) => {
+    if (!linkedAnalysis) {
+      return (
+        <div className={styles.emptyStateSmall}>
+          No linked AI result was saved for this visit.
+        </div>
+      );
+    }
 
-  return text;
-};
-
-const renderAiResultPanel = (
-  linkedAnalysis: Analysis | null | undefined,
-  confidenceValue: number | null
-) => {
-  if (!linkedAnalysis) {
-    return (
-      <div className={styles.emptyStateSmall}>
-        No linked AI result was saved for this visit.
-      </div>
+    const prescriptionItems = parsePrescriptionSuggestions(
+      linkedAnalysis.prescription_suggestions
     );
-  }
+    const followUpItems = splitMultilineText(linkedAnalysis.follow_up_suggestions);
+    const redFlagItems = splitMultilineText(linkedAnalysis.red_flags);
 
-  const prescriptionItems = parsePrescriptionSuggestions(
-    linkedAnalysis.prescription_suggestions
-  );
-  const followUpItems = splitMultilineText(linkedAnalysis.follow_up_suggestions);
-  const redFlagItems = splitMultilineText(linkedAnalysis.red_flags);
-
-  return (
-    <div style={{ display: "grid", gap: "18px" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: linkedAnalysis.image_path
-            ? "minmax(260px, 380px) 1fr"
-            : "1fr",
-          gap: "18px",
-          alignItems: "start",
-        }}
-      >
-        {linkedAnalysis.image_path && (
-          <div
-            style={{
-              border: "1px solid var(--border, #eadde3)",
-              borderRadius: "18px",
-              overflow: "hidden",
-              background: "#fff7fa",
-            }}
-          >
-            <img
-              src={buildImageUrl(linkedAnalysis.image_path)}
-              alt="AI skin analysis"
+    return (
+      <div style={{ display: "grid", gap: "18px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: linkedAnalysis.image_path
+              ? "minmax(260px, 380px) 1fr"
+              : "1fr",
+            gap: "18px",
+            alignItems: "start",
+          }}
+        >
+          {linkedAnalysis.image_path && (
+            <div
               style={{
-                display: "block",
-                width: "100%",
-                maxHeight: "360px",
-                objectFit: "cover",
+                border: "1px solid var(--border, #eadde3)",
+                borderRadius: "18px",
+                overflow: "hidden",
+                background: "#fff7fa",
               }}
-            />
-          </div>
-        )}
+            >
+              <img
+                src={buildImageUrl(linkedAnalysis.image_path)}
+                alt="AI skin analysis"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxHeight: "360px",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
+          )}
 
-        <div style={{ display: "grid", gap: "12px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: "12px",
-            }}
-          >
-            <div className={styles.historyInfoBox}>
-              <span>AI Condition</span>
-              <strong>{linkedAnalysis.condition || "—"}</strong>
+          <div style={{ display: "grid", gap: "12px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "12px",
+              }}
+            >
+              <div className={styles.historyInfoBox}>
+                <span>AI Condition</span>
+                <strong>{linkedAnalysis.condition || "—"}</strong>
+              </div>
+
+              <div className={styles.historyInfoBox}>
+                <span>Confidence</span>
+                <strong>
+                  {confidenceValue !== null
+                    ? `${confidenceValue}% confidence`
+                    : "Confidence unavailable"}
+                </strong>
+              </div>
+
+              <div className={styles.historyInfoBox}>
+                <span>AI Severity</span>
+                <strong>{linkedAnalysis.severity || "—"}</strong>
+              </div>
+
+              <div className={styles.historyInfoBox}>
+                <span>Generated</span>
+                <strong>{formatDateTime(linkedAnalysis.created_at)}</strong>
+              </div>
             </div>
 
-            <div className={styles.historyInfoBox}>
-              <span>Confidence</span>
-              <strong>
-                {confidenceValue !== null
-                  ? `${confidenceValue}% confidence`
-                  : "Confidence unavailable"}
-              </strong>
+            <div className={styles.historyFollowUpBox}>
+              <span>Possible Conditions</span>
+              <p>{linkedAnalysis.possible_conditions || "—"}</p>
             </div>
 
-            <div className={styles.historyInfoBox}>
-              <span>AI Severity</span>
-              <strong>{linkedAnalysis.severity || "—"}</strong>
+            <div className={styles.historyFollowUpBox}>
+              <span>Key Findings</span>
+              <p>{linkedAnalysis.key_findings || "—"}</p>
             </div>
 
-            <div className={styles.historyInfoBox}>
-              <span>Generated</span>
-              <strong>{formatDateTime(linkedAnalysis.created_at)}</strong>
+            <div className={styles.historyFollowUpBox}>
+              <span>AI Recommendation</span>
+              <p>{linkedAnalysis.recommendation || "No AI recommendation recorded."}</p>
             </div>
-          </div>
-
-          <div className={styles.historyFollowUpBox}>
-            <span>Possible Conditions</span>
-            <p>{linkedAnalysis.possible_conditions || "—"}</p>
-          </div>
-
-          <div className={styles.historyFollowUpBox}>
-            <span>Key Findings</span>
-            <p>{linkedAnalysis.key_findings || "—"}</p>
-          </div>
-
-          <div className={styles.historyFollowUpBox}>
-            <span>AI Recommendation</span>
-            <p>{linkedAnalysis.recommendation || "No AI recommendation recorded."}</p>
           </div>
         </div>
-      </div>
 
-      <div className={styles.historyPrescriptionBox}>
-        <h4>AI Prescription Suggestions</h4>
+        <div className={styles.historyPrescriptionBox}>
+          <h4>AI Prescription Suggestions</h4>
 
-        {prescriptionItems.length === 0 ? (
-          <div className={styles.emptyStateSmall}>
-            No AI prescription suggestions saved.
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: "12px",
-            }}
-          >
-            {prescriptionItems.map((item, index) => (
-              <div
-                key={`${item.medication}-${index}`}
-                style={{
-                  border: "1px solid var(--border, #eadde3)",
-                  borderRadius: "16px",
-                  padding: "14px",
-                  background: "var(--card, #ffffff)",
-                }}
-              >
-                <p
+          {prescriptionItems.length === 0 ? (
+            <div className={styles.emptyStateSmall}>
+              No AI prescription suggestions saved.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {prescriptionItems.map((item, index) => (
+                <div
+                  key={`${item.medication}-${index}`}
                   style={{
-                    margin: "0 0 12px",
-                    color: "var(--accent, #6f2940)",
-                    fontSize: "14px",
-                    fontWeight: 800,
-                    letterSpacing: "0.02em",
+                    border: "1px solid var(--border, #eadde3)",
+                    borderRadius: "16px",
+                    padding: "14px",
+                    background: "var(--card, #ffffff)",
                   }}
                 >
-                  {item.medication}
-                </p>
+                  <p
+                    style={{
+                      margin: "0 0 12px",
+                      color: "var(--accent, #6f2940)",
+                      fontSize: "14px",
+                      fontWeight: 800,
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {item.medication}
+                  </p>
 
-                <div style={{ display: "grid", gap: "10px" }}>
-                  <div>
-                    <span className={styles.infoLabel}>Usage</span>
-                    <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
-                      {item.usage || "—"}
-                    </p>
-                  </div>
+                  <div style={{ display: "grid", gap: "10px" }}>
+                    <div>
+                      <span className={styles.infoLabel}>Usage</span>
+                      <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
+                        {item.usage || "—"}
+                      </p>
+                    </div>
 
-                  <div>
-                    <span className={styles.infoLabel}>Reason</span>
-                    <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
-                      {item.reason || "—"}
-                    </p>
+                    <div>
+                      <span className={styles.infoLabel}>Reason</span>
+                      <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
+                        {item.reason || "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className={styles.historyFollowUpBox}>
-        <span>AI Follow-up Suggestions</span>
-        <p style={{ whiteSpace: "pre-line" }}>
-          {followUpItems.length === 0 ? "—" : followUpItems.join("\n")}
-        </p>
-      </div>
-
-      <div className={styles.historyFollowUpBox}>
-        <span>AI Red Flags</span>
-        <p style={{ whiteSpace: "pre-line" }}>
-          {redFlagItems.length === 0 ? "—" : redFlagItems.join("\n")}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-const renderHistoryStage = () => {
-  if (loadingPatientHistory || loadingVisitRecords) {
-    return (
-      <section className={styles.workflowCard}>
-        <div className={styles.emptyState}>Loading medical history...</div>
-      </section>
-    );
-  }
-
-  if (sortedPatientVisitHistory.length === 0) {
-    return (
-      <section className={styles.workflowCard}>
-        <div className={styles.emptyState}>
-          No completed medical history or AI analysis history yet.
+              ))}
+            </div>
+          )}
         </div>
-      </section>
-    );
-  }
 
-  return (
-    <section className={styles.workflowCard}>
-      <div className={styles.cardHeader}>
-        <div>
-          <p className={styles.eyebrow}>Medical History</p>
-          <h2>All Patient Doctor Records</h2>
-          <p>
-            Doctor diagnosis, prescriptions, notes, and follow-up plans are shown
-            first. AI results are kept separate and can be opened when needed.
+        <div className={styles.historyFollowUpBox}>
+          <span>AI Follow-up Suggestions</span>
+          <p style={{ whiteSpace: "pre-line" }}>
+            {followUpItems.length === 0 ? "—" : followUpItems.join("\n")}
+          </p>
+        </div>
+
+        <div className={styles.historyFollowUpBox}>
+          <span>AI Red Flags</span>
+          <p style={{ whiteSpace: "pre-line" }}>
+            {redFlagItems.length === 0 ? "—" : redFlagItems.join("\n")}
           </p>
         </div>
       </div>
+    );
+  };
 
-      <div className={styles.medicalHistoryList}>
-        {sortedPatientVisitHistory.map((item) => {
-          const linkedAnalysis = item.linkedAnalysis;
-          const report = item.report;
-          const prescriptionItems = parsePrescriptionEntries(
-            report?.doctor_prescription
-          );
-          const recordKey = `${item.appointment.id}-${
-            report?.id || linkedAnalysis?.id || "record"
-          }`;
-          const appointmentTitle = `${item.appointment.date || "Unknown date"} • ${
-            item.appointment.services || "Consultation"
-          }`;
+  const renderHistoryStage = () => {
+    if (loadingPatientHistory || loadingVisitRecords) {
+      return (
+        <section className={styles.workflowCard}>
+          <div className={styles.emptyState}>Loading medical history...</div>
+        </section>
+      );
+    }
 
-          return (
-            <article key={recordKey} className={styles.medicalHistoryCard}>
-              <div className={styles.medicalHistoryTop}>
-                <div>
-                  <p className={styles.historyDate}>
-                    {item.appointment.date || "Unknown date"}
-                  </p>
-                  <h3>{item.appointment.services || "Consultation"}</h3>
-                  <span>Status: {item.appointment.status || "—"}</span>
-                </div>
+    if (sortedPatientVisitHistory.length === 0) {
+      return (
+        <section className={styles.workflowCard}>
+          <div className={styles.emptyState}>
+            No completed medical history or AI analysis history yet.
+          </div>
+        </section>
+      );
+    }
 
-                <div className={styles.resultBadgeStack}>
-                  <span
-                    className={`${styles.statusBadge} ${
-                      report ? styles.badgeCompleted : styles.badgePending
-                    }`}
-                  >
-                    {report ? "Doctor Report Saved" : "AI Result Only"}
-                  </span>
+    return (
+      <section className={styles.workflowCard}>
+        <div className={styles.cardHeader}>
+          <div>
+            <p className={styles.eyebrow}>Medical History</p>
+            <h2>All Patient Doctor Records</h2>
+            <p>
+              Doctor diagnosis, prescriptions, notes, and follow-up plans are shown
+              first. AI results are kept separate and can be opened when needed.
+            </p>
+          </div>
+        </div>
 
-                  {linkedAnalysis && (
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() =>
-                        openAiResultModal(appointmentTitle, linkedAnalysis)
-                      }
-                    >
-                      View AI Result
-                    </button>
-                  )}
-                </div>
-              </div>
+        <div className={styles.medicalHistoryList}>
+          {sortedPatientVisitHistory.map((item) => {
+            const linkedAnalysis = item.linkedAnalysis;
+            const report = item.report;
+            const prescriptionItems = parsePrescriptionEntries(
+              report?.doctor_prescription
+            );
+            const recordKey = `${item.appointment.id}-${
+              report?.id || linkedAnalysis?.id || "record"
+            }`;
+            const appointmentTitle = `${item.appointment.date || "Unknown date"} • ${
+              item.appointment.services || "Consultation"
+            }`;
 
-              {report ? (
-                <div className={styles.medicalHistoryDetails}>
-                  <div className={styles.historyInfoGrid}>
-                    <div className={styles.historyInfoBox}>
-                      <span>Doctor Final Diagnosis</span>
-                      <strong>{report.doctor_final_diagnosis || "—"}</strong>
-                    </div>
+            return (
+              <article key={recordKey} className={styles.medicalHistoryCard}>
+                <div className={styles.medicalHistoryTop}>
+                  <div>
+                    <p className={styles.historyDate}>
+                      {item.appointment.date || "Unknown date"}
+                    </p>
+                    <h3>{item.appointment.services || "Consultation"}</h3>
+                    <span>Status: {item.appointment.status || "—"}</span>
                   </div>
 
-                  <div className={styles.historyPrescriptionBox}>
-                    <h4>Doctor Prescription</h4>
+                  <div className={styles.resultBadgeStack}>
+                    <span
+                      className={`${styles.statusBadge} ${
+                        report ? styles.badgeCompleted : styles.badgePending
+                      }`}
+                    >
+                      {report ? "Doctor Report Saved" : "AI Result Only"}
+                    </span>
 
-                    {prescriptionItems.length === 0 ? (
-                      <div className={styles.emptyStateSmall}>
-                        No doctor prescription was saved for this visit.
+                    {linkedAnalysis && (
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() =>
+                          openAiResultModal(appointmentTitle, linkedAnalysis)
+                        }
+                      >
+                        View AI Result
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {report ? (
+                  <div className={styles.medicalHistoryDetails}>
+                    <div className={styles.historyInfoGrid}>
+                      <div className={styles.historyInfoBox}>
+                        <span>Doctor Final Diagnosis</span>
+                        <strong>{report.doctor_final_diagnosis || "—"}</strong>
                       </div>
-                    ) : (
-                      <div className={styles.medicationStack}>
-                        {prescriptionItems.map((item, index) => (
-                          <div
-                            key={`${item.medication}-${index}`}
-                            className={styles.medicationCard}
-                          >
-                            <strong>{item.medication}</strong>
+                    </div>
 
-                            <div className={styles.medicationRow}>
-                              <span>Usage</span>
-                              <p>{item.usage || "—"}</p>
-                            </div>
+                    <div className={styles.historyPrescriptionBox}>
+                      <h4>Doctor Prescription</h4>
 
-                            <div className={styles.medicationRow}>
-                              <span>Reason</span>
-                              <p>{item.reason || "—"}</p>
+                      {prescriptionItems.length === 0 ? (
+                        <div className={styles.emptyStateSmall}>
+                          No doctor prescription was saved for this visit.
+                        </div>
+                      ) : (
+                        <div className={styles.medicationStack}>
+                          {prescriptionItems.map((item, index) => (
+                            <div
+                              key={`${item.medication}-${index}`}
+                              className={styles.medicationCard}
+                            >
+                              <strong>{item.medication}</strong>
+
+                              <div className={styles.medicationRow}>
+                                <span>Usage</span>
+                                <p>{item.usage || "—"}</p>
+                              </div>
+
+                              <div className={styles.medicationRow}>
+                                <span>Reason</span>
+                                <p>{item.reason || "—"}</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.historyFollowUpBox}>
+                      <span>Doctor Notes</span>
+                      <p>{getDoctorOnlyNote(report.after_appointment_notes)}</p>
+                    </div>
+
+                    <div className={styles.historyFollowUpBox}>
+                      <span>Follow-up Plan</span>
+                      <p>{report.follow_up_plan || "—"}</p>
+                    </div>
+
+                    {report.next_visit_date && (
+                      <div className={styles.historyFollowUpBox}>
+                        <span>Next Visit Date</span>
+                        <p>{report.next_visit_date}</p>
                       </div>
                     )}
                   </div>
-
-                  <div className={styles.historyFollowUpBox}>
-                    <span>Doctor Notes</span>
-                    <p>{getDoctorOnlyNote(report.after_appointment_notes)}</p>
+                ) : (
+                  <div className={styles.warningBlock}>
+                    <strong>No doctor final report saved yet.</strong>
+                    <p>
+                      This visit has an AI analysis result, but the doctor has not
+                      saved the final diagnosis, prescription, notes, and follow-up
+                      plan yet.
+                    </p>
                   </div>
-
-                  <div className={styles.historyFollowUpBox}>
-                    <span>Follow-up Plan</span>
-                    <p>{report.follow_up_plan || "—"}</p>
-                  </div>
-
-                  {report.next_visit_date && (
-                    <div className={styles.historyFollowUpBox}>
-                      <span>Next Visit Date</span>
-                      <p>{report.next_visit_date}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className={styles.warningBlock}>
-                  <strong>No doctor final report saved yet.</strong>
-                  <p>
-                    This visit has an AI analysis result, but the doctor has not
-                    saved the final diagnosis, prescription, notes, and follow-up
-                    plan yet.
-                  </p>
-                </div>
-              )}
-
-
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-};
-
-
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <>
@@ -2284,7 +2257,6 @@ const renderHistoryStage = () => {
       <main className={styles.pageShell}>
         <section className={styles.pageHeader}>
           <div>
-       
             <h1>AI Skin Analysis</h1>
             <p>
               Run AI scans, complete doctor assessment, review final reports, and
@@ -2304,7 +2276,6 @@ const renderHistoryStage = () => {
             <div className={styles.patientPickerCard}>
               <div className={styles.patientPickerHeader}>
                 <div>
-                 
                   <h2>Patients</h2>
                   <p>
                     Search and select a patient to open the clinical AI analysis
@@ -2580,6 +2551,7 @@ const renderHistoryStage = () => {
     </>
   );
 }
+
 export default function DoctorAiAnalysisPage() {
   return (
     <Suspense

@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -36,7 +35,6 @@ app.add_middleware(
 )
 
 
-# ROUTERS
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(ai_analysis.router)
@@ -44,6 +42,7 @@ app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(admin.router)
 app.include_router(doctor_router)
+
 
 @app.get("/health")
 def health_check():
@@ -65,6 +64,3 @@ def db_check(db: Session = Depends(get_db)):
         return {"db": "connected"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {e}")
-
-
-app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")

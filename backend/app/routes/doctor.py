@@ -479,7 +479,7 @@ def get_patient_history_for_doctor(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    patient = db.query(User).filter(User.id == patient_id, User.role == "patient").first()
+    patient = db.query(User).filter(User.id == patient_id).first()
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -491,17 +491,33 @@ def get_patient_history_for_doctor(
         .all()
     )
 
+    appointments = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.patient_id == patient_id)
+        .order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc())
+        .all()
+    )
+
     history = []
 
-    for report in reports:
-        appointment = (
-            db.query(AppointmentModel)
-            .filter(AppointmentModel.id == report.appointment_id)
+    for appointment in appointments:
+        report = (
+            db.query(DiagnosisReport)
+            .filter(DiagnosisReport.appointment_id == appointment.id)
+            .order_by(DiagnosisReport.created_at.desc())
             .first()
         )
 
+        analyses = (
+            db.query(SkinAnalysis)
+            .filter(SkinAnalysis.appointment_id == appointment.id)
+            .order_by(SkinAnalysis.created_at.desc())
+            .all()
+        )
+
         linked_analysis = None
-        if report.skin_analysis_id:
+
+        if report and report.skin_analysis_id:
             linked_analysis = (
                 db.query(SkinAnalysis)
                 .filter(SkinAnalysis.id == report.skin_analysis_id)
@@ -509,23 +525,28 @@ def get_patient_history_for_doctor(
             )
 
         report_doctor = None
-        if report.doctor_id:
+
+        if report and report.doctor_id:
             report_doctor = db.query(User).filter(User.id == report.doctor_id).first()
 
-        history.append({
-            "appointment": serialize_appointment(appointment) if appointment else None,
-            "report": serialize_diagnosis_report(report),
-            "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
-            "doctor": {
-                "id": report_doctor.id,
-                "name": report_doctor.name,
-                "email": report_doctor.email,
-            } if report_doctor else None,
-        })
+        history.append(
+            {
+                "appointment": serialize_appointment(appointment),
+                "report": serialize_diagnosis_report(report) if report else None,
+                "linked_analysis": serialize_analysis(linked_analysis) if linked_analysis else None,
+                "analyses": [serialize_analysis(analysis) for analysis in analyses],
+                "doctor": {
+                    "id": report_doctor.id,
+                    "name": report_doctor.name,
+                    "email": report_doctor.email,
+                } if report_doctor else None,
+            }
+        )
 
     return {
         "patient": serialize_patient_basic(patient),
-        "total_reports": len(history),
+        "total_reports": len(reports),
+        "total_appointments": len(appointments),
         "history": history,
     }
     

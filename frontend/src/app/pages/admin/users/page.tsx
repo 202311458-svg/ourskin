@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    fetch("http://127.0.0.1:8000/admin/users", {
+    fetch(`${API_BASE_URL}/admin/users`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
