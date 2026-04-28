@@ -63,7 +63,7 @@ export default function DoctorNavbar() {
       icon: <FaUserClock />,
     },
     {
-      name: "Settings",
+      name: "Profile",
       path: "/pages/doctor/settings",
       icon: <FaCog />,
     },

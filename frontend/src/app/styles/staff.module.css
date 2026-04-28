@@ -657,3 +657,295 @@
 :global(body.darkMode) .modalCloseBtn:hover {
   background: rgba(244, 114, 182, 0.12) !important;
 }
+/* =========================================================
+   OURSKIN RESPONSIVE STABILITY PATCH
+   Keep this block at the bottom of this CSS module.
+   ========================================================= */
+
+.tableCard,
+.tableWrapper,
+.calendarScroll,
+.modalPanel,
+.patientList,
+.aiWorkspace {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+  .pageWrapper,
+  .page,
+  .pageShell,
+  .bookPage,
+  .bookPageCollapsed,
+  :global(body.navCollapsed) .pageWrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .pageWrapper,
+  .page,
+  .pageShell,
+  .bookPage,
+  .bookPageCollapsed {
+    padding-top: 88px !important;
+  }
+
+  .dashboardGrid,
+  .dashboardTopGrid,
+  .doctorDashboardGrid,
+  .twoColumnGrid,
+  .aiLayout,
+  .aiPanelGrid,
+  .aiMainGrid,
+  .reportGrid,
+  .medicalHistoryGrid,
+  .modalGrid,
+  .profileGrid,
+  .grid,
+  .step1Wrapper,
+  .twoColumnGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .step1Wrapper,
+  .heroSection,
+  .aiBox {
+    flex-direction: column;
+  }
+
+  .statsGrid,
+  .summaryGrid,
+  .cardGrid,
+  .aiWorkspaceSummary,
+  .aiCompactContext,
+  .rateGrid,
+  .detailsGrid,
+  .cardDetails,
+  .breakdownGrid,
+  .patientListPicker,
+  .summaryMetrics,
+  .detailSectionGrid,
+  .assessmentForm,
+  .prescriptionBox {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerRow,
+  .dashboardHeader,
+  .pageHeader,
+  .cardTop,
+  .cardHeader,
+  .modalHeader,
+  .sectionHeader,
+  .listHeader,
+  .searchRow,
+  .requestCard,
+  .infoRow,
+  .historyHeader,
+  .patientSummaryCard,
+  .aiResultHeader,
+  .aiWorkspaceHeader,
+  .stackCardHeader,
+  .fieldHeader,
+  .urgentCaseTop,
+  .recentAppointmentTop,
+  .pendingTopRow {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .statsGrid,
+  .summaryGrid,
+  .cardGrid,
+  .aiWorkspaceSummary,
+  .aiCompactContext,
+  .rateGrid,
+  .detailsGrid,
+  .cardDetails,
+  .breakdownGrid,
+  .patientListPicker,
+  .summaryMetrics,
+  .detailSectionGrid,
+  .assessmentForm,
+  .prescriptionBox,
+  .modalAppointmentBox {
+    grid-template-columns: 1fr !important;
+  }
+
+  .title,
+  .pageTitle,
+  .h1,
+  .historyContainer h1,
+  .pageHeader h1,
+  .greetingTitle {
+    font-size: 26px !important;
+    line-height: 1.2 !important;
+  }
+
+  .subtitle,
+  .pageSubtitle,
+  .pageSubtext,
+  .greetingSubtitle {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+  }
+
+  .tableCard,
+  .tableWrapper {
+    overflow-x: auto !important;
+  }
+
+  .table,
+  .dataTable {
+    min-width: 760px;
+  }
+
+  .searchInput,
+  .selectInput,
+  .addButton,
+  .refreshButton,
+  .primaryButton,
+  .secondaryButton,
+  .primaryBtn,
+  .btnBook,
+  .cancelRequestButton,
+  .acceptBtn,
+  .declineBtn,
+  .secondaryBtn,
+  .actionBtn,
+  .approveBtn,
+  .declineBtn,
+  .cancelBtn,
+  .confirmDeclineBtn,
+  .cancelAppointmentBtn,
+  .navButton,
+  .aiSuggestionButton,
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn,
+  .noAction {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .actions,
+  .actionButtons,
+  .buttonRow,
+  .modalActions,
+  .confirmActions,
+  .formActions,
+  .heroActions,
+  .patientHeaderActions,
+  .listRight,
+  .cardFooter {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .filterRow,
+  .filtersRow,
+  .filterRowInside,
+  .aiTabs,
+  .navButtons {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .modalOverlay {
+    padding: 14px !important;
+    align-items: flex-start !important;
+  }
+
+  .modalCard,
+  .modalCardLarge,
+  .modalPanel,
+  .confirmCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - 28px) !important;
+    border-radius: 18px !important;
+    padding: 18px !important;
+  }
+
+  .card,
+  .sectionCard,
+  .dashboardCard,
+  .workflowCard,
+  .patientPickerCard,
+  .patientSummaryCard,
+  .listCard,
+  .reportCard,
+  .statCard,
+  .summaryCard,
+  .searchBox,
+  .emptyState {
+    border-radius: 16px !important;
+    padding: 18px !important;
+  }
+
+  .analysisImage,
+  .analysisImageLarge,
+  .imagePlaceholder {
+    max-height: 280px !important;
+    height: auto !important;
+  }
+
+  .doctorSidebar {
+    width: 100% !important;
+    padding: 20px !important;
+  }
+
+  .stepper {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    padding-bottom: 8px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .pageWrapper,
+  .page,
+  .pageShell,
+  .bookPage,
+  .bookPageCollapsed {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .title,
+  .pageTitle,
+  .h1,
+  .historyContainer h1,
+  .pageHeader h1,
+  .greetingTitle {
+    font-size: 24px !important;
+  }
+
+  .statCard strong,
+  .statValue,
+  .doctorStatValue,
+  .summaryValue {
+    font-size: 1.6rem !important;
+  }
+
+  .timeSlotsWrapper,
+  .servicesGrid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .doctorCardLarge .doctorImage {
+    width: 140px !important;
+    height: 140px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .timeSlotsWrapper,
+  .servicesGrid {
+    grid-template-columns: 1fr !important;
+  }
+}

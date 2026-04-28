@@ -1,127 +1,133 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import StaffNavbar from "@/app/components/StaffNavbar"
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import StaffNavbar from "@/app/components/StaffNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/profile.module.css"
+import styles from "@/app/styles/profile.module.css";
 
 type StaffProfile = {
-  id?: number
-  name?: string
-  email?: string
-  role?: string
-  status?: string
-  contact?: string | null
-  created_at?: string
-  photo?: string | null
-  profile_image?: string | null
-}
+  id?: number;
+  name?: string | null;
+  email?: string | null;
+  contact?: string | null;
+  phone?: string | null;
+  phone_number?: string | null;
+  profile_image?: string | null;
+};
 
 export default function StaffProfilePage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [profile, setProfile] = useState<StaffProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(false);
 
-  const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [updatingPassword, setUpdatingPassword] = useState(false)
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const loadProfile = useCallback(async () => {
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      router.push("/")
-      return
+      router.push("/");
+      return;
     }
 
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError("");
 
     try {
       const res = await fetch(`${API_BASE_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const data = await res.json()
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to fetch profile")
+        throw new Error(
+          data?.detail || data?.message || "Unable to load profile."
+        );
       }
 
-      setProfile(data)
+      setProfile(data);
     } catch (err) {
-      console.error("Profile load failed:", err)
-      setError("Unable to load profile details.")
-      setProfile(null)
+      console.error("Failed to load staff profile:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load staff profile details."
+      );
+      setProfile(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [router])
+  }, [router]);
 
   useEffect(() => {
-    const role = localStorage.getItem("role")
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-    if (role !== "staff") {
-      router.push("/")
-      return
+    if (!token || role !== "staff") {
+      router.push("/");
+      return;
     }
 
-    loadProfile()
-  }, [loadProfile, router])
+    loadProfile();
+  }, [loadProfile, router]);
 
   useEffect(() => {
     const sync = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"))
-    }
+      setCollapsed(document.body.classList.contains("navCollapsed"));
+    };
 
-    sync()
-    window.addEventListener("navbarToggle", sync)
+    sync();
+    window.addEventListener("navbarToggle", sync);
 
-    return () => window.removeEventListener("navbarToggle", sync)
-  }, [])
+    return () => window.removeEventListener("navbarToggle", sync);
+  }, []);
 
   const resetPasswordForm = () => {
-    setShowPasswordForm(false)
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-    setShowCurrent(false)
-    setShowNew(false)
-    setShowConfirm(false)
-  }
+    setShowPasswordForm(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowCurrent(false);
+    setShowNew(false);
+    setShowConfirm(false);
+  };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.")
-      return
+      alert("Please fill in all password fields.");
+      return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match.")
-      return
+      alert("Passwords do not match.");
+      return;
     }
 
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("You are not logged in.")
-      router.push("/")
-      return
+      alert("You are not logged in.");
+      router.push("/");
+      return;
     }
 
-    setUpdatingPassword(true)
+    setUpdatingPassword(true);
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
@@ -134,27 +140,35 @@ export default function StaffProfilePage() {
           current_password: currentPassword,
           new_password: newPassword,
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data.detail || "Password update failed")
+        throw new Error(
+          data?.detail || data?.message || "Password update failed."
+        );
       }
 
-      alert("Password updated successfully.")
-      resetPasswordForm()
+      alert("Password updated successfully.");
+      resetPasswordForm();
     } catch (err) {
-      console.error("Password change failed:", err)
-      alert(err instanceof Error ? err.message : "Password update failed")
+      console.error("Password change failed:", err);
+      alert(err instanceof Error ? err.message : "Password update failed.");
     } finally {
-      setUpdatingPassword(false)
+      setUpdatingPassword(false);
     }
-  }
+  };
 
-  const profileImage = profile?.photo || profile?.profile_image || null
-  const displayName = profile?.name || "Staff User"
-  const firstLetter = displayName.charAt(0).toUpperCase()
+  const displayName = profile?.name || "Staff User";
+  const firstLetter = displayName.charAt(0).toUpperCase();
+  const profileImage = profile?.profile_image || null;
+
+  const phoneNumber =
+    profile?.contact ||
+    profile?.phone ||
+    profile?.phone_number ||
+    "Not provided";
 
   return (
     <>
@@ -168,11 +182,11 @@ export default function StaffProfilePage() {
           </div>
 
           {loading ? (
-            <p>Loading...</p>
+            <p className={styles.loading}>Loading...</p>
           ) : error ? (
-            <p>{error}</p>
+            <p className={styles.error}>{error}</p>
           ) : !profile ? (
-            <p>Unable to load profile</p>
+            <p className={styles.error}>Unable to load profile.</p>
           ) : (
             <div className={styles.grid}>
               <div className={styles.cardLarge}>
@@ -191,9 +205,7 @@ export default function StaffProfilePage() {
 
                   <div>
                     <h2>{displayName}</h2>
-                    <p className={styles.subText}>
-                      {profile.role ? `${profile.role} Account` : "Staff Account"}
-                    </p>
+                    <p className={styles.subText}>Staff Account</p>
                   </div>
                 </div>
 
@@ -201,26 +213,20 @@ export default function StaffProfilePage() {
 
                 <div className={styles.infoBlock}>
                   <div className={styles.infoRow}>
+                    <span>Full Name</span>
+                    <span>{profile.name || "Not available"}</span>
+                  </div>
+
+                  <div className={styles.infoRow}>
                     <span>Email</span>
                     <span>{profile.email || "Not available"}</span>
                   </div>
 
                   <div className={styles.infoRow}>
-                    <span>Contact</span>
-                    <span>{profile.contact || "Not provided"}</span>
+                    <span>Phone Number</span>
+                    <span>{phoneNumber}</span>
                   </div>
-
-                  <div className={styles.infoRow}>
-                    <span>Status</span>
-                    <span>{profile.status || "Not available"}</span>
-                  </div>
-
-
                 </div>
-
-                <button className={styles.primaryBtn} onClick={loadProfile}>
-                  Refresh Profile
-                </button>
               </div>
 
               <div className={styles.card}>
@@ -309,5 +315,5 @@ export default function StaffProfilePage() {
         </div>
       </main>
     </>
-  )
+  );
 }
