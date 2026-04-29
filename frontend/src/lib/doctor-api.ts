@@ -30,6 +30,7 @@ export type Analysis = {
   appointment_id: number;
   uploaded_by_id?: number | null;
   image_path: string;
+  image_url?: string | null;
   condition: string;
   confidence: number;
   severity: string;

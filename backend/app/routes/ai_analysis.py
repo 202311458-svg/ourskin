@@ -122,7 +122,7 @@ def serialize_analysis(analysis: SkinAnalysis) -> dict:
         "id": analysis.id,
         "appointment_id": analysis.appointment_id,
         "uploaded_by_id": analysis.uploaded_by_id,
-        "image_path": create_signed_image_url(analysis.image_path),
+        "image_path": create_signed_image_url(analysis.image_path), 
         "condition": analysis.condition,
         "confidence": analysis.confidence,
         "severity": analysis.severity,

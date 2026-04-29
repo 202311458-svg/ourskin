@@ -82,20 +82,36 @@ def clean_storage_path(path: Optional[str]) -> Optional[str]:
     if not path:
         return None
 
-    cleaned = path.strip()
+    cleaned = path.replace("\\", "/").strip()
+
+    if not cleaned:
+        return None
 
     if cleaned.startswith("http://") or cleaned.startswith("https://"):
-        marker = f"/{SUPABASE_STORAGE_BUCKET}/"
+        from urllib.parse import unquote, urlparse
 
-        if marker in cleaned:
-            cleaned = cleaned.split(marker, 1)[1]
-        else:
-            return cleaned
+        parsed = urlparse(cleaned)
+        decoded_path = unquote(parsed.path)
 
-    cleaned = cleaned.lstrip("/")
+        markers = [
+            f"/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/",
+            f"/storage/v1/object/sign/{SUPABASE_STORAGE_BUCKET}/",
+            f"/storage/v1/object/authenticated/{SUPABASE_STORAGE_BUCKET}/",
+            f"/{SUPABASE_STORAGE_BUCKET}/",
+        ]
 
-    return cleaned
+        for marker in markers:
+            if marker in decoded_path:
+                return decoded_path.split(marker, 1)[1].lstrip("/")
 
+        return cleaned
+
+    bucket_prefix = f"{SUPABASE_STORAGE_BUCKET}/"
+
+    if cleaned.startswith(bucket_prefix):
+        cleaned = cleaned[len(bucket_prefix):]
+
+    return cleaned.lstrip("/")
 
 def save_temp_image(file_or_bytes: Any, extension: str | None = None) -> str:
     """
@@ -276,23 +292,39 @@ def create_signed_image_url(storage_path: str | None, expires_in: int = 3600) ->
             expires_in,
         )
 
+        signed_url = ""
+
         if isinstance(response, dict):
-            return (
+            signed_url = (
                 response.get("signedURL")
                 or response.get("signedUrl")
                 or response.get("signed_url")
                 or ""
             )
 
-        signed_url = getattr(response, "signed_url", None)
-        if signed_url:
-            return signed_url
+            data = response.get("data")
 
-        signed_url = getattr(response, "signedURL", None)
-        if signed_url:
-            return signed_url
+            if isinstance(data, dict):
+                signed_url = (
+                    signed_url
+                    or data.get("signedURL")
+                    or data.get("signedUrl")
+                    or data.get("signed_url")
+                    or ""
+                )
 
-        return ""
+        if not signed_url:
+            signed_url = (
+                getattr(response, "signed_url", None)
+                or getattr(response, "signedURL", None)
+                or getattr(response, "signedUrl", None)
+                or ""
+            )
+
+        if signed_url and signed_url.startswith("/"):
+            return f"{SUPABASE_URL.strip()}{signed_url}"
+
+        return signed_url or ""
 
     except StorageApiError as e:
         error_text = str(e)

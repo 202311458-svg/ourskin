@@ -6,6 +6,7 @@ import DoctorNavbar from "@/app/components/DoctorNavbar";
 import Calendar from "@/app/components/Calendar";
 import styles from "@/app/styles/doctor.module.css";
 import { getDoctorDashboard, type DashboardData } from "@/lib/doctor-api";
+import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
 
 type DashboardAppointment = {
   id: number;
@@ -114,9 +115,11 @@ export default function DoctorDashboardPage() {
   const [data, setData] = useState<DoctorDashboardView | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
 
       const result = await getDoctorDashboard();
       setData(result as DoctorDashboardView);
@@ -124,7 +127,9 @@ export default function DoctorDashboardPage() {
       console.error("Failed to load doctor dashboard:", error);
       setData(null);
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -139,6 +144,12 @@ export default function DoctorDashboardPage() {
 
     loadDashboard();
   }, [router, loadDashboard]);
+
+  useAutoRefresh(() => loadDashboard(false), {
+    enabled: true,
+    intervalMs: 5000,
+    pause: loading,
+  });
 
   const stats: DashboardStats = data?.stats ?? {};
 

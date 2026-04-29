@@ -14,6 +14,7 @@ from app.schemas.appointment import AppointmentStatusUpdate
 from app.models.diagnosis_report import DiagnosisReport
 from app.models.appointment_log import AppointmentLog
 from app.schemas.diagnosis_report import DiagnosisReportCreate
+from app.core.storage import create_signed_image_url
 
 router = APIRouter(prefix="/doctor", tags=["Doctor Portal"])
 
@@ -49,11 +50,17 @@ def serialize_appointment(appt: AppointmentModel):
 
 
 def serialize_analysis(analysis: SkinAnalysis):
+    if not analysis:
+        return None
+
     return {
         "id": analysis.id,
         "appointment_id": analysis.appointment_id,
         "uploaded_by_id": analysis.uploaded_by_id,
+
         "image_path": analysis.image_path,
+        "image_url": create_signed_image_url(analysis.image_path),
+
         "condition": analysis.condition,
         "confidence": analysis.confidence,
         "severity": analysis.severity,
@@ -379,18 +386,6 @@ def get_diagnosis_report_by_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    # Capstone testing note:
-    # Do not block by assigned doctor for now.
-    # This lets any logged-in doctor account view saved diagnosis reports.
-    #
-    # Restore this later when real doctor assignment is required:
-    #
-    # if appointment.doctor_id and appointment.doctor_id != current_user.id:
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="You can only view diagnosis reports for your own appointments"
-    #     )
-
     report = (
         db.query(DiagnosisReport)
         .filter(DiagnosisReport.appointment_id == appointment_id)
@@ -417,10 +412,8 @@ def get_diagnosis_report_by_appointment(
         "appointment_id": appointment.id,
         "appointment": serialize_appointment(appointment),
 
-        # Keep the original nested report.
         "report": serialize_diagnosis_report(report),
 
-        # Also return flattened fields so the frontend can read them easily.
         "final_diagnosis": report.doctor_final_diagnosis,
         "doctor_final_diagnosis": report.doctor_final_diagnosis,
         "doctor_prescription": report.doctor_prescription,
