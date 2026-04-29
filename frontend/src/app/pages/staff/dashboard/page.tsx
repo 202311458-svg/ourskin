@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api"
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -23,6 +23,87 @@ type DashboardData = {
   confirmed: Appointment[]
 }
 
+type SubmittingAction = {
+  id: number
+  action: "approve" | "decline"
+} | null
+
+const declineReasons = [
+  "Conflict in schedule. Kindly select a new schedule.",
+  "Doctor is unavailable on the selected date.",
+  "Incomplete patient information. Please update your details.",
+  "Requested service is not available.",
+  "Duplicate appointment detected.",
+  "Other",
+]
+
+const normalizeStatus = (status?: string | null) => {
+  const cleanStatus = (status || "").trim().toLowerCase()
+
+  if (cleanStatus === "pending") return "Pending"
+  if (cleanStatus === "approved") return "Approved"
+  if (cleanStatus === "confirmed") return "Approved"
+  if (cleanStatus === "completed") return "Completed"
+  if (cleanStatus === "declined") return "Declined"
+  if (cleanStatus === "cancelled") return "Cancelled"
+  if (cleanStatus === "canceled") return "Cancelled"
+
+  return status?.trim() || "Unknown"
+}
+
+const getAppointmentsArray = (data: unknown): Appointment[] => {
+  if (Array.isArray(data)) return data as Appointment[]
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { appointments?: unknown }).appointments)
+  ) {
+    return (data as { appointments: Appointment[] }).appointments
+  }
+
+  return []
+}
+
+const uniqueAppointmentsById = (appointments: Appointment[]) => {
+  return Array.from(
+    new Map(
+      appointments.map((appt) => [
+        appt.id,
+        {
+          ...appt,
+          status: normalizeStatus(appt.status),
+        },
+      ])
+    ).values()
+  )
+}
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text()
+
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+const getErrorMessage = (result: unknown, fallback: string) => {
+  if (
+    result &&
+    typeof result === "object" &&
+    "detail" in result &&
+    typeof (result as { detail?: unknown }).detail === "string"
+  ) {
+    return (result as { detail: string }).detail
+  }
+
+  return fallback
+}
+
 export default function StaffDashboard() {
   const router = useRouter()
 
@@ -31,24 +112,16 @@ export default function StaffDashboard() {
     requests: [],
     confirmed: [],
   })
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [submittingId, setSubmittingId] = useState<number | null>(null)
+  const [submittingAction, setSubmittingAction] =
+    useState<SubmittingAction>(null)
 
-  // DECLINE MODAL STATES (ADDED ONLY)
   const [declineOpen, setDeclineOpen] = useState(false)
   const [declineTargetId, setDeclineTargetId] = useState<number | null>(null)
   const [selectedReason, setSelectedReason] = useState("")
   const [otherReason, setOtherReason] = useState("")
-
-  const declineReasons = [
-    "Conflict in schedule. Kindly select a new schedule.",
-    "Doctor is unavailable on the selected date.",
-    "Incomplete patient information. Please update your details.",
-    "Requested service is not available.",
-    "Duplicate appointment detected.",
-    "Other",
-  ]
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -74,57 +147,68 @@ export default function StaffDashboard() {
     return new Date(`${appt.date}T${appt.time}`).getTime()
   }
 
-  const loadDashboard = useCallback(async () => {
-    const token = localStorage.getItem("token")
+  const fetchAppointmentList = async (endpoint: string, token: string) => {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
 
-    if (!token) {
-      router.push("/")
-      return
+    const result = await readJsonSafely(res)
+
+    if (!res.ok) {
+      console.error(`${endpoint} request failed:`, {
+        status: res.status,
+        result,
+      })
+
+      return []
     }
 
-    setLoading(true)
-    setError("")
+    return uniqueAppointmentsById(getAppointmentsArray(result))
+  }
 
-    try {
-      const [todayRes, requestsRes, confirmedRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/appointments/today`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-       fetch(`${API_BASE_URL}/appointments/requests`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-       fetch(`${API_BASE_URL}/appointments/confirmed`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ])
+  const loadDashboard = useCallback(
+    async (showLoader = true) => {
+      const token = localStorage.getItem("token")
 
-      const [todayData, requestsData, confirmedData] = await Promise.all([
-        todayRes.json(),
-        requestsRes.json(),
-        confirmedRes.json(),
-      ])
-
-      if (!todayRes.ok || !requestsRes.ok || !confirmedRes.ok) {
-        throw new Error("Failed to load dashboard data")
+      if (!token) {
+        router.push("/")
+        return
       }
 
-      setData({
-        today: Array.isArray(todayData) ? todayData : [],
-        requests: Array.isArray(requestsData) ? requestsData : [],
-        confirmed: Array.isArray(confirmedData) ? confirmedData : [],
-      })
-    } catch (err) {
-      console.error("Dashboard load failed:", err)
-      setError("Unable to load dashboard data right now.")
-      setData({
-        today: [],
-        requests: [],
-        confirmed: [],
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [router])
+      if (showLoader) {
+        setLoading(true)
+      }
+
+      setError("")
+
+      try {
+        const [todayData, requestsData, confirmedData] = await Promise.all([
+          fetchAppointmentList("/appointments/today", token),
+          fetchAppointmentList("/appointments/requests", token),
+          fetchAppointmentList("/appointments/confirmed", token),
+        ])
+
+        setData({
+          today: uniqueAppointmentsById(todayData),
+          requests: uniqueAppointmentsById(requestsData),
+          confirmed: uniqueAppointmentsById(confirmedData),
+        })
+      } catch (err) {
+        console.error("Dashboard load failed:", err)
+        setError("Unable to load dashboard data right now.")
+        setData({
+          today: [],
+          requests: [],
+          confirmed: [],
+        })
+      } finally {
+        if (showLoader) {
+          setLoading(false)
+        }
+      }
+    },
+    [router]
+  )
 
   useEffect(() => {
     const role = localStorage.getItem("role")
@@ -137,23 +221,69 @@ export default function StaffDashboard() {
     loadDashboard()
   }, [loadDashboard, router])
 
+  useEffect(() => {
+    const role = localStorage.getItem("role")
+
+    if (role !== "staff") return
+
+    const refreshDashboardQuietly = () => {
+      if (document.hidden) return
+      if (submittingAction !== null) return
+      if (declineOpen) return
+
+      loadDashboard(false)
+    }
+
+    const intervalId = window.setInterval(refreshDashboardQuietly, 3000)
+
+    const handleFocus = () => {
+      refreshDashboardQuietly()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshDashboardQuietly()
+      }
+    }
+
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [loadDashboard, submittingAction, declineOpen])
+
   const sortedToday = useMemo(() => {
-    return [...data.today].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
+    return uniqueAppointmentsById(data.today)
+      .filter((appt) => normalizeStatus(appt.status) === "Approved")
+      .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [data.today])
 
   const pendingRequests = useMemo(() => {
-    return [...data.requests].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
+    return uniqueAppointmentsById(data.requests)
+      .filter((appt) => normalizeStatus(appt.status) === "Pending")
+      .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [data.requests])
 
   const upcomingConfirmed = useMemo(() => {
     const now = Date.now()
 
-    return [...data.confirmed]
+    return uniqueAppointmentsById(data.confirmed)
+      .filter((appt) => normalizeStatus(appt.status) === "Approved")
       .filter((appt) => getDateTimeValue(appt) >= now)
       .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [data.confirmed])
 
-  // MODIFIED ONLY FOR DECLINE FLOW (approval untouched)
+  const resetDeclineModal = () => {
+    setDeclineOpen(false)
+    setDeclineTargetId(null)
+    setSelectedReason("")
+    setOtherReason("")
+  }
+
   const updateStatus = async (id: number, status: "Approved" | "Declined") => {
     const token = localStorage.getItem("token")
 
@@ -162,17 +292,14 @@ export default function StaffDashboard() {
       return
     }
 
-    // OPEN MODAL INSTEAD OF PROMPT
     if (status === "Declined") {
       setDeclineTargetId(id)
       setDeclineOpen(true)
       return
     }
 
-    const payload = { status: "Approved" }
-
     try {
-      setSubmittingId(id)
+      setSubmittingAction({ id, action: "approve" })
 
       const res = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
         method: "PUT",
@@ -180,29 +307,53 @@ export default function StaffDashboard() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ status: "Approved" }),
       })
 
-      const result = await res.json()
+      const result = await readJsonSafely(res)
 
       if (!res.ok) {
-        throw new Error(result.detail || "Failed to update appointment")
+        throw new Error(
+          getErrorMessage(result, "Failed to approve appointment")
+        )
       }
 
-      await loadDashboard()
+      const approvedAppointment = data.requests.find((appt) => appt.id === id)
+
+      setData((prev) => ({
+        today: uniqueAppointmentsById(prev.today),
+        requests: uniqueAppointmentsById(
+          prev.requests.filter((appt) => appt.id !== id)
+        ),
+        confirmed: approvedAppointment
+          ? uniqueAppointmentsById([
+              ...prev.confirmed,
+              {
+                ...approvedAppointment,
+                status: "Approved",
+              },
+            ])
+          : uniqueAppointmentsById(prev.confirmed),
+      }))
+
+      await loadDashboard(false)
     } catch (err) {
-      console.error("Status update failed:", err)
-      alert("Unable to update the appointment status.")
+      console.error("Approval failed:", err)
+      alert("Unable to approve the appointment.")
     } finally {
-      setSubmittingId(null)
+      setSubmittingAction(null)
     }
   }
 
-  // DECLINE CONFIRM ACTION (ADDED ONLY)
   const confirmDecline = async () => {
     if (!declineTargetId) return
 
     const token = localStorage.getItem("token")
+
+    if (!token) {
+      router.push("/")
+      return
+    }
 
     const finalReason =
       selectedReason === "Other" ? otherReason.trim() : selectedReason
@@ -213,7 +364,7 @@ export default function StaffDashboard() {
     }
 
     try {
-      setSubmittingId(declineTargetId)
+      setSubmittingAction({ id: declineTargetId, action: "decline" })
 
       const res = await fetch(
         `${API_BASE_URL}/appointments/${declineTargetId}/status`,
@@ -230,23 +381,32 @@ export default function StaffDashboard() {
         }
       )
 
-      const result = await res.json()
+      const result = await readJsonSafely(res)
 
       if (!res.ok) {
-        throw new Error(result.detail || "Failed to update appointment")
+        throw new Error(
+          getErrorMessage(result, "Failed to decline appointment")
+        )
       }
 
-      setDeclineOpen(false)
-      setDeclineTargetId(null)
-      setSelectedReason("")
-      setOtherReason("")
+      const declinedId = declineTargetId
 
-      await loadDashboard()
+      setData((prev) => ({
+        today: uniqueAppointmentsById(prev.today),
+        requests: uniqueAppointmentsById(
+          prev.requests.filter((appt) => appt.id !== declinedId)
+        ),
+        confirmed: uniqueAppointmentsById(prev.confirmed),
+      }))
+
+      resetDeclineModal()
+
+      await loadDashboard(false)
     } catch (err) {
-      console.error(err)
-      alert("Unable to update the appointment status.")
+      console.error("Decline failed:", err)
+      alert("Unable to decline the appointment.")
     } finally {
-      setSubmittingId(null)
+      setSubmittingAction(null)
     }
   }
 
@@ -260,11 +420,16 @@ export default function StaffDashboard() {
             <div>
               <h1>Dashboard</h1>
               <p className={styles.pageSubtext}>
-                Manage today’s clinic flow, pending requests, and upcoming confirmed appointments.
+                Manage today’s clinic flow, pending requests, and upcoming
+                confirmed appointments.
               </p>
             </div>
 
-            <button className={styles.secondaryBtn} onClick={loadDashboard}>
+            <button
+              className={styles.secondaryBtn}
+              onClick={() => loadDashboard()}
+              disabled={submittingAction !== null}
+            >
               Refresh
             </button>
           </div>
@@ -278,7 +443,9 @@ export default function StaffDashboard() {
               <div className={styles.statsGrid}>
                 <div className={styles.statCard}>
                   <div className={styles.statLabel}>Pending Requests</div>
-                  <div className={styles.statValue}>{pendingRequests.length}</div>
+                  <div className={styles.statValue}>
+                    {pendingRequests.length}
+                  </div>
                   <div className={styles.statMeta}>Needs staff action</div>
                 </div>
 
@@ -290,8 +457,12 @@ export default function StaffDashboard() {
 
                 <div className={styles.statCard}>
                   <div className={styles.statLabel}>Confirmed Upcoming</div>
-                  <div className={styles.statValue}>{upcomingConfirmed.length}</div>
-                  <div className={styles.statMeta}>Future approved bookings</div>
+                  <div className={styles.statValue}>
+                    {upcomingConfirmed.length}
+                  </div>
+                  <div className={styles.statMeta}>
+                    Future approved bookings
+                  </div>
                 </div>
               </div>
 
@@ -301,7 +472,9 @@ export default function StaffDashboard() {
                 <div className={styles.listCard}>
                   <div className={styles.listHeader}>
                     <h2>Today’s Schedule</h2>
-                    <span className={`${styles.badge} ${styles.statusApproved}`}>
+                    <span
+                      className={`${styles.badge} ${styles.statusApproved}`}
+                    >
                       {sortedToday.length} today
                     </span>
                   </div>
@@ -319,13 +492,18 @@ export default function StaffDashboard() {
                           <span>
                             {formatDate(appt.date)} at {formatTime(appt.time)}
                           </span>
+
                           {appt.services && (
-                            <p className={styles.detailText}>Service: {appt.services}</p>
+                            <p className={styles.detailText}>
+                              Service: {appt.services}
+                            </p>
                           )}
                         </div>
 
-                        <span className={`${styles.badge} ${styles.statusApproved}`}>
-                          {appt.status}
+                        <span
+                          className={`${styles.badge} ${styles.statusApproved}`}
+                        >
+                          {normalizeStatus(appt.status)}
                         </span>
                       </div>
                     ))
@@ -335,49 +513,72 @@ export default function StaffDashboard() {
                 <div className={styles.listCard}>
                   <div className={styles.listHeader}>
                     <h2>Needs Action</h2>
-                    <span className={`${styles.badge} ${styles.statusPending}`}>
+                    <span
+                      className={`${styles.badge} ${styles.statusPending}`}
+                    >
                       {pendingRequests.length} Pending
                     </span>
                   </div>
 
                   {pendingRequests.length === 0 ? (
-                    <div className={styles.emptyState}>No pending requests right now.</div>
+                    <div className={styles.emptyState}>
+                      No pending requests right now.
+                    </div>
                   ) : (
-                    pendingRequests.slice(0, 5).map((req) => (
-                      <div key={req.id} className={styles.requestCard}>
-                        <div className={styles.requestInfo}>
-                          <b>{req.patient_name}</b>
-                          <p>{req.doctor_name}</p>
-                          <span>
-                            {formatDate(req.date)} at {formatTime(req.time)}
-                          </span>
-                          {req.services && (
-                            <p className={styles.detailText}>Service: {req.services}</p>
-                          )}
-                          <span className={`${styles.badge} ${styles.statusPending}`}>
-                            {req.status}
-                          </span>
-                        </div>
+                    pendingRequests.slice(0, 5).map((req) => {
+                      const isSubmittingThis =
+                        submittingAction?.id === req.id
 
-                        <div className={styles.actions}>
-                          <button
-                            className={styles.acceptBtn}
-                            onClick={() => updateStatus(req.id, "Approved")}
-                            disabled={submittingId === req.id}
-                          >
-                            {submittingId === req.id ? "Saving..." : "Approve"}
-                          </button>
+                      const isApproving =
+                        isSubmittingThis &&
+                        submittingAction?.action === "approve"
 
-                          <button
-                            className={styles.declineBtn}
-                            onClick={() => updateStatus(req.id, "Declined")}
-                            disabled={submittingId === req.id}
-                          >
-                            {submittingId === req.id ? "Saving..." : "Decline"}
-                          </button>
+                      const isDeclining =
+                        isSubmittingThis &&
+                        submittingAction?.action === "decline"
+
+                      return (
+                        <div key={req.id} className={styles.requestCard}>
+                          <div className={styles.requestInfo}>
+                            <b>{req.patient_name}</b>
+                            <p>{req.doctor_name}</p>
+                            <span>
+                              {formatDate(req.date)} at {formatTime(req.time)}
+                            </span>
+
+                            {req.services && (
+                              <p className={styles.detailText}>
+                                Service: {req.services}
+                              </p>
+                            )}
+
+                            <span
+                              className={`${styles.badge} ${styles.statusPending}`}
+                            >
+                              {normalizeStatus(req.status)}
+                            </span>
+                          </div>
+
+                          <div className={styles.actions}>
+                            <button
+                              className={styles.acceptBtn}
+                              onClick={() => updateStatus(req.id, "Approved")}
+                              disabled={isSubmittingThis}
+                            >
+                              {isApproving ? "Approving..." : "Approve"}
+                            </button>
+
+                            <button
+                              className={styles.declineBtn}
+                              onClick={() => updateStatus(req.id, "Declined")}
+                              disabled={isSubmittingThis}
+                            >
+                              {isDeclining ? "Declining..." : "Decline"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </div>
@@ -387,13 +588,17 @@ export default function StaffDashboard() {
               <div className={styles.listCard}>
                 <div className={styles.listHeader}>
                   <h2>Upcoming Confirmed Appointments</h2>
-                  <span className={`${styles.badge} ${styles.statusApproved}`}>
+                  <span
+                    className={`${styles.badge} ${styles.statusApproved}`}
+                  >
                     {upcomingConfirmed.length} Upcoming
                   </span>
                 </div>
 
                 {upcomingConfirmed.length === 0 ? (
-                  <div className={styles.emptyState}>No upcoming confirmed appointments.</div>
+                  <div className={styles.emptyState}>
+                    No upcoming confirmed appointments.
+                  </div>
                 ) : (
                   upcomingConfirmed.slice(0, 6).map((appt) => (
                     <div key={appt.id} className={styles.requestCard}>
@@ -403,13 +608,18 @@ export default function StaffDashboard() {
                         <span>
                           {formatDate(appt.date)} at {formatTime(appt.time)}
                         </span>
+
                         {appt.services && (
-                          <p className={styles.detailText}>Service: {appt.services}</p>
+                          <p className={styles.detailText}>
+                            Service: {appt.services}
+                          </p>
                         )}
                       </div>
 
-                      <span className={`${styles.badge} ${styles.statusApproved}`}>
-                        {appt.status}
+                      <span
+                        className={`${styles.badge} ${styles.statusApproved}`}
+                      >
+                        {normalizeStatus(appt.status)}
                       </span>
                     </div>
                   ))
@@ -420,33 +630,37 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* DECLINE MODAL (ADDED ONLY) */}
       {declineOpen && (
-        <div className={styles.modalOverlay} onClick={() => setDeclineOpen(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay} onClick={resetDeclineModal}>
+          <div
+            className={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
               <h2>Decline Appointment</h2>
               <button
                 className={styles.modalCloseBtn}
-                onClick={() => setDeclineOpen(false)}
+                onClick={resetDeclineModal}
+                disabled={submittingAction !== null}
               >
                 ×
               </button>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {declineReasons.map((r) => (
+              {declineReasons.map((reason) => (
                 <button
-                key={r}
-                className={
-                  selectedReason === r
-                    ? `${styles.acceptBtn}`
-                    : `${styles.secondaryBtn}`
-                }
-                onClick={() => setSelectedReason(r)}
-              >
-                {r}
-              </button>
+                  key={reason}
+                  className={
+                    selectedReason === reason
+                      ? styles.acceptBtn
+                      : styles.secondaryBtn
+                  }
+                  onClick={() => setSelectedReason(reason)}
+                  disabled={submittingAction !== null}
+                >
+                  {reason}
+                </button>
               ))}
 
               {selectedReason === "Other" && (
@@ -454,23 +668,41 @@ export default function StaffDashboard() {
                   placeholder="Enter reason..."
                   value={otherReason}
                   onChange={(e) => setOtherReason(e.target.value)}
+                  disabled={submittingAction !== null}
                   style={{
-                    padding: "10px",
-                    borderRadius: "10px",
-                    border: "1px solid var(--border)",
+                    padding: "12px",
+                    minHeight: "90px",
+                    borderRadius: "12px",
+                    border: "1px solid var(--border-color, #dbe2ea)",
                     resize: "none",
+                    fontFamily: "inherit",
                   }}
                 />
               )}
             </div>
 
-            <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-              <button className={styles.declineBtn} onClick={confirmDecline}>
-                Confirm
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className={styles.declineBtn}
+                onClick={confirmDecline}
+                disabled={submittingAction !== null}
+              >
+                {submittingAction?.action === "decline"
+                  ? "Declining..."
+                  : "Confirm"}
               </button>
+
               <button
                 className={styles.secondaryBtn}
-                onClick={() => setDeclineOpen(false)}
+                onClick={resetDeclineModal}
+                disabled={submittingAction !== null}
               >
                 Cancel
               </button>

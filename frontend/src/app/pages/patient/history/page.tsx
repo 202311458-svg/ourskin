@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "./history.module.css";
@@ -16,25 +17,79 @@ interface Appointment {
   cancel_reason?: string | null;
 }
 
+const STATUS_FILTERS = [
+  "All",
+  "Approved",
+  "Completed",
+  "Declined",
+  "Cancelled",
+  "Pending",
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+const normalizeStatus = (status?: string | null) => {
+  const cleanStatus = (status || "").trim().toLowerCase();
+
+  if (cleanStatus === "pending") return "Pending";
+  if (cleanStatus === "approved") return "Approved";
+  if (cleanStatus === "confirmed") return "Approved";
+  if (cleanStatus === "completed") return "Completed";
+  if (cleanStatus === "declined") return "Declined";
+  if (cleanStatus === "cancelled") return "Cancelled";
+  if (cleanStatus === "canceled") return "Cancelled";
+
+  return status?.trim() || "Unknown";
+};
+
+const normalizeAppointments = (data: unknown): Appointment[] => {
+  if (Array.isArray(data)) return data as Appointment[];
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "appointments" in data &&
+    Array.isArray((data as { appointments: unknown }).appointments)
+  ) {
+    return (data as { appointments: Appointment[] }).appointments;
+  }
+
+  return [];
+};
+
+const uniqueAppointmentsById = (appointments: Appointment[]) => {
+  return Array.from(
+    new Map(
+      appointments.map((appt) => [
+        appt.id,
+        {
+          ...appt,
+          status: normalizeStatus(appt.status),
+        },
+      ])
+    ).values()
+  );
+};
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text();
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
 export default function PatientHistory() {
+  const router = useRouter();
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [navCollapsed, setNavCollapsed] = useState(false);
-
-  const normalizeAppointments = (data: unknown): Appointment[] => {
-    if (Array.isArray(data)) return data as Appointment[];
-
-    if (
-      data &&
-      typeof data === "object" &&
-      "appointments" in data &&
-      Array.isArray((data as { appointments: unknown }).appointments)
-    ) {
-      return (data as { appointments: Appointment[] }).appointments;
-    }
-
-    return [];
-  };
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "No date";
@@ -64,18 +119,75 @@ export default function PatientHistory() {
     });
   };
 
-  const getStatusClass = (status: string) => {
-    const normalized = status?.toLowerCase();
+  const getDateTimeValue = (appt: Appointment) => {
+    return new Date(`${appt.date}T${appt.time}`).getTime();
+  };
 
-    if (normalized === "completed") return styles.statusCompleted;
-    if (normalized === "approved") return styles.statusApproved;
-    if (normalized === "pending") return styles.statusPending;
-    if (normalized === "cancelled" || normalized === "declined") {
+  const getStatusClass = (status: string) => {
+    const normalized = normalizeStatus(status);
+
+    if (normalized === "Completed") return styles.statusCompleted;
+    if (normalized === "Approved") return styles.statusApproved;
+    if (normalized === "Pending") return styles.statusPending;
+    if (normalized === "Cancelled" || normalized === "Declined") {
       return styles.statusCancelled;
     }
 
     return styles.statusDefault;
   };
+
+  const fetchAppointments = useCallback(
+    async (showLoader = true) => {
+      try {
+        const token = localStorage.getItem("token");
+        const role = localStorage.getItem("role");
+
+        if (!token) {
+          router.push("/pages/login");
+          return;
+        }
+
+        if (role !== "patient") {
+          router.push("/");
+          return;
+        }
+
+        if (showLoader) {
+          setLoading(true);
+        }
+
+        const appointmentsRes = await fetch(`${API_BASE_URL}/appointments/my`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const appointmentsData = await readJsonSafely(appointmentsRes);
+
+        if (!appointmentsRes.ok) {
+          console.error("Appointments request failed:", {
+            status: appointmentsRes.status,
+            statusText: appointmentsRes.statusText,
+            body: appointmentsData,
+          });
+
+          throw new Error("Failed to fetch appointments");
+        }
+
+        setAppointments(
+          uniqueAppointmentsById(normalizeAppointments(appointmentsData))
+        );
+      } catch (error) {
+        console.error("Failed to fetch appointment history:", error);
+        setAppointments([]);
+      } finally {
+        if (showLoader) {
+          setLoading(false);
+        }
+      }
+    },
+    [router]
+  );
 
   useEffect(() => {
     const handleNavToggle = (event: Event) => {
@@ -83,6 +195,7 @@ export default function PatientHistory() {
       setNavCollapsed(customEvent.detail);
     };
 
+    setNavCollapsed(document.body.classList.contains("navCollapsed"));
     window.addEventListener("navbarToggle", handleNavToggle);
 
     return () => {
@@ -91,47 +204,53 @@ export default function PatientHistory() {
   }, []);
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const token = localStorage.getItem("token");
+    fetchAppointments();
+  }, [fetchAppointments]);
 
-        if (!token) {
-          throw new Error("No token found");
-        }
+  useEffect(() => {
+    const role = localStorage.getItem("role");
 
-        const appointmentsRes = await fetch(
-          `${API_BASE_URL}/appointments/my`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+    if (role !== "patient") return;
 
-        if (!appointmentsRes.ok) {
-          const rawAppointments = await appointmentsRes.text();
+    const refreshHistoryQuietly = () => {
+      if (document.hidden) return;
 
-          console.error("Appointments request failed:", {
-            status: appointmentsRes.status,
-            statusText: appointmentsRes.statusText,
-            body: rawAppointments,
-          });
+      fetchAppointments(false);
+    };
 
-          throw new Error("Failed to fetch appointments");
-        }
+    const intervalId = window.setInterval(refreshHistoryQuietly, 3000);
 
-        const appointmentsData = await appointmentsRes.json();
-        setAppointments(normalizeAppointments(appointmentsData));
-      } catch (error) {
-        console.error("Failed to fetch appointment history:", error);
-        setAppointments([]);
-      } finally {
-        setLoading(false);
+    const handleFocus = () => {
+      refreshHistoryQuietly();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshHistoryQuietly();
       }
     };
 
-    fetchAppointments();
-  }, []);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchAppointments]);
+
+  const filteredAppointments = useMemo(() => {
+    return uniqueAppointmentsById(appointments)
+      .filter((appt) => {
+        const appointmentStatus = normalizeStatus(appt.status);
+
+        if (statusFilter === "All") return true;
+
+        return appointmentStatus === statusFilter;
+      })
+      .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a));
+  }, [appointments, statusFilter]);
 
   return (
     <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
@@ -160,6 +279,40 @@ export default function PatientHistory() {
             </Link>
           </div>
 
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "20px",
+            }}
+          >
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setStatusFilter(status)}
+                style={{
+                  border:
+                    statusFilter === status
+                      ? "1px solid #c0265a"
+                      : "1px solid #e5e7eb",
+                  background: statusFilter === status ? "#c0265a" : "#ffffff",
+                  color: statusFilter === status ? "#ffffff" : "#475569",
+                  borderRadius: "999px",
+                  padding: "9px 15px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "0.2s ease",
+                }}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <div className={styles.emptyState}>
               <h2>Loading appointments...</h2>
@@ -173,73 +326,85 @@ export default function PatientHistory() {
                 an appointment.
               </p>
             </div>
+          ) : filteredAppointments.length === 0 ? (
+            <div className={styles.emptyState}>
+              <h2>No {statusFilter} appointments found</h2>
+              <p>
+                There are no appointments under this status yet. Try checking
+                another filter.
+              </p>
+            </div>
           ) : (
             <div className={styles.cards}>
-              {appointments.map((appt) => (
-                <article key={appt.id} className={styles.card}>
-                  <div className={styles.cardTop}>
-                    <div>
-                      <h2>Dr. {appt.doctor_name || "Assigned Doctor"}</h2>
-                      <p className={styles.serviceText}>
-                        {appt.services || "Consultation"}
-                      </p>
+              {filteredAppointments.map((appt) => {
+                const cleanStatus = normalizeStatus(appt.status);
+
+                return (
+                  <article key={appt.id} className={styles.card}>
+                    <div className={styles.cardTop}>
+                      <div>
+                        <h2>Dr. {appt.doctor_name || "Assigned Doctor"}</h2>
+                        <p className={styles.serviceText}>
+                          {appt.services || "Consultation"}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`${styles.statusBadge} ${getStatusClass(
+                          cleanStatus
+                        )}`}
+                      >
+                        {cleanStatus}
+                      </span>
                     </div>
 
-                    <span
-                      className={`${styles.statusBadge} ${getStatusClass(
-                        appt.status
-                      )}`}
-                    >
-                      {appt.status}
-                    </span>
-                  </div>
+                    <div className={styles.detailsGrid}>
+                      <div className={styles.detailBox}>
+                        <p className={styles.detailLabel}>Date</p>
+                        <p className={styles.detailValue}>
+                          {formatDate(appt.date)}
+                        </p>
+                      </div>
 
-                  <div className={styles.detailsGrid}>
-                    <div className={styles.detailBox}>
-                      <p className={styles.detailLabel}>Date</p>
-                      <p className={styles.detailValue}>
-                        {formatDate(appt.date)}
-                      </p>
+                      <div className={styles.detailBox}>
+                        <p className={styles.detailLabel}>Time</p>
+                        <p className={styles.detailValue}>
+                          {formatTime(appt.time)}
+                        </p>
+                      </div>
+
+                      <div className={styles.detailBox}>
+                        <p className={styles.detailLabel}>Service</p>
+                        <p className={styles.detailValue}>
+                          {appt.services || "Not specified"}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className={styles.detailBox}>
-                      <p className={styles.detailLabel}>Time</p>
-                      <p className={styles.detailValue}>
-                        {formatTime(appt.time)}
-                      </p>
-                    </div>
+                    {(cleanStatus === "Declined" ||
+                      cleanStatus === "Cancelled") &&
+                      appt.cancel_reason && (
+                        <div className={styles.noticeBox}>
+                          <strong>Reason:</strong> {appt.cancel_reason}
+                        </div>
+                      )}
 
-                    <div className={styles.detailBox}>
-                      <p className={styles.detailLabel}>Service</p>
-                      <p className={styles.detailValue}>
-                        {appt.services || "Not specified"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {(appt.status === "Declined" ||
-                    appt.status === "Cancelled") &&
-                    appt.cancel_reason && (
+                    {cleanStatus === "Completed" && (
                       <div className={styles.noticeBox}>
-                        <strong>Reason:</strong> {appt.cancel_reason}
+                        This appointment has been completed. The doctor’s
+                        consultation record can be viewed in{" "}
+                        <Link
+                          href="/pages/patient/records"
+                          className={styles.inlineLink}
+                        >
+                          Medical Records
+                        </Link>
+                        .
                       </div>
                     )}
-
-                  {appt.status === "Completed" && (
-                    <div className={styles.noticeBox}>
-                      This appointment has been completed. The doctor’s
-                      consultation record can be viewed in{" "}
-                      <Link
-                        href="/pages/patient/records"
-                        className={styles.inlineLink}
-                      >
-                        Medical Records
-                      </Link>
-                      .
-                    </div>
-                  )}
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>

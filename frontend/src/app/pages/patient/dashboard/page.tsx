@@ -4,7 +4,7 @@ import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaCalendarAlt, FaCheckCircle, FaClock } from "react-icons/fa";
 import styles from "./dashboard.module.css";
 
@@ -26,6 +26,7 @@ type CurrentUser = {
   name: string;
   email: string;
   contact?: string;
+  role?: string;
 };
 
 const doctorImages: Record<string, string> = {
@@ -36,6 +37,38 @@ const doctorImages: Record<string, string> = {
   "Cecilia Roxas-Rosete, MD, FPDS": "/cecilia.png",
 };
 
+const getAppointmentsArray = (data: unknown): Appointment[] => {
+  if (Array.isArray(data)) return data as Appointment[];
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { appointments?: unknown }).appointments)
+  ) {
+    return (data as { appointments: Appointment[] }).appointments;
+  }
+
+  return [];
+};
+
+const uniqueAppointmentsById = (appointments: Appointment[]) => {
+  return Array.from(
+    new Map(appointments.map((appt) => [appt.id, appt])).values()
+  );
+};
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text();
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
 export default function PatientDashboard() {
   const router = useRouter();
 
@@ -43,12 +76,22 @@ export default function PatientDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   const normalizeStatus = (status?: string) =>
     (status || "").trim().toLowerCase();
 
   const combineDateTime = (date: string, time: string) => {
     return new Date(`${date}T${time}`);
+  };
+
+  const getTodayLocalString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   };
 
   const formatDate = (dateStr: string) => {
@@ -90,17 +133,19 @@ export default function PatientDashboard() {
     return styles.badgeDefault;
   };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+  const fetchDashboardData = useCallback(
+    async (showLoader = true) => {
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      router.push("/pages/login");
-      return;
-    }
+      if (!token) {
+        router.push("/pages/login");
+        return;
+      }
 
-    const fetchDashboardData = async () => {
       try {
-        setLoading(true);
+        if (showLoader) {
+          setLoading(true);
+        }
 
         const userRes = await fetch(`${API_BASE_URL}/users/me`, {
           headers: {
@@ -108,12 +153,14 @@ export default function PatientDashboard() {
           },
         });
 
+        const userData = await readJsonSafely(userRes);
+
         if (!userRes.ok) {
           throw new Error("Failed to fetch current user");
         }
 
-        const userData: CurrentUser = await userRes.json();
-        setPatientName(userData.name || "Patient");
+        const currentUser = userData as CurrentUser;
+        setPatientName(currentUser.name || "Patient");
 
         const appointmentsRes = await fetch(
           `${API_BASE_URL}/appointments/my`,
@@ -124,18 +171,39 @@ export default function PatientDashboard() {
           }
         );
 
+        const appointmentsData = await readJsonSafely(appointmentsRes);
+
         if (!appointmentsRes.ok) {
           throw new Error("Failed to fetch appointments");
         }
 
-        const appointmentsData: Appointment[] = await appointmentsRes.json();
-        setAppointments(appointmentsData);
+        setAppointments(
+          uniqueAppointmentsById(getAppointmentsArray(appointmentsData))
+        );
       } catch (error) {
         console.error("Error loading patient dashboard:", error);
       } finally {
-        setLoading(false);
+        if (showLoader) {
+          setLoading(false);
+        }
       }
-    };
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token) {
+      router.push("/pages/login");
+      return;
+    }
+
+    if (role !== "patient") {
+      router.push("/");
+      return;
+    }
 
     fetchDashboardData();
 
@@ -150,18 +218,52 @@ export default function PatientDashboard() {
     return () => {
       window.removeEventListener("navbarToggle", handleNavbarToggle);
     };
-  }, [router]);
+  }, [fetchDashboardData, router]);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+
+    if (role !== "patient") return;
+
+    const refreshDashboardQuietly = () => {
+      if (document.hidden) return;
+      if (cancellingId !== null) return;
+
+      fetchDashboardData(false);
+    };
+
+    const intervalId = window.setInterval(refreshDashboardQuietly, 5000);
+
+    const handleFocus = () => {
+      refreshDashboardQuietly();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshDashboardQuietly();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchDashboardData, cancellingId]);
+
+  const todayStr = getTodayLocalString();
 
   const approvedAppointments = useMemo(() => {
-    return appointments.filter(
+    return uniqueAppointmentsById(appointments).filter(
       (appt) => normalizeStatus(appt.status) === "approved"
     );
   }, [appointments]);
 
   const pendingAppointments = useMemo(() => {
-    return appointments
+    return uniqueAppointmentsById(appointments)
       .filter((appt) => normalizeStatus(appt.status) === "pending")
       .sort(
         (a, b) =>
@@ -189,7 +291,7 @@ export default function PatientDashboard() {
   const recentAppointments = useMemo(() => {
     const now = new Date();
 
-    return appointments
+    return uniqueAppointmentsById(appointments)
       .filter((appt) => {
         const status = normalizeStatus(appt.status);
         const appointmentDateTime = combineDateTime(appt.date, appt.time);
@@ -216,6 +318,7 @@ export default function PatientDashboard() {
 
     if (!token) {
       alert("Your session has expired. Please log in again.");
+      router.push("/pages/login");
       return;
     }
 
@@ -229,6 +332,8 @@ export default function PatientDashboard() {
     }
 
     try {
+      setCancellingId(appointmentId);
+
       const res = await fetch(
         `${API_BASE_URL}/appointments/${appointmentId}/status`,
         {
@@ -244,29 +349,40 @@ export default function PatientDashboard() {
         }
       );
 
+      const result = await readJsonSafely(res);
+
       if (!res.ok) {
-        const raw = await res.text();
+        console.error("Cancel appointment failed:", {
+          status: res.status,
+          statusText: res.statusText,
+          body: result,
+        });
 
-        console.error("Cancel appointment failed status:", res.status);
-        console.error("Cancel appointment failed statusText:", res.statusText);
-        console.error("Cancel appointment failed body:", raw);
-
-        alert(`Cancel failed: ${res.status} ${raw}`);
+        alert("Failed to cancel appointment.");
         throw new Error("Failed to cancel appointment");
       }
 
       alert("Appointment cancelled successfully.");
 
       setAppointments((prev) =>
-        prev.map((appt) =>
-          appt.id === appointmentId
-            ? { ...appt, status: "Cancelled", cancel_reason: reason.trim() }
-            : appt
+        uniqueAppointmentsById(
+          prev.map((appt) =>
+            appt.id === appointmentId
+              ? {
+                  ...appt,
+                  status: "Cancelled",
+                  cancel_reason: reason.trim(),
+                }
+              : appt
+          )
         )
       );
+
+      await fetchDashboardData(false);
     } catch (error) {
       console.error("Cancel appointment error:", error);
-      alert("Failed to cancel appointment.");
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -425,33 +541,40 @@ export default function PatientDashboard() {
 
               {pendingAppointments.length > 0 ? (
                 <div className={styles.pendingList}>
-                  {pendingAppointments.slice(0, 3).map((appt) => (
-                    <div key={appt.id} className={styles.pendingCard}>
-                      <div className={styles.pendingTopRow}>
-                        <h4 className={styles.pendingDoctor}>
-                          {appt.doctor_name || appt.doctor || "Unknown Doctor"}
-                        </h4>
+                  {pendingAppointments.slice(0, 3).map((appt) => {
+                    const isCancelling = cancellingId === appt.id;
 
-                        <span className={styles.pendingBadge}>Pending</span>
+                    return (
+                      <div key={appt.id} className={styles.pendingCard}>
+                        <div className={styles.pendingTopRow}>
+                          <h4 className={styles.pendingDoctor}>
+                            {appt.doctor_name ||
+                              appt.doctor ||
+                              "Unknown Doctor"}
+                          </h4>
+
+                          <span className={styles.pendingBadge}>Pending</span>
+                        </div>
+
+                        <p className={styles.pendingService}>
+                          {appt.services || "Consultation"}
+                        </p>
+
+                        <p className={styles.pendingDateTime}>
+                          {formatDate(appt.date)} • {formatTime(appt.time)}
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() => cancelAppointment(appt.id)}
+                          className={styles.cancelRequestButton}
+                          disabled={isCancelling}
+                        >
+                          {isCancelling ? "Cancelling..." : "Cancel Request"}
+                        </button>
                       </div>
-
-                      <p className={styles.pendingService}>
-                        {appt.services || "Consultation"}
-                      </p>
-
-                      <p className={styles.pendingDateTime}>
-                        {formatDate(appt.date)} • {formatTime(appt.time)}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => cancelAppointment(appt.id)}
-                        className={styles.cancelRequestButton}
-                      >
-                        Cancel Request
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className={styles.emptyStateText}>

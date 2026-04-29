@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "./admindash.module.css";
+import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
 
 type DashboardStats = {
   total_users: number;
@@ -66,18 +67,21 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+  const loadDashboard = useCallback(
+    async (showLoader = true) => {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role");
 
-    if (!token || role !== "admin") {
-      router.push("/");
-      return;
-    }
+      if (!token || role !== "admin") {
+        router.push("/");
+        return;
+      }
 
-    async function loadDashboard() {
       try {
-        setLoading(true);
+        if (showLoader) {
+          setLoading(true);
+        }
+
         setError("");
 
         const res = await fetch(`${API_BASE}/admin/dashboard`, {
@@ -89,7 +93,9 @@ export default function AdminDashboardPage() {
         const data = await safeJson<DashboardApiResponse>(res);
 
         if (!res.ok) {
-          throw new Error(getApiErrorMessage(data, "Unable to load dashboard data."));
+          throw new Error(
+            getApiErrorMessage(data, "Unable to load dashboard data.")
+          );
         }
 
         setStats({
@@ -105,12 +111,23 @@ export default function AdminDashboardPage() {
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load dashboard data."));
       } finally {
-        setLoading(false);
+        if (showLoader) {
+          setLoading(false);
+        }
       }
-    }
+    },
+    [router]
+  );
 
+  useEffect(() => {
     loadDashboard();
-  }, [router]);
+  }, [loadDashboard]);
+
+  useAutoRefresh(() => loadDashboard(false), {
+    enabled: true,
+    intervalMs: 10000,
+    pause: loading,
+  });
 
   const dashboardInsights = useMemo(() => {
     const internalUsers = stats.total_staff + stats.total_doctors;
@@ -240,9 +257,9 @@ export default function AdminDashboardPage() {
             <section className={styles.statsGrid}>
               {primaryCards.map((card) => (
                 <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-<div className={styles.statTop}>
-  <span className={styles.statLabel}>{card.label}</span>
-</div>
+                  <div className={styles.statTop}>
+                    <span className={styles.statLabel}>{card.label}</span>
+                  </div>
 
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>
@@ -253,9 +270,9 @@ export default function AdminDashboardPage() {
             <section className={styles.statsGrid}>
               {operationalCards.map((card) => (
                 <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-<div className={styles.statTop}>
-  <span className={styles.statLabel}>{card.label}</span>
-</div>
+                  <div className={styles.statTop}>
+                    <span className={styles.statLabel}>{card.label}</span>
+                  </div>
 
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>

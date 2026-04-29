@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api"
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -30,6 +30,49 @@ type AppointmentLog = {
   created_at: string
 }
 
+const STATUS_FILTERS = [
+  "All",
+  "Approved",
+  "Completed",
+  "Declined",
+  "Cancelled",
+  "Pending",
+] as const
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+const normalizeStatus = (status?: string | null) => {
+  const cleanStatus = (status || "").trim().toLowerCase()
+
+  if (cleanStatus === "pending") return "Pending"
+  if (cleanStatus === "approved") return "Approved"
+  if (cleanStatus === "confirmed") return "Approved"
+  if (cleanStatus === "completed") return "Completed"
+  if (cleanStatus === "declined") return "Declined"
+  if (cleanStatus === "cancelled") return "Cancelled"
+  if (cleanStatus === "canceled") return "Cancelled"
+
+  return status?.trim() || "Unknown"
+}
+
+const getDateTimeValue = (appt: Appointment) => {
+  return new Date(`${appt.date}T${appt.time}`).getTime()
+}
+
+const getAppointmentsArray = (data: unknown): Appointment[] => {
+  if (Array.isArray(data)) return data as Appointment[]
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { appointments?: unknown }).appointments)
+  ) {
+    return (data as { appointments: Appointment[] }).appointments
+  }
+
+  return []
+}
+
 export default function StaffHistoryPage() {
   const router = useRouter()
 
@@ -37,9 +80,10 @@ export default function StaffHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("All")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All")
 
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null)
   const [appointmentLogs, setAppointmentLogs] = useState<AppointmentLog[]>([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
@@ -78,18 +122,58 @@ export default function StaffHistoryPage() {
     })}`
   }
 
-  const getDateTimeValue = (appt: Appointment) => {
-    return new Date(`${appt.date}T${appt.time}`).getTime()
-  }
-
   const getStatusClass = (status: string) => {
-    if (status === "Pending") return `${styles.badge} ${styles.statusPending}`
-    if (status === "Approved") return `${styles.badge} ${styles.statusApproved}`
-    if (status === "Completed") return `${styles.badge} ${styles.statusCompleted}`
-    if (status === "Declined") return `${styles.badge} ${styles.statusDeclined}`
-    if (status === "Cancelled") return `${styles.badge} ${styles.statusCancelled}`
+    const cleanStatus = normalizeStatus(status)
+
+    if (cleanStatus === "Pending") {
+      return `${styles.badge} ${styles.statusPending}`
+    }
+
+    if (cleanStatus === "Approved") {
+      return `${styles.badge} ${styles.statusApproved}`
+    }
+
+    if (cleanStatus === "Completed") {
+      return `${styles.badge} ${styles.statusCompleted}`
+    }
+
+    if (cleanStatus === "Declined") {
+      return `${styles.badge} ${styles.statusDeclined}`
+    }
+
+    if (cleanStatus === "Cancelled") {
+      return `${styles.badge} ${styles.statusCancelled}`
+    }
 
     return styles.badge
+  }
+
+  const fetchAppointmentList = async (endpoint: string, token: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await res.json().catch(() => [])
+
+      if (!res.ok) {
+        console.error(`${endpoint} request failed:`, {
+          status: res.status,
+          statusText: res.statusText,
+          body: data,
+        })
+
+        return []
+      }
+
+      return getAppointmentsArray(data).map((appt) => ({
+        ...appt,
+        status: normalizeStatus(appt.status),
+      }))
+    } catch (err) {
+      console.error(`${endpoint} load failed:`, err)
+      return []
+    }
   }
 
   const loadHistory = useCallback(async () => {
@@ -104,25 +188,34 @@ export default function StaffHistoryPage() {
     setError("")
 
     try {
-      const res = await fetch(`${API_BASE_URL}/appointments/history`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const [historyList, pendingList, approvedList] = await Promise.all([
+        fetchAppointmentList("/appointments/history", token),
+        fetchAppointmentList("/appointments/requests", token),
+        fetchAppointmentList("/appointments/confirmed", token),
+      ])
 
-      const data = await res.json()
+      const mergedAppointments = [
+        ...historyList,
+        ...pendingList,
+        ...approvedList,
+      ]
 
-      if (!res.ok) {
-        console.error("History request failed:", {
-          status: res.status,
-          statusText: res.statusText,
-          body: data,
-        })
-        throw new Error(data.detail || "Failed to fetch appointment history")
-      }
+      const uniqueAppointments = Array.from(
+        new Map(
+          mergedAppointments.map((appt) => [
+            appt.id,
+            {
+              ...appt,
+              status: normalizeStatus(appt.status),
+            },
+          ])
+        ).values()
+      )
 
-      setAppointments(Array.isArray(data) ? data : [])
+      setAppointments(uniqueAppointments)
     } catch (err) {
-      console.error("History load failed:", err)
-      setError("Unable to load appointment history.")
+      console.error("Appointment records load failed:", err)
+      setError("Unable to load appointment records.")
       setAppointments([])
     } finally {
       setLoading(false)
@@ -145,15 +238,19 @@ export default function StaffHistoryPage() {
 
     return [...appointments]
       .filter((appt) => {
+        const patientName = appt.patient_name || ""
+        const doctorName = appt.doctor_name || ""
+        const services = appt.services || ""
+
         const matchesSearch =
-          appt.patient_name.toLowerCase().includes(keyword) ||
-          appt.doctor_name.toLowerCase().includes(keyword) ||
-          (appt.services || "").toLowerCase().includes(keyword)
+          patientName.toLowerCase().includes(keyword) ||
+          doctorName.toLowerCase().includes(keyword) ||
+          services.toLowerCase().includes(keyword)
+
+        const appointmentStatus = normalizeStatus(appt.status)
 
         const matchesStatus =
-        statusFilter === "All"
-          ? true
-          : appt.status?.toLowerCase().trim() === statusFilter.toLowerCase()
+          statusFilter === "All" ? true : appointmentStatus === statusFilter
 
         return matchesSearch && matchesStatus
       })
@@ -191,10 +288,15 @@ export default function StaffHistoryPage() {
           appointmentBody: appointmentData,
           logsBody: logsData,
         })
+
         throw new Error("Failed to fetch appointment details")
       }
 
-      setSelectedAppointment(appointmentData)
+      setSelectedAppointment({
+        ...appointmentData,
+        status: normalizeStatus(appointmentData.status),
+      })
+
       setAppointmentLogs(Array.isArray(logsData) ? logsData : [])
     } catch (error) {
       console.error("Failed to open details:", error)
@@ -223,7 +325,7 @@ export default function StaffHistoryPage() {
             <div>
               <h1>Appointment History</h1>
               <p className={styles.pageSubtext}>
-                Review past appointments, statuses, and action records.
+                Review appointment records, statuses, and action history.
               </p>
             </div>
 
@@ -243,75 +345,85 @@ export default function StaffHistoryPage() {
           </div>
 
           <div className={styles.filterRow}>
-            {["All", "Approved", "Completed", "Declined", "Cancelled", "Pending"].map(
-              (status) => (
-                <button
-                  key={status}
-                  className={`${styles.filterChip} ${
-                    statusFilter === status ? styles.filterChipActive : ""
-                  }`}
-                  onClick={() => setStatusFilter(status)}
-                >
-                  {status}
-                </button>
-              )
-            )}
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                className={`${styles.filterChip} ${
+                  statusFilter === status ? styles.filterChipActive : ""
+                }`}
+                onClick={() => setStatusFilter(status)}
+              >
+                {status}
+              </button>
+            ))}
           </div>
 
           <div className={styles.listCard}>
             <div className={styles.listHeader}>
-              <h2>History Records</h2>
+              <h2>Appointment Records</h2>
               <span className={styles.metaText}>
                 {filteredAppointments.length} records
               </span>
             </div>
 
             {loading ? (
-              <div className={styles.emptyState}>Loading appointment history...</div>
+              <div className={styles.emptyState}>
+                Loading appointment records...
+              </div>
             ) : error ? (
               <div className={styles.emptyState}>{error}</div>
             ) : filteredAppointments.length === 0 ? (
-              <div className={styles.emptyState}>No appointment history found.</div>
+              <div className={styles.emptyState}>
+                No appointment records found.
+              </div>
             ) : (
-              filteredAppointments.map((appt) => (
-                <div key={appt.id} className={styles.requestCard}>
-                  <div className={styles.requestInfo}>
-                    <b>{appt.patient_name}</b>
-                    <p>{appt.doctor_name}</p>
-                    <span>
-                      {formatDate(appt.date)} at {formatTime(appt.time)}
-                    </span>
+              filteredAppointments.map((appt) => {
+                const cleanStatus = normalizeStatus(appt.status)
 
-                    {appt.services && (
-                      <p className={styles.detailText}>Service: {appt.services}</p>
-                    )}
+                return (
+                  <div key={appt.id} className={styles.requestCard}>
+                    <div className={styles.requestInfo}>
+                      <b>{appt.patient_name}</b>
+                      <p>{appt.doctor_name}</p>
+                      <span>
+                        {formatDate(appt.date)} at {formatTime(appt.time)}
+                      </span>
 
-                    {appt.cancel_reason && (
-                      <p className={styles.detailText}>
-                        Reason: {appt.cancel_reason}
-                      </p>
-                    )}
+                      {appt.services && (
+                        <p className={styles.detailText}>
+                          Service: {appt.services}
+                        </p>
+                      )}
 
-                    {appt.last_action_by_name && (
-  <p className={styles.detailText}>
-    {appt.status} by {appt.last_action_by_name}, {appt.last_action_by_role}
-  </p>
-)}
+                      {appt.cancel_reason && (
+                        <p className={styles.detailText}>
+                          Reason: {appt.cancel_reason}
+                        </p>
+                      )}
 
+                      {appt.last_action_by_name && (
+                        <p className={styles.detailText}>
+                          {cleanStatus} by {appt.last_action_by_name},{" "}
+                          {appt.last_action_by_role}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className={styles.actions}>
+                      <span className={getStatusClass(cleanStatus)}>
+                        {cleanStatus}
+                      </span>
+
+                      <button
+                        className={styles.secondaryBtn}
+                        onClick={() => openDetails(appt)}
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
-
-                  <div className={styles.actions}>
-                    <span className={getStatusClass(appt.status)}>{appt.status}</span>
-
-                    <button
-                      className={styles.secondaryBtn}
-                      onClick={() => openDetails(appt)}
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -374,7 +486,7 @@ export default function StaffHistoryPage() {
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Status</span>
                     <span className={styles.infoValue}>
-                      {selectedAppointment.status}
+                      {normalizeStatus(selectedAppointment.status)}
                     </span>
                   </div>
 
@@ -394,7 +506,9 @@ export default function StaffHistoryPage() {
                   </div>
 
                   {appointmentLogs.length === 0 ? (
-                    <div className={styles.emptyState}>No activity history yet.</div>
+                    <div className={styles.emptyState}>
+                      No activity history yet.
+                    </div>
                   ) : (
                     appointmentLogs.map((log) => (
                       <div key={log.id} className={styles.requestCard}>
@@ -406,7 +520,9 @@ export default function StaffHistoryPage() {
                           <span>{formatDateTime(log.created_at)}</span>
 
                           {log.reason && (
-                            <p className={styles.detailText}>Reason: {log.reason}</p>
+                            <p className={styles.detailText}>
+                              Reason: {log.reason}
+                            </p>
                           )}
                         </div>
                       </div>

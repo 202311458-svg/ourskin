@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "./adminappt.module.css";
+import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
 
 type AppointmentStatus =
   | "Pending"
@@ -93,6 +94,14 @@ function getStatusClass(status: string) {
   return styles.declined;
 }
 
+function uniqueAppointmentsById(appointments: Appointment[]) {
+  return Array.from(
+    new Map(
+      appointments.map((appointment) => [appointment.id, appointment])
+    ).values()
+  );
+}
+
 export default function AdminAppointmentsPage() {
   const router = useRouter();
 
@@ -109,18 +118,21 @@ export default function AdminAppointmentsPage() {
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [reason, setReason] = useState("");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+  const loadAppointments = useCallback(
+    async (showLoader = true) => {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role");
 
-    if (!token || role !== "admin") {
-      router.push("/");
-      return;
-    }
+      if (!token || role !== "admin") {
+        router.push("/");
+        return;
+      }
 
-    async function loadAppointments() {
       try {
-        setLoading(true);
+        if (showLoader) {
+          setLoading(true);
+        }
+
         setError("");
 
         const res = await fetch(`${API_BASE}/admin/appointments`, {
@@ -137,18 +149,32 @@ export default function AdminAppointmentsPage() {
           );
         }
 
-        setAppointments(Array.isArray(data) ? data : []);
+        setAppointments(uniqueAppointmentsById(Array.isArray(data) ? data : []));
       } catch (loadError: unknown) {
         setError(
-          getErrorMessage(loadError, "Something went wrong while loading appointments.")
+          getErrorMessage(
+            loadError,
+            "Something went wrong while loading appointments."
+          )
         );
       } finally {
-        setLoading(false);
+        if (showLoader) {
+          setLoading(false);
+        }
       }
-    }
+    },
+    [router]
+  );
 
+  useEffect(() => {
     loadAppointments();
-  }, [router]);
+  }, [loadAppointments]);
+
+  useAutoRefresh(() => loadAppointments(false), {
+    enabled: true,
+    intervalMs: 5000,
+    pause: actionLoading !== null || selectedAppointment !== null,
+  });
 
   const filteredAppointments = useMemo(() => {
     const keyword = search.toLowerCase().trim();
@@ -207,20 +233,28 @@ export default function AdminAppointmentsPage() {
   ) {
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      router.push("/");
+      return;
+    }
+
     try {
       setActionLoading(appointmentId);
 
-      const res = await fetch(`${API_BASE}/admin/appointments/${appointmentId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status,
-          cancel_reason: cancelReason || null,
-        }),
-      });
+      const res = await fetch(
+        `${API_BASE}/admin/appointments/${appointmentId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status,
+            cancel_reason: cancelReason || null,
+          }),
+        }
+      );
 
       const data = await safeJson<
         {
@@ -236,18 +270,21 @@ export default function AdminAppointmentsPage() {
       }
 
       setAppointments((prev) =>
-        prev.map((appointment) =>
-          appointment.id === appointmentId
-            ? {
-                ...appointment,
-                status: data?.status || status,
-                cancel_reason: data?.cancel_reason || cancelReason || null,
-              }
-            : appointment
+        uniqueAppointmentsById(
+          prev.map((appointment) =>
+            appointment.id === appointmentId
+              ? {
+                  ...appointment,
+                  status: data?.status || status,
+                  cancel_reason: data?.cancel_reason || cancelReason || null,
+                }
+              : appointment
+          )
         )
       );
 
       closeReasonModal();
+      await loadAppointments(false);
     } catch (updateError: unknown) {
       alert(
         getErrorMessage(
