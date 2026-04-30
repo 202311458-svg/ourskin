@@ -24,6 +24,26 @@ type DashboardApiResponse = Partial<DashboardStats> & {
   message?: string;
 };
 
+type FollowUp = {
+  id: number;
+  patient_id?: number | null;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  doctor_id?: number | null;
+  doctor_name?: string | null;
+  appointment_id?: number | null;
+  appointment_services?: string | null;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
+  follow_up_date: string;
+  status?: string | null;
+};
+
+type ApiErrorResponse = {
+  detail?: string;
+  message?: string;
+};
+
 const API_BASE = API_BASE_URL;
 
 async function safeJson<T>(res: Response): Promise<T | null> {
@@ -39,7 +59,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function getApiErrorMessage(data: DashboardApiResponse | null, fallback: string) {
+function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
   if (data?.detail) return data.detail;
   if (data?.message) return data.message;
   return fallback;
@@ -48,6 +68,124 @@ function getApiErrorMessage(data: DashboardApiResponse | null, fallback: string)
 function getPercent(value: number, total: number) {
   if (!total || total <= 0) return 0;
   return Math.round((value / total) * 100);
+}
+
+function getTodayInputDate() {
+  const today = new Date();
+  const timezoneOffset = today.getTimezoneOffset() * 60000;
+
+  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
+}
+
+function normalizeStatus(status?: string | null) {
+  const cleanStatus = (status || "").trim().toLowerCase();
+
+  if (cleanStatus === "scheduled") return "Scheduled";
+  if (cleanStatus === "completed") return "Completed";
+  if (cleanStatus === "pending") return "Pending";
+  if (cleanStatus === "approved") return "Approved";
+  if (cleanStatus === "cancelled") return "Cancelled";
+  if (cleanStatus === "canceled") return "Cancelled";
+  if (cleanStatus === "declined") return "Declined";
+
+  return status?.trim() || "Unknown";
+}
+
+function getFollowUpsArray(data: unknown): FollowUp[] {
+  if (Array.isArray(data)) return data as FollowUp[];
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { follow_ups?: unknown }).follow_ups)
+  ) {
+    return (data as { follow_ups: FollowUp[] }).follow_ups;
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { followUps?: unknown }).followUps)
+  ) {
+    return (data as { followUps: FollowUp[] }).followUps;
+  }
+
+  return [];
+}
+
+function uniqueFollowUpsById(followUps: FollowUp[]) {
+  return Array.from(
+    new Map(
+      followUps.map((item) => [
+        item.id,
+        {
+          ...item,
+          status: normalizeStatus(item.status),
+        },
+      ])
+    ).values()
+  );
+}
+
+function formatDate(dateString?: string | null) {
+  if (!dateString) return "No date";
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatTime(timeString?: string | null) {
+  if (!timeString) return "";
+
+  const parts = timeString.split(":");
+  const hour = Number(parts[0]);
+  const minute = Number(parts[1]);
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
+
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getFollowUpTiming(item: FollowUp) {
+  const today = getTodayInputDate();
+  const status = (item.status || "").trim().toLowerCase();
+
+  if (status === "completed") return "Completed";
+  if (item.follow_up_date < today) return "Overdue";
+  if (item.follow_up_date === today) return "Due Today";
+
+  return "Upcoming";
+}
+
+function canCompleteFollowUp(item: FollowUp) {
+  const today = getTodayInputDate();
+  const status = (item.status || "").trim().toLowerCase();
+
+  return status !== "completed" && item.follow_up_date <= today;
+}
+
+function getFollowUpBadgeClass(item: FollowUp) {
+  const timing = getFollowUpTiming(item);
+
+  if (timing === "Completed") return styles.followUpBadgeCompleted;
+  if (timing === "Overdue") return styles.followUpBadgeOverdue;
+  if (timing === "Due Today") return styles.followUpBadgeDue;
+
+  return styles.followUpBadgeUpcoming;
 }
 
 export default function AdminDashboardPage() {
@@ -64,8 +202,33 @@ export default function AdminDashboardPage() {
     total_ai_logs: 0,
   });
 
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(
+    null
+  );
+
+  const fetchFollowUps = async (token: string) => {
+    const res = await fetch(`${API_BASE}/doctor/follow-ups`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await safeJson<unknown>(res);
+
+    if (!res.ok) {
+      console.error("/doctor/follow-ups request failed:", {
+        status: res.status,
+        data,
+      });
+
+      return [];
+    }
+
+    return uniqueFollowUpsById(getFollowUpsArray(data));
+  };
 
   const loadDashboard = useCallback(
     async (showLoader = true) => {
@@ -84,32 +247,40 @@ export default function AdminDashboardPage() {
 
         setError("");
 
-        const res = await fetch(`${API_BASE}/admin/dashboard`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [dashboardRes, followUpData] = await Promise.all([
+          fetch(`${API_BASE}/admin/dashboard`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetchFollowUps(token),
+        ]);
 
-        const data = await safeJson<DashboardApiResponse>(res);
+        const dashboardData = await safeJson<DashboardApiResponse>(
+          dashboardRes
+        );
 
-        if (!res.ok) {
+        if (!dashboardRes.ok) {
           throw new Error(
-            getApiErrorMessage(data, "Unable to load dashboard data.")
+            getApiErrorMessage(dashboardData, "Unable to load dashboard data.")
           );
         }
 
         setStats({
-          total_users: data?.total_users || 0,
-          total_patients: data?.total_patients || 0,
-          total_staff: data?.total_staff || 0,
-          total_doctors: data?.total_doctors || 0,
-          total_appointments: data?.total_appointments || 0,
-          pending_appointments: data?.pending_appointments || 0,
-          approved_appointments: data?.approved_appointments || 0,
-          total_ai_logs: data?.total_ai_logs || 0,
+          total_users: dashboardData?.total_users || 0,
+          total_patients: dashboardData?.total_patients || 0,
+          total_staff: dashboardData?.total_staff || 0,
+          total_doctors: dashboardData?.total_doctors || 0,
+          total_appointments: dashboardData?.total_appointments || 0,
+          pending_appointments: dashboardData?.pending_appointments || 0,
+          approved_appointments: dashboardData?.approved_appointments || 0,
+          total_ai_logs: dashboardData?.total_ai_logs || 0,
         });
+
+        setFollowUps(uniqueFollowUpsById(followUpData));
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load dashboard data."));
+        setFollowUps([]);
       } finally {
         if (showLoader) {
           setLoading(false);
@@ -126,7 +297,7 @@ export default function AdminDashboardPage() {
   useAutoRefresh(() => loadDashboard(false), {
     enabled: true,
     intervalMs: 10000,
-    pause: loading,
+    pause: loading || updatingFollowUpId !== null,
   });
 
   const dashboardInsights = useMemo(() => {
@@ -153,6 +324,38 @@ export default function AdminDashboardPage() {
       internalShare,
     };
   }, [stats]);
+
+  const sortedFollowUps = useMemo(() => {
+    return uniqueFollowUpsById(followUps).sort((a, b) => {
+      const aCompleted = (a.status || "").toLowerCase() === "completed";
+      const bCompleted = (b.status || "").toLowerCase() === "completed";
+
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+
+      return a.follow_up_date.localeCompare(b.follow_up_date);
+    });
+  }, [followUps]);
+
+  const activeFollowUps = useMemo(() => {
+    return sortedFollowUps.filter(
+      (item) => (item.status || "").toLowerCase() !== "completed"
+    );
+  }, [sortedFollowUps]);
+
+  const dueFollowUps = useMemo(() => {
+    return sortedFollowUps.filter((item) => {
+      const timing = getFollowUpTiming(item);
+      return timing === "Due Today" || timing === "Overdue";
+    });
+  }, [sortedFollowUps]);
+
+  const completedFollowUps = useMemo(() => {
+    return sortedFollowUps.filter(
+      (item) => (item.status || "").toLowerCase() === "completed"
+    );
+  }, [sortedFollowUps]);
 
   const primaryCards = [
     {
@@ -196,7 +399,9 @@ export default function AdminDashboardPage() {
           ? "Needs admin review"
           : "No pending requests",
       className:
-        stats.pending_appointments > 0 ? styles.orangeAccent : styles.greenAccent,
+        stats.pending_appointments > 0
+          ? styles.orangeAccent
+          : styles.greenAccent,
     },
     {
       label: "Approved",
@@ -205,12 +410,88 @@ export default function AdminDashboardPage() {
       className: styles.greenAccent,
     },
     {
-      label: "AI Review Monitor",
-      value: stats.total_ai_logs,
-      helper: "Skin analysis records",
-      className: styles.blueAccent,
+      label: "Follow-ups Due",
+      value: dueFollowUps.length,
+      helper:
+        dueFollowUps.length > 0
+          ? "Ready for completion review"
+          : "No due follow-ups",
+      className: dueFollowUps.length > 0 ? styles.orangeAccent : styles.blueAccent,
     },
   ];
+
+  async function markFollowUpCompleted(followUpId: number) {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      router.push("/");
+      return;
+    }
+
+    const selectedFollowUp = followUps.find((item) => item.id === followUpId);
+
+    if (!selectedFollowUp) {
+      alert("Follow-up schedule was not found.");
+      return;
+    }
+
+    if (!canCompleteFollowUp(selectedFollowUp)) {
+      alert("This follow-up can only be completed on or after its scheduled date.");
+      return;
+    }
+
+    try {
+      setUpdatingFollowUpId(followUpId);
+
+      const res = await fetch(`${API_BASE}/doctor/follow-ups/${followUpId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: "Completed",
+        }),
+      });
+
+      const data = await safeJson<
+        {
+          follow_up?: FollowUp;
+        } & ApiErrorResponse
+      >(res);
+
+      if (!res.ok) {
+        throw new Error(
+          getApiErrorMessage(data, "Unable to complete follow-up schedule.")
+        );
+      }
+
+      setFollowUps((prev) =>
+        uniqueFollowUpsById(
+          prev.map((item) =>
+            item.id === followUpId
+              ? {
+                  ...item,
+                  ...(data?.follow_up || {}),
+                  status: "Completed",
+                }
+              : item
+          )
+        )
+      );
+
+      await loadDashboard(false);
+    } catch (completeError: unknown) {
+      alert(
+        getErrorMessage(
+          completeError,
+          "Unable to mark this follow-up as completed."
+        )
+      );
+    } finally {
+      setUpdatingFollowUpId(null);
+    }
+  }
 
   return (
     <div className="staffLayout">
@@ -222,25 +503,32 @@ export default function AdminDashboardPage() {
             <p className={styles.eyebrow}>Admin Control Center</p>
             <h1>Welcome back, Admin!</h1>
             <p>
-              Monitor OurSkin users, appointments, staff activity, and AI-assisted
-              dermatology records in one clean workspace.
+              Monitor OurSkin users, appointments, staff activity, AI-assisted
+              dermatology records, and follow-up schedules in one clean
+              workspace.
             </p>
 
             <div className={styles.heroActions}>
-              <Link href="/pages/admin/appointments" className={styles.primaryAction}>
+              <Link
+                href="/pages/admin/appointments"
+                className={styles.primaryAction}
+              >
                 Review Appointments
               </Link>
 
-              <Link href="/pages/admin/audit-logs" className={styles.secondaryAction}>
+              <Link
+                href="/pages/admin/audit-logs"
+                className={styles.secondaryAction}
+              >
                 View Audit Logs
               </Link>
             </div>
           </div>
 
           <div className={styles.heroPanel}>
-            <span>Appointment Overview</span>
-            <strong>{stats.total_appointments}</strong>
-            <p>Total appointment records monitored by the admin portal.</p>
+            <span>Active Follow-ups</span>
+            <strong>{activeFollowUps.length}</strong>
+            <p>Scheduled follow-ups that still need monitoring.</p>
           </div>
         </section>
 
@@ -256,143 +544,135 @@ export default function AdminDashboardPage() {
           <>
             <section className={styles.statsGrid}>
               {primaryCards.map((card) => (
-                <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-                  <div className={styles.statTop}>
-                    <span className={styles.statLabel}>{card.label}</span>
-                  </div>
-
+                <div
+                  key={card.label}
+                  className={`${styles.statCard} ${card.className}`}
+                >
+                  <span>{card.label}</span>
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>
                 </div>
               ))}
             </section>
 
-            <section className={styles.statsGrid}>
+            <section className={styles.statsGrid} style={{ marginTop: 18 }}>
               {operationalCards.map((card) => (
-                <div key={card.label} className={`${styles.statCard} ${card.className}`}>
-                  <div className={styles.statTop}>
-                    <span className={styles.statLabel}>{card.label}</span>
-                  </div>
-
+                <div
+                  key={card.label}
+                  className={`${styles.statCard} ${card.className}`}
+                >
+                  <span>{card.label}</span>
                   <strong>{card.value}</strong>
                   <p>{card.helper}</p>
                 </div>
               ))}
             </section>
 
-            <section className={styles.dashboardGrid}>
-              <div className={styles.panelCard}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>Appointments</p>
-                    <h2>Appointment Pipeline</h2>
-                  </div>
-
-                  <Link href="/pages/admin/appointments">Manage</Link>
+            <section className={styles.followUpPanel}>
+              <div className={styles.followUpHeader}>
+                <div>
+                  <h2>Follow-up Schedule</h2>
+                  <p>Admin view of doctor-created follow-up schedules.</p>
                 </div>
 
-                <div className={styles.pipelineList}>
-                  <div className={styles.pipelineItem}>
-                    <div>
-                      <span>Approved Appointments</span>
-                      <strong>{stats.approved_appointments}</strong>
-                    </div>
-
-                    <div className={styles.progressTrack}>
-                      <div
-                        className={`${styles.progressBar} ${styles.greenBar}`}
-                        style={{
-                          width: `${dashboardInsights.appointmentApprovalRate}%`,
-                        }}
-                      />
-                    </div>
-
-                    <p>{dashboardInsights.appointmentApprovalRate}% of all appointments</p>
-                  </div>
-
-                  <div className={styles.pipelineItem}>
-                    <div>
-                      <span>Pending Requests</span>
-                      <strong>{stats.pending_appointments}</strong>
-                    </div>
-
-                    <div className={styles.progressTrack}>
-                      <div
-                        className={`${styles.progressBar} ${styles.orangeBar}`}
-                        style={{ width: `${dashboardInsights.pendingRate}%` }}
-                      />
-                    </div>
-
-                    <p>{dashboardInsights.pendingRate}% still waiting for action</p>
-                  </div>
-                </div>
+                <span className={styles.followUpCount}>
+                  {sortedFollowUps.length} total
+                </span>
               </div>
 
-              <div className={styles.panelCard}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>Accounts</p>
-                    <h2>User Distribution</h2>
-                  </div>
-
-                  <Link href="/pages/admin/users">View Users</Link>
+              {sortedFollowUps.length === 0 ? (
+                <div className={styles.followUpEmpty}>
+                  No follow-up schedules found.
                 </div>
+              ) : (
+                <div className={styles.followUpList}>
+                  {sortedFollowUps.slice(0, 5).map((item) => {
+                    const timing = getFollowUpTiming(item);
+                    const isCompleted =
+                      (item.status || "").toLowerCase() === "completed";
+                    const canComplete = canCompleteFollowUp(item);
+                    const isUpdating = updatingFollowUpId === item.id;
 
-                <div className={styles.breakdownGrid}>
-                  <div className={styles.breakdownItem}>
-                    <span>Patients</span>
-                    <strong>{stats.total_patients}</strong>
-                    <p>{dashboardInsights.patientShare}% of all users</p>
-                  </div>
+                    return (
+                      <div key={item.id} className={styles.followUpRow}>
+                        <div className={styles.followUpMain}>
+                          <strong>
+                            {item.patient_name ||
+                              (item.patient_id
+                                ? `Patient #${item.patient_id}`
+                                : "Patient details unavailable")}
+                          </strong>
 
-                  <div className={styles.breakdownItem}>
-                    <span>Internal Users</span>
-                    <strong>{dashboardInsights.internalUsers}</strong>
-                    <p>{dashboardInsights.internalShare}% staff and doctors</p>
-                  </div>
+                          <span>
+                            {formatDate(item.follow_up_date)}
+                            {item.doctor_name ? ` • ${item.doctor_name}` : ""}
+                          </span>
+
+                          {(item.appointment_date || item.appointment_time) && (
+                            <small>
+                              Related Visit:{" "}
+                              {item.appointment_date
+                                ? formatDate(item.appointment_date)
+                                : "No date"}{" "}
+                              {item.appointment_time
+                                ? `at ${formatTime(item.appointment_time)}`
+                                : ""}
+                            </small>
+                          )}
+                        </div>
+
+                        <div className={styles.followUpActions}>
+                          <span
+                            className={`${styles.followUpBadge} ${getFollowUpBadgeClass(
+                              item
+                            )}`}
+                          >
+                            {timing}
+                          </span>
+
+                          {!isCompleted && (
+                            <button
+                              type="button"
+                              className={
+                                canComplete
+                                  ? styles.followUpCompleteBtn
+                                  : styles.followUpDisabledBtn
+                              }
+                              onClick={() => markFollowUpCompleted(item.id)}
+                              disabled={!canComplete || isUpdating}
+                            >
+                              {isUpdating
+                                ? "Completing..."
+                                : canComplete
+                                ? "Mark Completed"
+                                : "Not Due Yet"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
 
-              <div className={styles.panelCard}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>AI Monitoring</p>
-                    <h2>AI Activity</h2>
-                  </div>
-
-                  <Link href="/pages/admin/ai-logs">Open AI Review Monitor</Link>
+              {sortedFollowUps.length > 5 && (
+                <div className={styles.followUpFooter}>
+                  <Link href="/pages/admin/appointments">
+                    View all follow-ups
+                  </Link>
                 </div>
+              )}
+            </section>
 
-                <div className={styles.aiBox}>
-                  <div>
-                    <span>Total AI Records</span>
-                    <strong>{stats.total_ai_logs}</strong>
-                    <p>
-                      AI analysis records available for review and monitoring.
-                    </p>
-                  </div>
-
-                  <div className={styles.aiBadge}>
-                    {stats.total_ai_logs > 0 ? "Active" : "No records yet"}
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.panelCard}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>Quick Actions</p>
-                    <h2>Admin Shortcuts</h2>
-                  </div>
-                </div>
-
-                <div className={styles.quickActions}>
-                  <Link href="/pages/admin/staff-mgmt">Manage Staff</Link>
-                  <Link href="/pages/admin/appointments">Review Appointments</Link>
-                  <Link href="/pages/admin/audit-logs">Check Audit Logs</Link>
-                  <Link href="/pages/admin/records">Look Over Records</Link>
-                </div>
-              </div>
+            <section className={styles.stateCard} style={{ marginTop: 22 }}>
+              <h2 style={{ margin: 0 }}>Operational Snapshot</h2>
+              <p style={{ color: "#94a3b8", marginBottom: 0 }}>
+                {dashboardInsights.pendingRate}% of appointment records are
+                pending, while {dashboardInsights.internalShare}% of users are
+                internal clinic users. Completed follow-ups:{" "}
+                {completedFollowUps.length}. Active follow-ups:{" "}
+                {activeFollowUps.length}.
+              </p>
             </section>
           </>
         )}

@@ -33,6 +33,15 @@ def require_doctor(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+def require_doctor_staff_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role not in ["doctor", "staff", "admin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Doctor, staff, or admin access only"
+        )
+    return current_user
+
+
 def serialize_appointment(appt: AppointmentModel):
     return {
         "id": appt.id,
@@ -184,6 +193,7 @@ def serialize_diagnosis_report(report: DiagnosisReport):
         "updated_at": report.updated_at.isoformat() if report.updated_at else None,
     }
 
+
 def serialize_patient_basic(user: User):
     return {
         "id": user.id,
@@ -191,6 +201,7 @@ def serialize_patient_basic(user: User):
         "email": user.email,
         "contact": user.contact,
     }
+
 
 @router.get("/dashboard")
 def doctor_dashboard(
@@ -337,7 +348,10 @@ def update_doctor_appointment_status(
     db.commit()
     db.refresh(appointment)
 
-    return {"message": "Appointment updated successfully", "appointment": serialize_appointment(appointment)}
+    return {
+        "message": "Appointment updated successfully",
+        "appointment": serialize_appointment(appointment),
+    }
 
 
 @router.post("/appointments/{appointment_id}/complete-with-report")
@@ -352,13 +366,15 @@ def complete_appointment_with_report(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    # recommended: only the assigned doctor should complete this appointment
-   # if appointment.doctor_id and appointment.doctor_id != current_user.id:
-      #  raise HTTPException(status_code=403, detail="You can only complete appointments assigned to you")
-
+    # Recommended: only the assigned doctor should complete this appointment.
+    # if appointment.doctor_id and appointment.doctor_id != current_user.id:
+    #     raise HTTPException(status_code=403, detail="You can only complete appointments assigned to you")
 
     if appointment.status != "Approved":
-        raise HTTPException(status_code=400, detail="Only approved appointments can be completed with a diagnosis report")
+        raise HTTPException(
+            status_code=400,
+            detail="Only approved appointments can be completed with a diagnosis report"
+        )
 
     existing_report = (
         db.query(DiagnosisReport)
@@ -367,7 +383,10 @@ def complete_appointment_with_report(
     )
 
     if existing_report:
-        raise HTTPException(status_code=400, detail="Diagnosis report already exists for this appointment")
+        raise HTTPException(
+            status_code=400,
+            detail="Diagnosis report already exists for this appointment"
+        )
 
     selected_analysis = None
 
@@ -382,7 +401,10 @@ def complete_appointment_with_report(
             raise HTTPException(status_code=404, detail="Selected skin analysis not found")
 
         if selected_analysis.appointment_id != appointment.id:
-            raise HTTPException(status_code=400, detail="Selected skin analysis does not belong to this appointment")
+            raise HTTPException(
+                status_code=400,
+                detail="Selected skin analysis does not belong to this appointment"
+            )
     else:
         selected_analysis = (
             db.query(SkinAnalysis)
@@ -605,8 +627,8 @@ def get_patient_history_for_doctor(
         "total_appointments": len(appointments),
         "history": history,
     }
-    
-    
+
+
 @router.get("/appointments/{appointment_id}/patient-history")
 def get_patient_history_from_appointment(
     appointment_id: int,
@@ -619,9 +641,16 @@ def get_patient_history_from_appointment(
         raise HTTPException(status_code=404, detail="Appointment not found")
 
     if not appointment.patient_id:
-        raise HTTPException(status_code=400, detail="This appointment has no linked patient_id")
+        raise HTTPException(
+            status_code=400,
+            detail="This appointment has no linked patient_id"
+        )
 
-    patient = db.query(User).filter(User.id == appointment.patient_id, User.role == "patient").first()
+    patient = (
+        db.query(User)
+        .filter(User.id == appointment.patient_id, User.role == "patient")
+        .first()
+    )
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -672,6 +701,7 @@ def get_patient_history_from_appointment(
         "previous_reports": previous_reports,
     }
 
+
 @router.get("/ai-cases")
 def get_doctor_ai_cases(
     review_status: str | None = None,
@@ -719,11 +749,15 @@ def get_doctor_patient_records(
 @router.get("/follow-ups")
 def get_doctor_follow_ups(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_doctor),
+    current_user: User = Depends(require_doctor_staff_admin),
 ):
+    query = db.query(FollowUp)
+
+    if current_user.role == "doctor":
+        query = query.filter(FollowUp.doctor_id == current_user.id)
+
     items = (
-        db.query(FollowUp)
-        .filter(FollowUp.doctor_id == current_user.id)
+        query
         .order_by(FollowUp.follow_up_date.asc())
         .all()
     )
@@ -784,7 +818,7 @@ def update_follow_up(
     follow_up_id: int,
     payload: FollowUpUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_doctor),
+    current_user: User = Depends(require_doctor_staff_admin),
 ):
     follow_up = (
         db.query(FollowUp)
@@ -795,13 +829,28 @@ def update_follow_up(
     if not follow_up:
         raise HTTPException(status_code=404, detail="Follow-up not found")
 
-    if follow_up.doctor_id and follow_up.doctor_id != current_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="You can only update your own follow-ups"
-        )
+    if current_user.role == "doctor":
+        if follow_up.doctor_id and follow_up.doctor_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only update your own follow-ups"
+            )
 
     data = payload.model_dump(exclude_unset=True)
+
+    if current_user.role in ["staff", "admin"]:
+        allowed_staff_fields = {"status"}
+        data = {
+            key: value
+            for key, value in data.items()
+            if key in allowed_staff_fields
+        }
+
+        if not data:
+            raise HTTPException(
+                status_code=400,
+                detail="Staff and admin can only update follow-up status"
+            )
 
     requested_status = data.get("status")
 
@@ -821,15 +870,9 @@ def update_follow_up(
     db.commit()
     db.refresh(follow_up)
 
-    doctor_name = None
-
-    if follow_up.doctor_id:
-        doctor = db.query(User).filter(User.id == follow_up.doctor_id).first()
-        doctor_name = doctor.name if doctor else None
-
     return {
         "message": "Follow-up updated successfully",
-        "follow_up": serialize_follow_up(follow_up, doctor_name),
+        "follow_up": serialize_follow_up_with_context(follow_up, db),
     }
 
 @router.get("/settings")

@@ -26,6 +26,21 @@ type Appointment = {
   cancel_reason?: string | null;
 };
 
+type FollowUp = {
+  id: number;
+  patient_id?: number | null;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  doctor_id?: number | null;
+  doctor_name?: string | null;
+  appointment_id?: number | null;
+  appointment_services?: string | null;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
+  follow_up_date: string;
+  status?: string | null;
+};
+
 type ApiErrorResponse = {
   detail?: string;
   message?: string;
@@ -54,11 +69,11 @@ function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
   return fallback;
 }
 
-function normalizeStatus(status?: string) {
+function normalizeStatus(status?: string | null) {
   return (status || "").toLowerCase();
 }
 
-function formatStatus(status?: string) {
+function formatStatus(status?: string | null) {
   if (!status) return "N/A";
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
@@ -84,6 +99,46 @@ function formatSchedule(date: string, time: string) {
   });
 }
 
+function formatDate(dateString?: string | null) {
+  if (!dateString) return "No date";
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatTime(timeString?: string | null) {
+  if (!timeString) return "";
+
+  const parts = timeString.split(":");
+  const hour = Number(parts[0]);
+  const minute = Number(parts[1]);
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
+
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getTodayInputDate() {
+  const today = new Date();
+  const timezoneOffset = today.getTimezoneOffset() * 60000;
+
+  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
+}
+
 function getStatusClass(status: string) {
   const cleanStatus = normalizeStatus(status);
 
@@ -94,6 +149,34 @@ function getStatusClass(status: string) {
   return styles.declined;
 }
 
+function getFollowUpTiming(item: FollowUp) {
+  const today = getTodayInputDate();
+  const status = normalizeStatus(item.status);
+
+  if (status === "completed") return "Completed";
+  if (item.follow_up_date < today) return "Overdue";
+  if (item.follow_up_date === today) return "Due Today";
+
+  return "Upcoming";
+}
+
+function getFollowUpStatusClass(item: FollowUp) {
+  const timing = getFollowUpTiming(item);
+
+  if (timing === "Completed") return styles.completed;
+  if (timing === "Overdue") return styles.declined;
+  if (timing === "Due Today") return styles.pending;
+
+  return styles.approved;
+}
+
+function canCompleteFollowUp(item: FollowUp) {
+  const today = getTodayInputDate();
+  const status = normalizeStatus(item.status);
+
+  return status !== "completed" && item.follow_up_date <= today;
+}
+
 function uniqueAppointmentsById(appointments: Appointment[]) {
   return Array.from(
     new Map(
@@ -102,12 +185,52 @@ function uniqueAppointmentsById(appointments: Appointment[]) {
   );
 }
 
+function getFollowUpsArray(data: unknown): FollowUp[] {
+  if (Array.isArray(data)) return data as FollowUp[];
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { follow_ups?: unknown }).follow_ups)
+  ) {
+    return (data as { follow_ups: FollowUp[] }).follow_ups;
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { followUps?: unknown }).followUps)
+  ) {
+    return (data as { followUps: FollowUp[] }).followUps;
+  }
+
+  return [];
+}
+
+function uniqueFollowUpsById(followUps: FollowUp[]) {
+  return Array.from(
+    new Map(
+      followUps.map((item) => [
+        item.id,
+        {
+          ...item,
+          status: formatStatus(item.status),
+        },
+      ])
+    ).values()
+  );
+}
+
 export default function AdminAppointmentsPage() {
   const router = useRouter();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [followUpActionLoading, setFollowUpActionLoading] = useState<
+    number | null
+  >(null);
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
@@ -117,6 +240,27 @@ export default function AdminAppointmentsPage() {
     useState<Appointment | null>(null);
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [reason, setReason] = useState("");
+
+  const fetchFollowUps = async (token: string) => {
+    const res = await fetch(`${API_BASE}/doctor/follow-ups`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await safeJson<unknown>(res);
+
+    if (!res.ok) {
+      console.error("/doctor/follow-ups request failed:", {
+        status: res.status,
+        data,
+      });
+
+      return [];
+    }
+
+    return uniqueFollowUpsById(getFollowUpsArray(data));
+  };
 
   const loadAppointments = useCallback(
     async (showLoader = true) => {
@@ -135,21 +279,33 @@ export default function AdminAppointmentsPage() {
 
         setError("");
 
-        const res = await fetch(`${API_BASE}/admin/appointments`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [appointmentsRes, followUpData] = await Promise.all([
+          fetch(`${API_BASE}/admin/appointments`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetchFollowUps(token),
+        ]);
 
-        const data = await safeJson<Appointment[] & ApiErrorResponse>(res);
+        const appointmentData = await safeJson<unknown>(appointmentsRes);
 
-        if (!res.ok) {
+        if (!appointmentsRes.ok) {
           throw new Error(
-            getApiErrorMessage(data, "Unable to load appointments")
+            getApiErrorMessage(
+              appointmentData as ApiErrorResponse | null,
+              "Unable to load appointments"
+            )
           );
         }
 
-        setAppointments(uniqueAppointmentsById(Array.isArray(data) ? data : []));
+        setAppointments(
+          uniqueAppointmentsById(
+            Array.isArray(appointmentData) ? appointmentData : []
+          )
+        );
+
+        setFollowUps(uniqueFollowUpsById(followUpData));
       } catch (loadError: unknown) {
         setError(
           getErrorMessage(
@@ -157,6 +313,7 @@ export default function AdminAppointmentsPage() {
             "Something went wrong while loading appointments."
           )
         );
+        setFollowUps([]);
       } finally {
         if (showLoader) {
           setLoading(false);
@@ -173,7 +330,10 @@ export default function AdminAppointmentsPage() {
   useAutoRefresh(() => loadAppointments(false), {
     enabled: true,
     intervalMs: 5000,
-    pause: actionLoading !== null || selectedAppointment !== null,
+    pause:
+      actionLoading !== null ||
+      followUpActionLoading !== null ||
+      selectedAppointment !== null,
   });
 
   const filteredAppointments = useMemo(() => {
@@ -183,11 +343,11 @@ export default function AdminAppointmentsPage() {
       const status = normalizeStatus(appointment.status);
 
       const matchesSearch =
-        appointment.patient_name.toLowerCase().includes(keyword) ||
-        appointment.patient_email.toLowerCase().includes(keyword) ||
-        appointment.doctor_name.toLowerCase().includes(keyword) ||
-        appointment.services.toLowerCase().includes(keyword) ||
-        appointment.status.toLowerCase().includes(keyword);
+        (appointment.patient_name || "").toLowerCase().includes(keyword) ||
+        (appointment.patient_email || "").toLowerCase().includes(keyword) ||
+        (appointment.doctor_name || "").toLowerCase().includes(keyword) ||
+        (appointment.services || "").toLowerCase().includes(keyword) ||
+        (appointment.status || "").toLowerCase().includes(keyword);
 
       const matchesStatus =
         statusFilter === "all" || status === statusFilter.toLowerCase();
@@ -195,6 +355,19 @@ export default function AdminAppointmentsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [appointments, search, statusFilter]);
+
+  const sortedFollowUps = useMemo(() => {
+    return uniqueFollowUpsById(followUps).sort((a, b) => {
+      const aCompleted = normalizeStatus(a.status) === "completed";
+      const bCompleted = normalizeStatus(b.status) === "completed";
+
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+
+      return a.follow_up_date.localeCompare(b.follow_up_date);
+    });
+  }, [followUps]);
 
   const stats = useMemo(() => {
     return {
@@ -205,12 +378,11 @@ export default function AdminAppointmentsPage() {
       approved: appointments.filter(
         (appointment) => normalizeStatus(appointment.status) === "approved"
       ).length,
-      declinedCancelled: appointments.filter((appointment) => {
-        const status = normalizeStatus(appointment.status);
-        return status === "declined" || status === "cancelled";
-      }).length,
+      followUps: sortedFollowUps.filter(
+        (item) => normalizeStatus(item.status) !== "completed"
+      ).length,
     };
-  }, [appointments]);
+  }, [appointments, sortedFollowUps]);
 
   function openReasonModal(appointment: Appointment, action: ModalAction) {
     setSelectedAppointment(appointment);
@@ -297,6 +469,78 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  async function markFollowUpCompleted(followUpId: number) {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      router.push("/");
+      return;
+    }
+
+    const selectedFollowUp = followUps.find((item) => item.id === followUpId);
+
+    if (!selectedFollowUp) {
+      alert("Follow-up schedule was not found.");
+      return;
+    }
+
+    if (!canCompleteFollowUp(selectedFollowUp)) {
+      alert("This follow-up can only be completed on or after its scheduled date.");
+      return;
+    }
+
+    try {
+      setFollowUpActionLoading(followUpId);
+
+      const res = await fetch(`${API_BASE}/doctor/follow-ups/${followUpId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: "Completed",
+        }),
+      });
+
+      const data = await safeJson<
+        {
+          follow_up?: FollowUp;
+        } & ApiErrorResponse
+      >(res);
+
+      if (!res.ok) {
+        alert(getApiErrorMessage(data, "Unable to complete follow-up schedule."));
+        return;
+      }
+
+      setFollowUps((prev) =>
+        uniqueFollowUpsById(
+          prev.map((item) =>
+            item.id === followUpId
+              ? {
+                  ...item,
+                  ...(data?.follow_up || {}),
+                  status: "Completed",
+                }
+              : item
+          )
+        )
+      );
+
+      await loadAppointments(false);
+    } catch (completeError: unknown) {
+      alert(
+        getErrorMessage(
+          completeError,
+          "Unable to mark this follow-up as completed."
+        )
+      );
+    } finally {
+      setFollowUpActionLoading(null);
+    }
+  }
+
   function handleConfirmReasonAction() {
     if (!selectedAppointment || !modalAction) return;
 
@@ -328,7 +572,8 @@ export default function AdminAppointmentsPage() {
           <div>
             <h1 className={styles.title}>Appointments</h1>
             <p className={styles.subtitle}>
-              Manage patient appointment requests, approvals, cancellations, and history.
+              Manage patient appointment requests, approvals, cancellations,
+              follow-up schedules, and history.
             </p>
           </div>
         </div>
@@ -350,10 +595,109 @@ export default function AdminAppointmentsPage() {
           </div>
 
           <div className={styles.statCard}>
-            <span>Declined / Cancelled</span>
-            <strong>{stats.declinedCancelled}</strong>
+            <span>Active Follow-ups</span>
+            <strong>{stats.followUps}</strong>
           </div>
         </div>
+
+        <section className={styles.followUpPanel}>
+          <div className={styles.followUpHeader}>
+            <div>
+              <h2>Follow-up Schedule</h2>
+              <p>View scheduled follow-ups and complete due records.</p>
+            </div>
+
+            <span className={styles.followUpCount}>
+              {sortedFollowUps.length} total
+            </span>
+          </div>
+
+          {loading ? (
+            <p className={styles.message}>Loading follow-up schedules...</p>
+          ) : sortedFollowUps.length === 0 ? (
+            <div className={styles.emptyState}>
+              <h3>No follow-up schedules found</h3>
+              <p>Doctor-created follow-ups will appear here.</p>
+            </div>
+          ) : (
+            <div className={styles.followUpCompactList}>
+              {sortedFollowUps.map((item) => {
+                const timing = getFollowUpTiming(item);
+                const isCompleted = normalizeStatus(item.status) === "completed";
+                const canComplete = canCompleteFollowUp(item);
+                const isUpdating = followUpActionLoading === item.id;
+
+                return (
+                  <div key={item.id} className={styles.followUpCompactRow}>
+                    <div className={styles.followUpPatient}>
+                      <strong>
+                        {item.patient_name ||
+                          (item.patient_id
+                            ? `Patient #${item.patient_id}`
+                            : "Patient details unavailable")}
+                      </strong>
+
+                      <span>{item.patient_email || "No email provided"}</span>
+                    </div>
+
+                    <div className={styles.followUpInfo}>
+                      <span>Follow-up</span>
+                      <strong>{formatDate(item.follow_up_date)}</strong>
+                    </div>
+
+                    <div className={styles.followUpInfo}>
+                      <span>Doctor</span>
+                      <strong>{item.doctor_name || "Assigned doctor"}</strong>
+                    </div>
+
+                    <div className={styles.followUpInfo}>
+                      <span>Visit</span>
+                      <strong>
+                        {item.appointment_date
+                          ? formatDate(item.appointment_date)
+                          : "No date"}{" "}
+                        {item.appointment_time
+                          ? `at ${formatTime(item.appointment_time)}`
+                          : ""}
+                      </strong>
+                    </div>
+
+                    <div className={styles.followUpStatusArea}>
+                      <span
+                        className={`${styles.statusBadge} ${getFollowUpStatusClass(
+                          item
+                        )}`}
+                      >
+                        {timing}
+                      </span>
+
+                      {isCompleted ? (
+                        <span className={styles.noAction}>Completed</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={
+                            canComplete
+                              ? styles.approveBtn
+                              : styles.followUpDisabledBtn
+                          }
+                          onClick={() => markFollowUpCompleted(item.id)}
+                          disabled={!canComplete || isUpdating}
+                        >
+                          {isUpdating
+                            ? "Completing..."
+                            : canComplete
+                            ? "Mark Completed"
+                            : "Not Due Yet"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <div className={styles.filtersRow}>
           <input

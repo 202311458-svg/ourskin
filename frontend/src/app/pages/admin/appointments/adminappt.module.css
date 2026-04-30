@@ -1680,3 +1680,147 @@
   }
 }
 
+.followUpPanel {
+  margin-bottom: 24px;
+  padding: 22px;
+  border-radius: 22px;
+  background: #151821;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+}
+
+.followUpHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.followUpHeader h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.followUpHeader p {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+}
+
+.followUpCount {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #86efac;
+  background: rgba(22, 163, 74, 0.14);
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  white-space: nowrap;
+}
+
+.followUpCompactList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.followUpCompactRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.3fr) repeat(3, minmax(135px, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #1d2230;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.followUpPatient {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.followUpPatient strong {
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.followUpPatient span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followUpInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.followUpInfo span {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.followUpInfo strong {
+  color: #f8fafc;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followUpStatusArea {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.followUpDisabledBtn {
+  border: none;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #94a3b8;
+  background: #2d3341;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .followUpCompactRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .followUpStatusArea {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 700px) {
+  .followUpHeader {
+    flex-direction: column;
+  }
+
+  .followUpCompactRow {
+    grid-template-columns: 1fr;
+  }
+
+  .followUpStatusArea {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
