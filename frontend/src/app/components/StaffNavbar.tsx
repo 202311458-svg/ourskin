@@ -1,54 +1,113 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
+  FaTachometerAlt,
   FaCalendarAlt,
-  FaUserMd,
   FaClipboardList,
-  FaUsers,
+  FaHistory,
+  FaUser,
   FaSignOutAlt,
   FaMoon,
   FaSun,
-  FaBell,
   FaBars,
+  FaTimes,
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
+import { sidebarState } from "@/app/state/sidebarState";
 
 export default function StaffNavbar() {
   const router = useRouter();
   const path = usePathname();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const navItems = [
-    { name: "Dashboard", path: "/pages/staff/dashboard", icon: <FaCalendarAlt /> },
-    { name: "Appointment Requests", path: "/pages/staff/requests", icon: <FaClipboardList /> },
-    { name: "Appointments", path: "/pages/staff/appointments", icon: <FaUserMd /> },
-    { name: "History", path: "/pages/staff/history", icon: <FaUserMd /> },
-    { name: "Profile", path: "/pages/staff/profile", icon: <FaUsers /> },
+    {
+      name: "Dashboard",
+      path: "/pages/staff/dashboard",
+      icon: <FaTachometerAlt />,
+    },
+    {
+      name: "Appointment Requests",
+      path: "/pages/staff/requests",
+      icon: <FaClipboardList />,
+    },
+    {
+      name: "Appointments",
+      path: "/pages/staff/appointments",
+      icon: <FaCalendarAlt />,
+    },
+    {
+      name: "History",
+      path: "/pages/staff/history",
+      icon: <FaHistory />,
+    },
+    {
+      name: "Profile",
+      path: "/pages/staff/profile",
+      icon: <FaUser />,
+    },
   ];
 
+  useEffect(() => {
+    const updateLayoutState = (value: boolean) => {
+      setCollapsed(value);
+      document.body.classList.toggle("navCollapsed", value);
+
+      window.dispatchEvent(
+        new CustomEvent("navbarToggle", {
+          detail: value,
+        })
+      );
+    };
+
+    const unsubscribe = sidebarState.subscribe((value) => {
+      updateLayoutState(value);
+    });
+
+    updateLayoutState(sidebarState.collapsed);
+
+    return () => {
+      unsubscribe();
+      document.body.classList.remove("navCollapsed");
+    };
+  }, []);
+
   const toggleCollapse = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
+    const nextState = !collapsed;
 
-    if (newState) document.body.classList.add("navCollapsed");
-    else document.body.classList.remove("navCollapsed");
+    sidebarState.toggle();
 
-    window.dispatchEvent(new CustomEvent("navbarToggle", { detail: newState }));
+    document.body.classList.toggle("navCollapsed", nextState);
+
+    window.dispatchEvent(
+      new CustomEvent("navbarToggle", {
+        detail: nextState,
+      })
+    );
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     router.push("/");
+  };
+
+  const goToPage = (targetPath: string) => {
+    router.push(targetPath);
+    setMobileOpen(false);
+  };
+
+  const isActive = (targetPath: string) => {
+    return path === targetPath || path.startsWith(`${targetPath}/`);
   };
 
   return (
@@ -60,62 +119,83 @@ export default function StaffNavbar() {
           width={collapsed ? 70 : 170}
           height={collapsed ? 70 : 65}
           onClick={toggleCollapse}
+          priority
         />
 
-        <div
+        <button
+          type="button"
           className={styles.mobileToggle}
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={() => setMobileOpen((prev) => !prev)}
+          aria-label={mobileOpen ? "Close staff menu" : "Open staff menu"}
         >
-          <FaBars />
-        </div>
+          {mobileOpen ? <FaTimes /> : <FaBars />}
+        </button>
       </div>
 
       <nav className={`${styles.navMenu} ${mobileOpen ? styles.mobileOpen : ""}`}>
-        {navItems.map((item, idx) => (
-          <div
-            key={idx}
-            className={`${styles.navItem} ${path === item.path ? styles.active : ""}`}
+        <div className={styles.navScrollArea}>
+          {navItems.map((item) => (
+            <button
+              type="button"
+              key={item.path}
+              className={`${styles.navItem} ${
+                isActive(item.path) ? styles.active : ""
+              }`}
+              onClick={() => goToPage(item.path)}
+            >
+              <span className={styles.icon}>{item.icon}</span>
+              <span className={styles.label}>{item.name}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.mobileActions}>
+          <button
+            type="button"
+            className={styles.navItem}
             onClick={() => {
-              router.push(item.path);
+              toggleDarkMode();
               setMobileOpen(false);
             }}
           >
-            <span className={styles.icon}>{item.icon}</span>
-            {!collapsed && <span className={styles.label}>{item.name}</span>}
-            {path === item.path && !collapsed && (
-              <span className={styles.activeBar}></span>
-            )}
-          </div>
-        ))}
-      </nav>
-
-      <div className={styles.navBottom}>
-        <div className={styles.navItem} onClick={toggleDarkMode}>
-          <span className={styles.icon}>
-            {darkMode ? <FaSun /> : <FaMoon />}
-          </span>
-
-          {!collapsed && (
+            <span className={styles.icon}>
+              {darkMode ? <FaSun /> : <FaMoon />}
+            </span>
             <span className={styles.label}>
               {darkMode ? "Light Mode" : "Dark Mode"}
             </span>
-          )}
-        </div>
+          </button>
 
-        <div className={styles.navItem} onClick={handleLogout}>
+          <button
+            type="button"
+            className={styles.navItem}
+            onClick={handleLogout}
+          >
+            <span className={styles.icon}>
+              <FaSignOutAlt />
+            </span>
+            <span className={styles.label}>Logout</span>
+          </button>
+        </div>
+      </nav>
+
+      <div className={styles.navBottom}>
+        <button type="button" className={styles.navItem} onClick={toggleDarkMode}>
+          <span className={styles.icon}>
+            {darkMode ? <FaSun /> : <FaMoon />}
+          </span>
+          <span className={styles.label}>
+            {darkMode ? "Light Mode" : "Dark Mode"}
+          </span>
+        </button>
+
+        <button type="button" className={styles.navItem} onClick={handleLogout}>
           <span className={styles.icon}>
             <FaSignOutAlt />
           </span>
-          {!collapsed && <span className={styles.label}>Logout</span>}
-        </div>
+          <span className={styles.label}>Logout</span>
+        </button>
       </div>
-
-      {mobileOpen && (
-        <div className={styles.navLogoutMobile} onClick={handleLogout}>
-          <FaSignOutAlt />
-          <span>Logout</span>
-        </div>
-      )}
     </aside>
   );
 }
