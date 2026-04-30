@@ -15,6 +15,17 @@ interface Appointment {
   services: string;
   status: string;
   cancel_reason?: string | null;
+
+  // Follow-up / diagnosis report fields that may come from /appointments/my
+  next_visit_date?: string | null;
+  follow_up_date?: string | null;
+  followup_date?: string | null;
+  follow_up_plan?: string | null;
+  followup_plan?: string | null;
+  follow_up?: string | null;
+  follow_up_reason?: string | null;
+  reason?: string | null;
+  notes?: string | null;
 }
 
 const STATUS_FILTERS = [
@@ -83,6 +94,19 @@ const readJsonSafely = async (res: Response) => {
   }
 };
 
+const getFollowUpDate = (appt: Appointment) => {
+  return (
+    appt.follow_up_date ||
+    appt.followup_date ||
+    appt.next_visit_date ||
+    null
+  );
+};
+
+const hasScheduledFollowUp = (appt: Appointment) => {
+  return Boolean(getFollowUpDate(appt));
+};
+
 export default function PatientHistory() {
   const router = useRouter();
 
@@ -91,10 +115,10 @@ export default function PatientHistory() {
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return "No date";
 
-    const date = new Date(dateString);
+    const date = new Date(`${dateString}T00:00:00`);
 
     if (Number.isNaN(date.getTime())) return dateString;
 
@@ -105,7 +129,7 @@ export default function PatientHistory() {
     });
   };
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString?: string | null) => {
     if (!timeString) return "No time";
 
     const date = new Date(`1970-01-01T${timeString}`);
@@ -120,7 +144,27 @@ export default function PatientHistory() {
   };
 
   const getDateTimeValue = (appt: Appointment) => {
-    return new Date(`${appt.date}T${appt.time}`).getTime();
+    return new Date(`${appt.date}T${appt.time || "00:00:00"}`).getTime();
+  };
+
+  const getTodayLocalString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const getFollowUpTiming = (followUpDate?: string | null) => {
+    if (!followUpDate) return "Follow-up scheduled";
+
+    const today = getTodayLocalString();
+
+    if (followUpDate < today) return "Follow-up date passed";
+    if (followUpDate === today) return "Due today";
+
+    return "Upcoming follow-up";
   };
 
   const getStatusClass = (status: string) => {
@@ -240,6 +284,21 @@ export default function PatientHistory() {
     };
   }, [fetchAppointments]);
 
+  const followUpAppointments = useMemo(() => {
+    return uniqueAppointmentsById(appointments)
+      .filter((appt) => Boolean(getFollowUpDate(appt)))
+      .sort((a, b) => {
+        const aDate = getFollowUpDate(a) || "";
+        const bDate = getFollowUpDate(b) || "";
+
+        if (!aDate && !bDate) return getDateTimeValue(b) - getDateTimeValue(a);
+        if (!aDate) return 1;
+        if (!bDate) return -1;
+
+        return aDate.localeCompare(bDate);
+      });
+  }, [appointments]);
+
   const filteredAppointments = useMemo(() => {
     return uniqueAppointmentsById(appointments)
       .filter((appt) => {
@@ -270,7 +329,8 @@ export default function PatientHistory() {
 
               <p className={styles.subtitle}>
                 View your past and current appointments, including booking
-                status, schedule details, and cancellation notes.
+                status, schedule details, cancellation notes, and follow-up
+                schedules.
               </p>
             </div>
 
@@ -278,6 +338,145 @@ export default function PatientHistory() {
               View Medical Records
             </Link>
           </div>
+
+          <section
+            style={{
+              marginBottom: "22px",
+              border: "1px solid #f3d3df",
+              borderRadius: "18px",
+              padding: "18px",
+              background:
+                "linear-gradient(135deg, rgba(255, 241, 246, 0.95), rgba(255, 255, 255, 0.96))",
+              boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "14px",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                marginBottom: "14px",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    color: "#831843",
+                    fontSize: "1.15rem",
+                  }}
+                >
+                  Follow-Up Schedule
+                </h2>
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    color: "#64748b",
+                    fontSize: "0.92rem",
+                  }}
+                >
+                  Follow-up dates recommended after completed consultations.
+                </p>
+              </div>
+
+              <span
+                style={{
+                  borderRadius: "999px",
+                  padding: "8px 12px",
+                  background: "#fce7f3",
+                  color: "#be185d",
+                  fontWeight: 800,
+                  fontSize: "0.82rem",
+                }}
+              >
+                {followUpAppointments.length} scheduled
+              </span>
+            </div>
+
+            {followUpAppointments.length === 0 ? (
+              <p
+                style={{
+                  margin: 0,
+                  color: "#64748b",
+                }}
+              >
+                No follow-up schedule has been added yet.
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: "12px",
+                }}
+              >
+                {followUpAppointments.slice(0, 3).map((appt) => {
+                  const followUpDate = getFollowUpDate(appt);
+            
+
+                  return (
+                    <div
+                      key={`follow-up-${appt.id}`}
+                      style={{
+                        border: "1px solid #fbcfe8",
+                        borderRadius: "16px",
+                        padding: "14px",
+                        background: "#ffffff",
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: "0 0 4px",
+                          color: "#be185d",
+                          fontWeight: 800,
+                          fontSize: "0.82rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {getFollowUpTiming(followUpDate)}
+                      </p>
+
+                      <h3
+                        style={{
+                          margin: "0 0 8px",
+                          color: "#111827",
+                          fontSize: "1rem",
+                        }}
+                      >
+                        {followUpDate
+                          ? formatDate(followUpDate)
+                          : "Date not specified"}
+                      </h3>
+
+                      <p
+                        style={{
+                          margin: "0 0 4px",
+                          color: "#334155",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Dr. {appt.doctor_name || "Assigned Doctor"}
+                      </p>
+
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#64748b",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {appt.services || "Consultation"}
+                      </p>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           <div
             style={{
@@ -338,7 +537,6 @@ export default function PatientHistory() {
             <div className={styles.cards}>
               {filteredAppointments.map((appt) => {
                 const cleanStatus = normalizeStatus(appt.status);
-
                 return (
                   <article key={appt.id} className={styles.card}>
                     <div className={styles.cardTop}>
@@ -379,7 +577,11 @@ export default function PatientHistory() {
                           {appt.services || "Not specified"}
                         </p>
                       </div>
+
+
                     </div>
+
+
 
                     {(cleanStatus === "Declined" ||
                       cleanStatus === "Cancelled") &&

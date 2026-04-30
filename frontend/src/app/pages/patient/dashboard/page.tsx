@@ -5,7 +5,12 @@ import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FaCalendarAlt, FaCheckCircle, FaClock } from "react-icons/fa";
+import {
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaClock,
+  FaNotesMedical,
+} from "react-icons/fa";
 import styles from "./dashboard.module.css";
 
 type Appointment = {
@@ -19,6 +24,17 @@ type Appointment = {
   services: string;
   status: string;
   cancel_reason?: string | null;
+
+  // Follow-up / diagnosis report fields that may come from /appointments/my
+  next_visit_date?: string | null;
+  follow_up_date?: string | null;
+  followup_date?: string | null;
+  follow_up_plan?: string | null;
+  followup_plan?: string | null;
+  follow_up?: string | null;
+  follow_up_reason?: string | null;
+  reason?: string | null;
+  notes?: string | null;
 };
 
 type CurrentUser = {
@@ -27,6 +43,12 @@ type CurrentUser = {
   email: string;
   contact?: string;
   role?: string;
+};
+
+type FollowUpDisplay = {
+  appointment: Appointment;
+  date: string;
+  plan: string;
 };
 
 const doctorImages: Record<string, string> = {
@@ -82,7 +104,7 @@ export default function PatientDashboard() {
     (status || "").trim().toLowerCase();
 
   const combineDateTime = (date: string, time: string) => {
-    return new Date(`${date}T${time}`);
+    return new Date(`${date}T${time || "00:00:00"}`);
   };
 
   const getTodayLocalString = () => {
@@ -94,15 +116,19 @@ export default function PatientDashboard() {
     return `${year}-${month}-${day}`;
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return "No date";
+
+    return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
 
-  const formatTime = (timeStr: string) => {
+  const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return "No time";
+
     const [hours, minutes] = timeStr.split(":");
     const tempDate = new Date();
 
@@ -118,6 +144,41 @@ export default function PatientDashboard() {
   const getDoctorImage = (doctorName?: string, fallbackDoctor?: string) => {
     const finalDoctorName = doctorName || fallbackDoctor || "";
     return doctorImages[finalDoctorName] || "/default-doctor.png";
+  };
+
+  const getFollowUpDate = (appt: Appointment) => {
+    return (
+      appt.follow_up_date ||
+      appt.followup_date ||
+      appt.next_visit_date ||
+      null
+    );
+  };
+
+  const getFollowUpPlan = (appt: Appointment) => {
+    return (
+      appt.follow_up_plan ||
+      appt.followup_plan ||
+      appt.follow_up ||
+      appt.follow_up_reason ||
+      appt.reason ||
+      ""
+    );
+  };
+
+  const hasFollowUp = (appt: Appointment) => {
+    return Boolean(getFollowUpDate(appt) || getFollowUpPlan(appt));
+  };
+
+  const getFollowUpTiming = (followUpDate?: string | null) => {
+    if (!followUpDate) return "Follow-up scheduled";
+
+    const today = getTodayLocalString();
+
+    if (followUpDate < today) return "Follow-up date passed";
+    if (followUpDate === today) return "Due today";
+
+    return "Upcoming follow-up";
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -288,6 +349,25 @@ export default function PatientDashboard() {
       );
   }, [approvedAppointments]);
 
+  const followUps = useMemo<FollowUpDisplay[]>(() => {
+    return uniqueAppointmentsById(appointments)
+      .filter(hasFollowUp)
+      .map((appt) => ({
+        appointment: appt,
+        date: getFollowUpDate(appt) || "",
+        plan: getFollowUpPlan(appt),
+      }))
+      .sort((a, b) => {
+        if (!a.date && !b.date) return b.appointment.id - a.appointment.id;
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+
+        return a.date.localeCompare(b.date);
+      });
+  }, [appointments]);
+
+  const nearestFollowUp = followUps.length > 0 ? followUps[0] : null;
+
   const recentAppointments = useMemo(() => {
     const now = new Date();
 
@@ -409,7 +489,12 @@ export default function PatientDashboard() {
 
         <section className={styles.dashboardGrid}>
           <div className={styles.leftColumn}>
-            <div className={styles.summaryGrid}>
+            <div
+              className={styles.summaryGrid}
+              style={{
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              }}
+            >
               <div className={styles.summaryCard}>
                 <FaCalendarAlt className={styles.summaryIcon} />
                 <div>
@@ -427,6 +512,14 @@ export default function PatientDashboard() {
               </div>
 
               <div className={styles.summaryCard}>
+                <FaNotesMedical className={styles.summaryIcon} />
+                <div>
+                  <h3>Follow-Ups</h3>
+                  <p>{followUps.length}</p>
+                </div>
+              </div>
+
+              <div className={styles.summaryCard}>
                 <FaCheckCircle className={styles.summaryIcon} />
                 <div>
                   <h3>Pending Requests</h3>
@@ -440,43 +533,61 @@ export default function PatientDashboard() {
 
               {recentAppointments.length > 0 ? (
                 <div className={styles.recentAppointmentList}>
-                  {recentAppointments.slice(0, 5).map((appt) => (
-                    <div key={appt.id} className={styles.recentAppointmentCard}>
-                      <div className={styles.recentAppointmentTop}>
-                        <div>
-                          <p className={styles.recentAppointmentDoctor}>
-                            {appt.doctor_name ||
-                              appt.doctor ||
-                              "Unknown Doctor"}
-                          </p>
+                  {recentAppointments.slice(0, 5).map((appt) => {
+                    const followUpDate = getFollowUpDate(appt);
+                    const followUpPlan = getFollowUpPlan(appt);
 
-                          <p className={styles.recentAppointmentService}>
-                            {appt.services || "Consultation"}
-                          </p>
+                    return (
+                      <div
+                        key={appt.id}
+                        className={styles.recentAppointmentCard}
+                      >
+                        <div className={styles.recentAppointmentTop}>
+                          <div>
+                            <p className={styles.recentAppointmentDoctor}>
+                              {appt.doctor_name ||
+                                appt.doctor ||
+                                "Unknown Doctor"}
+                            </p>
+
+                            <p className={styles.recentAppointmentService}>
+                              {appt.services || "Consultation"}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`${styles.statusBadge} ${getStatusBadgeClass(
+                              appt.status
+                            )}`}
+                          >
+                            {appt.status}
+                          </span>
                         </div>
 
-                        <span
-                          className={`${styles.statusBadge} ${getStatusBadgeClass(
-                            appt.status
-                          )}`}
-                        >
-                          {appt.status}
-                        </span>
-                      </div>
+                        <p className={styles.recentAppointmentDate}>
+                          {formatDate(appt.date)} • {formatTime(appt.time)}
+                        </p>
 
-                      <p className={styles.recentAppointmentDate}>
-                        {formatDate(appt.date)} • {formatTime(appt.time)}
-                      </p>
-
-                      {(normalizeStatus(appt.status) === "declined" ||
-                        normalizeStatus(appt.status) === "cancelled") &&
-                        appt.cancel_reason && (
+                        {(followUpDate || followUpPlan) && (
                           <div className={styles.reasonBox}>
-                            <strong>Reason:</strong> {appt.cancel_reason}
+                            <strong>Follow-up:</strong>{" "}
+                            {followUpDate
+                              ? formatDate(followUpDate)
+                              : "Date not specified"}
+                            {followUpPlan ? ` • ${followUpPlan}` : ""}
                           </div>
                         )}
-                    </div>
-                  ))}
+
+                        {(normalizeStatus(appt.status) === "declined" ||
+                          normalizeStatus(appt.status) === "cancelled") &&
+                          appt.cancel_reason && (
+                            <div className={styles.reasonBox}>
+                              <strong>Reason:</strong> {appt.cancel_reason}
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className={styles.emptyStateText}>
@@ -532,6 +643,54 @@ export default function PatientDashboard() {
               ) : (
                 <p className={styles.emptyStateText}>
                   No upcoming appointment scheduled.
+                </p>
+              )}
+            </div>
+
+            <div className={styles.cardHighlight}>
+              <h3 className={styles.cardTitle}>Scheduled Follow-Up</h3>
+
+              {nearestFollowUp ? (
+                <div className={styles.upcomingHighlight}>
+                  <div className={styles.upcomingTextLarge}>
+                    <h2>
+                      {nearestFollowUp.appointment.doctor_name ||
+                        nearestFollowUp.appointment.doctor ||
+                        "Assigned Doctor"}
+                    </h2>
+
+                    <p className={styles.upcomingSpecialty}>
+                      {nearestFollowUp.appointment.services || "Consultation"}
+                    </p>
+
+                    <p className={styles.upcomingDate}>
+                      {nearestFollowUp.date
+                        ? formatDate(nearestFollowUp.date)
+                        : "Follow-up date not specified"}
+                    </p>
+
+                    <p className={styles.upcomingNote}>
+                      {getFollowUpTiming(nearestFollowUp.date)}
+                    </p>
+
+                    {nearestFollowUp.plan && (
+                      <p className={styles.upcomingNote}>
+                        {nearestFollowUp.plan}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      className={styles.btnBook}
+                      onClick={() => router.push("/pages/patient/history")}
+                    >
+                      View Appointment History
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className={styles.emptyStateText}>
+                  No follow-up schedule yet.
                 </p>
               )}
             </div>
