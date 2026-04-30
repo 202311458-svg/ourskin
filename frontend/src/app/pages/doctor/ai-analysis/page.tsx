@@ -10,6 +10,7 @@ import {
   getAppointmentAnalyses,
   getAppointmentDiagnosisReport,
   getDoctorAppointments,
+  createDoctorFollowUp,
   getDoctorPatientHistory,
   getDoctorPatients,
   type Analysis,
@@ -32,6 +33,12 @@ type DoctorAssessmentForm = {
   doctorNotes: string;
   prescriptionItems: DoctorPrescriptionDraft[];
   followUpPlan: string;
+};
+
+type OptionalFollowUpForm = {
+  followUpDate: string;
+  reason: string;
+  notes: string;
 };
 
 type TextAssessmentField = "finalDiagnosis" | "doctorNotes" | "followUpPlan";
@@ -66,6 +73,12 @@ const emptyAssessmentForm: DoctorAssessmentForm = {
   doctorNotes: "",
   prescriptionItems: [{ ...emptyPrescriptionItem }],
   followUpPlan: "",
+};
+
+const emptyOptionalFollowUpForm: OptionalFollowUpForm = {
+  followUpDate: "",
+  reason: "",
+  notes: "",
 };
 
 const sortAppointmentsDesc = (items: Appointment[]) => {
@@ -277,6 +290,13 @@ const formatDateTime = (value?: string | null) => {
   const date = new Date(value);
 
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
+const getTodayInputDate = () => {
+  const today = new Date();
+  const timezoneOffset = today.getTimezoneOffset() * 60000;
+
+  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
 };
 
 const normalizeConfidence = (value?: number | null) => {
@@ -524,7 +544,8 @@ const getStatusBadgeClass = (status: string | undefined) => {
 const saveDoctorAssessment = async (
   appointmentId: number,
   analysisId: number,
-  payload: DoctorAssessmentForm
+  payload: DoctorAssessmentForm,
+  nextVisitDate?: string | null
 ) => {
   const token = localStorage.getItem("token");
 
@@ -542,7 +563,7 @@ const saveDoctorAssessment = async (
         doctor_prescription: buildPrescriptionText(payload),
         after_appointment_notes: payload.doctorNotes.trim(),
         follow_up_plan: payload.followUpPlan.trim(),
-        next_visit_date: null,
+        next_visit_date: nextVisitDate || null,
       }),
     }
   );
@@ -607,6 +628,9 @@ function DoctorAiAnalysisContent() {
 
   const [assessmentForm, setAssessmentForm] =
     useState<DoctorAssessmentForm>(emptyAssessmentForm);
+  const [scheduleFollowUp, setScheduleFollowUp] = useState(false);
+  const [optionalFollowUpForm, setOptionalFollowUpForm] =
+    useState<OptionalFollowUpForm>(emptyOptionalFollowUpForm);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -1003,6 +1027,7 @@ function DoctorAiAnalysisContent() {
   const isApprovedTarget = targetAppointment?.status === "Approved";
   const aiAvailableForTarget = isAiAvailableForAppointment(targetAppointment);
   const aiUnavailableMessage = getAiUnavailableMessage(targetAppointment);
+  const todayInputDate = getTodayInputDate();
 
   const resetWorkspaceDrafts = () => {
     setSelectedFile(null);
@@ -1010,10 +1035,22 @@ function DoctorAiAnalysisContent() {
       ...emptyAssessmentForm,
       prescriptionItems: [{ ...emptyPrescriptionItem }],
     });
+    setScheduleFollowUp(false);
+    setOptionalFollowUpForm(emptyOptionalFollowUpForm);
   };
 
   const updateAssessmentField = (field: TextAssessmentField, value: string) => {
     setAssessmentForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const updateOptionalFollowUpField = (
+    field: keyof OptionalFollowUpForm,
+    value: string
+  ) => {
+    setOptionalFollowUpForm((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -1253,13 +1290,36 @@ function DoctorAiAnalysisContent() {
         return;
       }
 
+      if (scheduleFollowUp && !optionalFollowUpForm.followUpDate) {
+        alert("Please select a follow-up date or uncheck Schedule Follow-Up.");
+        return;
+      }
+
+      if (scheduleFollowUp && optionalFollowUpForm.followUpDate < todayInputDate) {
+        alert("Please select today or a future date for the follow-up.");
+        return;
+      }
+
       setSavingAssessment(true);
 
       await saveDoctorAssessment(
         selectedAppointmentId,
         latestAnalysis.id,
-        assessmentForm
+        assessmentForm,
+        scheduleFollowUp ? optionalFollowUpForm.followUpDate : null
       );
+
+      if (scheduleFollowUp) {
+        await createDoctorFollowUp({
+          appointment_id: selectedAppointmentId,
+          follow_up_date: optionalFollowUpForm.followUpDate,
+          reason:
+            optionalFollowUpForm.reason.trim() ||
+            assessmentForm.followUpPlan.trim() ||
+            "Follow-up consultation",
+          notes: optionalFollowUpForm.notes.trim(),
+        });
+      }
 
       if (selectedPatientId) {
         try {
@@ -1270,9 +1330,13 @@ function DoctorAiAnalysisContent() {
         }
       }
 
+      setScheduleFollowUp(false);
+      setOptionalFollowUpForm(emptyOptionalFollowUpForm);
       setActiveStage("history");
       alert(
-        "Doctor assessment saved successfully. The completed record is now available in History."
+        scheduleFollowUp
+          ? "Doctor assessment saved successfully and follow-up scheduled."
+          : "Doctor assessment saved successfully. The completed record is now available in History."
       );
     } catch (error) {
       console.error("Failed to save doctor assessment:", error);
@@ -1738,6 +1802,123 @@ function DoctorAiAnalysisContent() {
               }
               placeholder="Example: Review in 2 to 4 weeks depending on response"
             />
+          </div>
+
+          <div
+            className={styles.prescriptionBox}
+            style={{
+              gap: "18px",
+              padding: "20px",
+              borderRadius: "18px",
+            }}
+          >
+            <div className={styles.prescriptionHeader}>
+              <div>
+                <h3>Optional Follow-Up Schedule</h3>
+                <p>
+                  Enable this only when the patient needs another visit. The
+                  selected appointment is linked automatically.
+                </p>
+              </div>
+            </div>
+
+            <label
+              htmlFor="scheduleFollowUp"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "16px",
+                width: "100%",
+                padding: "14px 16px",
+                border: "1px solid rgba(236, 72, 153, 0.35)",
+                borderRadius: "14px",
+                background: scheduleFollowUp
+                  ? "rgba(236, 72, 153, 0.12)"
+                  : "rgba(255, 255, 255, 0.03)",
+                cursor: "pointer",
+              }}
+            >
+              <div>
+                <strong style={{ display: "block", marginBottom: "4px" }}>
+                  Schedule a follow-up for this patient
+                </strong>
+                <span style={{ color: "#aeb6c7", fontSize: "0.9rem" }}>
+                  Adds this patient to the Follow-Ups page and doctor dashboard.
+                </span>
+              </div>
+
+              <input
+                id="scheduleFollowUp"
+                type="checkbox"
+                checked={scheduleFollowUp}
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  flex: "0 0 auto",
+                  accentColor: "#ec4899",
+                  cursor: "pointer",
+                }}
+                onChange={(e) => {
+                  setScheduleFollowUp(e.target.checked);
+
+                  if (!e.target.checked) {
+                    setOptionalFollowUpForm(emptyOptionalFollowUpForm);
+                  }
+                }}
+              />
+            </label>
+
+            {scheduleFollowUp && (
+              <div
+                className={styles.prescriptionEditorCard}
+                style={{
+                  display: "grid",
+                  gap: "16px",
+                  marginTop: "4px",
+                }}
+              >
+                <div className={styles.formGroupFull}>
+                  <label htmlFor="followUpDate">Follow-Up Date</label>
+                  <input
+                    id="followUpDate"
+                    type="date"
+                    min={todayInputDate}
+                    value={optionalFollowUpForm.followUpDate}
+                    onChange={(e) =>
+                      updateOptionalFollowUpField("followUpDate", e.target.value)
+                    }
+                  />
+                  <small className={styles.formHint}>
+                    Past dates are disabled. Choose today or a future date.
+                  </small>
+                </div>
+
+                <div className={styles.formGroupFull}>
+                  <label htmlFor="followUpReason">Reason</label>
+                  <input
+                    id="followUpReason"
+                    value={optionalFollowUpForm.reason}
+                    onChange={(e) =>
+                      updateOptionalFollowUpField("reason", e.target.value)
+                    }
+                    placeholder="Example: Review skin progress after treatment"
+                  />
+                </div>
+
+                <div className={styles.formGroupFull}>
+                  <label htmlFor="followUpNotes">Notes</label>
+                  <textarea
+                    id="followUpNotes"
+                    value={optionalFollowUpForm.notes}
+                    onChange={(e) =>
+                      updateOptionalFollowUpField("notes", e.target.value)
+                    }
+                    placeholder="Optional notes for the next consultation"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.formActions}>
@@ -2505,8 +2686,7 @@ const renderHistoryStage = () => {
                   <option value="">Select visit</option>
                   {selectedPatientValidVisits.map((appt) => (
                     <option key={appt.id} value={appt.id}>
-                      #{appt.id} • {appt.date} • {appt.services} •{" "}
-                      {appt.status}
+                      {appt.date} • {appt.time || "No time"} • {appt.services} • {appt.status}
                     </option>
                   ))}
                 </select>

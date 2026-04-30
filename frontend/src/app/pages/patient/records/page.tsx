@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
@@ -28,6 +28,11 @@ interface PatientRecord {
   prescription?: string | null;
   doctor_prescription?: string | null;
   medication?: string | null;
+
+  after_appointment_notes?: string | null;
+  doctor_notes?: string | null;
+  doctor_note?: string | null;
+  notes?: string | null;
 
   follow_up_plan?: string | null;
   followup_plan?: string | null;
@@ -109,8 +114,8 @@ export default function PatientMedicalRecords() {
 
   const getDiagnosis = (record: PatientRecord) => {
     return (
-      record.final_diagnosis ||
       record.doctor_final_diagnosis ||
+      record.final_diagnosis ||
       record.diagnosis ||
       ""
     );
@@ -118,9 +123,19 @@ export default function PatientMedicalRecords() {
 
   const getPrescription = (record: PatientRecord) => {
     return (
-      record.prescription ||
       record.doctor_prescription ||
+      record.prescription ||
       record.medication ||
+      ""
+    );
+  };
+
+  const getDoctorNotes = (record: PatientRecord) => {
+    return (
+      record.after_appointment_notes ||
+      record.doctor_notes ||
+      record.doctor_note ||
+      record.notes ||
       ""
     );
   };
@@ -139,6 +154,7 @@ export default function PatientMedicalRecords() {
       record.diagnosis_report_id ||
         getDiagnosis(record) ||
         getPrescription(record) ||
+        getDoctorNotes(record) ||
         getFollowUpPlan(record) ||
         record.next_visit_date
     );
@@ -173,14 +189,11 @@ export default function PatientMedicalRecords() {
           throw new Error("No token found");
         }
 
-        const recordsRes = await fetch(
-          `${API_BASE_URL}/appointments/my`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const recordsRes = await fetch(`${API_BASE_URL}/appointments/my`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (!recordsRes.ok) {
           const rawRecords = await recordsRes.text();
@@ -226,7 +239,8 @@ export default function PatientMedicalRecords() {
 
               <p className={styles.subtitle}>
                 View your completed consultation records, including your
-                doctor’s final diagnosis, prescription, and follow-up plan.
+                doctor’s final diagnosis, prescription, notes, and follow-up
+                plan.
               </p>
             </div>
 
@@ -316,6 +330,14 @@ export default function PatientMedicalRecords() {
 
                       <PrescriptionDetails
                         prescription={valueOrFallback(getPrescription(record))}
+                      />
+
+                      <RecordField
+                        label="Doctor Notes"
+                        value={valueOrFallback(
+                          getDoctorNotes(record),
+                          "No doctor notes recorded."
+                        )}
                       />
 
                       <RecordField
@@ -432,7 +454,7 @@ function PrescriptionDetails({ prescription }: { prescription: string }) {
   );
 }
 
-const tableHeaderStyle: React.CSSProperties = {
+const tableHeaderStyle: CSSProperties = {
   textAlign: "left",
   padding: "12px",
   borderBottom: "1px solid #e5e7eb",
@@ -444,7 +466,7 @@ const tableHeaderStyle: React.CSSProperties = {
   letterSpacing: "0.04em",
 };
 
-const tableCellStyle: React.CSSProperties = {
+const tableCellStyle: CSSProperties = {
   verticalAlign: "top",
   padding: "12px",
   borderBottom: "1px solid #e5e7eb",
@@ -458,28 +480,88 @@ function parsePrescription(rawPrescription: string): PrescriptionItem[] {
 
   if (!raw || raw === "Not yet recorded.") return [];
 
-  const medicationSection = getSection(raw, "Medication", ["Usage", "Reason"]);
-  const usageSection = getSection(raw, "Usage", ["Reason"]);
-  const reasonSection = getSection(raw, "Reason", []);
+  const normalized = raw
+    .replace(/\r/g, "")
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  if (!medicationSection && !usageSection && !reasonSection) {
-    return [];
+  const medicationBlocks =
+    normalized.match(/Medication\s*:\s*[\s\S]*?(?=\s*Medication\s*:|$)/gi) ||
+    [];
+
+  if (medicationBlocks.length > 0) {
+    return medicationBlocks
+      .map((block, index) => {
+        const medicine = extractPrescriptionValue(block, "Medication");
+        const usage = extractPrescriptionValue(block, "Usage");
+        const reason = extractPrescriptionValue(block, "Reason");
+
+        return {
+          medicine: medicine || `Medication ${index + 1}`,
+          usage,
+          reason,
+        };
+      })
+      .filter(
+        (item) =>
+          item.medicine.trim() || item.usage.trim() || item.reason.trim()
+      );
   }
 
-  const medicines = splitMedicines(medicationSection);
+  const legacyMedicationSection = getSection(raw, "Medication", [
+    "Usage",
+    "Reason",
+  ]);
+  const legacyUsageSection = getSection(raw, "Usage", ["Reason"]);
+  const legacyReasonSection = getSection(raw, "Reason", []);
 
-  if (medicines.length === 0) {
-    return [];
+  if (
+    legacyMedicationSection ||
+    legacyUsageSection ||
+    legacyReasonSection
+  ) {
+    const medicines = splitMedicines(legacyMedicationSection);
+
+    if (medicines.length === 0) return [];
+
+    const usageMap = mapDetailsByMedicine(legacyUsageSection, medicines);
+    const reasonMap = mapDetailsByMedicine(legacyReasonSection, medicines);
+
+    return medicines.map((medicine) => ({
+      medicine,
+      usage: usageMap[medicine.toLowerCase()] || legacyUsageSection || "",
+      reason: reasonMap[medicine.toLowerCase()] || legacyReasonSection || "",
+    }));
   }
 
-  const usageMap = mapDetailsByMedicine(usageSection, medicines);
-  const reasonMap = mapDetailsByMedicine(reasonSection, medicines);
+  return [
+    {
+      medicine: cleanText(normalized),
+      usage: "",
+      reason: "",
+    },
+  ];
+}
 
-  return medicines.map((medicine) => ({
-    medicine,
-    usage: usageMap[medicine.toLowerCase()] || "",
-    reason: reasonMap[medicine.toLowerCase()] || "",
-  }));
+function extractPrescriptionValue(
+  block: string,
+  label: "Medication" | "Usage" | "Reason"
+) {
+  const stopLabels = ["Medication", "Usage", "Reason"].filter(
+    (item) => item !== label
+  );
+
+  const stopPattern = stopLabels
+    .map((item) => `\\|?\\s*${item}\\s*:`)
+    .join("|");
+
+  const expression = new RegExp(
+    `${label}\\s*:\\s*([\\s\\S]*?)(?=\\s*(?:${stopPattern})|$)`,
+    "i"
+  );
+
+  return cleanText(block.match(expression)?.[1] || "");
 }
 
 function getSection(
@@ -556,6 +638,7 @@ function mapDetailsByMedicine(section: string, medicines: string[]) {
 function cleanText(value: string) {
   return value
     .replace(/\r?\n/g, " ")
+    .replace(/\s*\|\s*/g, " ")
     .replace(/^[-•]\s*/g, "")
     .replace(/;+$/g, "")
     .replace(/\s+/g, " ")

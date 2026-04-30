@@ -23,6 +23,7 @@ type UnknownRecord = Record<string, unknown>;
 
 type PatientGroup = {
   id: string;
+  patientId?: number | null;
   patientName: string;
   records: PatientRecord[];
   totalVisits: number;
@@ -153,6 +154,12 @@ function readTextFromSources(
 }
 
 function createPatientKey(record: PatientRecord) {
+  const patientId = readAny(record.appointment, ["patient_id"]);
+
+  if (!isEmptyValue(patientId)) {
+    return `patient-${String(patientId)}`;
+  }
+
   const patientEmail = displayValue(
     readAny(record.appointment, ["patient_email", "email"]),
     ""
@@ -460,10 +467,10 @@ function extractLabelledSegment(
     return "";
   }
 
-  const stopPattern = stopLabels.map((item) => `${item}\\s*:`).join("|");
+  const stopPattern = stopLabels.map((item) => item + "\\s*:").join("|");
 
   const pattern = new RegExp(
-    `${label}\\s*:\\s*([\\s\\S]*?)(?=${stopPattern}|$)`,
+    label + "\\s*:\\s*([\\s\\S]*?)(?=\\s*\\|?\\s*(?:" + stopPattern + ")|$)",
     "i"
   );
 
@@ -476,6 +483,42 @@ function cleanFieldText(value: string) {
     .replace(/\|/g, "")
     .replace(/^[-•]\s*/, "")
     .trim();
+}
+
+function splitDoctorPrescriptionRows(text: string) {
+  return text
+    .replace(/\r/g, "")
+    .replace(/\s+(?=\bMedication\s*:)/gi, "\n")
+    .replace(/\s+(?=\bMedicine\s*:)/gi, "\n")
+    .split(/\n+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function parseDoctorPrescriptionRow(row: string, index: number): PrescriptionItem | null {
+  const medication = cleanFieldText(
+    extractLabelledSegment(row, "Medication", ["Usage", "Reason"]) ||
+      extractLabelledSegment(row, "Medicine", ["Usage", "Reason"]) ||
+      cleanMedicationName(row)
+  );
+
+  const usage = cleanFieldText(
+    extractLabelledSegment(row, "Usage", ["Reason", "Medication", "Medicine"])
+  );
+
+  const reason = cleanFieldText(
+    extractLabelledSegment(row, "Reason", ["Medication", "Medicine"])
+  );
+
+  if (!medication && !usage && !reason) {
+    return null;
+  }
+
+  return {
+    medication: medication || "Medication " + (index + 1),
+    usage: usage || "Not provided",
+    reason: reason || "Not provided",
+  };
 }
 
 function isGenericMedicationName(value: string) {
@@ -781,14 +824,14 @@ function prescriptionItemsFromUnknown(value: unknown): PrescriptionItem[] {
 
     if (medicationNames.length > 0) {
       return medicationNames.map((medicationName) => ({
-        medication: medicationName,
+        medication: cleanFieldText(medicationName),
         usage:
-          getSpecificInstruction(usageText, medicationName) ||
-          usageText ||
+          cleanFieldText(getSpecificInstruction(usageText, medicationName)) ||
+          cleanFieldText(usageText) ||
           "Not provided",
         reason:
-          getSpecificInstruction(reasonText, medicationName) ||
-          reasonText ||
+          cleanFieldText(getSpecificInstruction(reasonText, medicationName)) ||
+          cleanFieldText(reasonText) ||
           "Not provided",
       }));
     }
@@ -796,9 +839,9 @@ function prescriptionItemsFromUnknown(value: unknown): PrescriptionItem[] {
     if (medicationText || usageText || reasonText) {
       return [
         {
-          medication: medicationText || "Medication",
-          usage: usageText || "Not provided",
-          reason: reasonText || "Not provided",
+          medication: cleanFieldText(medicationText || "Medication"),
+          usage: cleanFieldText(usageText || "Not provided"),
+          reason: cleanFieldText(reasonText || "Not provided"),
         },
       ];
     }
@@ -809,6 +852,21 @@ function prescriptionItemsFromUnknown(value: unknown): PrescriptionItem[] {
 
     if (!rawText) {
       return [];
+    }
+
+    const doctorRows = splitDoctorPrescriptionRows(rawText);
+    const hasDoctorPrescriptionLabels = doctorRows.some(
+      (row) =>
+        /\bMedication\s*:/i.test(row) ||
+        /\bMedicine\s*:/i.test(row) ||
+        /\bUsage\s*:/i.test(row) ||
+        /\bReason\s*:/i.test(row)
+    );
+
+    if (hasDoctorPrescriptionLabels) {
+      return doctorRows
+        .map((row, index) => parseDoctorPrescriptionRow(row, index))
+        .filter((item): item is PrescriptionItem => Boolean(item));
     }
 
     const medicationSegment =
@@ -822,14 +880,14 @@ function prescriptionItemsFromUnknown(value: unknown): PrescriptionItem[] {
     const medicationNames = splitMedicationNames(medicationSegment);
 
     return medicationNames.map((medicationName) => ({
-      medication: medicationName,
+      medication: cleanFieldText(medicationName),
       usage:
-        getSpecificInstruction(usageSegment, medicationName) ||
-        usageSegment ||
+        cleanFieldText(getSpecificInstruction(usageSegment, medicationName)) ||
+        cleanFieldText(usageSegment) ||
         "Not provided",
       reason:
-        getSpecificInstruction(reasonSegment, medicationName) ||
-        reasonSegment ||
+        cleanFieldText(getSpecificInstruction(reasonSegment, medicationName)) ||
+        cleanFieldText(reasonSegment) ||
         "Not provided",
     }));
   }
@@ -1025,6 +1083,13 @@ function DoctorPatientRecordsContent() {
   const [selectedAiModal, setSelectedAiModal] =
     useState<SelectedAiModal | null>(null);
 
+  const requestedPatientIdFromQuery = useMemo(() => {
+    const patientIdParam = searchParams.get("patient_id");
+    const patientId = patientIdParam ? Number(patientIdParam) : null;
+
+    return patientId && !Number.isNaN(patientId) ? patientId : null;
+  }, [searchParams]);
+
   const requestedPatientFromQuery = useMemo(() => {
     return searchParams.get("patient")?.trim() || "";
   }, [searchParams]);
@@ -1107,8 +1172,19 @@ function DoctorPatientRecordsContent() {
 
         const latestRecord = sortedRecords[0];
 
+        const rawPatientId = latestRecord
+          ? readAny(latestRecord.appointment, ["patient_id"])
+          : null;
+        const parsedPatientId = !isEmptyValue(rawPatientId)
+          ? Number(rawPatientId)
+          : null;
+
         return {
           id,
+          patientId:
+            parsedPatientId && !Number.isNaN(parsedPatientId)
+              ? parsedPatientId
+              : null,
           patientName:
             latestRecord?.appointment.patient_name || "Unnamed Patient",
           records: sortedRecords,
@@ -1158,11 +1234,22 @@ function DoctorPatientRecordsContent() {
   }, [patientGroups, selectedPatientId]);
 
   useEffect(() => {
-    if (
-      !requestedPatientNormalized ||
-      patientGroups.length === 0 ||
-      selectedPatientId
-    ) {
+    if (patientGroups.length === 0 || selectedPatientId) {
+      return;
+    }
+
+    if (requestedPatientIdFromQuery) {
+      const idMatch = patientGroups.find(
+        (patient) => patient.patientId === requestedPatientIdFromQuery
+      );
+
+      if (idMatch) {
+        setSelectedPatientId(idMatch.id);
+        return;
+      }
+    }
+
+    if (!requestedPatientNormalized) {
       return;
     }
 
@@ -1187,6 +1274,7 @@ function DoctorPatientRecordsContent() {
 
     setSearchTerm(requestedPatientFromQuery);
   }, [
+    requestedPatientIdFromQuery,
     requestedPatientNormalized,
     requestedPatientFromQuery,
     patientGroups,
@@ -1197,7 +1285,7 @@ function DoctorPatientRecordsContent() {
     setSelectedPatientId(null);
     setSearchTerm("");
 
-    if (requestedPatientFromQuery) {
+    if (requestedPatientFromQuery || requestedPatientIdFromQuery) {
       router.replace("/pages/doctor/patient-records");
     }
   };

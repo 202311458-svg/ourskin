@@ -37,10 +37,28 @@ type DashboardAnalysis = {
   red_flags?: string | null;
 };
 
+type DashboardFollowUp = {
+  id: number;
+  appointment_id: number;
+  patient_id?: number | null;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  doctor_name?: string | null;
+  follow_up_date: string;
+  reason?: string | null;
+  notes?: string | null;
+  status?: string;
+  appointment_services?: string | null;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
+};
+
 type DashboardStats = {
   todays_appointments?: number;
   pending_ai_reviews?: number;
   follow_ups_due?: number;
+  follow_ups_scheduled?: number;
+  completed_today?: number;
 };
 
 type DoctorDashboardView = DashboardData & {
@@ -48,6 +66,8 @@ type DoctorDashboardView = DashboardData & {
   todays_schedule?: DashboardAppointment[];
   ai_queue?: DashboardAnalysis[];
   urgent_cases?: DashboardAnalysis[];
+  follow_ups_due_items?: DashboardFollowUp[];
+  upcoming_follow_ups?: DashboardFollowUp[];
 };
 
 function getStatusBadgeClass(status?: string) {
@@ -158,6 +178,13 @@ export default function DoctorDashboardPage() {
 
   const pendingAiReviews: DashboardAnalysis[] = data?.ai_queue ?? [];
 
+  const dueFollowUps: DashboardFollowUp[] = data?.follow_ups_due_items ?? [];
+  const upcomingFollowUps: DashboardFollowUp[] =
+    data?.upcoming_follow_ups ?? [];
+
+  const followUpPreview =
+    dueFollowUps.length > 0 ? dueFollowUps : upcomingFollowUps;
+
   const highPriorityCases = useMemo(() => {
     const urgentCases: DashboardAnalysis[] = data?.urgent_cases ?? [];
 
@@ -243,6 +270,13 @@ export default function DoctorDashboardPage() {
               {stats.follow_ups_due ?? 0}
             </h2>
           </div>
+
+          <div className={styles.sectionCard}>
+            <p className={styles.listSecondary}>Scheduled Follow-ups</p>
+            <h2 className={styles.doctorStatValue}>
+              {stats.follow_ups_scheduled ?? followUpPreview.length}
+            </h2>
+          </div>
         </section>
 
         <div className={styles.doctorDashboardGrid}>
@@ -296,9 +330,7 @@ export default function DoctorDashboardPage() {
                         className={styles.secondaryButton}
                         onClick={() => router.push("/pages/doctor/appointments")}
                       >
-                        {appt.status === "Approved"
-                          ? "Complete Report"
-                          : "View"}
+                        {appt.status === "Approved" ? "Complete Report" : "View"}
                       </button>
                     </div>
                   </div>
@@ -420,11 +452,23 @@ export default function DoctorDashboardPage() {
           <section className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
               <div>
-                <h2 className={styles.sectionTitle}>Follow-ups Due</h2>
+                <h2 className={styles.sectionTitle}>
+                  {dueFollowUps.length > 0
+                    ? "Follow-ups Due"
+                    : "Upcoming Follow-ups"}
+                </h2>
                 <p className={styles.listSecondary}>
-                  Patients who need follow-up attention.
+                  Patients with scheduled follow-up care.
                 </p>
               </div>
+
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => router.push("/pages/doctor/follow-ups")}
+              >
+                View All
+              </button>
             </div>
 
             <div className={styles.followUpSummaryCard}>
@@ -435,17 +479,57 @@ export default function DoctorDashboardPage() {
               </h2>
 
               <p className={styles.listSecondary}>
-                Open the follow-up page to review patients with scheduled
-                follow-up care.
+                Total scheduled: {stats.follow_ups_scheduled ?? followUpPreview.length}
               </p>
+            </div>
 
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => router.push("/pages/doctor/follow-ups")}
-              >
-                View Follow-ups
-              </button>
+            <div className={styles.list} style={{ marginTop: 16 }}>
+              {followUpPreview.length === 0 ? (
+                <div className={styles.emptyState}>
+                  No scheduled follow-ups right now.
+                </div>
+              ) : (
+                followUpPreview.map((item) => {
+                  const isDue = dueFollowUps.some((due) => due.id === item.id);
+
+                  return (
+                    <div key={item.id} className={styles.listItem}>
+                      <div className={styles.listLeft}>
+                        <div className={styles.listPrimary}>
+                          {item.patient_name || `Patient #${item.patient_id || "N/A"}`}
+                        </div>
+
+                        <div className={styles.listSecondary}>
+                          {item.follow_up_date} •{" "}
+                          {item.appointment_services || "Follow-up consultation"}
+                        </div>
+
+                        <div className={styles.listSecondary}>
+                          Reason: {item.reason || "Follow-up consultation"}
+                        </div>
+                      </div>
+
+                      <div className={styles.listRight}>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            isDue ? styles.badgeUrgent : styles.badgePending
+                          }`}
+                        >
+                          {isDue ? "Due" : "Upcoming"}
+                        </span>
+
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => router.push("/pages/doctor/follow-ups")}
+                        >
+                          Open
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>

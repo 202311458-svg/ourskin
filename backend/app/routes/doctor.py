@@ -115,6 +115,37 @@ def serialize_follow_up(item: FollowUp, doctor_name: str | None = None):
     }
 
 
+def serialize_follow_up_with_context(item: FollowUp, db: Session):
+    appointment = None
+    patient = None
+    doctor = None
+
+    if item.appointment_id:
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == item.appointment_id)
+            .first()
+        )
+
+    if item.patient_id:
+        patient = db.query(User).filter(User.id == item.patient_id).first()
+
+    if item.doctor_id:
+        doctor = db.query(User).filter(User.id == item.doctor_id).first()
+
+    data = serialize_follow_up(item, doctor.name if doctor else None)
+    data.update(
+        {
+            "patient_name": patient.name if patient else appointment.patient_name if appointment else None,
+            "patient_email": patient.email if patient else appointment.patient_email if appointment else None,
+            "appointment_services": appointment.services if appointment else None,
+            "appointment_date": str(appointment.date) if appointment and appointment.date else None,
+            "appointment_time": str(appointment.time) if appointment and appointment.time else None,
+        }
+    )
+
+    return data
+
 
 def create_appointment_log(
     db: Session,
@@ -183,12 +214,35 @@ def doctor_dashboard(
         .all()
     )
 
-    follow_ups_due = (
+    follow_up_base_query = (
         db.query(FollowUp)
-        .filter(FollowUp.follow_up_date <= today)
+        .filter(FollowUp.doctor_id == current_user.id)
         .filter(FollowUp.status == "Scheduled")
+    )
+
+    follow_ups_due = (
+        follow_up_base_query
+        .filter(FollowUp.follow_up_date <= today)
         .count()
     )
+
+    follow_ups_due_items = (
+        follow_up_base_query
+        .filter(FollowUp.follow_up_date <= today)
+        .order_by(FollowUp.follow_up_date.asc())
+        .limit(5)
+        .all()
+    )
+
+    upcoming_follow_ups = (
+        follow_up_base_query
+        .filter(FollowUp.follow_up_date >= today)
+        .order_by(FollowUp.follow_up_date.asc())
+        .limit(5)
+        .all()
+    )
+
+    scheduled_follow_ups = follow_up_base_query.count()
 
     completed_today = (
         db.query(AppointmentModel)
@@ -217,12 +271,21 @@ def doctor_dashboard(
             "todays_appointments": len(todays_appointments),
             "pending_ai_reviews": len(pending_ai),
             "follow_ups_due": follow_ups_due,
+            "follow_ups_scheduled": scheduled_follow_ups,
             "completed_today": completed_today,
         },
         "todays_schedule": [serialize_appointment(a) for a in todays_appointments],
         "ai_queue": [serialize_analysis_with_appointment(a, db) for a in pending_ai[:5]],
         "recent_records": [serialize_appointment(a) for a in recent_records],
         "urgent_cases": [serialize_analysis_with_appointment(a, db) for a in urgent_cases],
+        "follow_ups_due_items": [
+            serialize_follow_up_with_context(item, db)
+            for item in follow_ups_due_items
+        ],
+        "upcoming_follow_ups": [
+            serialize_follow_up_with_context(item, db)
+            for item in upcoming_follow_ups
+        ],
     }
 
 
@@ -660,18 +723,12 @@ def get_doctor_follow_ups(
 ):
     items = (
         db.query(FollowUp)
+        .filter(FollowUp.doctor_id == current_user.id)
         .order_by(FollowUp.follow_up_date.asc())
         .all()
     )
 
-    doctor_ids = list({item.doctor_id for item in items if item.doctor_id})
-    doctors = db.query(User).filter(User.id.in_(doctor_ids)).all()
-    doctor_map = {doctor.id: doctor.name for doctor in doctors}
-
-    return [
-        serialize_follow_up(item, doctor_map.get(item.doctor_id))
-        for item in items
-    ]
+    return [serialize_follow_up_with_context(item, db) for item in items]
 
 
 @router.post("/follow-ups")
@@ -685,10 +742,16 @@ def create_follow_up(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
+    if payload.follow_up_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Follow-up date cannot be in the past"
+        )
+
     follow_up = FollowUp(
         appointment_id=appointment.id,
         patient_id=appointment.patient_id,
-        doctor_id=appointment.doctor_id if appointment.doctor_id else current_user.id,
+        doctor_id=current_user.id,
         follow_up_date=payload.follow_up_date,
         reason=payload.reason,
         notes=payload.notes,
@@ -696,17 +759,23 @@ def create_follow_up(
     )
 
     db.add(follow_up)
+
+    create_appointment_log(
+        db=db,
+        appointment_id=appointment.id,
+        action="Follow-up Scheduled",
+        performed_by_id=current_user.id,
+        performed_by_name=current_user.name,
+        performed_by_role=current_user.role,
+        reason=payload.reason,
+    )
+
     db.commit()
     db.refresh(follow_up)
 
-    doctor_name = None
-    if follow_up.doctor_id:
-        doctor = db.query(User).filter(User.id == follow_up.doctor_id).first()
-        doctor_name = doctor.name if doctor else None
-
     return {
         "message": "Follow-up created successfully",
-        "follow_up": serialize_follow_up(follow_up, doctor_name),
+        "follow_up": serialize_follow_up_with_context(follow_up, db),
     }
 
 
@@ -717,12 +786,35 @@ def update_follow_up(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    follow_up = db.query(FollowUp).filter(FollowUp.id == follow_up_id).first()
+    follow_up = (
+        db.query(FollowUp)
+        .filter(FollowUp.id == follow_up_id)
+        .first()
+    )
 
     if not follow_up:
         raise HTTPException(status_code=404, detail="Follow-up not found")
 
+    if follow_up.doctor_id and follow_up.doctor_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update your own follow-ups"
+        )
+
     data = payload.model_dump(exclude_unset=True)
+
+    requested_status = data.get("status")
+
+    if (
+        requested_status
+        and requested_status.strip().lower() == "completed"
+        and follow_up.follow_up_date > date.today()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Future follow-ups cannot be marked completed yet."
+        )
+
     for key, value in data.items():
         setattr(follow_up, key, value)
 
@@ -730,6 +822,7 @@ def update_follow_up(
     db.refresh(follow_up)
 
     doctor_name = None
+
     if follow_up.doctor_id:
         doctor = db.query(User).filter(User.id == follow_up.doctor_id).first()
         doctor_name = doctor.name if doctor else None
@@ -738,7 +831,6 @@ def update_follow_up(
         "message": "Follow-up updated successfully",
         "follow_up": serialize_follow_up(follow_up, doctor_name),
     }
-
 
 @router.get("/settings")
 def get_doctor_settings(current_user: User = Depends(require_doctor)):

@@ -114,6 +114,11 @@ export type FollowUp = {
   patient_id: number;
   doctor_id: number;
   doctor_name?: string | null;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  appointment_services?: string | null;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
   follow_up_date: string;
   reason: string;
   notes?: string | null;
@@ -137,12 +142,15 @@ export type DashboardData = {
     todays_appointments: number;
     pending_ai_reviews: number;
     follow_ups_due: number;
+    follow_ups_scheduled?: number;
     completed_today: number;
   };
   todays_schedule: Appointment[];
   ai_queue: Analysis[];
   recent_records: Appointment[];
   urgent_cases: Analysis[];
+  follow_ups_due_items?: FollowUp[];
+  upcoming_follow_ups?: FollowUp[];
 };
 
 export type PatientRecord = {
