@@ -40,6 +40,10 @@ def get_current_user_profile(current_user: User = Depends(get_authenticated_user
     return {
         "id": current_user.id,
         "name": current_user.name,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "date_of_birth": current_user.date_of_birth,
+        "is_minor": current_user.is_minor,
         "email": current_user.email,
         "contact": current_user.contact,
         "role": current_user.role,
@@ -49,6 +53,12 @@ def get_current_user_profile(current_user: User = Depends(get_authenticated_user
         "specialty": current_user.specialty,
         "availability": current_user.availability,
         "bio": current_user.bio,
+        "guardian_first_name": current_user.guardian_first_name,
+        "guardian_last_name": current_user.guardian_last_name,
+        "guardian_relationship": current_user.guardian_relationship,
+        "guardian_contact": current_user.guardian_contact,
+        "guardian_email": current_user.guardian_email,
+        "guardian_consent": current_user.guardian_consent,
     }
 
 
@@ -71,6 +81,10 @@ def update_current_user_profile(
         "user": {
             "id": current_user.id,
             "name": current_user.name,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "date_of_birth": current_user.date_of_birth,
+            "is_minor": current_user.is_minor,
             "email": current_user.email,
             "contact": current_user.contact,
             "role": current_user.role,
@@ -80,5 +94,11 @@ def update_current_user_profile(
             "specialty": current_user.specialty,
             "availability": current_user.availability,
             "bio": current_user.bio,
+            "guardian_first_name": current_user.guardian_first_name,
+            "guardian_last_name": current_user.guardian_last_name,
+            "guardian_relationship": current_user.guardian_relationship,
+            "guardian_contact": current_user.guardian_contact,
+            "guardian_email": current_user.guardian_email,
+            "guardian_consent": current_user.guardian_consent,
         },
     }

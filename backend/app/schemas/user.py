@@ -1,22 +1,31 @@
 from pydantic import BaseModel, EmailStr, model_validator
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 
 class UserCreate(BaseModel):
-    name: str
+    first_name: str
+    last_name: str
+    date_of_birth: date
+
     email: EmailStr
     password: str
     confirm_password: str
     contact: str
     role: str = "patient"
 
+    guardian_first_name: Optional[str] = None
+    guardian_last_name: Optional[str] = None
+    guardian_relationship: Optional[str] = None
+    guardian_contact: Optional[str] = None
+    guardian_email: Optional[EmailStr] = None
+    guardian_consent: Optional[bool] = False
+
     @model_validator(mode="after")
     def passwords_match(self):
         if self.password != self.confirm_password:
             raise ValueError("Passwords do not match")
         return self
-
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -26,14 +35,27 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: int
     name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    is_minor: Optional[bool] = False
+
     email: EmailStr
-    contact: str
+    contact: Optional[str] = None
     role: str
     created_at: datetime
 
+    guardian_first_name: Optional[str] = None
+    guardian_last_name: Optional[str] = None
+    guardian_relationship: Optional[str] = None
+    guardian_contact: Optional[str] = None
+    guardian_email: Optional[EmailStr] = None
+    guardian_consent: Optional[bool] = False
+    terms_accepted: Optional[bool] = False
+    privacy_accepted: Optional[bool] = False
+
     class Config:
         from_attributes = True
-
 
 class ChangePasswordRequest(BaseModel):
     current_password: str

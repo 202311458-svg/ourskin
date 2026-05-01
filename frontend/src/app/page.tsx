@@ -1,5 +1,5 @@
 "use client";
-
+import { API_BASE_URL } from "@/lib/api"
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -98,13 +98,7 @@ export default function Home() {
             Login
           </button>
 
-          <button
-            type="button"
-            className="bookBtn"
-            onClick={() => setModal(true)}
-          >
-            Book Appointment
-          </button>
+        
         </div>
       </nav>
 
