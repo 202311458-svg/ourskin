@@ -544,7 +544,6 @@ useEffect(() => {
 
     {dateOfBirth && isMinor ? (
       <>
-        <div className={styles.registerDivider} />
 
         <div className={styles.registerGrid}>
           <div className={styles.registerField}>
