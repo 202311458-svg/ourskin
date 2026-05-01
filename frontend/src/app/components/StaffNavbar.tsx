@@ -35,6 +35,11 @@ export default function StaffNavbar() {
       path: "/pages/staff/dashboard",
       icon: <FaTachometerAlt />,
     },
+        {
+      name: "Schedules",
+      path: "/pages/staff/schedules",
+      icon: <FaClipboardList />,
+    },
     {
       name: "Appointment Requests",
       path: "/pages/staff/requests",
