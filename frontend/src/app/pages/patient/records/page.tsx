@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "../history/history.module.css";
+import styles from "@/app/styles/patient.module.css";
 
 interface PatientRecord {
   id: number;
@@ -12,11 +13,11 @@ interface PatientRecord {
   doctor_id?: number | null;
   patient_name?: string | null;
   patient_email?: string | null;
-  doctor_name: string;
+  doctor_name?: string | null;
   date: string;
   time: string;
-  services: string;
-  status: string;
+  services?: string | null;
+  status?: string | null;
   cancel_reason?: string | null;
 
   diagnosis_report_id?: number | null;
@@ -47,124 +48,193 @@ interface PrescriptionItem {
   reason: string;
 }
 
+const normalizeRecords = (data: unknown): PatientRecord[] => {
+  if (Array.isArray(data)) return data as PatientRecord[];
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "appointments" in data &&
+    Array.isArray((data as { appointments: unknown }).appointments)
+  ) {
+    return (data as { appointments: PatientRecord[] }).appointments;
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "records" in data &&
+    Array.isArray((data as { records: unknown }).records)
+  ) {
+    return (data as { records: PatientRecord[] }).records;
+  }
+
+  return [];
+};
+
+const uniqueRecordsById = (records: PatientRecord[]) => {
+  return Array.from(new Map(records.map((record) => [record.id, record])).values());
+};
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text();
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "Not scheduled";
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const formatTime = (timeString?: string | null) => {
+  if (!timeString) return "Not scheduled";
+
+  const date = new Date(`1970-01-01T${timeString}`);
+
+  if (Number.isNaN(date.getTime())) return timeString;
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const valueOrFallback = (
+  value: string | null | undefined,
+  fallback = "Not yet recorded."
+) => {
+  if (!value || value.trim() === "") return fallback;
+  return value;
+};
+
+const getDiagnosis = (record: PatientRecord) => {
+  return (
+    record.doctor_final_diagnosis ||
+    record.final_diagnosis ||
+    record.diagnosis ||
+    ""
+  );
+};
+
+const getPrescription = (record: PatientRecord) => {
+  return (
+    record.doctor_prescription ||
+    record.prescription ||
+    record.medication ||
+    ""
+  );
+};
+
+const getDoctorNotes = (record: PatientRecord) => {
+  return (
+    record.after_appointment_notes ||
+    record.doctor_notes ||
+    record.doctor_note ||
+    record.notes ||
+    ""
+  );
+};
+
+const getFollowUpPlan = (record: PatientRecord) => {
+  return (
+    record.follow_up_plan ||
+    record.followup_plan ||
+    record.follow_up ||
+    ""
+  );
+};
+
+const hasDoctorRecord = (record: PatientRecord) => {
+  return Boolean(
+    record.diagnosis_report_id ||
+      getDiagnosis(record) ||
+      getPrescription(record) ||
+      getDoctorNotes(record) ||
+      getFollowUpPlan(record) ||
+      record.next_visit_date
+  );
+};
+
 export default function PatientMedicalRecords() {
+  const router = useRouter();
+
   const [records, setRecords] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [navCollapsed, setNavCollapsed] = useState(false);
 
-  const normalizeRecords = (data: unknown): PatientRecord[] => {
-    if (Array.isArray(data)) return data as PatientRecord[];
+  const fetchRecords = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role");
 
-    if (
-      data &&
-      typeof data === "object" &&
-      "appointments" in data &&
-      Array.isArray((data as { appointments: unknown }).appointments)
-    ) {
-      return (data as { appointments: PatientRecord[] }).appointments;
+      if (!token) {
+        router.push("/pages/login");
+        return;
+      }
+
+      if (role !== "patient") {
+        router.push("/");
+        return;
+      }
+
+      setLoading(true);
+
+      const recordsRes = await fetch(`${API_BASE_URL}/appointments/my`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const recordsData = await readJsonSafely(recordsRes);
+
+      if (!recordsRes.ok) {
+        console.error("Medical records request failed:", {
+          status: recordsRes.status,
+          statusText: recordsRes.statusText,
+          body: recordsData,
+        });
+
+        throw new Error("Failed to fetch medical records");
+      }
+
+      setRecords(uniqueRecordsById(normalizeRecords(recordsData)));
+    } catch (error) {
+      console.error("Failed to fetch medical records:", error);
+      setRecords([]);
+    } finally {
+      setLoading(false);
     }
-
-    if (
-      data &&
-      typeof data === "object" &&
-      "records" in data &&
-      Array.isArray((data as { records: unknown }).records)
-    ) {
-      return (data as { records: PatientRecord[] }).records;
-    }
-
-    return [];
-  };
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "Not scheduled";
-
-    const date = new Date(dateString);
-
-    if (Number.isNaN(date.getTime())) return dateString;
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (timeString?: string | null) => {
-    if (!timeString) return "Not scheduled";
-
-    const date = new Date(`1970-01-01T${timeString}`);
-
-    if (Number.isNaN(date.getTime())) return timeString;
-
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const valueOrFallback = (
-    value: string | null | undefined,
-    fallback = "Not yet recorded."
-  ) => {
-    if (!value || value.trim() === "") return fallback;
-    return value;
-  };
-
-  const getDiagnosis = (record: PatientRecord) => {
-    return (
-      record.doctor_final_diagnosis ||
-      record.final_diagnosis ||
-      record.diagnosis ||
-      ""
-    );
-  };
-
-  const getPrescription = (record: PatientRecord) => {
-    return (
-      record.doctor_prescription ||
-      record.prescription ||
-      record.medication ||
-      ""
-    );
-  };
-
-  const getDoctorNotes = (record: PatientRecord) => {
-    return (
-      record.after_appointment_notes ||
-      record.doctor_notes ||
-      record.doctor_note ||
-      record.notes ||
-      ""
-    );
-  };
-
-  const getFollowUpPlan = (record: PatientRecord) => {
-    return (
-      record.follow_up_plan ||
-      record.followup_plan ||
-      record.follow_up ||
-      ""
-    );
-  };
-
-  const hasDoctorRecord = (record: PatientRecord) => {
-    return Boolean(
-      record.diagnosis_report_id ||
-        getDiagnosis(record) ||
-        getPrescription(record) ||
-        getDoctorNotes(record) ||
-        getFollowUpPlan(record) ||
-        record.next_visit_date
-    );
-  };
+  }, [router]);
 
   const completedRecords = useMemo(() => {
-    return records.filter((record) => {
-      const isCompleted = record.status?.toLowerCase() === "completed";
-      return isCompleted && hasDoctorRecord(record);
-    });
+    return records
+      .filter((record) => {
+        const isCompleted = record.status?.toLowerCase() === "completed";
+        return isCompleted && hasDoctorRecord(record);
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time || "00:00:00"}`).getTime();
+        const dateB = new Date(`${b.date}T${b.time || "00:00:00"}`).getTime();
+
+        return dateB - dateA;
+      });
   }, [records]);
 
   useEffect(() => {
@@ -173,6 +243,7 @@ export default function PatientMedicalRecords() {
       setNavCollapsed(customEvent.detail);
     };
 
+    setNavCollapsed(document.body.classList.contains("navCollapsed"));
     window.addEventListener("navbarToggle", handleNavToggle);
 
     return () => {
@@ -181,54 +252,17 @@ export default function PatientMedicalRecords() {
   }, []);
 
   useEffect(() => {
-    const fetchRecords = async () => {
-      try {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-          throw new Error("No token found");
-        }
-
-        const recordsRes = await fetch(`${API_BASE_URL}/appointments/my`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!recordsRes.ok) {
-          const rawRecords = await recordsRes.text();
-
-          console.error("Medical records request failed:", {
-            status: recordsRes.status,
-            statusText: recordsRes.statusText,
-            body: rawRecords,
-          });
-
-          throw new Error("Failed to fetch medical records");
-        }
-
-        const recordsData = await recordsRes.json();
-        setRecords(normalizeRecords(recordsData));
-      } catch (error) {
-        console.error("Failed to fetch medical records:", error);
-        setRecords([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRecords();
-  }, []);
+  }, [fetchRecords]);
 
   return (
-    <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
+    <div className={navCollapsed ? "nav-collapsed" : "nav-active"}>
       <Navbar />
 
       <main
-        className={styles.historyContainer}
-        style={{
-          marginLeft: navCollapsed ? "80px" : "220px",
-        }}
+        className={`${styles.historyContainer} ${
+          navCollapsed ? styles.navCollapsed : ""
+        }`}
       >
         <section className={styles.contentWrapper}>
           <div className={styles.headerRow}>
@@ -262,6 +296,7 @@ export default function PatientMedicalRecords() {
           {loading ? (
             <div className={styles.emptyState}>
               <h2>Loading medical records...</h2>
+
               <p>Please wait while your consultation records are being loaded.</p>
             </div>
           ) : completedRecords.length === 0 ? (
@@ -298,6 +333,7 @@ export default function PatientMedicalRecords() {
                   <div className={styles.detailsGrid}>
                     <div className={styles.detailBox}>
                       <p className={styles.detailLabel}>Date</p>
+
                       <p className={styles.detailValue}>
                         {formatDate(record.date)}
                       </p>
@@ -305,6 +341,7 @@ export default function PatientMedicalRecords() {
 
                     <div className={styles.detailBox}>
                       <p className={styles.detailLabel}>Time</p>
+
                       <p className={styles.detailValue}>
                         {formatTime(record.time)}
                       </p>
@@ -312,6 +349,7 @@ export default function PatientMedicalRecords() {
 
                     <div className={styles.detailBox}>
                       <p className={styles.detailLabel}>Service</p>
+
                       <p className={styles.detailValue}>
                         {record.services || "Not specified"}
                       </p>
@@ -410,41 +448,26 @@ function PrescriptionDetails({ prescription }: { prescription: string }) {
     <div className={styles.recordField}>
       <p className={styles.recordLabel}>Prescription</p>
 
-      <div
-        style={{
-          overflowX: "auto",
-          marginTop: "10px",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            minWidth: "720px",
-          }}
-        >
+      <div className={styles.prescriptionTableWrapper}>
+        <table className={styles.prescriptionTable}>
           <thead>
             <tr>
-              <th style={tableHeaderStyle}>Medicine</th>
-              <th style={tableHeaderStyle}>Usage</th>
-              <th style={tableHeaderStyle}>Reason</th>
+              <th>Medicine</th>
+              <th>Usage</th>
+              <th>Reason</th>
             </tr>
           </thead>
 
           <tbody>
             {parsedPrescription.map((item, index) => (
               <tr key={`${item.medicine}-${index}`}>
-                <td style={tableCellStyle}>
+                <td>
                   <strong>{item.medicine || "Not specified"}</strong>
                 </td>
 
-                <td style={tableCellStyle}>
-                  {item.usage || "No usage instruction recorded."}
-                </td>
+                <td>{item.usage || "No usage instruction recorded."}</td>
 
-                <td style={tableCellStyle}>
-                  {item.reason || "No reason recorded."}
-                </td>
+                <td>{item.reason || "No reason recorded."}</td>
               </tr>
             ))}
           </tbody>
@@ -453,27 +476,6 @@ function PrescriptionDetails({ prescription }: { prescription: string }) {
     </div>
   );
 }
-
-const tableHeaderStyle: CSSProperties = {
-  textAlign: "left",
-  padding: "12px",
-  borderBottom: "1px solid #e5e7eb",
-  background: "#f8fafc",
-  color: "#4b5563",
-  fontSize: "12px",
-  fontWeight: 800,
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-};
-
-const tableCellStyle: CSSProperties = {
-  verticalAlign: "top",
-  padding: "12px",
-  borderBottom: "1px solid #e5e7eb",
-  color: "#374151",
-  fontSize: "14px",
-  lineHeight: 1.6,
-};
 
 function parsePrescription(rawPrescription: string): PrescriptionItem[] {
   const raw = rawPrescription?.trim();
@@ -622,25 +624,22 @@ function mapDetailsByMedicine(section: string, medicines: string[]) {
     .filter((item) => item.index !== -1)
     .sort((a, b) => a.index - b.index);
 
+  if (positions.length === 0) return result;
+
   positions.forEach((item, index) => {
-    const valueStart = item.index + item.labelLength;
-    const valueEnd =
-      index + 1 < positions.length ? positions[index + 1].index : section.length;
+    const nextItem = positions[index + 1];
+    const start = item.index + item.labelLength;
+    const end = nextItem ? nextItem.index : section.length;
 
-    const value = cleanText(section.slice(valueStart, valueEnd));
-
-    result[item.medicine.toLowerCase()] = value;
+    result[item.medicine.toLowerCase()] = cleanText(section.slice(start, end));
   });
 
   return result;
 }
 
-function cleanText(value: string) {
-  return value
-    .replace(/\r?\n/g, " ")
-    .replace(/\s*\|\s*/g, " ")
-    .replace(/^[-•]\s*/g, "")
-    .replace(/;+$/g, "")
+function cleanText(text: string) {
+  return text
+    .replace(/\|/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }

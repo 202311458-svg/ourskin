@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./history.module.css";
+import styles from "@/app/styles/patient.module.css";
 
 interface Appointment {
   id: number;
-  doctor_name: string;
+  doctor_name?: string | null;
   date: string;
   time: string;
-  services: string;
+  services?: string | null;
   status: string;
   cancel_reason?: string | null;
 
@@ -103,8 +103,68 @@ const getFollowUpDate = (appt: Appointment) => {
   );
 };
 
-const hasScheduledFollowUp = (appt: Appointment) => {
-  return Boolean(getFollowUpDate(appt));
+const getFollowUpPlan = (appt: Appointment) => {
+  return (
+    appt.follow_up_plan ||
+    appt.followup_plan ||
+    appt.follow_up ||
+    appt.follow_up_reason ||
+    appt.reason ||
+    appt.notes ||
+    ""
+  );
+};
+
+const getDateTimeValue = (appt: Appointment) => {
+  return new Date(`${appt.date}T${appt.time || "00:00:00"}`).getTime();
+};
+
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "No date";
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const formatTime = (timeString?: string | null) => {
+  if (!timeString) return "No time";
+
+  const date = new Date(`1970-01-01T${timeString}`);
+
+  if (Number.isNaN(date.getTime())) return timeString;
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const getTodayLocalString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getFollowUpTiming = (followUpDate?: string | null) => {
+  if (!followUpDate) return "Follow-up scheduled";
+
+  const today = getTodayLocalString();
+
+  if (followUpDate < today) return "Follow-up date passed";
+  if (followUpDate === today) return "Due today";
+
+  return "Upcoming follow-up";
 };
 
 export default function PatientHistory() {
@@ -114,58 +174,6 @@ export default function PatientHistory() {
   const [loading, setLoading] = useState(true);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "No date";
-
-    const date = new Date(`${dateString}T00:00:00`);
-
-    if (Number.isNaN(date.getTime())) return dateString;
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (timeString?: string | null) => {
-    if (!timeString) return "No time";
-
-    const date = new Date(`1970-01-01T${timeString}`);
-
-    if (Number.isNaN(date.getTime())) return timeString;
-
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const getDateTimeValue = (appt: Appointment) => {
-    return new Date(`${appt.date}T${appt.time || "00:00:00"}`).getTime();
-  };
-
-  const getTodayLocalString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  };
-
-  const getFollowUpTiming = (followUpDate?: string | null) => {
-    if (!followUpDate) return "Follow-up scheduled";
-
-    const today = getTodayLocalString();
-
-    if (followUpDate < today) return "Follow-up date passed";
-    if (followUpDate === today) return "Due today";
-
-    return "Upcoming follow-up";
-  };
 
   const getStatusClass = (status: string) => {
     const normalized = normalizeStatus(status);
@@ -311,20 +319,28 @@ export default function PatientHistory() {
       .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a));
   }, [appointments, statusFilter]);
 
+  const completedCount = appointments.filter(
+    (appt) => normalizeStatus(appt.status) === "Completed"
+  ).length;
+
+  const pendingCount = appointments.filter(
+    (appt) => normalizeStatus(appt.status) === "Pending"
+  ).length;
+
   return (
-    <div className={`${navCollapsed ? "nav-collapsed" : "nav-active"}`}>
+    <div className={navCollapsed ? "nav-collapsed" : "nav-active"}>
       <Navbar />
 
       <main
-        className={styles.historyContainer}
-        style={{
-          marginLeft: navCollapsed ? "80px" : "220px",
-        }}
+        className={`${styles.historyContainer} ${
+          navCollapsed ? styles.navCollapsed : ""
+        }`}
       >
         <section className={styles.contentWrapper}>
           <div className={styles.headerRow}>
             <div>
               <p className={styles.eyebrow}>Patient Portal</p>
+
               <h1 className={styles.h1}>Appointment History</h1>
 
               <p className={styles.subtitle}>
@@ -339,138 +355,71 @@ export default function PatientHistory() {
             </Link>
           </div>
 
-          <section
-            style={{
-              marginBottom: "22px",
-              border: "1px solid #f3d3df",
-              borderRadius: "18px",
-              padding: "18px",
-              background:
-                "linear-gradient(135deg, rgba(255, 241, 246, 0.95), rgba(255, 255, 255, 0.96))",
-              boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "14px",
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-                marginBottom: "14px",
-              }}
-            >
+          <div className={styles.summaryGrid}>
+            <div className={styles.summaryCard}>
+              <p className={styles.summaryLabel}>Total Appointments</p>
+              <p className={styles.summaryValue}>{appointments.length}</p>
+            </div>
+
+            <div className={styles.summaryCard}>
+              <p className={styles.summaryLabel}>Completed</p>
+              <p className={styles.summaryValue}>{completedCount}</p>
+            </div>
+
+            <div className={styles.summaryCard}>
+              <p className={styles.summaryLabel}>Pending Requests</p>
+              <p className={styles.summaryValue}>{pendingCount}</p>
+            </div>
+          </div>
+
+          <section className={styles.followUpPanel}>
+            <div className={styles.cardTop}>
               <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: "#831843",
-                    fontSize: "1.15rem",
-                  }}
-                >
-                  Follow-Up Schedule
-                </h2>
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    color: "#64748b",
-                    fontSize: "0.92rem",
-                  }}
-                >
+                <h2 className={styles.cardTitle}>Follow-Up Schedule</h2>
+
+                <p className={styles.subtitle}>
                   Follow-up dates recommended after completed consultations.
                 </p>
               </div>
 
-              <span
-                style={{
-                  borderRadius: "999px",
-                  padding: "8px 12px",
-                  background: "#fce7f3",
-                  color: "#be185d",
-                  fontWeight: 800,
-                  fontSize: "0.82rem",
-                }}
-              >
+              <span className={`${styles.statusBadge} ${styles.statusApproved}`}>
                 {followUpAppointments.length} scheduled
               </span>
             </div>
 
             {followUpAppointments.length === 0 ? (
-              <p
-                style={{
-                  margin: 0,
-                  color: "#64748b",
-                }}
-              >
+              <p className={styles.emptyStateText}>
                 No follow-up schedule has been added yet.
               </p>
             ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                  gap: "12px",
-                }}
-              >
+              <div className={styles.detailsGrid}>
                 {followUpAppointments.slice(0, 3).map((appt) => {
                   const followUpDate = getFollowUpDate(appt);
-            
+                  const followUpPlan = getFollowUpPlan(appt);
 
                   return (
-                    <div
-                      key={`follow-up-${appt.id}`}
-                      style={{
-                        border: "1px solid #fbcfe8",
-                        borderRadius: "16px",
-                        padding: "14px",
-                        background: "#ffffff",
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: "0 0 4px",
-                          color: "#be185d",
-                          fontWeight: 800,
-                          fontSize: "0.82rem",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
+                    <div key={`follow-up-${appt.id}`} className={styles.detailBox}>
+                      <p className={styles.detailLabel}>
                         {getFollowUpTiming(followUpDate)}
                       </p>
 
-                      <h3
-                        style={{
-                          margin: "0 0 8px",
-                          color: "#111827",
-                          fontSize: "1rem",
-                        }}
-                      >
+                      <p className={styles.detailValue}>
                         {followUpDate
                           ? formatDate(followUpDate)
                           : "Date not specified"}
-                      </h3>
+                      </p>
 
-                      <p
-                        style={{
-                          margin: "0 0 4px",
-                          color: "#334155",
-                          fontWeight: 700,
-                        }}
-                      >
+                      <p className={styles.serviceText}>
                         Dr. {appt.doctor_name || "Assigned Doctor"}
                       </p>
 
-                      <p
-                        style={{
-                          margin: 0,
-                          color: "#64748b",
-                          lineHeight: 1.5,
-                        }}
-                      >
+                      <p className={styles.serviceText}>
                         {appt.services || "Consultation"}
                       </p>
 
+                      {followUpPlan && (
+                        <p className={styles.serviceText}>{followUpPlan}</p>
+                      )}
                     </div>
                   );
                 })}
@@ -478,34 +427,15 @@ export default function PatientHistory() {
             )}
           </section>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              flexWrap: "wrap",
-              marginBottom: "20px",
-            }}
-          >
+          <div className={styles.filterBar}>
             {STATUS_FILTERS.map((status) => (
               <button
                 key={status}
                 type="button"
                 onClick={() => setStatusFilter(status)}
-                style={{
-                  border:
-                    statusFilter === status
-                      ? "1px solid #c0265a"
-                      : "1px solid #e5e7eb",
-                  background: statusFilter === status ? "#c0265a" : "#ffffff",
-                  color: statusFilter === status ? "#ffffff" : "#475569",
-                  borderRadius: "999px",
-                  padding: "9px 15px",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  transition: "0.2s ease",
-                }}
+                className={`${styles.filterButton} ${
+                  statusFilter === status ? styles.filterButtonActive : ""
+                }`}
               >
                 {status}
               </button>
@@ -520,6 +450,7 @@ export default function PatientHistory() {
           ) : appointments.length === 0 ? (
             <div className={styles.emptyState}>
               <h2>No appointments found</h2>
+
               <p>
                 Your appointment history will appear here once you have booked
                 an appointment.
@@ -528,6 +459,7 @@ export default function PatientHistory() {
           ) : filteredAppointments.length === 0 ? (
             <div className={styles.emptyState}>
               <h2>No {statusFilter} appointments found</h2>
+
               <p>
                 There are no appointments under this status yet. Try checking
                 another filter.
@@ -537,11 +469,13 @@ export default function PatientHistory() {
             <div className={styles.cards}>
               {filteredAppointments.map((appt) => {
                 const cleanStatus = normalizeStatus(appt.status);
+
                 return (
                   <article key={appt.id} className={styles.card}>
                     <div className={styles.cardTop}>
                       <div>
                         <h2>Dr. {appt.doctor_name || "Assigned Doctor"}</h2>
+
                         <p className={styles.serviceText}>
                           {appt.services || "Consultation"}
                         </p>
@@ -559,6 +493,7 @@ export default function PatientHistory() {
                     <div className={styles.detailsGrid}>
                       <div className={styles.detailBox}>
                         <p className={styles.detailLabel}>Date</p>
+
                         <p className={styles.detailValue}>
                           {formatDate(appt.date)}
                         </p>
@@ -566,6 +501,7 @@ export default function PatientHistory() {
 
                       <div className={styles.detailBox}>
                         <p className={styles.detailLabel}>Time</p>
+
                         <p className={styles.detailValue}>
                           {formatTime(appt.time)}
                         </p>
@@ -573,15 +509,12 @@ export default function PatientHistory() {
 
                       <div className={styles.detailBox}>
                         <p className={styles.detailLabel}>Service</p>
+
                         <p className={styles.detailValue}>
                           {appt.services || "Not specified"}
                         </p>
                       </div>
-
-
                     </div>
-
-
 
                     {(cleanStatus === "Declined" ||
                       cleanStatus === "Cancelled") &&

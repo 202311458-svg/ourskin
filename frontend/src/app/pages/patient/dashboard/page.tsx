@@ -11,7 +11,7 @@ import {
   FaClock,
   FaNotesMedical,
 } from "react-icons/fa";
-import styles from "./dashboard.module.css";
+import styles from "@/app/styles/patient.module.css";
 
 type Appointment = {
   id: number;

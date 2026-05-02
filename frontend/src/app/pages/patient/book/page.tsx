@@ -5,7 +5,7 @@ import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import styles from "./bookAppointment.module.css";
+import styles from "@/app/styles/patient.module.css";
 
 const times = [
   "12:00 pm",
