@@ -1,23 +1,34 @@
 "use client";
-import { API_BASE_URL } from "@/lib/api"
+
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { FaMoon, FaSun } from "react-icons/fa";
 import AuthModal from "@/app/components/AuthModal";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
+import styles from "@/app/styles/landing.module.css";
+
+type ServiceCategory = {
+  title: string;
+  shortTitle: string;
+  description: string;
+  posterIndex: number;
+};
+
+type Doctor = {
+  img: string;
+  name: string;
+  role: string;
+};
 
 export default function Home() {
   const router = useRouter();
 
   const [modal, setModal] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState(0);
   const [currentService, setCurrentService] = useState(0);
 
   const { darkMode, toggleDarkMode } = useDarkMode();
-
-  const clinicImages = ["/clinic1.jpg", "/clinic2.jpg", "/clinic3.jpg"];
 
   const serviceImages = [
     "/service1.jpg",
@@ -26,15 +37,105 @@ export default function Home() {
     "/service4.jpg",
     "/service5.jpg",
     "/service6.jpg",
+    "/service7.jpg",
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % clinicImages.length);
-    }, 3500);
+  const serviceCategories: ServiceCategory[] = [
+    {
+      title: "Consultation and Assessment",
+      shortTitle: "Consultation",
+      description:
+        "Face-to-face and online dermatology consultation for skin, hair, and nail concerns, including mole assessment and skin cancer screening.",
+      posterIndex: 0,
+    },
+    {
+      title: "Contact Allergy Testing",
+      shortTitle: "Allergy Testing",
+      description:
+        "Patch testing support for patients who need professional evaluation of possible contact allergies.",
+      posterIndex: 0,
+    },
+    {
+      title: "OurSkin Signature Facials",
+      shortTitle: "Facials",
+      description:
+        "Signature facial treatments designed to support acne care, brightening, anti-aging, and overall skin health.",
+      posterIndex: 0,
+    },
+    {
+      title: "Surgical Procedures",
+      shortTitle: "Surgical",
+      description:
+        "Minor dermatologic procedures for selected skin, nail, scar, wart, growth, biopsy, and removal concerns.",
+      posterIndex: 1,
+    },
+    {
+      title: "Chemical Peels",
+      shortTitle: "Peels",
+      description:
+        "Professional peel treatments for acne, pigmentation, acne scars, rejuvenation, and selected resurfacing needs.",
+      posterIndex: 1,
+    },
+    {
+      title: "Lasers and Energy-Based Devices",
+      shortTitle: "Lasers and EBDs",
+      description:
+        "Advanced laser and energy-based treatments for pigmentation, acne scars, tightening, rejuvenation, hair removal, and selected skin concerns.",
+      posterIndex: 2,
+    },
+    {
+      title: "Injectables",
+      shortTitle: "Injectables",
+      description:
+        "Injectable dermatology and aesthetic treatments for selected skin, lifting, contouring, booster, and filler needs.",
+      posterIndex: 4,
+    },
+    {
+      title: "Cosmetic Surgery",
+      shortTitle: "Cosmetic Surgery",
+      description:
+        "Cosmetic surgical options for selected facial aesthetic concerns, including eyelid enhancement, face lift, rhinoplasty, and thread lifting.",
+      posterIndex: 6,
+    },
+  ];
 
-    return () => clearInterval(interval);
-  }, [clinicImages.length]);
+  const doctors: Doctor[] = [
+    {
+      img: "/cecilia.png",
+      name: "Cecilia Roxas-Rosete, MD, FPDS",
+      role: "Lead Dermatologist",
+    },
+    {
+      img: "/raisa.png",
+      name: "Raisa Rosete, MD, MBA, DPDS",
+      role: "Dermatologist",
+    },
+    {
+      img: "/reena.png",
+      name: "Reena Tagle, MD, DPDS",
+      role: "Dermatologist",
+    },
+    {
+      img: "/gelaine.png",
+      name: "Gelaine Pangilinan, MD, MBA",
+      role: "Dermatologist",
+    },
+    {
+      img: "/hans.png",
+      name: "Hans Alitin, MD, DPDS",
+      role: "Dermatologist",
+    },
+    {
+      img: "/reinier.png",
+      name: "Reinier Rosete, MD, FPSCS",
+      role: "Cosmetic Surgeon",
+    },
+    {
+      img: "/konrad.png",
+      name: "Konrad Aguila, MD, FPSOHNS, FPSCS",
+      role: "Cosmetic Surgeon",
+    },
+  ];
 
   const prevService = () => {
     setCurrentService((prev) =>
@@ -44,6 +145,11 @@ export default function Home() {
 
   const nextService = () => {
     setCurrentService((prev) => (prev + 1) % serviceImages.length);
+  };
+
+  const openServicePoster = (posterIndex: number) => {
+    setCurrentService(posterIndex);
+    setServiceModalOpen(true);
   };
 
   const handleLoginSuccess = (role: string, token: string) => {
@@ -64,25 +170,27 @@ export default function Home() {
   };
 
   return (
-    <div className="landingPage">
-      <div className="animatedBackground"></div>
+    <main className={`${styles.osLanding} ${darkMode ? styles.osDark : ""}`}>
+      <div className={`${styles.osBgGlow} ${styles.osBgGlowOne}`}></div>
+      <div className={`${styles.osBgGlow} ${styles.osBgGlowTwo}`}></div>
 
-      <nav className="landingnavbar">
-        <div className="landingnavLogo">
+      {/* NAVBAR */}
+      <nav className={styles.osNav}>
+        <a href="#top" className={styles.osLogoWrap} aria-label="OurSkin Home">
           <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} />
-        </div>
+        </a>
 
-        <div className="landingnavLinks">
-          <a href="#about">About</a>
+        <div className={styles.osNavLinks}>
           <a href="#services">Services</a>
+          <a href="#about">About</a>
           <a href="#doctors">Doctors</a>
           <a href="#contact">Contact</a>
         </div>
 
-        <div className="landingnavActions">
+        <div className={styles.osNavActions}>
           <button
             type="button"
-            className="landingThemeBtn"
+            className={styles.osThemeBtn}
             onClick={toggleDarkMode}
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -92,407 +200,358 @@ export default function Home() {
 
           <button
             type="button"
-            className="loginBtn"
+            className={styles.osLoginBtn}
             onClick={() => setModal(true)}
           >
             Login
           </button>
-
-        
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="hero">
-        <div className="heroLeft">
+      <section id="top" className={styles.osHero}>
+        <div className={styles.osHeroText}>
+          <span className={styles.osKicker}>OurSkin Dermatology Center</span>
+
           <h1>
-            Healthy Skin
-            <br />
-            Starts With
-            <br />
-            Expert Care
+            See Our Services
+            <span>Before You Book</span>
           </h1>
 
           <p>
-            OurSkin Dermatology Center provides professional dermatological
-            diagnosis, treatment, and skin monitoring supported by modern
-            clinical technology.
+            Explore dermatology consultations, facials, peels, laser procedures,
+            injectables, cosmetic surgery, and allergy testing in one modern skin
+            care center.
           </p>
 
-          <div className="heroButtons">
+          <div className={styles.osHeroButtons}>
             <button
               type="button"
-              className="bookBtn"
+              className={styles.osPrimaryBtn}
               onClick={() => setModal(true)}
             >
               Book Consultation
             </button>
 
-            <button
-              type="button"
-              className="outlineBtn"
-              onClick={() => setServiceModalOpen(true)}
-            >
-              Explore Services
-            </button>
+            <a href="#services" className={styles.osSecondaryBtn}>
+              View Services
+            </a>
           </div>
         </div>
 
-        <div className="heroRight">
-          <div className="heroCard">
-            <div className="heroGallery">
-              <Image
-                src={clinicImages[currentImage]}
-                alt="OurSkin Clinic"
-                width={400}
-                height={220}
-                className="galleryImage"
-              />
-            </div>
-
-            <div className="heroStats">
-              <div>
-                <h3>15+</h3>
-                <p>Years Experience</p>
-              </div>
-
-              <div>
-                <h3>6k+</h3>
-                <p>Patients Treated</p>
-              </div>
-
-              <div>
-                <h3>7</h3>
-                <p>Specialists</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURE STRIP */}
-      <section className="featureStrip">
-        <div className="feature">
-          <h4>Certified Dermatologists</h4>
-          <p>Board-certified professionals</p>
-        </div>
-
-        <div className="feature">
-          <h4>Modern Equipment</h4>
-          <p>Latest dermatology technology</p>
-        </div>
-
-        <div className="feature">
-          <h4>Digital Patient Records</h4>
-          <p>Secure clinical monitoring</p>
-        </div>
-      </section>
-
-      {/* ABOUT */}
-      <section id="about" className="section aboutSection">
-        <div className="sectionHeaderBlock">
-          <h2>About Our Skin</h2>
-          <p className="sectionLead">
-            Professional dermatology care focused on healthy skin, safe
-            treatment, and patient-centered consultation.
-          </p>
-        </div>
-
-        <div className="aboutGrid">
-          <div className="aboutMain">
-            <p>
-              OurSkin Dermatology Center is a medical and aesthetic clinic led by
-              a dedicated team of PDS board-certified dermatologists and PSCS
-              cosmetic surgeons. The clinic provides safe, effective, and
-              personalized treatment plans for different skin, hair, and
-              aesthetic concerns.
-            </p>
-
-            <p>
-              Through expert consultation, modern clinical techniques, and a
-              patient-focused approach, OurSkin helps clients receive care that
-              supports healthier skin and greater confidence.
-            </p>
+        <div className={styles.osHeroPanel}>
+          <div className={styles.osHeroPanelHeader}>
+            <span>Featured Services</span>
+            <h2>Start with the care you need.</h2>
           </div>
 
-          <div className="aboutHighlights">
-            <div className="aboutHighlightCard">
-              <h3>Expert Care</h3>
-              <p>
-                Board-certified specialists provide professional guidance for
-                both medical and aesthetic dermatology needs.
-              </p>
-            </div>
+          <div className={styles.osHeroServiceList}>
+            {serviceCategories.slice(0, 6).map((service, index) => (
+              <button
+                type="button"
+                key={service.title}
+                className={styles.osHeroServiceItem}
+                onClick={() => openServicePoster(service.posterIndex)}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
 
-            <div className="aboutHighlightCard">
-              <h3>Personalized Treatment</h3>
-              <p>
-                Each consultation is tailored to the patient’s skin condition,
-                concern, goals, and treatment needs.
-              </p>
-            </div>
-
-            <div className="aboutHighlightCard">
-              <h3>Modern Clinical Support</h3>
-              <p>
-                OurSkin combines dermatology expertise with updated tools and
-                digital patient monitoring.
-              </p>
-            </div>
+                <div>
+                  <strong>{service.shortTitle}</strong>
+                  <small>{service.title}</small>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
       {/* SERVICES */}
-      <section id="services" className="section altSection">
-        <h2>Dermatology Services</h2>
+      <section
+        id="services"
+        className={`${styles.osSection} ${styles.osServicesSection}`}
+      >
+        <div className={styles.osSectionHeader}>
+          <span className={styles.osKicker}>Services</span>
+          <h2>Professional Skin Care, Clearly Presented</h2>
+          <p>
+            Patients can quickly understand what OurSkin offers without going
+            through long lists. Detailed posters are still available when needed.
+          </p>
+        </div>
 
-        <div className="cards">
-          {[
-            "CONSULTATION",
-            "CONTACT ALLERGY TESTING",
-            "FACIALS",
-            "SURGICAL",
-            "CHEMICAL PEELS",
-            "LASERS AND EBDs",
-            "INJECTABLES",
-            "COSMETIC SURGERY",
-          ].map((service, index) => (
-            <div key={index} className="serviceCard">
-              <h3>{service}</h3>
-            </div>
+        <div className={styles.osServiceGrid}>
+          {serviceCategories.map((service, index) => (
+            <article key={service.title} className={styles.osServiceCard}>
+              <div className={styles.osServiceNumber}>
+                {String(index + 1).padStart(2, "0")}
+              </div>
+
+              <div className={styles.osServiceContent}>
+                <span>{service.shortTitle}</span>
+                <h3>{service.title}</h3>
+                <p>{service.description}</p>
+              </div>
+
+              <div className={styles.osServiceActions}>
+                <button
+                  type="button"
+                  onClick={() => openServicePoster(service.posterIndex)}
+                >
+                  View Details
+                </button>
+
+                <button type="button" onClick={() => setModal(true)}>
+                  Book
+                </button>
+              </div>
+            </article>
           ))}
         </div>
       </section>
 
-      {/* DOCTORS */}
-      <section id="doctors" className="section">
-        <h2>Meet Our Dermatologists</h2>
+{/* ABOUT */}
+<section
+  id="about"
+  className={`${styles.osSection} ${styles.osAboutMinimalSection}`}
+>
+  <div className={styles.osAboutMinimal}>
+    <div className={styles.osAboutMinimalIntro}>
+      <span className={styles.osKicker}>About OurSkin</span>
 
-        <div className="doctorGrid">
-          {[
-            {
-              img: "/cecilia.png",
-              name: "Cecilia Roxas-Rosete, MD, FPDS",
-              role: "Lead Dermatologist",
-            },
-            {
-              img: "/raisa.png",
-              name: "Raisa Rosete, MD, MBA, DPDS",
-              role: "Dermatologist",
-            },
-            {
-              img: "/reena.png",
-              name: "Reena Tagle, MD, DPDS",
-              role: "Dermatologist",
-            },
-            {
-              img: "/gelaine.png",
-              name: "Gelaine Pangilinan, MD, MBA",
-              role: "Dermatologist",
-            },
-            {
-              img: "/hans.png",
-              name: "Hans Alitin, MD, DPDS",
-              role: "Dermatologist",
-            },
-            {
-              img: "/reinier.png",
-              name: "Reinier Rosete, MD, FPSCS",
-              role: "Cosmetic Surgeon",
-            },
-            {
-              img: "/konrad.png",
-              name: "Konrad Aguila, MD, FPSOHNS, FPSCS",
-              role: "Cosmetic Surgeon",
-            },
-          ].map((doctor, index) => (
-            <div key={index} className="doctorCard">
+      <h2>Specialist skin care with a more organized patient experience.</h2>
+
+      <p>
+        OurSkin Dermatology Center provides medical, aesthetic, and cosmetic
+        skin care services supported by professional consultation, digital
+        records, and follow-up care.
+      </p>
+    </div>
+
+    <div className={styles.osAboutMinimalBody}>
+      <div className={styles.osAboutMinimalText}>
+        <p>
+          Led by dermatologists and cosmetic surgeons, OurSkin focuses on safe,
+          personalized treatment planning for skin, hair, and aesthetic
+          concerns.
+        </p>
+
+        <div className={styles.osAboutMinimalPoints}>
+          <div>
+            <strong>Professional care</strong>
+            <span>Consultation guided by skin concerns and treatment needs.</span>
+          </div>
+
+          <div>
+            <strong>Digital support</strong>
+            <span>Online booking, patient records, and follow-up monitoring.</span>
+          </div>
+
+          <div>
+            <strong>Comfortable setting</strong>
+            <span>A calm clinic environment designed for better visits.</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.osAboutMinimalPhotos}>
+        <Image
+          src="/clinic2.jpg"
+          alt="OurSkin clinic reception area"
+          width={420}
+          height={280}
+        />
+
+        <Image
+          src="/clinic3.jpg"
+          alt="OurSkin clinic interior"
+          width={420}
+          height={280}
+        />
+      </div>
+    </div>
+  </div>
+</section>
+
+      {/* DOCTORS */}
+      <section
+        id="doctors"
+        className={`${styles.osSection} ${styles.osDoctorsSection}`}
+      >
+        <div className={styles.osSectionHeader}>
+          <span className={styles.osKicker}>Doctors</span>
+          <h2>Meet the Specialists Behind OurSkin</h2>
+
+          <p>
+            OurSkin is supported by dermatologists and cosmetic surgeons who
+            provide professional guidance across medical, aesthetic, and cosmetic
+            care.
+          </p>
+        </div>
+
+        <div className={styles.osDoctorGrid}>
+          {doctors.map((doctor) => (
+            <article key={doctor.name} className={styles.osDoctorCard}>
               <Image
                 src={doctor.img}
                 alt={doctor.name}
-                width={200}
-                height={200}
-                className="doctorPhoto"
+                width={220}
+                height={220}
               />
 
-              <h3>{doctor.name}</h3>
-              <p>{doctor.role}</p>
-            </div>
+              <div>
+                <h3>{doctor.name}</h3>
+                <p>{doctor.role}</p>
+              </div>
+            </article>
           ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="ctaSection">
-        <h2>Start Your Skin Consultation Today</h2>
+      <section className={styles.osCta}>
+        <span>Ready when you are</span>
+
+        <h2>Start your skin care journey with OurSkin.</h2>
 
         <p>
-          Book your consultation today and connect with our dermatologists and
-          cosmetic surgeons for professional guidance and treatment tailored to
-          your skin and aesthetic needs.
+          Book a consultation and receive professional guidance for your skin,
+          hair, aesthetic, or cosmetic concern.
         </p>
 
-        <button
-          type="button"
-          className="bookBtn"
-          onClick={() => setModal(true)}
-        >
+        <button type="button" onClick={() => setModal(true)}>
           Schedule Appointment
         </button>
       </section>
 
       {/* CONTACT */}
-      <section id="contact" className="section contactSection">
-        <div className="sectionHeaderBlock">
-          <h2>Visit Our Clinic</h2>
-          <p className="sectionLead">
-            Find our clinic location, operating hours, and online contact
-            channels.
+      <section
+        id="contact"
+        className={`${styles.osSection} ${styles.osContactSection}`}
+      >
+        <div className={styles.osSectionHeader}>
+          <span className={styles.osKicker}>Contact</span>
+
+          <h2>Visit or Message OurSkin</h2>
+
+          <p>
+            Reach the clinic through our location, social channels, email, or
+            contact number.
           </p>
         </div>
 
-        <div className="contactGrid">
-          <div className="contactCard">
-            <h3>Location</h3>
+        <div className={styles.osContactGrid}>
+          <article className={styles.osContactCard}>
+            <span>Location</span>
+            <h3>OurSkin Dermatology Center</h3>
 
-            <div className="contactCardBody">
-              <p className="contactMainText">
-                3rd Floor, C&amp;C Commercial Hub, No. 730 Rizal Avenue, East
-                Tapinac, Olongapo City, Philippines, 2200
-              </p>
+            <p>
+              3rd Floor, C&amp;C Commercial Hub, No. 730 Rizal Avenue, East
+              Tapinac, Olongapo City, Philippines, 2200
+            </p>
 
+            <a
+              href="https://www.google.com/maps/place/OurSkin+Dermatology+Center/@14.8310851,120.2780988,17z/data=!4m6!3m5!1s0x3396715b43c93d4f:0x2fb387e5aeae1007!8m2!3d14.8310799!4d120.2806737!16s%2Fg%2F11xv4qj05q?entry=ttu&g_ep=EgoyMDI2MDMwNC4xIKXMDSoASAFQAw%3D%3D"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View on Google Maps
+            </a>
+          </article>
+
+          <article className={styles.osContactCard}>
+            <span>Clinic Hours</span>
+            <h3>Monday to Saturday</h3>
+
+            <p>
+              Clinic hours are from 12:00 NN to 7:00 PM. Doctors&apos; clinic
+              hours may vary depending on their schedule.
+            </p>
+          </article>
+
+          <article className={styles.osContactCard}>
+            <span>Online Inquiry</span>
+            <h3>Message OurSkin</h3>
+
+            <p>
+              Email: ourskincenter@gmail.com
+              <br />
+              Call: 0998 887 8050
+              <br />
+              Contact Person: Ms. Lanie
+            </p>
+
+            <div className={styles.osSocialLinks}>
               <a
-                href="https://www.google.com/maps/place/OurSkin+Dermatology+Center/@14.8310851,120.2780988,17z/data=!4m6!3m5!1s0x3396715b43c93d4f:0x2fb387e5aeae1007!8m2!3d14.8310799!4d120.2806737!16s%2Fg%2F11xv4qj05q?entry=ttu&g_ep=EgoyMDI2MDMwNC4xIKXMDSoASAFQAw%3D%3D"
+                href="https://www.facebook.com/profile.php?id=61574827784283"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <button type="button" className="mainBtn">
-                  View on Google Maps
-                </button>
+                Facebook
+              </a>
+
+              <a
+                href="https://www.instagram.com/ourskin.center"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Instagram
               </a>
             </div>
-          </div>
-
-          <div className="contactCard">
-            <h3>Clinic Hours</h3>
-
-            <div className="contactCardBody">
-              <div className="contactInfoGroup">
-                <span className="contactLabel">Open Days</span>
-                <p>Monday to Saturday</p>
-              </div>
-
-              <div className="contactInfoGroup">
-                <span className="contactLabel">Clinic Hours</span>
-                <p>12:00 NN to 7:00 PM</p>
-              </div>
-
-              <div className="contactInfoGroup">
-                <span className="contactLabel">Important Note</span>
-                <p>
-                  Doctors&apos; clinic hours may vary depending on their schedule
-                  and may change unexpectedly.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="contactCard">
-            <h3>Online Inquiry</h3>
-
-            <div className="contactCardBody">
-              <div className="contactButtons">
-                <a
-                  href="https://www.facebook.com/profile.php?id=61574827784283"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <button type="button" className="mainBtn">
-                    Message us on Facebook
-                  </button>
-                </a>
-
-                <a
-                  href="https://www.instagram.com/ourskin.center"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <button type="button" className="mainBtn">
-                    Message us on Instagram
-                  </button>
-                </a>
-              </div>
-
-              <div className="contactInfo">
-                <div className="contactInfoGroup">
-                  <span className="contactLabel">Email</span>
-                  <p>ourskincenter@gmail.com</p>
-                </div>
-
-                <div className="contactInfoGroup">
-                  <span className="contactLabel">Call</span>
-                  <p>0998 887 8050</p>
-                </div>
-
-                <div className="contactInfoGroup">
-                  <span className="contactLabel">Contact Person</span>
-                  <p>Ms. Lanie</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          </article>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="footer">
+      <footer className={styles.osFooter}>
         <p>© OurSkin Dermatology Center</p>
       </footer>
 
       {/* SERVICE MODAL */}
       {serviceModalOpen && (
-        <div className="modal">
-          <div className="serviceModal">
-            <h1>Our Services</h1>
+        <div className={styles.osModal}>
+          <div className={styles.osServiceModal}>
+            <div className={styles.osServiceModalHeader}>
+              <h2>OurSkin Services</h2>
 
-            <div className="serviceGallery">
               <button
                 type="button"
-                className="arrowPrev"
-                onClick={prevService}
+                onClick={() => setServiceModalOpen(false)}
+                aria-label="Close services modal"
               >
-                ⟨
+                Close
+              </button>
+            </div>
+
+            <div className={styles.osServicePosterWrap}>
+              <button
+                type="button"
+                className={`${styles.osPosterArrow} ${styles.osPosterArrowLeft}`}
+                onClick={prevService}
+                aria-label="Previous service"
+              >
+                ‹
               </button>
 
               <Image
                 src={serviceImages[currentService]}
-                alt={`Service ${currentService + 1}`}
-                width={500}
-                height={600}
+                alt={`OurSkin service ${currentService + 1}`}
+                width={720}
+                height={900}
+                priority
               />
 
               <button
                 type="button"
-                className="arrowNext"
+                className={`${styles.osPosterArrow} ${styles.osPosterArrowRight}`}
                 onClick={nextService}
+                aria-label="Next service"
               >
-                ⟩
+                ›
               </button>
             </div>
-
-            <button
-              type="button"
-              className="closeBtn"
-              onClick={() => setServiceModalOpen(false)}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
 
-      {/* AUTH MODAL */}
       {modal && (
         <AuthModal
           isOpen={modal}
@@ -500,6 +559,6 @@ export default function Home() {
           onLoginSuccess={handleLoginSuccess}
         />
       )}
-    </div>
+    </main>
   );
 }

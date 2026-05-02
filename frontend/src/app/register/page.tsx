@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaCalendarAlt, FaEye, FaEyeSlash, FaMoon, FaSun } from "react-icons/fa"
-import styles from "./register.module.css"
+import styles from "@/app/styles/landing.module.css"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -382,42 +382,44 @@ useEffect(() => {
     (!isMinor && (!contact.trim() || !email.trim()))
 
   return (
-    <main className={styles.registerLandingPage}>
-      <div className={styles.animatedBackground} />
+<main
+  className={`${styles.osLanding} ${darkMode ? styles.osDark : ""} ${styles.registerLandingPage}`}
+>
+  <div className={`${styles.osBgGlow} ${styles.osBgGlowOne}`} />
+  <div className={`${styles.osBgGlow} ${styles.osBgGlowTwo}`} />
 
-      <nav className={styles.registerNavbar}>
-<Link href="/" className={styles.registerLogoLink}>
-  <div className={styles.registerNavLogo}>
+<nav className={styles.osNav}>
+  <Link href="/" className={styles.osLogoWrap} aria-label="OurSkin Home">
     <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} priority />
+  </Link>
+
+  <div className={styles.osNavLinks}>
+    <Link href="/#services">Services</Link>
+    <Link href="/#about">About</Link>
+    <Link href="/#doctors">Doctors</Link>
+    <Link href="/#contact">Contact</Link>
   </div>
-</Link>
 
-        <div className={styles.registerNavLinks}>
-          <Link href="/#about">About</Link>
-          <Link href="/#services">Services</Link>
-          <Link href="/#doctors">Doctors</Link>
-          <Link href="/#contact">Contact</Link>
-        </div>
+  <div className={styles.osNavActions}>
+    <button
+      type="button"
+      className={styles.osThemeBtn}
+      onClick={toggleDarkMode}
+      aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {darkMode ? <FaSun /> : <FaMoon />}
+      <span>{darkMode ? "Light" : "Dark"}</span>
+    </button>
 
-        <div className={styles.registerNavActions}>
-          <button
-            type="button"
-            className={styles.registerThemeBtn}
-            onClick={toggleDarkMode}
-          >
-            {darkMode ? <FaSun /> : <FaMoon />}
-            <span>{darkMode ? "Light" : "Dark"}</span>
-          </button>
-
-          <button
-            type="button"
-            className={styles.registerLoginBtn}
-            onClick={() => router.push("/")}
-          >
-            Login
-          </button>
-        </div>
-      </nav>
+    <button
+      type="button"
+      className={styles.osLoginBtn}
+      onClick={() => router.push("/")}
+    >
+      Login
+    </button>
+  </div>
+</nav>
 
       <section className={styles.registerHero}>
         <div className={styles.registerIntro}>
@@ -456,6 +458,7 @@ useEffect(() => {
        <section className={styles.registerPanel}>
   <div className={styles.registerPanelHeader}>
     <h2>Create an Account</h2>
+    <p></p>
   </div>
 
   <form
