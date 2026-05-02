@@ -21,6 +21,9 @@ class UserCreate(BaseModel):
     guardian_email: Optional[EmailStr] = None
     guardian_consent: Optional[bool] = False
 
+    terms_accepted: bool = False
+    privacy_accepted: bool = False
+
     @model_validator(mode="after")
     def passwords_match(self):
         if self.password != self.confirm_password:

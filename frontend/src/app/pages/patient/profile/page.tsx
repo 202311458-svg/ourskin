@@ -1,29 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/profile.module.css";
 
 type User = {
-  name: string;
-  email: string;
-  contact: string;
-  nickname?: string;
-  photo?: string;
+  id?: number;
+  name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  contact?: string | null;
+  contact_number?: string | null;
+  date_of_birth?: string | null;
+  birthdate?: string | null;
+  dob?: string | null;
+  is_minor?: boolean | null;
+
+  guardian_first_name?: string | null;
+  guardian_last_name?: string | null;
+  guardian_relationship?: string | null;
+  relationship_to_patient?: string | null;
+  guardian_contact?: string | null;
+  guardian_contact_number?: string | null;
+  guardian_email?: string | null;
 };
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [collapsed, setCollapsed] = useState(false);
-
-  const [editMode, setEditMode] = useState(false);
-
-  const [name, setName] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -34,87 +41,232 @@ export default function ProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const getDisplayValue = (value?: string | null) => {
+    if (!value || value.trim() === "") return "Not provided";
+    return value;
+  };
+
+  const getFirstName = (data: User | null) => {
+    if (!data) return "Not provided";
+
+    if (data.first_name) return data.first_name;
+
+    if (data.name) {
+      const parts = data.name.trim().split(" ");
+      return parts[0] || "Not provided";
+    }
+
+    return "Not provided";
+  };
+
+  const getLastName = (data: User | null) => {
+    if (!data) return "Not provided";
+
+    if (data.last_name) return data.last_name;
+
+    if (data.name) {
+      const parts = data.name.trim().split(" ");
+      return parts.slice(1).join(" ") || "Not provided";
+    }
+
+    return "Not provided";
+  };
+
+  const getFullName = (data: User | null) => {
+    if (!data) return "Patient";
+
+    const firstName = getFirstName(data);
+    const lastName = getLastName(data);
+
+    if (data.name) return data.name;
+    if (firstName !== "Not provided" || lastName !== "Not provided") {
+      return `${firstName !== "Not provided" ? firstName : ""} ${
+        lastName !== "Not provided" ? lastName : ""
+      }`.trim();
+    }
+
+    return "Patient";
+  };
+
+  const getBirthDate = (data: User | null) => {
+    if (!data) return null;
+
+    return data.date_of_birth || data.birthdate || data.dob || null;
+  };
+
+  const formatBirthDate = (dateValue?: string | null) => {
+    if (!dateValue) return "Not provided";
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Not provided";
+    }
+
+    return date.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const calculateAgeLabel = (dateValue?: string | null) => {
+    if (!dateValue) return "Not provided";
+
+    const birthDate = new Date(dateValue);
+
+    if (Number.isNaN(birthDate.getTime())) {
+      return "Not provided";
+    }
+
+    const today = new Date();
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+
+    const dayDiff = today.getDate() - birthDate.getDate();
+
+    if (dayDiff < 0) {
+      months -= 1;
+    }
+
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    if (years <= 0) {
+      return `${months} month${months === 1 ? "" : "s"} old`;
+    }
+
+    return `${years} year${years === 1 ? "" : "s"} old`;
+  };
+
+  const calculateIsMinor = (dateValue?: string | null) => {
+    if (!dateValue) return false;
+
+    const birthDate = new Date(dateValue);
+
+    if (Number.isNaN(birthDate.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age -= 1;
+    }
+
+    return age < 18;
+  };
+
+  const hasGuardianInfo = (data: User | null) => {
+    if (!data) return false;
+
+    return Boolean(
+      data.guardian_first_name ||
+        data.guardian_last_name ||
+        data.guardian_relationship ||
+        data.relationship_to_patient ||
+        data.guardian_contact ||
+        data.guardian_contact_number ||
+        data.guardian_email
+    );
+  };
+
+  const birthDate = useMemo(() => getBirthDate(user), [user]);
+
+  const isMinor = useMemo(() => {
+    if (!user) return false;
+
+    return Boolean(user.is_minor) || calculateIsMinor(birthDate) || hasGuardianInfo(user);
+  }, [user, birthDate]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     fetch(`${API_BASE_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load profile");
+        }
+
+        return res.json();
+      })
+      .then((data: User) => {
         setUser(data);
-        setName(data.name);
-        setNickname(data.nickname || "");
-        setPhoto(data.photo || null);
+      })
+      .catch((error) => {
+        console.error(error);
+        setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
-useEffect(() => {
-  const sync = () => {
-    setCollapsed(document.body.classList.contains("navCollapsed"));
-  };
-
-  sync();
-  window.addEventListener("navbarToggle", sync);
-
-  return () => window.removeEventListener("navbarToggle", sync);
-}, []);
-
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPhoto(reader.result as string);
+  useEffect(() => {
+    const sync = () => {
+      setCollapsed(document.body.classList.contains("navCollapsed"));
     };
-    reader.readAsDataURL(file);
-  };
 
-  const saveProfile = async () => {
-    const token = localStorage.getItem("token");
+    sync();
+    window.addEventListener("navbarToggle", sync);
 
-    await fetch(`${API_BASE_URL}/users/update-profile`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        name,
-        nickname,
-        photo,
-      }),
-    });
-
-    setEditMode(false);
-  };
+    return () => window.removeEventListener("navbarToggle", sync);
+  }, []);
 
   const changePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert("Please complete all password fields.");
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
+      alert("Passwords do not match.");
       return;
     }
 
     const token = localStorage.getItem("token");
 
-    await fetch(`${API_BASE_URL}/auth/change-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        current_password: currentPassword,
-        new_password: newPassword,
-      }),
-    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
 
-    setShowPasswordForm(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.detail || "Failed to update password.");
+      }
+
+      alert("Password updated successfully.");
+
+      setShowPasswordForm(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update password.");
+    }
   };
 
   return (
@@ -123,109 +275,151 @@ useEffect(() => {
 
       <main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
         <div className={styles.container}>
-
-          {/* HEADER */}
           <div className={styles.header}>
             <h1>Account Profile</h1>
-            <p>Manage your identity and preferences</p>
+            <p>View your registered patient information and account security.</p>
           </div>
 
           {loading ? (
-            <p>Loading...</p>
+            <p className={styles.loadingText}>Loading profile...</p>
           ) : !user ? (
-            <p>Unable to load profile</p>
+            <p className={styles.loadingText}>Unable to load profile.</p>
           ) : (
             <div className={styles.grid}>
-
-              {/* PROFILE CARD */}
               <div className={styles.cardLarge}>
-
-                {/* PHOTO + NAME */}
                 <div className={styles.profileHeader}>
-
-                  <div className={styles.photoWrapper}>
-                    {photo ? (
-                      <img src={photo} className={styles.profilePhoto} />
-                    ) : (
-                      <div className={styles.avatar}>
-                        {name.charAt(0)}
-                      </div>
-                    )}
-
-                    {editMode && (
-                      <input type="file" onChange={handlePhoto} />
-                    )}
+                  <div className={styles.avatar}>
+                    {getFullName(user).charAt(0).toUpperCase()}
                   </div>
 
                   <div>
-                    {editMode ? (
-                      <>
-                        <input
-                          className={styles.editInput}
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Full name"
-                        />
-
-                        <input
-                          className={styles.editInput}
-                          value={nickname}
-                          onChange={(e) => setNickname(e.target.value)}
-                          placeholder="Nickname (how doctors call you)"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <h2>{name}</h2>
-                        <p className={styles.subText}>
-                          {nickname ? `Called: ${nickname}` : "No nickname set"}
-                        </p>
-                      </>
-                    )}
+                    <h2>{getFullName(user)}</h2>
+                    <p className={styles.subText}>
+                      Patient profile information is currently read-only.
+                    </p>
                   </div>
-
                 </div>
 
                 <div className={styles.divider}></div>
 
-                <div className={styles.infoBlock}>
-                  <div className={styles.infoRow}>
-                    <span>Email</span>
-                    <span>{user.email}</span>
+                <div className={styles.sectionBlock}>
+                  <div className={styles.sectionTitleRow}>
+                    <h3>Patient Information</h3>
+                    <span className={styles.readOnlyBadge}>Read Only</span>
                   </div>
 
-                  <div className={styles.infoRow}>
-                    <span>Contact</span>
-                    <span>{user.contact || "Not provided"}</span>
+                  <div className={styles.detailsGrid}>
+                    <div className={styles.detailItem}>
+                      <span>First Name</span>
+                      <strong>{getFirstName(user)}</strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Last Name</span>
+                      <strong>{getLastName(user)}</strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Date of Birth</span>
+                      <strong>{formatBirthDate(birthDate)}</strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Age</span>
+                      <strong>{calculateAgeLabel(birthDate)}</strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Contact Number</span>
+                      <strong>
+                        {getDisplayValue(user.contact_number || user.contact)}
+                      </strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Email Address</span>
+                      <strong>{getDisplayValue(user.email)}</strong>
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  className={styles.primaryBtn}
-                  onClick={() => (editMode ? saveProfile() : setEditMode(true))}
-                >
-                  {editMode ? "Save Changes" : "Edit Profile"}
-                </button>
+                {isMinor && (
+                  <>
+                    <div className={styles.divider}></div>
 
+                    <div className={styles.sectionBlock}>
+                      <div className={styles.sectionTitleRow}>
+                        <h3>Guardian Information</h3>
+                        <span className={styles.guardianBadge}>Minor Patient</span>
+                      </div>
+
+                      <p className={styles.smallText}>
+                        Guardian details are shown because this account is registered
+                        for a patient below 18 years old.
+                      </p>
+
+                      <div className={styles.detailsGrid}>
+                        <div className={styles.detailItem}>
+                          <span>Guardian First Name</span>
+                          <strong>
+                            {getDisplayValue(user.guardian_first_name)}
+                          </strong>
+                        </div>
+
+                        <div className={styles.detailItem}>
+                          <span>Guardian Last Name</span>
+                          <strong>
+                            {getDisplayValue(user.guardian_last_name)}
+                          </strong>
+                        </div>
+
+                        <div className={styles.detailItem}>
+                          <span>Relationship to Patient</span>
+                          <strong>
+                            {getDisplayValue(
+                              user.guardian_relationship ||
+                                user.relationship_to_patient
+                            )}
+                          </strong>
+                        </div>
+
+                        <div className={styles.detailItem}>
+                          <span>Guardian Contact Number</span>
+                          <strong>
+                            {getDisplayValue(
+                              user.guardian_contact_number ||
+                                user.guardian_contact
+                            )}
+                          </strong>
+                        </div>
+
+                        <div className={styles.detailItem}>
+                          <span>Guardian Email</span>
+                          <strong>{getDisplayValue(user.guardian_email)}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* SECURITY CARD */}
               <div className={styles.card}>
                 <h3>Security</h3>
                 <p className={styles.smallText}>
-                  Update your password anytime
+                  You can update your password without changing your registered
+                  patient information.
                 </p>
 
                 <button
                   className={styles.primaryBtn}
+                  type="button"
                   onClick={() => setShowPasswordForm(!showPasswordForm)}
                 >
-                  Change Password
+                  {showPasswordForm ? "Cancel Password Change" : "Change Password"}
                 </button>
 
                 {showPasswordForm && (
                   <div className={styles.form}>
-
                     <div className={styles.inputGroup}>
                       <input
                         type={showCurrent ? "text" : "password"}
@@ -233,7 +427,11 @@ useEffect(() => {
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                       />
-                      <button onClick={() => setShowCurrent(!showCurrent)}>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrent(!showCurrent)}
+                      >
                         {showCurrent ? "Hide" : "Show"}
                       </button>
                     </div>
@@ -245,7 +443,8 @@ useEffect(() => {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
-                      <button onClick={() => setShowNew(!showNew)}>
+
+                      <button type="button" onClick={() => setShowNew(!showNew)}>
                         {showNew ? "Hide" : "Show"}
                       </button>
                     </div>
@@ -257,22 +456,27 @@ useEffect(() => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
-                      <button onClick={() => setShowConfirm(!showConfirm)}>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                      >
                         {showConfirm ? "Hide" : "Show"}
                       </button>
                     </div>
 
-                    <button className={styles.primaryBtn} onClick={changePassword}>
+                    <button
+                      className={styles.primaryBtn}
+                      type="button"
+                      onClick={changePassword}
+                    >
                       Update Password
                     </button>
-
                   </div>
                 )}
               </div>
-
             </div>
           )}
-
         </div>
       </main>
     </>
