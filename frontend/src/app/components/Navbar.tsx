@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
+  FaHome,
   FaCalendarAlt,
   FaHistory,
   FaUser,
@@ -30,6 +31,12 @@ export default function Navbar() {
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const navItems = [
+
+    {
+  name: "OurSkin",
+  path: "/pages/patient/home",
+  icon: <FaHome />,
+},
     {
       name: "Dashboard",
       path: "/pages/patient/dashboard",

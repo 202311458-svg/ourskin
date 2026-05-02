@@ -165,7 +165,7 @@ export default function Home() {
     } else if (role === "doctor") {
       router.push("/pages/doctor/dashboard");
     } else {
-      router.push("/pages/patient/dashboard");
+      router.push("/pages/patient/home");
     }
   };
 
