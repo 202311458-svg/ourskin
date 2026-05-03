@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Date
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Date, Text
 from sqlalchemy.sql import func
 from app.db import Base
 
@@ -26,6 +26,7 @@ class User(Base):
     # Patient age support.
     date_of_birth = Column(Date, nullable=True)
     is_minor = Column(Boolean, default=False, nullable=False)
+    address = Column(Text, nullable=True)
 
     # Guardian details for minor patients.
     guardian_first_name = Column(String, nullable=True)

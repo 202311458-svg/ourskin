@@ -114,6 +114,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     first_name = clean_text(user.first_name)
     last_name = clean_text(user.last_name)
     full_name = f"{first_name} {last_name}".strip()
+    address = clean_text(user.address)
 
     if len(first_name) < 2:
         raise HTTPException(
@@ -125,6 +126,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=400,
             detail="Last name must be at least 2 characters.",
+        )
+
+    if len(address) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete address is required.",
         )
 
     age_in_months = calculate_age_in_months(user.date_of_birth)
@@ -211,6 +218,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         last_name=last_name,
         date_of_birth=user.date_of_birth,
         is_minor=is_minor,
+        address=address,
 
         email=account_email,
         contact=account_contact,

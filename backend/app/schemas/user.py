@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
     date_of_birth: date
+    address: str
 
     email: EmailStr
     password: str
@@ -30,6 +31,7 @@ class UserCreate(BaseModel):
             raise ValueError("Passwords do not match")
         return self
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -42,6 +44,7 @@ class UserResponse(BaseModel):
     last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     is_minor: Optional[bool] = False
+    address: Optional[str] = None
 
     email: EmailStr
     contact: Optional[str] = None
@@ -59,6 +62,20 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    contact: Optional[str] = None
+    address: Optional[str] = None
+    profile_image: Optional[str] = None
+    specialty: Optional[str] = None
+    availability: Optional[str] = None
+    bio: Optional[str] = None
+
 
 class ChangePasswordRequest(BaseModel):
     current_password: str

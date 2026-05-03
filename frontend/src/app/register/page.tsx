@@ -21,6 +21,8 @@ export default function RegisterPage() {
   const [dobDay, setDobDay] = useState("")
   const [dobYear, setDobYear] = useState("")
 
+  const [address, setAddress] = useState("")
+
   const [contact, setContact] = useState("")
   const [email, setEmail] = useState("")
 
@@ -71,56 +73,51 @@ export default function RegisterPage() {
     }
   }
 
-  const todayISO = new Date().toISOString().split("T")[0]
-
- 
   const currentYear = new Date().getFullYear()
 
-const monthOptions = [
-  { value: "01", label: "January" },
-  { value: "02", label: "February" },
-  { value: "03", label: "March" },
-  { value: "04", label: "April" },
-  { value: "05", label: "May" },
-  { value: "06", label: "June" },
-  { value: "07", label: "July" },
-  { value: "08", label: "August" },
-  { value: "09", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
-]
+  const monthOptions = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ]
 
-const yearOptions = Array.from({ length: 120 }, (_, index) =>
-  String(currentYear - index)
-)
+  const yearOptions = Array.from({ length: 120 }, (_, index) =>
+    String(currentYear - index)
+  )
 
-const getDaysInMonth = (year: string, month: string) => {
-  if (!year || !month) return 31
-  return new Date(Number(year), Number(month), 0).getDate()
-}
-
-const daysInSelectedMonth = getDaysInMonth(dobYear, dobMonth)
-
-const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, index) =>
-  String(index + 1).padStart(2, "0")
-)
-
-
-useEffect(() => {
-  if (dobDay && Number(dobDay) > daysInSelectedMonth) {
-    setDobDay("")
+  const getDaysInMonth = (year: string, month: string) => {
+    if (!year || !month) return 31
+    return new Date(Number(year), Number(month), 0).getDate()
   }
-}, [dobMonth, dobYear, dobDay, daysInSelectedMonth])
 
-useEffect(() => {
-  if (dobYear && dobMonth && dobDay) {
-    setDateOfBirth(`${dobYear}-${dobMonth}-${dobDay}`)
-  } else {
-    setDateOfBirth("")
-  }
-}, [dobYear, dobMonth, dobDay])
+  const daysInSelectedMonth = getDaysInMonth(dobYear, dobMonth)
 
+  const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, index) =>
+    String(index + 1).padStart(2, "0")
+  )
+
+  useEffect(() => {
+    if (dobDay && Number(dobDay) > daysInSelectedMonth) {
+      setDobDay("")
+    }
+  }, [dobMonth, dobYear, dobDay, daysInSelectedMonth])
+
+  useEffect(() => {
+    if (dobYear && dobMonth && dobDay) {
+      setDateOfBirth(`${dobYear}-${dobMonth}-${dobDay}`)
+    } else {
+      setDateOfBirth("")
+    }
+  }, [dobYear, dobMonth, dobDay])
 
   const passwordChecks = {
     length: password.length >= 8,
@@ -164,23 +161,23 @@ useEffect(() => {
   const isBelowMinimumAge = Boolean(dateOfBirth) && ageInMonths < 3
 
   const getAgeLabel = () => {
-  if (!dateOfBirth) return ""
+    if (!dateOfBirth) return ""
 
-  if (ageInMonths < 12) {
-    return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"} old`
+    if (ageInMonths < 12) {
+      return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"} old`
+    }
+
+    const years = Math.floor(ageInMonths / 12)
+    const months = ageInMonths % 12
+
+    if (months === 0) {
+      return `${years} year${years === 1 ? "" : "s"} old`
+    }
+
+    return `${years} year${years === 1 ? "" : "s"} and ${months} month${
+      months === 1 ? "" : "s"
+    } old`
   }
-
-  const years = Math.floor(ageInMonths / 12)
-  const months = ageInMonths % 12
-
-  if (months === 0) {
-    return `${years} year${years === 1 ? "" : "s"} old`
-  }
-
-  return `${years} year${years === 1 ? "" : "s"} and ${months} month${
-    months === 1 ? "" : "s"
-  } old`
-}
 
   const isValidEmailFormat = (value: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
@@ -198,6 +195,8 @@ useEffect(() => {
     setDobMonth("")
     setDobDay("")
     setDobYear("")
+
+    setAddress("")
 
     setContact("")
     setEmail("")
@@ -225,6 +224,7 @@ useEffect(() => {
 
     const trimmedFirstName = firstName.trim()
     const trimmedLastName = lastName.trim()
+    const trimmedAddress = address.trim()
 
     if (trimmedFirstName.length < 2) {
       alert("Please enter a valid first name.")
@@ -243,6 +243,11 @@ useEffect(() => {
 
     if (isBelowMinimumAge) {
       alert("Patient must be at least 3 months old to register.")
+      return
+    }
+
+    if (trimmedAddress.length < 5) {
+      alert("Please enter the patient's complete address.")
       return
     }
 
@@ -321,6 +326,7 @@ useEffect(() => {
           first_name: trimmedFirstName,
           last_name: trimmedLastName,
           date_of_birth: dateOfBirth,
+          address: trimmedAddress,
 
           email: accountEmail,
           contact: accountContact,
@@ -368,6 +374,7 @@ useEffect(() => {
     !firstName.trim() ||
     !lastName.trim() ||
     !dateOfBirth ||
+    !address.trim() ||
     isBelowMinimumAge ||
     !isPasswordStrong ||
     !passwordsMatch ||
@@ -382,44 +389,46 @@ useEffect(() => {
     (!isMinor && (!contact.trim() || !email.trim()))
 
   return (
-<main
-  className={`${styles.osLanding} ${darkMode ? styles.osDark : ""} ${styles.registerLandingPage}`}
->
-  <div className={`${styles.osBgGlow} ${styles.osBgGlowOne}`} />
-  <div className={`${styles.osBgGlow} ${styles.osBgGlowTwo}`} />
-
-<nav className={styles.osNav}>
-  <Link href="/" className={styles.osLogoWrap} aria-label="OurSkin Home">
-    <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} priority />
-  </Link>
-
-  <div className={styles.osNavLinks}>
-    <Link href="/#services">Services</Link>
-    <Link href="/#about">About</Link>
-    <Link href="/#doctors">Doctors</Link>
-    <Link href="/#contact">Contact</Link>
-  </div>
-
-  <div className={styles.osNavActions}>
-    <button
-      type="button"
-      className={styles.osThemeBtn}
-      onClick={toggleDarkMode}
-      aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+    <main
+      className={`${styles.osLanding} ${
+        darkMode ? styles.osDark : ""
+      } ${styles.registerLandingPage}`}
     >
-      {darkMode ? <FaSun /> : <FaMoon />}
-      <span>{darkMode ? "Light" : "Dark"}</span>
-    </button>
+      <div className={`${styles.osBgGlow} ${styles.osBgGlowOne}`} />
+      <div className={`${styles.osBgGlow} ${styles.osBgGlowTwo}`} />
 
-    <button
-      type="button"
-      className={styles.osLoginBtn}
-      onClick={() => router.push("/")}
-    >
-      Login
-    </button>
-  </div>
-</nav>
+      <nav className={styles.osNav}>
+        <Link href="/" className={styles.osLogoWrap} aria-label="OurSkin Home">
+          <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} priority />
+        </Link>
+
+        <div className={styles.osNavLinks}>
+          <Link href="/#services">Services</Link>
+          <Link href="/#about">About</Link>
+          <Link href="/#doctors">Doctors</Link>
+          <Link href="/#contact">Contact</Link>
+        </div>
+
+        <div className={styles.osNavActions}>
+          <button
+            type="button"
+            className={styles.osThemeBtn}
+            onClick={toggleDarkMode}
+            aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {darkMode ? <FaSun /> : <FaMoon />}
+            <span>{darkMode ? "Light" : "Dark"}</span>
+          </button>
+
+          <button
+            type="button"
+            className={styles.osLoginBtn}
+            onClick={() => router.push("/")}
+          >
+            Login
+          </button>
+        </div>
+      </nav>
 
       <section className={styles.registerHero}>
         <div className={styles.registerIntro}>
@@ -455,287 +464,302 @@ useEffect(() => {
           </div>
         </div>
 
-       <section className={styles.registerPanel}>
-  <div className={styles.registerPanelHeader}>
-    <h2>Create an Account</h2>
-    <p></p>
-  </div>
-
-  <form
-    className={styles.registerForm}
-    onSubmit={(e) => {
-      e.preventDefault()
-      register()
-    }}
-  >
-    <div className={styles.registerGrid}>
-      <div className={styles.registerField}>
-        <label>First Name</label>
-        <input
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          placeholder="Enter first name"
-        />
-      </div>
-
-      <div className={styles.registerField}>
-        <label>Last Name</label>
-        <input
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          placeholder="Enter last name"
-        />
-      </div>
-    </div>
-
-    <div className={styles.registerField}>
-      <label>Date of Birth</label>
-
-      <div className={styles.dobCard}>
-        <div className={styles.dobIcon}>
-          <FaCalendarAlt />
-        </div>
-
-        <div className={styles.dobGrid}>
-          <select value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
-            <option value="">Month</option>
-            {monthOptions.map((month) => (
-              <option key={month.value} value={month.value}>
-                {month.label}
-              </option>
-            ))}
-          </select>
-
-          <select value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
-            <option value="">Day</option>
-            {dayOptions.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-
-          <select value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
-            <option value="">Year</option>
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {dateOfBirth && (
-        <p className={styles.dobPreview}>
-          Selected date: <strong>{dateOfBirth}</strong> · {getAgeLabel()}
-        </p>
-      )}
-
-      {isBelowMinimumAge && (
-        <p className={styles.registerError}>
-          Patient must be at least 3 months old to register.
-        </p>
-      )}
-
-      {dateOfBirth && isMinor && (
-        <p className={styles.registerInfo}>
-          This patient is below 18 years old. Guardian details are required.
-        </p>
-      )}
-    </div>
-
-    {dateOfBirth && isMinor ? (
-      <>
-
-        <div className={styles.registerGrid}>
-          <div className={styles.registerField}>
-            <label>Guardian First Name</label>
-            <input
-              value={guardianFirstName}
-              onChange={(e) => setGuardianFirstName(e.target.value)}
-              placeholder="Enter guardian first name"
-            />
+        <section className={styles.registerPanel}>
+          <div className={styles.registerPanelHeader}>
+            <h2>Create an Account</h2>
+            <p></p>
           </div>
 
-          <div className={styles.registerField}>
-            <label>Guardian Last Name</label>
-            <input
-              value={guardianLastName}
-              onChange={(e) => setGuardianLastName(e.target.value)}
-              placeholder="Enter guardian last name"
-            />
-          </div>
-        </div>
+          <form
+            className={styles.registerForm}
+            onSubmit={(e) => {
+              e.preventDefault()
+              register()
+            }}
+          >
+            <div className={styles.registerGrid}>
+              <div className={styles.registerField}>
+                <label>First Name</label>
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                />
+              </div>
 
-        <div className={styles.registerField}>
-          <label>Relationship to Patient</label>
-          <input
-            value={guardianRelationship}
-            onChange={(e) => setGuardianRelationship(e.target.value)}
-            placeholder="Example: Mother, Father, Legal Guardian"
-          />
-        </div>
+              <div className={styles.registerField}>
+                <label>Last Name</label>
+                <input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                />
+              </div>
+            </div>
 
-        <div className={styles.registerGrid}>
-          <div className={styles.registerField}>
-            <label>Guardian Contact Number</label>
-            <input
-              value={guardianContact}
-              onChange={(e) => setGuardianContact(e.target.value)}
-              placeholder="09123456789"
-            />
-          </div>
+            <div className={styles.registerField}>
+              <label>Date of Birth</label>
 
-          <div className={styles.registerField}>
-            <label>Guardian Email</label>
-            <input
-              type="email"
-              value={guardianEmail}
-              onChange={(e) => setGuardianEmail(e.target.value)}
-              placeholder="guardian@email.com"
-            />
-          </div>
-        </div>
+              <div className={styles.dobCard}>
+                <div className={styles.dobIcon}>
+                  <FaCalendarAlt />
+                </div>
 
-        <label className={styles.registerCheckbox}>
-          <input
-            type="checkbox"
-            checked={guardianConsent}
-            onChange={(e) => setGuardianConsent(e.target.checked)}
-          />
-          <span>
-            I confirm that I am the parent or legal guardian of this minor
-            patient and I consent to the collection and processing of the
-            patient’s information for appointment booking and dermatology care.
-          </span>
-        </label>
-      </>
-    ) : (
-      <>
-  <div className={styles.registerGrid}>
-    <div className={styles.registerField}>
-      <label>Contact Number</label>
-      <input
-        value={contact}
-        onChange={(e) => setContact(e.target.value)}
-        placeholder="09XXXXXXXXX"
-      />
-    </div>
+                <div className={styles.dobGrid}>
+                  <select
+                    value={dobMonth}
+                    onChange={(e) => setDobMonth(e.target.value)}
+                  >
+                    <option value="">Month</option>
+                    {monthOptions.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
 
-    <div className={styles.registerField}>
-      <label>Email</label>
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="patient@email.com"
-      />
-    </div>
-  </div>
-</>
-    )}
+                  <select
+                    value={dobDay}
+                    onChange={(e) => setDobDay(e.target.value)}
+                  >
+                    <option value="">Day</option>
+                    {dayOptions.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
 
-  
+                  <select
+                    value={dobYear}
+                    onChange={(e) => setDobYear(e.target.value)}
+                  >
+                    <option value="">Year</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-    <div className={styles.registerField}>
-      <label>Password</label>
-      <div className={styles.registerPasswordWrap}>
-        <input
-          type={showPassword ? "text" : "password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={() => setPasswordTouched(true)}
-          placeholder="Create password"
-        />
+              {dateOfBirth && (
+                <p className={styles.dobPreview}>
+                  Selected date: <strong>{dateOfBirth}</strong> · {getAgeLabel()}
+                </p>
+              )}
 
-        <button type="button" onClick={() => setShowPassword(!showPassword)}>
-          {showPassword ? <FaEyeSlash /> : <FaEye />}
-        </button>
-      </div>
+              {isBelowMinimumAge && (
+                <p className={styles.registerError}>
+                  Patient must be at least 3 months old to register.
+                </p>
+              )}
 
-      <p
-        className={
-          passwordTouched && password.length > 0 && isPasswordStrong
-            ? styles.registerValid
-            : styles.registerHelper
-        }
-      >
-        Use at least 8 characters with 1 uppercase letter, 1 number, and 1
-        special character.
-      </p>
-    </div>
+              {dateOfBirth && isMinor && (
+                <p className={styles.registerInfo}>
+                  This patient is below 18 years old. Guardian details are required.
+                </p>
+              )}
+            </div>
 
-    <div className={styles.registerField}>
-      <label>Confirm Password</label>
-      <div className={styles.registerPasswordWrap}>
-        <input
-          type={showConfirmPassword ? "text" : "password"}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          onBlur={() => setConfirmPasswordTouched(true)}
-          placeholder="Confirm password"
-        />
+            <div className={styles.registerField}>
+              <label>Complete Address</label>
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="House no., street, barangay, city, province"
+              />
+            </div>
 
-        <button
-          type="button"
-          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-        >
-          {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-        </button>
-      </div>
+            {dateOfBirth && isMinor ? (
+              <>
+                <div className={styles.registerGrid}>
+                  <div className={styles.registerField}>
+                    <label>Guardian First Name</label>
+                    <input
+                      value={guardianFirstName}
+                      onChange={(e) => setGuardianFirstName(e.target.value)}
+                      placeholder="Enter guardian first name"
+                    />
+                  </div>
 
-      {confirmPasswordTouched &&
-        confirmPassword.length > 0 &&
-        !passwordsMatch && (
-          <p className={styles.registerError}>
-            Confirm password does not match.
-          </p>
-        )}
-    </div>
+                  <div className={styles.registerField}>
+                    <label>Guardian Last Name</label>
+                    <input
+                      value={guardianLastName}
+                      onChange={(e) => setGuardianLastName(e.target.value)}
+                      placeholder="Enter guardian last name"
+                    />
+                  </div>
+                </div>
 
-    <label className={styles.registerCheckbox}>
-      <input
-        type="checkbox"
-        checked={acceptedTerms}
-        onChange={(e) => setAcceptedTerms(e.target.checked)}
-      />
+                <div className={styles.registerField}>
+                  <label>Relationship to Patient</label>
+                  <input
+                    value={guardianRelationship}
+                    onChange={(e) => setGuardianRelationship(e.target.value)}
+                    placeholder="Example: Mother, Father, Legal Guardian"
+                  />
+                </div>
 
-      <span>
-        I agree to the{" "}
-        <button
-          type="button"
-          className={styles.registerPolicyBtn}
-          onClick={() => setOpenPolicy("terms")}
-        >
-          Terms and Conditions
-        </button>{" "}
-        and{" "}
-        <button
-          type="button"
-          className={styles.registerPolicyBtn}
-          onClick={() => setOpenPolicy("privacy")}
-        >
-          Privacy Policy
-        </button>
-        .
-      </span>
-    </label>
+                <div className={styles.registerGrid}>
+                  <div className={styles.registerField}>
+                    <label>Guardian Contact Number</label>
+                    <input
+                      value={guardianContact}
+                      onChange={(e) => setGuardianContact(e.target.value)}
+                      placeholder="09123456789"
+                    />
+                  </div>
 
-    <button
-      className={styles.registerSubmit}
-      type="submit"
-      disabled={isSubmitDisabled}
-    >
-      {loading ? "Creating Account..." : "Create Account"}
-    </button>
+                  <div className={styles.registerField}>
+                    <label>Guardian Email</label>
+                    <input
+                      type="email"
+                      value={guardianEmail}
+                      onChange={(e) => setGuardianEmail(e.target.value)}
+                      placeholder="guardian@email.com"
+                    />
+                  </div>
+                </div>
 
-    <p className={styles.registerLoginText}>
-      Already have an account? <Link href="/">Go back to Login</Link>
-    </p>
-  </form>
-</section>
+                <label className={styles.registerCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={guardianConsent}
+                    onChange={(e) => setGuardianConsent(e.target.checked)}
+                  />
+                  <span>
+                    I confirm that I am the parent or legal guardian of this minor
+                    patient and I consent to the collection and processing of the
+                    patient’s information for appointment booking and dermatology care.
+                  </span>
+                </label>
+              </>
+            ) : (
+              <>
+                <div className={styles.registerGrid}>
+                  <div className={styles.registerField}>
+                    <label>Contact Number</label>
+                    <input
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      placeholder="09XXXXXXXXX"
+                    />
+                  </div>
+
+                  <div className={styles.registerField}>
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="patient@email.com"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className={styles.registerField}>
+              <label>Password</label>
+              <div className={styles.registerPasswordWrap}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setPasswordTouched(true)}
+                  placeholder="Create password"
+                />
+
+                <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+
+              <p
+                className={
+                  passwordTouched && password.length > 0 && isPasswordStrong
+                    ? styles.registerValid
+                    : styles.registerHelper
+                }
+              >
+                Use at least 8 characters with 1 uppercase letter, 1 number, and 1
+                special character.
+              </p>
+            </div>
+
+            <div className={styles.registerField}>
+              <label>Confirm Password</label>
+              <div className={styles.registerPasswordWrap}>
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={() => setConfirmPasswordTouched(true)}
+                  placeholder="Confirm password"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+
+              {confirmPasswordTouched &&
+                confirmPassword.length > 0 &&
+                !passwordsMatch && (
+                  <p className={styles.registerError}>
+                    Confirm password does not match.
+                  </p>
+                )}
+            </div>
+
+            <label className={styles.registerCheckbox}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+              />
+
+              <span>
+                I agree to the{" "}
+                <button
+                  type="button"
+                  className={styles.registerPolicyBtn}
+                  onClick={() => setOpenPolicy("terms")}
+                >
+                  Terms and Conditions
+                </button>{" "}
+                and{" "}
+                <button
+                  type="button"
+                  className={styles.registerPolicyBtn}
+                  onClick={() => setOpenPolicy("privacy")}
+                >
+                  Privacy Policy
+                </button>
+                .
+              </span>
+            </label>
+
+            <button
+              className={styles.registerSubmit}
+              type="submit"
+              disabled={isSubmitDisabled}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
+            </button>
+
+            <p className={styles.registerLoginText}>
+              Already have an account? <Link href="/">Go back to Login</Link>
+            </p>
+          </form>
         </section>
+      </section>
 
       {openPolicy && (
         <div
@@ -791,9 +815,9 @@ useEffect(() => {
                 <>
                   <p>
                     OurSkin collects personal information such as patient name,
-                    contact details, email address, date of birth, appointment
-                    information, and related account details to support clinic
-                    operations.
+                    contact details, email address, complete address, date of
+                    birth, appointment information, and related account details
+                    to support clinic operations.
                   </p>
 
                   <h3>Minor Patient Information</h3>

@@ -17,6 +17,7 @@ type User = {
   birthdate?: string | null;
   dob?: string | null;
   is_minor?: boolean | null;
+  address?: string | null;
 
   guardian_first_name?: string | null;
   guardian_last_name?: string | null;
@@ -185,7 +186,11 @@ export default function ProfilePage() {
   const isMinor = useMemo(() => {
     if (!user) return false;
 
-    return Boolean(user.is_minor) || calculateIsMinor(birthDate) || hasGuardianInfo(user);
+    return (
+      Boolean(user.is_minor) ||
+      calculateIsMinor(birthDate) ||
+      hasGuardianInfo(user)
+    );
   }, [user, birthDate]);
 
   useEffect(() => {
@@ -327,6 +332,11 @@ export default function ProfilePage() {
                     <div className={styles.detailItem}>
                       <span>Age</span>
                       <strong>{calculateAgeLabel(birthDate)}</strong>
+                    </div>
+
+                    <div className={styles.detailItem}>
+                      <span>Complete Address</span>
+                      <strong>{getDisplayValue(user.address)}</strong>
                     </div>
 
                     <div className={styles.detailItem}>
