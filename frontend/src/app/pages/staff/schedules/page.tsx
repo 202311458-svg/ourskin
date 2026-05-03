@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StaffNavbar from "@/app/components/StaffNavbar";
 import { API_BASE_URL, getAuth } from "@/lib/api";
 import staffStyles from "@/app/styles/staff.module.css";
@@ -13,6 +13,14 @@ type Doctor = {
   specialty?: string | null;
   availability?: string | null;
   status?: string | null;
+};
+
+type Service = {
+  id: number;
+  name: string;
+  description?: string | null;
+  requires_initial_evaluation: boolean;
+  is_active: boolean;
 };
 
 type DoctorSchedule = {
@@ -46,7 +54,7 @@ type ClinicUnavailableDate = {
 
 type ScheduleForm = {
   doctor_id: string;
-  services: string;
+  selected_services: string[];
   schedule_date: string;
   start_time: string;
   end_time: string;
@@ -66,10 +74,10 @@ type ScheduleType = "doctor" | "clinic";
 
 const initialDoctorForm: ScheduleForm = {
   doctor_id: "",
-  services: "",
+  selected_services: [],
   schedule_date: "",
-  start_time: "",
-  end_time: "",
+  start_time: "13:00",
+  end_time: "19:00",
   is_available: true,
   consultation_mode: "In-Person",
   unavailable_reason: "",
@@ -99,20 +107,26 @@ const monthNames = [
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const unavailableReasons = [
-  "Holiday",
-  "Doctor Leave",
-  "Clinic Event",
-  "Emergency Closure",
-  "Other",
-];
-
 const clinicUnavailableReasons = [
   "Holiday",
   "Clinic Event",
   "Emergency Closure",
   "Maintenance",
   "Other",
+];
+
+const timeOptions = [
+  { value: "09:00", label: "9:00 AM" },
+  { value: "10:00", label: "10:00 AM" },
+  { value: "11:00", label: "11:00 AM" },
+  { value: "12:00", label: "12:00 PM" },
+  { value: "13:00", label: "1:00 PM" },
+  { value: "14:00", label: "2:00 PM" },
+  { value: "15:00", label: "3:00 PM" },
+  { value: "16:00", label: "4:00 PM" },
+  { value: "17:00", label: "5:00 PM" },
+  { value: "18:00", label: "6:00 PM" },
+  { value: "19:00", label: "7:00 PM" },
 ];
 
 function toDateInputValue(date: Date) {
@@ -160,8 +174,89 @@ function formatTime(value: string) {
   });
 }
 
+function getShortDoctorName(name: string) {
+  if (!name) return "Doctor";
+
+  const cleanedName = name.trim();
+
+  if (!cleanedName) return "Doctor";
+
+  if (/^dr\.?\s/i.test(cleanedName)) {
+    return cleanedName;
+  }
+
+  return `Dr. ${cleanedName}`;
+}
+
+function getNextValidEndTime(startTime: string, currentEndTime: string) {
+  const validEndTimes = timeOptions.filter((option) => option.value > startTime);
+
+  if (currentEndTime && currentEndTime > startTime) {
+    return currentEndTime;
+  }
+
+  return validEndTimes[0]?.value || "";
+}
+
+
 function getScheduleMode(schedule: DoctorSchedule) {
   return schedule.consultation_mode || "In-Person";
+}
+
+function splitServices(value: string) {
+  if (!value) return [];
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function servicesToString(services: string[]) {
+  return services.map((service) => service.trim()).filter(Boolean).join(", ");
+}
+
+function extractArray<T>(data: unknown, keys: string[] = []): T[] {
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+
+    for (const key of keys) {
+      if (Array.isArray(record[key])) {
+        return record[key] as T[];
+      }
+    }
+  }
+
+  return [];
+}
+
+function getApiErrorMessage(data: unknown, fallback: string) {
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+
+    if (typeof record.detail === "string") return record.detail;
+    if (typeof record.message === "string") return record.message;
+  }
+
+  return fallback;
+}
+
+function normaliseService(service: Partial<Service>, index: number): Service | null {
+  const name = String(service.name || "").trim();
+
+  if (!name) return null;
+
+  return {
+    id: Number(service.id || index + 1),
+    name,
+    description: service.description || null,
+    requires_initial_evaluation: Boolean(service.requires_initial_evaluation),
+    is_active: service.is_active !== false,
+  };
 }
 
 export default function StaffSchedulesPage() {
@@ -169,6 +264,7 @@ export default function StaffSchedulesPage() {
   const todayValue = useMemo(() => toDateInputValue(today), [today]);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
   const [clinicUnavailableDates, setClinicUnavailableDates] = useState<
     ClinicUnavailableDate[]
@@ -205,6 +301,8 @@ export default function StaffSchedulesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [serviceWarning, setServiceWarning] = useState("");
+  const scheduleListRef = useRef<HTMLDivElement | null>(null);
 
   const getHeaders = useCallback(() => {
     const { token } = getAuth();
@@ -220,12 +318,58 @@ export default function StaffSchedulesPage() {
       headers: getHeaders(),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      throw new Error("Unable to load doctors.");
+      throw new Error(getApiErrorMessage(data, "Unable to load doctors."));
     }
 
-    const data = await res.json();
-    setDoctors(Array.isArray(data) ? data : []);
+    setDoctors(extractArray<Doctor>(data, ["doctors", "users", "data", "items"]));
+  }, [getHeaders]);
+
+  const fetchServices = useCallback(async () => {
+    const endpoints = [
+      `${API_BASE_URL}/staff/services`,
+      `${API_BASE_URL}/services`,
+      `${API_BASE_URL}/admin/services`,
+    ];
+
+    let lastMessage = "Unable to load services.";
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          headers: getHeaders(),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          lastMessage = getApiErrorMessage(data, lastMessage);
+          continue;
+        }
+
+        const serviceList = extractArray<Partial<Service>>(data, [
+          "services",
+          "data",
+          "items",
+          "results",
+        ])
+          .map((service, index) => normaliseService(service, index))
+          .filter((service): service is Service => Boolean(service));
+
+        setServices(serviceList.filter((service) => service.is_active));
+        setServiceWarning("");
+        return;
+      } catch (err) {
+        lastMessage = err instanceof Error ? err.message : lastMessage;
+      }
+    }
+
+    setServices([]);
+    setServiceWarning(
+      `${lastMessage} The page will use services found from existing schedules for now.`
+    );
   }, [getHeaders]);
 
   const fetchSchedules = useCallback(async () => {
@@ -233,12 +377,15 @@ export default function StaffSchedulesPage() {
       headers: getHeaders(),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      throw new Error("Unable to load doctor schedules.");
+      throw new Error(getApiErrorMessage(data, "Unable to load doctor schedules."));
     }
 
-    const data = await res.json();
-    setSchedules(Array.isArray(data) ? data : []);
+    setSchedules(
+      extractArray<DoctorSchedule>(data, ["schedules", "data", "items", "results"])
+    );
   }, [getHeaders]);
 
   const fetchClinicUnavailableDates = useCallback(async () => {
@@ -246,30 +393,50 @@ export default function StaffSchedulesPage() {
       headers: getHeaders(),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      throw new Error("Unable to load clinic unavailable dates.");
+      throw new Error(
+        getApiErrorMessage(data, "Unable to load clinic unavailable dates.")
+      );
     }
 
-    const data = await res.json();
-    setClinicUnavailableDates(Array.isArray(data) ? data : []);
+    setClinicUnavailableDates(
+      extractArray<ClinicUnavailableDate>(data, [
+        "clinic_unavailable_dates",
+        "unavailable_dates",
+        "data",
+        "items",
+        "results",
+      ])
+    );
   }, [getHeaders]);
 
   const loadPageData = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
-    try {
-      await Promise.all([
-        fetchDoctors(),
-        fetchSchedules(),
-        fetchClinicUnavailableDates(),
-      ]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setIsLoading(false);
+    const results = await Promise.allSettled([
+      fetchDoctors(),
+      fetchServices(),
+      fetchSchedules(),
+      fetchClinicUnavailableDates(),
+    ]);
+
+    const criticalErrors = results
+      .filter((result, index) => index !== 1 && result.status === "rejected")
+      .map((result) =>
+        result.status === "rejected" && result.reason instanceof Error
+          ? result.reason.message
+          : "Something went wrong."
+      );
+
+    if (criticalErrors.length > 0) {
+      setError(criticalErrors.join(" "));
     }
-  }, [fetchDoctors, fetchSchedules, fetchClinicUnavailableDates]);
+
+    setIsLoading(false);
+  }, [fetchDoctors, fetchServices, fetchSchedules, fetchClinicUnavailableDates]);
 
   useEffect(() => {
     loadPageData();
@@ -360,11 +527,38 @@ export default function StaffSchedulesPage() {
     return days;
   }, [calendarMonth, filteredSchedules]);
 
-  const totalSlots = filteredSchedules.length;
-  const availableSlots = filteredSchedules.filter(
-    (schedule) => schedule.is_available
-  ).length;
-  const unavailableSlots = totalSlots - availableSlots;
+  const derivedServices = useMemo(() => {
+    const serviceNames = new Set<string>();
+
+    schedules.forEach((schedule) => {
+      splitServices(schedule.services).forEach((serviceName) => {
+        serviceNames.add(serviceName);
+      });
+    });
+
+    return Array.from(serviceNames)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name, index) => ({
+        id: -(index + 1),
+        name,
+        description: null,
+        requires_initial_evaluation: /surgical|cosmetic/i.test(name),
+        is_active: true,
+      }));
+  }, [schedules]);
+
+  const serviceOptions = services.length > 0 ? services : derivedServices;
+
+  const scheduledDoctorDays = new Set(
+    filteredSchedules.map((schedule) => schedule.schedule_date)
+  ).size;
+
+  const bookableDoctorDays = new Set(
+    filteredSchedules
+      .filter((schedule) => schedule.is_available)
+      .map((schedule) => schedule.schedule_date)
+  ).size;
+
   const clinicClosureCount = clinicUnavailableDates.length;
 
   function moveCalendarToDate(dateValue: string) {
@@ -383,8 +577,8 @@ export default function StaffSchedulesPage() {
     setForm((current) => ({
       ...current,
       schedule_date: dateValue,
-      is_available: sunday ? false : current.is_available,
-      unavailable_reason: sunday ? "Sunday Unavailable" : current.unavailable_reason,
+      is_available: true,
+      unavailable_reason: "",
     }));
 
     setClinicClosureForm((current) => ({
@@ -408,8 +602,8 @@ export default function StaffSchedulesPage() {
     setForm({
       ...initialDoctorForm,
       schedule_date: selectedDate,
-      is_available: !isSunday(selectedDate),
-      unavailable_reason: isSunday(selectedDate) ? "Sunday Unavailable" : "",
+      is_available: true,
+      unavailable_reason: "",
     });
 
     setClinicClosureForm({
@@ -440,6 +634,19 @@ export default function StaffSchedulesPage() {
     syncSelectedDate(dateValue);
   }
 
+
+  function handleViewScheduleFromCalendar(dateValue: string) {
+    setMessage("");
+    syncSelectedDate(dateValue);
+
+    window.setTimeout(() => {
+      scheduleListRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }
+
   function goToPreviousMonth() {
     setCalendarMonth((current) => {
       return new Date(current.getFullYear(), current.getMonth() - 1, 1);
@@ -450,6 +657,28 @@ export default function StaffSchedulesPage() {
     setCalendarMonth((current) => {
       return new Date(current.getFullYear(), current.getMonth() + 1, 1);
     });
+  }
+
+  function toggleService(serviceName: string) {
+    setForm((current) => {
+      const alreadySelected = current.selected_services.includes(serviceName);
+
+      return {
+        ...current,
+        selected_services: alreadySelected
+          ? current.selected_services.filter((item) => item !== serviceName)
+          : [...current.selected_services, serviceName],
+      };
+    });
+  }
+
+  function removeSelectedService(serviceName: string) {
+    setForm((current) => ({
+      ...current,
+      selected_services: current.selected_services.filter(
+        (item) => item !== serviceName
+      ),
+    }));
   }
 
   function handleEditDoctorSchedule(schedule: DoctorSchedule) {
@@ -463,7 +692,7 @@ export default function StaffSchedulesPage() {
 
     setForm({
       doctor_id: String(schedule.doctor_id),
-      services: schedule.services || "",
+      selected_services: splitServices(schedule.services),
       schedule_date: schedule.schedule_date,
       start_time: schedule.start_time || "",
       end_time: schedule.end_time || "",
@@ -510,7 +739,7 @@ export default function StaffSchedulesPage() {
     setError("");
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (scheduleType === "clinic") {
@@ -540,7 +769,7 @@ export default function StaffSchedulesPage() {
 
     if (
       !form.doctor_id ||
-      !(form.services || "").trim() ||
+      form.selected_services.length === 0 ||
       !form.schedule_date ||
       !form.start_time ||
       !form.end_time
@@ -556,23 +785,29 @@ export default function StaffSchedulesPage() {
       return;
     }
 
-    if (!form.is_available && !(form.unavailable_reason || "").trim()) {
-      setError("Please select a reason for marking this schedule unavailable.");
+    const existingScheduleForDate = schedules.find(
+      (schedule) =>
+        schedule.schedule_date === form.schedule_date &&
+        schedule.id !== editingDoctorScheduleId
+    );
+
+    if (existingScheduleForDate) {
+      setError(
+        `Only one doctor schedule can be created per day. ${existingScheduleForDate.doctor_name} is already scheduled for ${formatReadableDate(form.schedule_date)}.`
+      );
       setIsSaving(false);
       return;
     }
 
     const payload = {
       doctor_id: Number(form.doctor_id),
-      services: (form.services || "").trim(),
+      services: servicesToString(form.selected_services),
       schedule_date: form.schedule_date,
       start_time: form.start_time,
       end_time: form.end_time,
-      is_available: form.is_available,
+      is_available: true,
       consultation_mode: form.consultation_mode || "In-Person",
-      unavailable_reason: form.is_available
-        ? null
-        : (form.unavailable_reason || "").trim(),
+      unavailable_reason: null,
       schedule_note: (form.schedule_note || "").trim() || null,
     };
 
@@ -598,7 +833,7 @@ export default function StaffSchedulesPage() {
       setMessage(
         editingDoctorScheduleId
           ? "Doctor schedule updated successfully."
-          : "Doctor schedule added successfully."
+          : "Doctor assigned for the day successfully."
       );
 
       setEditingDoctorScheduleId(null);
@@ -687,7 +922,7 @@ export default function StaffSchedulesPage() {
   }
 
   async function handleDeleteDoctorSchedule(scheduleId: number) {
-    const confirmed = window.confirm("Delete this doctor schedule?");
+    const confirmed = window.confirm("Delete this scheduled doctor for the day?");
 
     if (!confirmed) return;
 
@@ -710,7 +945,7 @@ export default function StaffSchedulesPage() {
       }
 
       await fetchSchedules();
-      setMessage("Doctor schedule deleted successfully.");
+      setMessage("Scheduled doctor removed successfully.");
 
       if (editingDoctorScheduleId === scheduleId) {
         resetForms();
@@ -767,7 +1002,7 @@ export default function StaffSchedulesPage() {
           <div>
             <h1>Doctor Schedule Calendar</h1>
             <p className={staffStyles.pageSubtext}>
-              Manage doctor availability, online consultations, holidays, and
+              Assign one doctor per day, set bookable consultation hours, and manage
               clinic-wide unavailable dates for patient booking.
             </p>
           </div>
@@ -783,23 +1018,15 @@ export default function StaffSchedulesPage() {
 
         <section className={staffStyles.statsGrid}>
           <div className={staffStyles.statCard}>
-            <div className={staffStyles.statLabel}>Total Schedule Slots</div>
-            <div className={staffStyles.statValue}>{totalSlots}</div>
-            <div className={staffStyles.statMeta}>Based on current filter</div>
+            <div className={staffStyles.statLabel}>Scheduled Doctor Days</div>
+            <div className={staffStyles.statValue}>{scheduledDoctorDays}</div>
+            <div className={staffStyles.statMeta}>One doctor schedule per date</div>
           </div>
 
           <div className={staffStyles.statCard}>
-            <div className={staffStyles.statLabel}>Available Slots</div>
-            <div className={staffStyles.statValue}>{availableSlots}</div>
-            <div className={staffStyles.statMeta}>Visible for booking flow</div>
-          </div>
-
-          <div className={staffStyles.statCard}>
-            <div className={staffStyles.statLabel}>Unavailable Slots</div>
-            <div className={staffStyles.statValue}>{unavailableSlots}</div>
-            <div className={staffStyles.statMeta}>
-              Doctor-specific unavailable slots
-            </div>
+            <div className={staffStyles.statLabel}>Bookable Doctor Days</div>
+            <div className={staffStyles.statValue}>{bookableDoctorDays}</div>
+            <div className={staffStyles.statMeta}>Visible in patient booking</div>
           </div>
 
           <div className={staffStyles.statCard}>
@@ -812,6 +1039,9 @@ export default function StaffSchedulesPage() {
         </section>
 
         {error && <div className={styles.errorBox}>{error}</div>}
+        {serviceWarning && (
+          <div className={styles.warningBox}>{serviceWarning}</div>
+        )}
         {message && <div className={styles.successBox}>{message}</div>}
 
         <section className={styles.scheduleLayout}>
@@ -874,17 +1104,25 @@ export default function StaffSchedulesPage() {
                 const isSelected = day.dateValue === selectedDate;
                 const isSundayDate = isSunday(day.dateValue);
                 const isClinicClosedDate = closureDateSet.has(day.dateValue);
+                const schedulePreview = day.schedules[0];
 
                 return (
-                  <button
+                  <div
                     key={day.dateValue}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     className={`${styles.calendarDay} ${
                       isSelected ? styles.selectedDay : ""
                     } ${isSundayDate ? styles.sundayDay : ""} ${
                       isClinicClosedDate ? styles.clinicClosedDay : ""
                     }`}
                     onClick={() => handleSelectDate(day.dateValue)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleSelectDate(day.dateValue);
+                      }
+                    }}
                   >
                     <span className={styles.dayNumber}>{day.dayNumber}</span>
 
@@ -898,13 +1136,20 @@ export default function StaffSchedulesPage() {
 
                     {!isSundayDate &&
                       !isClinicClosedDate &&
-                      day.schedules.length > 0 && (
-                        <span className={styles.slotCount}>
-                          {day.schedules.length} slot
-                          {day.schedules.length > 1 ? "s" : ""}
-                        </span>
+                      schedulePreview && (
+                        <button
+                          type="button"
+                          className={styles.dayDoctorButton}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleViewScheduleFromCalendar(day.dateValue);
+                          }}
+                          title={`View schedule for ${schedulePreview.doctor_name}`}
+                        >
+                          {getShortDoctorName(schedulePreview.doctor_name)}
+                        </button>
                       )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -919,8 +1164,8 @@ export default function StaffSchedulesPage() {
                       ? "Edit Unavailable Date"
                       : "Mark Date Unavailable"
                     : editingDoctorScheduleId
-                    ? "Edit Doctor Schedule"
-                    : "Add Doctor Schedule"}
+                    ? "Edit Scheduled Doctor"
+                    : "Assign Doctor for the Day"}
                 </h2>
                 <p className={staffStyles.pageSubtext}>
                   {formatReadableDate(
@@ -931,20 +1176,6 @@ export default function StaffSchedulesPage() {
                 </p>
               </div>
             </div>
-
-            {selectedDateIsSunday && (
-              <div className={styles.sundayNotice}>
-                Sundays are automatically unavailable. Choose another date for
-                doctor schedules or clinic closures.
-              </div>
-            )}
-
-            {selectedDateIsClinicClosed && selectedClinicClosure && (
-              <div className={styles.sundayNotice}>
-                This date is marked unavailable for the clinic:{" "}
-                <strong>{selectedClinicClosure.reason}</strong>
-              </div>
-            )}
 
             <form className={styles.scheduleForm} onSubmit={handleSubmit}>
               <div className={styles.formGroup}>
@@ -986,23 +1217,92 @@ export default function StaffSchedulesPage() {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label htmlFor="services">Service/s</label>
-                    <input
-                      id="services"
-                      type="text"
-                      placeholder="Example: Consultation, Acne Treatment"
-                      value={form.services}
-                      disabled={doctorFormDisabled}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          services: event.target.value,
-                        }))
-                      }
-                    />
+                    <div className={styles.serviceHeader}>
+                      <div>
+                        <label>Service/s</label>
+                        <p>Choose the services this doctor can handle on this scheduled day.</p>
+                      </div>
+                      <span className={styles.serviceCounter}>
+                        {form.selected_services.length} selected
+                      </span>
+                    </div>
+
+                    {form.selected_services.length > 0 && (
+                      <div className={styles.selectedServicePanel}>
+                        <span>Selected services</span>
+                        <div className={styles.selectedServiceList}>
+                          {form.selected_services.map((serviceName) => (
+                            <button
+                              key={serviceName}
+                              type="button"
+                              className={styles.selectedServiceChip}
+                              disabled={doctorFormDisabled}
+                              onClick={() => removeSelectedService(serviceName)}
+                            >
+                              {serviceName} ×
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={styles.servicePicker}>
+                      {serviceOptions.length === 0 ? (
+                        <div className={styles.serviceEmpty}>
+                          No services were loaded. Please check the services table
+                          or the /staff/services endpoint.
+                        </div>
+                      ) : (
+                        serviceOptions.map((service) => {
+                          const checked = form.selected_services.includes(
+                            service.name
+                          );
+
+                          return (
+                            <label
+                              key={`${service.id}-${service.name}`}
+                              className={`${styles.serviceCard} ${
+                                checked ? styles.serviceCardActive : ""
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className={styles.serviceCheckbox}
+                                checked={checked}
+                                disabled={doctorFormDisabled}
+                                onChange={() => toggleService(service.name)}
+                              />
+
+                              <span className={styles.serviceCheckMark}>
+                                {checked ? "✓" : ""}
+                              </span>
+
+                              <span className={styles.serviceCardBody}>
+                                <strong>{service.name}</strong>
+
+                                {service.description && (
+                                  <small>{service.description}</small>
+                                )}
+
+                                <span className={styles.serviceBadgeRow}>
+                                  {service.requires_initial_evaluation && (
+                                    <em>Initial evaluation</em>
+                                  )}
+                                  {service.id < 0 && (
+                                    <em>From existing schedule</em>
+                                  )}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+
                     <small>
-                      Use comma-separated services if the doctor can handle
-                      multiple services in this slot.
+                      Services must come from the official service list to keep
+                      patient booking, staff scheduling, and doctor assignment
+                      aligned.
                     </small>
                   </div>
 
@@ -1036,83 +1336,86 @@ export default function StaffSchedulesPage() {
                     />
                   </div>
 
-                  <div className={styles.timeGrid}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="startTime">Start Time</label>
-                      <input
-                        id="startTime"
-                        type="time"
-                        value={form.start_time}
-                        disabled={doctorFormDisabled}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            start_time: event.target.value,
-                          }))
-                        }
-                      />
+                  <div className={styles.timeSelectorPanel}>
+                    <div className={styles.timeSelectorHeader}>
+                      <div>
+                        <label>Bookable Hours</label>
+                        <p>Choose the range patients can book from this doctor’s day schedule.</p>
+                      </div>
+                      <span className={styles.timeSummary}>
+                        {form.start_time && form.end_time
+                          ? `${formatTime(form.start_time)} to ${formatTime(form.end_time)}`
+                          : "Select hours"}
+                      </span>
                     </div>
 
-                    <div className={styles.formGroup}>
-                      <label htmlFor="endTime">End Time</label>
-                      <input
-                        id="endTime"
-                        type="time"
-                        value={form.end_time}
-                        disabled={doctorFormDisabled}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            end_time: event.target.value,
-                          }))
-                        }
-                      />
+                    <div className={styles.timePickerGroup}>
+                      <span className={styles.timeColumnLabel}>Start Time</span>
+                      <div className={styles.timeButtonGrid}>
+                        {timeOptions
+                          .filter((option) => !form.end_time || option.value < form.end_time)
+                          .map((option) => (
+                            <button
+                              key={`start-${option.value}`}
+                              type="button"
+                              className={`${styles.timeChoice} ${
+                                form.start_time === option.value
+                                  ? styles.timeChoiceActive
+                                  : ""
+                              }`}
+                              disabled={doctorFormDisabled}
+                              onClick={() =>
+                                setForm((current) => ({
+                                  ...current,
+                                  start_time: option.value,
+                                  end_time: getNextValidEndTime(
+                                    option.value,
+                                    current.end_time
+                                  ),
+                                }))
+                              }
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div className={styles.timePickerGroup}>
+                      <span className={styles.timeColumnLabel}>End Time</span>
+                      <div className={styles.timeButtonGrid}>
+                        {timeOptions
+                          .filter((option) => option.value > form.start_time)
+                          .map((option) => (
+                            <button
+                              key={`end-${option.value}`}
+                              type="button"
+                              className={`${styles.timeChoice} ${
+                                form.end_time === option.value
+                                  ? styles.timeChoiceActive
+                                  : ""
+                              }`}
+                              disabled={doctorFormDisabled}
+                              onClick={() =>
+                                setForm((current) => ({
+                                  ...current,
+                                  end_time: option.value,
+                                }))
+                              }
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div className={styles.availabilityBox}>
-                    <label className={styles.checkboxRow}>
-                      <input
-                        type="checkbox"
-                        checked={form.is_available}
-                        disabled={doctorFormDisabled}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            is_available: event.target.checked,
-                            unavailable_reason: event.target.checked
-                              ? ""
-                              : current.unavailable_reason,
-                          }))
-                        }
-                      />
-                      Mark this schedule as available
-                    </label>
-
-                    {!form.is_available && !doctorFormDisabled && (
-                      <div className={styles.formGroup}>
-                        <label htmlFor="unavailableReason">
-                          Unavailable Reason
-                        </label>
-                        <select
-                          id="unavailableReason"
-                          value={form.unavailable_reason}
-                          onChange={(event) =>
-                            setForm((current) => ({
-                              ...current,
-                              unavailable_reason: event.target.value,
-                            }))
-                          }
-                        >
-                          <option value="">Select reason</option>
-                          {unavailableReasons.map((reason) => (
-                            <option key={reason} value={reason}>
-                              {reason}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                  <div className={styles.scheduleRuleNotice}>
+                    <strong>Bookable schedule</strong>
+                    <span>
+                      Doctor schedules are automatically available to the patient booking flow.
+                      Use Mark Date Unavailable only when the clinic is closed for the selected date.
+                    </span>
                   </div>
 
                   <div className={styles.formGroup}>
@@ -1216,7 +1519,7 @@ export default function StaffSchedulesPage() {
                       : "Mark Date Unavailable"
                     : editingDoctorScheduleId
                     ? "Update Schedule"
-                    : "Add Schedule"}
+                    : "Assign Doctor"}
                 </button>
 
                 {(editingDoctorScheduleId || editingClinicClosureId) && (
@@ -1233,7 +1536,7 @@ export default function StaffSchedulesPage() {
           </aside>
         </section>
 
-        <section className={`${staffStyles.listCard} ${styles.scheduleList}`}>
+        <section ref={scheduleListRef} className={`${staffStyles.listCard} ${styles.scheduleList}`}>
           <div className={staffStyles.listHeader}>
             <div>
               <h2>Schedules for {formatReadableDate(selectedDate)}</h2>
@@ -1242,9 +1545,9 @@ export default function StaffSchedulesPage() {
                   ? "This day is unavailable by default."
                   : selectedDateIsClinicClosed
                   ? "This date has a clinic-wide unavailable status."
-                  : `${selectedDateSchedules.length} schedule slot${
-                      selectedDateSchedules.length === 1 ? "" : "s"
-                    } found.`}
+                  : selectedDateSchedules.length > 0
+                  ? "One doctor is scheduled for this date."
+                  : "No doctor is scheduled for this date yet."}
               </p>
             </div>
           </div>
@@ -1306,7 +1609,7 @@ export default function StaffSchedulesPage() {
                 <div className={staffStyles.emptyState}>
                   {selectedClinicClosure
                     ? "No doctor schedules are listed for this unavailable date."
-                    : "No doctor schedules added for this date yet."}
+                    : "No doctor has been assigned for this date yet."}
                 </div>
               ) : (
                 <div className={styles.scheduleCards}>
@@ -1323,7 +1626,7 @@ export default function StaffSchedulesPage() {
                             }`}
                           >
                             {schedule.is_available
-                              ? "Available"
+                              ? "Bookable"
                               : "Unavailable"}
                           </span>
                         </div>

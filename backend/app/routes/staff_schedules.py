@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.user import User
 from app.models.doctor_schedule import DoctorSchedule
+from app.models.service import Service
 from app.routes.auth import get_current_user
 from app.models.clinic_unavailable_date import ClinicUnavailableDate
 
@@ -146,6 +147,21 @@ def has_overlapping_schedule(
 
     return query.first() is not None
 
+def has_schedule_for_date(
+    db: Session,
+    schedule_date: date,
+    exclude_schedule_id: Optional[int] = None
+):
+    query = db.query(DoctorSchedule).filter(
+        DoctorSchedule.schedule_date == schedule_date,
+    )
+
+    if exclude_schedule_id is not None:
+        query = query.filter(DoctorSchedule.id != exclude_schedule_id)
+
+    return query.first()
+
+
 
 def serialize_schedule(schedule: DoctorSchedule, db: Session):
     doctor = db.query(User).filter(User.id == schedule.doctor_id).first()
@@ -218,6 +234,32 @@ def get_doctors(
     ]
 
 
+@router.get("/services")
+def get_staff_services(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    require_staff_or_admin(current_user)
+
+    services = (
+        db.query(Service)
+        .filter(Service.is_active == True)
+        .order_by(Service.name.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": service.id,
+            "name": service.name,
+            "description": service.description,
+            "requires_initial_evaluation": service.requires_initial_evaluation,
+            "is_active": service.is_active,
+        }
+        for service in services
+    ]
+
+
 @router.get("/doctor-schedules")
 def get_doctor_schedules(
     db: Session = Depends(get_db),
@@ -280,6 +322,27 @@ def create_doctor_schedule(
         is_available=payload.is_available,
         unavailable_reason=payload.unavailable_reason
     )
+
+    existing_schedule_for_date = has_schedule_for_date(
+        db=db,
+        schedule_date=payload.schedule_date,
+    )
+
+    if existing_schedule_for_date:
+        existing_doctor = (
+            db.query(User)
+            .filter(User.id == existing_schedule_for_date.doctor_id)
+            .first()
+        )
+
+        existing_doctor_name = (
+            existing_doctor.name if existing_doctor else "another doctor"
+        )
+
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
+        )
 
     if has_overlapping_schedule(
         db=db,
@@ -405,6 +468,28 @@ def update_doctor_schedule(
         )
     else:
         schedule.unavailable_reason = None
+
+    existing_schedule_for_date = has_schedule_for_date(
+        db=db,
+        schedule_date=schedule.schedule_date,
+        exclude_schedule_id=schedule.id,
+    )
+
+    if existing_schedule_for_date:
+        existing_doctor = (
+            db.query(User)
+            .filter(User.id == existing_schedule_for_date.doctor_id)
+            .first()
+        )
+
+        existing_doctor_name = (
+            existing_doctor.name if existing_doctor else "another doctor"
+        )
+
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
+        )
 
     if has_overlapping_schedule(
         db=db,

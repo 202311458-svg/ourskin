@@ -1425,3 +1425,571 @@
     line-height: 1.3;
   }
 }
+
+/* ================================
+   Patient Booking Wizard
+   ================================ */
+
+.bookingPage {
+  --booking-primary: var(--patient-primary, #82334c);
+  --booking-primary-hover: var(--patient-primary-hover, #6f2940);
+  --booking-primary-soft: var(--patient-primary-soft, rgba(130, 51, 76, 0.1));
+  --booking-bg: var(--patient-bg, #f7f3f5);
+  --booking-card: var(--patient-card, #ffffff);
+  --booking-text: var(--patient-text, #374151);
+  --booking-heading: var(--patient-heading, #20151a);
+  --booking-muted: var(--patient-muted, #6b7280);
+  --booking-border: var(--patient-border, #ead8df);
+  --booking-input: var(--patient-input, #fffefe);
+  --booking-shadow: var(--patient-shadow, 0 18px 45px rgba(130, 51, 76, 0.1));
+
+  min-height: 100vh;
+  margin-left: 220px;
+  width: calc(100% - 220px);
+  padding: 34px 42px 60px;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top left, rgba(130, 51, 76, 0.1), transparent 32%),
+    linear-gradient(135deg, #fff8fb 0%, var(--booking-bg) 45%, #f3edf0 100%);
+  color: var(--booking-text);
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease,
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+:global(body.darkMode) .bookingPage {
+  --booking-primary: var(--primary-color, #f472b6);
+  --booking-primary-hover: var(--primary-hover, #fb8ac6);
+  --booking-primary-soft: rgba(244, 114, 182, 0.14);
+  --booking-bg: var(--bg-main, #0f1117);
+  --booking-card: var(--bg-card, #151821);
+  --booking-text: var(--text-main, #e5e7eb);
+  --booking-heading: var(--text-heading, #ffffff);
+  --booking-muted: var(--text-muted, #a8b0bf);
+  --booking-border: var(--border-color, #2a2f3d);
+  --booking-input: var(--input-bg, #11141c);
+  --booking-shadow: var(--shadow-soft, 0 18px 45px rgba(0, 0, 0, 0.35));
+
+  background:
+    radial-gradient(circle at top left, rgba(244, 114, 182, 0.12), transparent 34%),
+    linear-gradient(135deg, #0f1117 0%, var(--booking-bg) 48%, #12151f 100%);
+  color: var(--booking-text);
+}
+
+:global(body.navCollapsed) .bookingPage {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
+
+.bookingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.bookingHeader h1 {
+  margin: 0;
+  color: var(--booking-heading);
+  font-size: clamp(28px, 3.2vw, 38px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.bookingStepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.bookingStepItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 12px;
+  border: 1px solid var(--booking-border);
+  border-radius: 16px;
+  background: var(--booking-card);
+  color: var(--booking-muted);
+  box-shadow: var(--booking-shadow);
+}
+
+.bookingStepItem span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--booking-primary-soft);
+  color: var(--booking-primary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.bookingStepItem p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.bookingStepActive {
+  border-color: color-mix(in srgb, var(--booking-primary) 46%, var(--booking-border));
+  background: linear-gradient(135deg, var(--booking-primary-soft), transparent), var(--booking-card);
+  color: var(--booking-heading);
+}
+
+.bookingStepActive span,
+.bookingStepDone span {
+  background: var(--booking-primary);
+  color: #ffffff;
+}
+
+.bookingStepDone {
+  color: var(--booking-heading);
+}
+
+.bookingWizardShell {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.bookingCard {
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--booking-border);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--booking-card) 94%, transparent);
+  color: var(--booking-text);
+  box-shadow: var(--booking-shadow);
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: var(--booking-heading);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.cardHeader p,
+.pageSubtext {
+  margin: 7px 0 0;
+  color: var(--booking-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.patientInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.formGroup label {
+  color: var(--booking-heading);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  border: 1px solid var(--booking-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--booking-input);
+  color: var(--booking-text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.formGroup textarea {
+  resize: vertical;
+  min-height: 130px;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: var(--booking-primary);
+  box-shadow: 0 0 0 4px var(--booking-primary-soft);
+}
+
+.formGroup input[readonly] {
+  background: var(--booking-bg);
+  color: var(--booking-muted);
+}
+
+.serviceGrid,
+.preferenceGrid,
+.doctorGrid,
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.serviceCard,
+.preferenceCard,
+.doctorCard,
+.scheduleOption {
+  border: 1px solid var(--booking-border);
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--booking-card);
+  color: var(--booking-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.serviceCard:hover,
+.preferenceCard:hover,
+.doctorCard:hover,
+.scheduleOption:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--booking-primary) 46%, var(--booking-border));
+  background: var(--booking-primary-soft);
+}
+
+.serviceCard strong,
+.preferenceCard strong,
+.doctorCard strong,
+.scheduleOption strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--booking-heading);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.serviceCard span,
+.preferenceCard span,
+.doctorCard span,
+.scheduleOption span {
+  display: block;
+  color: var(--booking-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.serviceCard p,
+.doctorCard p,
+.scheduleOption p {
+  margin: 8px 0 0;
+  color: var(--booking-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.scheduleOption small {
+  display: block;
+  margin-top: 8px;
+  color: var(--booking-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.serviceCardActive,
+.preferenceCardActive,
+.doctorCardActive,
+.scheduleOptionActive {
+  border-color: var(--booking-primary);
+  background: var(--booking-primary-soft);
+  box-shadow: 0 14px 34px rgba(130, 51, 76, 0.12);
+}
+
+.bookingSubSection {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--booking-border);
+}
+
+.bookingSubSection h3 {
+  margin: 0 0 14px;
+  color: var(--booking-heading);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.noticeBox,
+.selectionNote,
+.successBox,
+.errorBox {
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.noticeBox {
+  margin-top: 16px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.successBox {
+  max-width: 1120px;
+  margin: 0 auto 18px;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+  font-weight: 900;
+}
+
+.errorBox {
+  max-width: 1120px;
+  margin: 0 auto 18px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+.emptyState {
+  border: 1px dashed var(--booking-border);
+  border-radius: 18px;
+  padding: 24px;
+  background: var(--booking-bg);
+  color: var(--booking-muted);
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.summaryList div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--booking-border);
+}
+
+.summaryList span {
+  color: var(--booking-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summaryList strong {
+  color: var(--booking-heading);
+  font-size: 14px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.primaryBtn {
+  border: none;
+  background: var(--booking-primary);
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(130, 51, 76, 0.2);
+}
+
+.primaryBtn:hover {
+  background: var(--booking-primary-hover);
+  transform: translateY(-1px);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondaryBtn {
+  border: 1px solid color-mix(in srgb, var(--booking-primary) 34%, var(--booking-border));
+  background: var(--booking-card);
+  color: var(--booking-primary);
+}
+
+.secondaryBtn:hover {
+  background: var(--booking-primary-soft);
+  transform: translateY(-1px);
+}
+
+.bookingNavButtons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.bookingNavButtons .primaryBtn,
+.bookingNavButtons .secondaryBtn {
+  min-width: 190px;
+}
+
+.summaryHelp {
+  margin: 12px 0 0;
+  color: var(--booking-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .bookingStepper {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .bookingPage,
+  :global(body.navCollapsed) .bookingPage {
+    margin-left: 0;
+    width: 100%;
+    padding: 88px 20px 40px;
+  }
+
+  .bookingHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bookingHeader h1 {
+    font-size: 28px;
+  }
+
+  .bookingStepper {
+    grid-template-columns: 1fr;
+  }
+
+  .patientInfoGrid,
+  .serviceGrid,
+  .preferenceGrid,
+  .doctorGrid,
+  .scheduleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryList div {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .bookingNavButtons {
+    flex-direction: column-reverse;
+  }
+
+  .bookingNavButtons .primaryBtn,
+  .bookingNavButtons .secondaryBtn,
+  .primaryBtn,
+  .secondaryBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .bookingPage,
+  :global(body.navCollapsed) .bookingPage {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 32px;
+  }
+
+  .bookingCard {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .cardHeader h2 {
+    font-size: 20px;
+  }
+
+  .bookingStepItem {
+    min-height: 52px;
+  }
+}
+
+:global(body.darkMode) .noticeBox {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+}
+
+:global(body.darkMode) .successBox {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  color: #86efac;
+}
+
+:global(body.darkMode) .errorBox {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(220, 38, 38, 0.12);
+  color: #fca5a5;
+}
+
+.scheduleOption:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
+
+.scheduleOption:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.noticeBox strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}

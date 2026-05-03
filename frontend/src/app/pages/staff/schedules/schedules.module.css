@@ -1,8 +1,8 @@
 .pageShell {
   min-height: 100vh;
   margin-left: 260px;
-  padding: 32px;
   width: calc(100% - 260px);
+  padding: 32px;
   overflow-x: hidden;
 }
 
@@ -17,12 +17,13 @@
 
 .scheduleLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.85fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.85fr);
   gap: 18px;
   align-items: start;
-  margin-bottom: 18px;
   width: 100%;
+  margin-bottom: 18px;
 }
+
 .calendarCard,
 .formCard,
 .scheduleList {
@@ -37,22 +38,26 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .monthActions button {
-  border: none;
+  border: 1px solid #dbe2ea;
   border-radius: 12px;
   padding: 10px 14px;
-  background: #e2e8f0;
+  background: #ffffff;
   color: #1e293b;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   transition: 0.2s ease;
 }
 
 .monthActions button:hover {
-  background: #cbd5e1;
+  border-color: #0f766e;
+  background: #f0fdfa;
+  color: #0f766e;
+  transform: translateY(-1px);
 }
 
 .filterBar {
@@ -63,31 +68,49 @@
   margin-bottom: 16px;
   padding: 12px 14px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 16px;
   background: #f8fafc;
 }
 
 .filterBar label {
-  font-size: 14px;
-  font-weight: 700;
   color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.filterBar select,
+.formGroup input,
+.formGroup select {
+  width: 100%;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
 }
 
 .filterBar select {
-  min-width: 220px;
-  border: 1px solid #dbe2ea;
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #ffffff;
-  color: #1e293b;
-  outline: none;
-  font-size: 14px;
+  max-width: 320px;
 }
 
-.weekdayGrid {
+.filterBar select:focus,
+.formGroup input:focus,
+.formGroup select:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.weekdayGrid,
+.calendarGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+}
+
+.weekdayGrid {
   margin-bottom: 8px;
 }
 
@@ -95,25 +118,23 @@
   text-align: center;
   color: #64748b;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.blankCalendarDay {
-  min-height: 92px;
-  border-radius: 14px;
+.blankCalendarDay,
+.calendarDay {
+  min-height: 116px;
+  border-radius: 16px;
 }
 
 .calendarDay {
-  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
   padding: 10px;
   background: #ffffff;
   color: #1e293b;
@@ -129,26 +150,89 @@
 }
 
 .selectedDay {
-  border-color: #0f766e;
-  background: #ccfbf1;
+  border-color: #ec4899;
+  background: #fdf2f8;
+  box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.2);
 }
 
 .dayNumber {
-  display: block;
-  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #0f172a;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.slotCount {
+.selectedDay .dayNumber {
+  background: #ec4899;
+  color: #ffffff;
+}
+
+.closedBadge,
+.closureBadge {
   display: inline-flex;
   width: fit-content;
   border-radius: 999px;
   padding: 5px 8px;
-  background: #dbeafe;
-  color: #1d4ed8;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.closedBadge {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.closureBadge {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.sundayDay {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.clinicClosedDay {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.dayDoctorButton {
+  display: block;
+  width: 100%;
+  margin-top: auto;
+  border: 1px solid rgba(236, 72, 153, 0.35);
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: rgba(236, 72, 153, 0.12);
+  color: #be185d;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: 0.2s ease;
+}
+
+.dayDoctorButton:hover {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: rgba(236, 72, 153, 0.65);
+  transform: translateY(-1px);
+}
+
+.dayDoctorButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.22);
 }
 
 .scheduleForm {
@@ -160,32 +244,13 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .formGroup label {
   color: #334155;
   font-size: 14px;
-  font-weight: 700;
-}
-
-.formGroup input,
-.formGroup select {
-  width: 100%;
-  border: 1px solid #dbe2ea;
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: #ffffff;
-  color: #1e293b;
-  font-size: 14px;
-  outline: none;
-}
-
-.formGroup input:focus,
-.formGroup select:focus,
-.filterBar select:focus {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  font-weight: 800;
 }
 
 .formGroup small {
@@ -194,48 +259,311 @@
   line-height: 1.5;
 }
 
-.timeGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.serviceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.checkboxRow {
+.serviceHeader label {
+  margin: 0;
+}
+
+.serviceHeader p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.serviceCounter {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #fdf2f8;
+  color: #db2777;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.selectedServicePanel {
+  border: 1px solid #fbcfe8;
+  border-radius: 16px;
+  padding: 12px;
+  background: #fdf2f8;
+}
+
+.selectedServicePanel > span {
+  display: block;
+  margin-bottom: 9px;
+  color: #be185d;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.selectedServiceList {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selectedServiceChip {
+  border: 1px solid #fbcfe8;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #ffffff;
+  color: #be185d;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.selectedServiceChip:hover {
+  background: #fce7f3;
+}
+
+.selectedServiceChip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.servicePicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 12px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 18px;
   background: #f8fafc;
+  overflow: visible;
+}
+
+.serviceCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 78px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 12px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.serviceCard:hover {
+  border-color: #ec4899;
+  background: #fdf2f8;
+  transform: translateY(-1px);
+}
+
+.serviceCardActive {
+  border-color: #ec4899;
+  background: #fdf2f8;
+  box-shadow: 0 10px 22px rgba(236, 72, 153, 0.12);
+}
+
+.serviceCheckbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.serviceCheckMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.serviceCardActive .serviceCheckMark {
+  border-color: #ec4899;
+  background: #ec4899;
+}
+
+.serviceCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.serviceCardBody strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.serviceCardBody small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.serviceBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.serviceBadgeRow em {
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #fce7f3;
+  color: #be185d;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.serviceEmpty {
+  grid-column: 1 / -1;
+  border-radius: 14px;
+  padding: 16px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+}
+
+.timeSelectorPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.timeSelectorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeSelectorHeader label {
+  display: block;
   color: #334155;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 900;
 }
 
-.checkboxRow input {
-  width: 18px;
-  height: 18px;
+.timeSelectorHeader p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
-.formActions {
+.timeSummary {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #ecfeff;
+  color: #0e7490;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.timePickerGroup {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.formActions button:disabled {
-  opacity: 0.65;
+.timeColumnLabel {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeButtonGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.timeChoice {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 10px 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.timeChoice:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
+  color: #0f766e;
+  transform: translateY(-1px);
+}
+
+.timeChoiceActive,
+.timeChoiceActive:hover {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(15, 118, 110, 0.16);
+}
+
+.timeChoice:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.scheduleRuleNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.scheduleRuleNotice strong {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .successBox,
-.errorBox {
+.errorBox,
+.warningBox {
   margin-bottom: 18px;
   border-radius: 14px;
   padding: 13px 15px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .successBox {
@@ -250,6 +578,12 @@
   color: #b91c1c;
 }
 
+.warningBox {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .scheduleCards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -261,9 +595,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 18px;
+  padding: 16px;
   background: #ffffff;
 }
 
@@ -282,38 +616,65 @@
   margin: 0;
   color: #0f172a;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .timeText {
   margin: 10px 0 5px;
   color: #0f766e;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
+.modeText,
+.unavailableText,
+.noteText,
 .serviceText {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
+  margin: 0 0 5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
-.cardActions {
+.modeText {
+  color: #334155;
+  font-weight: 800;
+}
+
+.serviceText,
+.noteText {
+  color: #64748b;
+}
+
+.unavailableText {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.cardActions,
+.formActions {
   display: flex;
-  align-items: flex-start;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cardActions {
+  align-items: flex-start;
   flex-shrink: 0;
 }
 
+.formActions button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .deleteBtn {
-  border: none;
+  border: 1px solid #fecaca;
   border-radius: 12px;
   padding: 10px 14px;
   background: #fee2e2;
   color: #991b1b;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   transition: 0.2s ease;
 }
@@ -322,74 +683,143 @@
   background: #fecaca;
 }
 
-:global(body.darkMode) .monthActions button {
-  background: var(--bg-soft);
-  color: var(--text-heading);
-  border: 1px solid var(--border-color);
-}
-
-:global(body.darkMode) .monthActions button:hover {
-  background: rgba(244, 114, 182, 0.12);
-  color: var(--primary-color);
-  border-color: rgba(244, 114, 182, 0.35);
-}
-
-:global(body.darkMode) .filterBar,
-:global(body.darkMode) .checkboxRow {
-  background: var(--bg-soft);
-  border-color: var(--border-color);
-}
-
-:global(body.darkMode) .filterBar label,
-:global(body.darkMode) .formGroup label,
-:global(body.darkMode) .checkboxRow,
-:global(body.darkMode) .cardTop h3 {
-  color: var(--text-heading);
-}
-
+:global(body.darkMode) .monthActions button,
 :global(body.darkMode) .filterBar select,
 :global(body.darkMode) .formGroup input,
-:global(body.darkMode) .formGroup select {
+:global(body.darkMode) .formGroup select,
+:global(body.darkMode) .timeChoice {
   background: var(--input-bg);
   border-color: var(--border-color);
   color: var(--text-main);
 }
 
-:global(body.darkMode) .formGroup small,
-:global(body.darkMode) .serviceText,
-:global(body.darkMode) .weekdayGrid span {
-  color: var(--text-muted);
+:global(body.darkMode) .filterBar,
+:global(body.darkMode) .servicePicker,
+:global(body.darkMode) .timeSelectorPanel {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
 }
 
 :global(body.darkMode) .calendarDay,
-:global(body.darkMode) .scheduleCard {
+:global(body.darkMode) .scheduleCard,
+:global(body.darkMode) .serviceCard,
+:global(body.darkMode) .serviceEmpty,
+:global(body.darkMode) .selectedServiceChip {
   background: var(--bg-card);
   border-color: var(--border-color);
   color: var(--text-main);
 }
 
-:global(body.darkMode) .calendarDay:hover {
+:global(body.darkMode) .calendarDay:hover,
+:global(body.darkMode) .serviceCard:hover,
+:global(body.darkMode) .monthActions button:hover,
+:global(body.darkMode) .timeChoice:hover {
   background: rgba(244, 114, 182, 0.1);
   border-color: rgba(244, 114, 182, 0.35);
+  color: var(--primary-color);
 }
 
-:global(body.darkMode) .selectedDay {
+:global(body.darkMode) .selectedDay,
+:global(body.darkMode) .serviceCardActive {
   background: rgba(244, 114, 182, 0.16);
   border-color: var(--primary-color);
 }
 
-:global(body.darkMode) .timeText {
-  color: var(--primary-color);
+:global(body.darkMode) .selectedDay .dayNumber,
+:global(body.darkMode) .serviceCardActive .serviceCheckMark {
+  background: var(--primary-color);
+  color: #ffffff;
 }
 
+:global(body.darkMode) .dayNumber,
+:global(body.darkMode) .filterBar label,
+:global(body.darkMode) .formGroup label,
+:global(body.darkMode) .cardTop h3,
+:global(body.darkMode) .serviceCardBody strong,
+:global(body.darkMode) .timeSelectorHeader label {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .weekdayGrid span,
+:global(body.darkMode) .formGroup small,
+:global(body.darkMode) .serviceHeader p,
+:global(body.darkMode) .serviceCardBody small,
+:global(body.darkMode) .timeSelectorHeader p,
+:global(body.darkMode) .timeColumnLabel,
+:global(body.darkMode) .serviceText,
+:global(body.darkMode) .noteText,
+:global(body.darkMode) .modeText {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .sundayDay {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .clinicClosedDay {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+:global(body.darkMode) .closedBadge {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .closureBadge,
 :global(body.darkMode) .deleteBtn {
   background: rgba(220, 38, 38, 0.18);
   color: #fca5a5;
-  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-color: rgba(248, 113, 113, 0.35);
 }
 
-:global(body.darkMode) .deleteBtn:hover {
-  background: rgba(220, 38, 38, 0.28);
+:global(body.darkMode) .selectedServicePanel {
+  background: rgba(244, 114, 182, 0.1);
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+:global(body.darkMode) .serviceCounter,
+:global(body.darkMode) .selectedServicePanel > span,
+:global(body.darkMode) .selectedServiceChip,
+:global(body.darkMode) .serviceBadgeRow em,
+:global(body.darkMode) .timeSummary {
+  background: rgba(244, 114, 182, 0.16);
+  color: var(--primary-color);
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+:global(body.darkMode) .dayDoctorButton {
+  background: rgba(244, 114, 182, 0.12);
+  border-color: rgba(244, 114, 182, 0.35);
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .dayDoctorButton:hover {
+  background: rgba(244, 114, 182, 0.18);
+  border-color: rgba(244, 114, 182, 0.55);
+}
+
+:global(body.darkMode) .serviceCheckMark {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .timeChoiceActive,
+:global(body.darkMode) .timeChoiceActive:hover {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+:global(body.darkMode) .scheduleRuleNotice {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+:global(body.darkMode) .scheduleRuleNotice strong {
+  color: #93c5fd;
 }
 
 :global(body.darkMode) .successBox {
@@ -404,44 +834,41 @@
   border-color: rgba(248, 113, 113, 0.35);
 }
 
+:global(body.darkMode) .warningBox {
+  background: rgba(249, 115, 22, 0.12);
+  color: #fdba74;
+  border-color: rgba(251, 146, 60, 0.35);
+}
+
+:global(body.darkMode) .timeText {
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .unavailableText {
+  color: #fca5a5;
+}
+
 @media (max-width: 1180px) {
   .scheduleLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .scheduleCards {
     grid-template-columns: 1fr;
   }
 
   .formCard {
     order: -1;
   }
+
+  .scheduleCards {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1024px) {
-  .pageShell {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
     margin-left: 0;
     width: 100%;
     padding: 96px 22px 24px;
   }
-
-  :global(body.navCollapsed) .pageShell {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .scheduleLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .calendarCard,
-  .formCard,
-  .scheduleList {
-    width: 100%;
-  }
-  .calendarCard {
-  overflow: hidden;
-}
 }
 
 @media (max-width: 768px) {
@@ -451,9 +878,11 @@
 
   .monthActions,
   .filterBar,
-  .formActions,
+  .serviceHeader,
+  .timeSelectorHeader,
   .scheduleCard,
-  .cardActions {
+  .cardActions,
+  .formActions {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
@@ -463,6 +892,7 @@
   .filterBar select,
   .deleteBtn {
     width: 100%;
+    max-width: none;
   }
 
   .calendarCard {
@@ -471,21 +901,23 @@
 
   .weekdayGrid,
   .calendarGrid {
-    min-width: 620px;
+    min-width: 660px;
     gap: 6px;
   }
 
   .calendarDay,
   .blankCalendarDay {
-    min-height: 78px;
+    min-height: 104px;
   }
 
-  .timeGrid {
-    grid-template-columns: 1fr;
-  }
-
+  .servicePicker,
+  .timeButtonGrid,
   .scheduleCards {
     grid-template-columns: 1fr;
+  }
+
+  .timeSummary {
+    width: fit-content;
   }
 }
 
@@ -497,11 +929,6 @@
 
   .calendarDay {
     padding: 8px;
-  }
-
-  .slotCount {
-    font-size: 10px;
-    padding: 4px 6px;
   }
 
   .cardTop {
