@@ -8,12 +8,48 @@ import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
   id: number
+  patient_id?: number | null
+  doctor_id?: number | null
+  schedule_id?: number | null
+  service_id?: number | null
   patient_name: string
-  doctor_name: string
-  date: string
-  time: string
+  patient_email?: string | null
+  patient_contact?: string | null
+  patient_address?: string | null
+  patient_age?: number | null
+  patient_age_label?: string | null
+  is_minor?: boolean | null
+  guardian_first_name?: string | null
+  guardian_last_name?: string | null
+  guardian_relationship?: string | null
+  guardian_contact?: string | null
+  guardian_email?: string | null
+  guardian_consent?: boolean | null
+  patient_instruction?: string | null
+  approval_email_sent?: boolean | null
+  approval_email_sent_at?: string | null
+  doctor_name?: string | null
+  date?: string | null
+  time?: string | null
+  end_time?: string | null
   status: string
   services?: string | null
+  consultation_mode?: string | null
+  appointment_type?: string | null
+  concern?: string | null
+  is_initial_evaluation_request?: boolean | null
+  cancel_reason?: string | null
+}
+
+type AppointmentLog = {
+  id: number
+  appointment_id: number
+  action: string
+  performed_by_id: number | null
+  performed_by_name: string
+  performed_by_role: string
+  reason?: string | null
+  created_at: string
 }
 
 type StaffFollowUp = {
@@ -30,12 +66,7 @@ type StaffFollowUp = {
   status?: string | null
 }
 
-const getTodayInputDate = () => {
-  const today = new Date()
-  const timezoneOffset = today.getTimezoneOffset() * 60000
-
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0]
-}
+type ViewFilter = "All" | "Today" | "Upcoming" | "Past"
 
 const normalizeStatus = (status?: string | null) => {
   const cleanStatus = (status || "").trim().toLowerCase()
@@ -44,11 +75,35 @@ const normalizeStatus = (status?: string | null) => {
   if (cleanStatus === "approved") return "Approved"
   if (cleanStatus === "confirmed") return "Approved"
   if (cleanStatus === "completed") return "Completed"
+  if (cleanStatus === "no-show") return "No-Show"
+  if (cleanStatus === "noshow") return "No-Show"
+  if (cleanStatus === "missed") return "No-Show"
   if (cleanStatus === "declined") return "Declined"
   if (cleanStatus === "cancelled") return "Cancelled"
   if (cleanStatus === "canceled") return "Cancelled"
 
   return status?.trim() || "Unknown"
+}
+
+const getTodayInputDate = () => {
+  const today = new Date()
+  const timezoneOffset = today.getTimezoneOffset() * 60000
+
+  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0]
+}
+
+const getAppointmentsArray = (data: unknown): Appointment[] => {
+  if (Array.isArray(data)) return data as Appointment[]
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { appointments?: unknown }).appointments)
+  ) {
+    return (data as { appointments: Appointment[] }).appointments
+  }
+
+  return []
 }
 
 const getFollowUpsArray = (data: unknown): StaffFollowUp[] => {
@@ -99,60 +154,224 @@ const readJsonSafely = async (res: Response) => {
   }
 }
 
+const getErrorMessage = (data: unknown, fallback: string) => {
+  if (
+    data &&
+    typeof data === "object" &&
+    "detail" in data &&
+    typeof (data as { detail?: unknown }).detail === "string"
+  ) {
+    return (data as { detail: string }).detail
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "message" in data &&
+    typeof (data as { message?: unknown }).message === "string"
+  ) {
+    return (data as { message: string }).message
+  }
+
+  return fallback
+}
+
+const getStatusLabel = (status?: string | null) => {
+  const cleanStatus = normalizeStatus(status)
+
+  if (cleanStatus === "No-Show") return "Missed Appointment"
+
+  return cleanStatus
+}
+
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "No date"
+
+  const date = new Date(`${dateString}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) return dateString
+
+  return date.toLocaleDateString("en-AU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
+
+const formatTime = (timeString?: string | null) => {
+  if (!timeString) return ""
+
+  const parts = timeString.split(":")
+  const hour = Number(parts[0])
+  const minute = Number(parts[1])
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString
+
+  const date = new Date()
+  date.setHours(hour, minute, 0, 0)
+
+  return date.toLocaleTimeString("en-AU", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+const formatTimeRange = (appt: Appointment) => {
+  if (!appt.time) return "Time unavailable"
+
+  const start = formatTime(appt.time)
+  const end = appt.end_time ? formatTime(appt.end_time) : ""
+
+  return end ? `${start} to ${end}` : start
+}
+
+const formatPatientAge = (appt: Appointment) => {
+  const ageLabel = appt.patient_age_label?.trim()
+
+  if (ageLabel) return ageLabel
+
+  if (typeof appt.patient_age === "number") {
+    const unit = appt.patient_age === 1 ? "year" : "years"
+    return `${appt.patient_age} ${unit} old`
+  }
+
+  return "Not provided"
+}
+
+
+const getGuardianName = (appt?: Appointment | null) => {
+  if (!appt) return "Not provided"
+
+  const firstName = appt.guardian_first_name?.trim() || ""
+  const lastName = appt.guardian_last_name?.trim() || ""
+  const fullName = `${firstName} ${lastName}`.trim()
+
+  return fullName || "Not provided"
+}
+
+const hasGuardianInfo = (appt?: Appointment | null) => {
+  if (!appt) return false
+
+  return Boolean(
+    appt.is_minor ||
+      appt.guardian_first_name ||
+      appt.guardian_last_name ||
+      appt.guardian_relationship ||
+      appt.guardian_contact ||
+      appt.guardian_email ||
+      appt.guardian_consent
+  )
+}
+
+const getApprovalEmailStatus = (appt?: Appointment | null) => {
+  if (!appt?.approval_email_sent) return "Not sent"
+
+  if (!appt.approval_email_sent_at) return "Sent"
+
+  return `Sent on ${formatDateTime(appt.approval_email_sent_at)}`
+}
+
+const formatDateTime = (dateTimeString?: string | null) => {
+  if (!dateTimeString) return "No timestamp"
+
+  const date = new Date(dateTimeString)
+
+  if (Number.isNaN(date.getTime())) return dateTimeString
+
+  return date.toLocaleString("en-AU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+const getDateTimeValue = (appt: Appointment) => {
+  if (!appt.date || !appt.time) return Number.MAX_SAFE_INTEGER
+
+  const value = new Date(`${appt.date}T${appt.time}`).getTime()
+
+  return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value
+}
+
+const getAppointmentEndDateTimeValue = (appt: Appointment) => {
+  if (!appt.date || (!appt.end_time && !appt.time)) return Number.MAX_SAFE_INTEGER
+
+  const timeValue = appt.end_time || appt.time
+  const value = new Date(`${appt.date}T${timeValue}`).getTime()
+
+  return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value
+}
+
+const canMarkNoShow = (appt: Appointment) => {
+  if (normalizeStatus(appt.status) !== "Approved") return false
+
+  return getAppointmentEndDateTimeValue(appt) <= Date.now()
+}
+
+const getAppointmentStatusClass = (status?: string | null) => {
+  const cleanStatus = normalizeStatus(status)
+
+  if (cleanStatus === "Pending") return styles.statusPending
+  if (cleanStatus === "Approved") return styles.statusApproved
+  if (cleanStatus === "Completed") return styles.statusCompleted
+  if (cleanStatus === "No-Show") return styles.statusNoShow
+  if (cleanStatus === "Declined") return styles.statusDeclined
+  if (cleanStatus === "Cancelled") return styles.statusCancelled
+
+  return styles.statusPending
+}
+
+const getFollowUpTiming = (item: StaffFollowUp) => {
+  const today = getTodayInputDate()
+  const status = (item.status || "").trim().toLowerCase()
+
+  if (status === "completed") return "Completed"
+  if (item.follow_up_date < today) return "Overdue"
+  if (item.follow_up_date === today) return "Due Today"
+
+  return "Upcoming"
+}
+
+const fetchFollowUpList = async (token: string) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/staff/follow-ups`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    const result = await readJsonSafely(res)
+
+    if (!res.ok) {
+      console.error("/staff/follow-ups request failed:", {
+        status: res.status,
+        result,
+      })
+
+      return []
+    }
+
+    return uniqueFollowUpsById(getFollowUpsArray(result))
+  } catch (err) {
+    console.error("/staff/follow-ups request failed:", err)
+    return []
+  }
+}
+
 export default function StaffAppointments() {
   const router = useRouter()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [followUps, setFollowUps] = useState<StaffFollowUp[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "No date"
-
-    const date = new Date(`${dateString}T00:00:00`)
-
-    if (Number.isNaN(date.getTime())) return dateString
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatTime = (timeString?: string | null) => {
-    if (!timeString) return ""
-
-    const parts = timeString.split(":")
-    const hour = Number(parts[0])
-    const minute = Number(parts[1])
-
-    if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString
-
-    const date = new Date()
-    date.setHours(hour, minute, 0, 0)
-
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  const getDateTimeValue = (appt: Appointment) => {
-    return new Date(`${appt.date}T${appt.time}`).getTime()
-  }
-
-  const getFollowUpTiming = (item: StaffFollowUp) => {
-    const today = getTodayInputDate()
-    const status = (item.status || "").trim().toLowerCase()
-
-    if (status === "completed") return "Completed"
-    if (item.follow_up_date < today) return "Overdue"
-    if (item.follow_up_date === today) return "Due Today"
-
-    return "Upcoming"
-  }
+  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState<ViewFilter>("All")
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null)
+  const [appointmentLogs, setAppointmentLogs] = useState<AppointmentLog[]>([])
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
 
   const getFollowUpBadgeClass = (item: StaffFollowUp) => {
     const timing = getFollowUpTiming(item)
@@ -162,32 +381,6 @@ export default function StaffAppointments() {
     if (timing === "Due Today") return styles.statusPending
 
     return styles.statusApproved
-  }
-
-  const fetchFollowUpList = async (token: string) => {
-    const possibleEndpoints = [
-      "/staff/follow-ups",
-      "/doctor/follow-ups",
-      "/follow-ups",
-    ]
-
-    for (const endpoint of possibleEndpoints) {
-      try {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        const result = await readJsonSafely(res)
-
-        if (res.ok) {
-          return uniqueFollowUpsById(getFollowUpsArray(result))
-        }
-      } catch (err) {
-        console.error(`${endpoint} follow-up request failed:`, err)
-      }
-    }
-
-    return []
   }
 
   const loadAppointments = useCallback(async () => {
@@ -209,13 +402,13 @@ export default function StaffAppointments() {
         fetchFollowUpList(token),
       ])
 
-      const appointmentData = await appointmentsRes.json()
+      const appointmentData = await readJsonSafely(appointmentsRes)
 
       if (!appointmentsRes.ok) {
         throw new Error("Failed to fetch confirmed appointments")
       }
 
-      setAppointments(Array.isArray(appointmentData) ? appointmentData : [])
+      setAppointments(getAppointmentsArray(appointmentData))
       setFollowUps(uniqueFollowUpsById(followUpData))
     } catch (err) {
       console.error("Confirmed appointments load failed:", err)
@@ -239,145 +432,510 @@ export default function StaffAppointments() {
   }, [loadAppointments, router])
 
   const sortedAppointments = useMemo(() => {
-    return [...appointments].sort(
-      (a, b) => getDateTimeValue(a) - getDateTimeValue(b)
-    )
+    return [...appointments].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [appointments])
+
+  const todayAppointments = useMemo(() => {
+    const today = getTodayInputDate()
+    return sortedAppointments.filter((appt) => appt.date === today)
+  }, [sortedAppointments])
+
+  const upcomingAppointments = useMemo(() => {
+    const now = Date.now()
+    return sortedAppointments.filter((appt) => getDateTimeValue(appt) >= now)
+  }, [sortedAppointments])
 
   const sortedFollowUps = useMemo(() => {
     return uniqueFollowUpsById(followUps).sort((a, b) => {
       const aCompleted = (a.status || "").toLowerCase() === "completed"
       const bCompleted = (b.status || "").toLowerCase() === "completed"
 
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1
-      }
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1
 
       return a.follow_up_date.localeCompare(b.follow_up_date)
     })
   }, [followUps])
 
+  const filteredAppointments = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
+
+    return sortedAppointments.filter((appt) => {
+      const targetSet =
+        filter === "Today"
+          ? appt.date === getTodayInputDate()
+          : filter === "Upcoming"
+            ? getDateTimeValue(appt) >= Date.now()
+            : filter === "Past"
+              ? getDateTimeValue(appt) < Date.now()
+              : true
+
+      const textMatch = [
+        appt.patient_name,
+        appt.patient_email,
+        appt.patient_contact,
+        appt.patient_address,
+        appt.doctor_name,
+        appt.services,
+        appt.consultation_mode,
+        appt.appointment_type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword)
+
+      return targetSet && textMatch
+    })
+  }, [filter, search, sortedAppointments])
+
+
+  const openDetails = async (appointment: Appointment) => {
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    try {
+      setDetailsLoading(true)
+      setDetailsOpen(true)
+
+      const [appointmentRes, logsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}/logs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+
+      const appointmentData = await readJsonSafely(appointmentRes)
+      const logsData = await readJsonSafely(logsRes)
+
+      if (!appointmentRes.ok || !logsRes.ok) {
+        throw new Error("Failed to fetch appointment details")
+      }
+
+      setSelectedAppointment({
+        ...(appointmentData as Appointment),
+        status: normalizeStatus((appointmentData as Appointment).status),
+      })
+      setAppointmentLogs(Array.isArray(logsData) ? logsData : [])
+    } catch (err) {
+      console.error("Failed to open appointment details:", err)
+      setSelectedAppointment(null)
+      setAppointmentLogs([])
+      setDetailsOpen(false)
+      alert("Unable to load appointment details.")
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
+
+  const markAsNoShow = async (appointment: Appointment) => {
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    if (!canMarkNoShow(appointment)) {
+      alert("This appointment can only be marked as no-show after the scheduled time has passed.")
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Mark ${appointment.patient_name} as a missed appointment? This will move the record to appointment history.`
+    )
+
+    if (!confirmed) return
+
+    const reason = window.prompt(
+      "Reason for no-show record:",
+      "Patient did not attend the scheduled appointment."
+    )
+
+    const cleanReason = reason?.trim()
+
+    if (!cleanReason) {
+      alert("Please provide a reason before marking this appointment as no-show.")
+      return
+    }
+
+    try {
+      setActionLoadingId(appointment.id)
+
+      const res = await fetch(`${API_BASE_URL}/appointments/${appointment.id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: "No-Show",
+          cancel_reason: cleanReason,
+        }),
+      })
+
+      const result = await readJsonSafely(res)
+
+      if (!res.ok) {
+        throw new Error(getErrorMessage(result, "Unable to mark appointment as no-show."))
+      }
+
+      setAppointments((prev) => prev.filter((item) => item.id !== appointment.id))
+
+      if (selectedAppointment?.id === appointment.id) {
+        closeDetails()
+      }
+
+      alert("Appointment marked as missed and moved to history.")
+    } catch (err) {
+      console.error("No-show update failed:", err)
+      alert(err instanceof Error ? err.message : "Unable to mark appointment as no-show.")
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const closeDetails = () => {
+    setDetailsOpen(false)
+    setSelectedAppointment(null)
+    setAppointmentLogs([])
+  }
+
+  const filters: ViewFilter[] = ["All", "Today", "Upcoming", "Past"]
+
   return (
     <div className="staffLayout">
       <StaffNavbar />
 
-      <div className="staffContent">
+      <main className="staffContent">
         <div className={styles.staffPage}>
-          <div className={styles.dashboardHeader}>
+          <section className={styles.dashboardHeader}>
             <div>
+              <span className={styles.eyebrow}>Approved Flow</span>
               <h1>Confirmed Appointments</h1>
               <p className={styles.pageSubtext}>
-                Review all approved bookings and upcoming appointment flow.
+                Monitor approved bookings, active follow-up schedules, and the clinic&apos;s upcoming patient flow.
               </p>
             </div>
 
-            <button className={styles.secondaryBtn} onClick={loadAppointments}>
-              Refresh
-            </button>
-          </div>
-
-          <div className={styles.listCard}>
-            <div className={styles.listHeader}>
-              <h2>Follow-up Schedule</h2>
-              <span className={`${styles.badge} ${styles.statusApproved}`}>
-                {sortedFollowUps.length} scheduled
-              </span>
+            <div className={styles.headerActions}>
+              <button className={styles.secondaryBtn} onClick={loadAppointments}>
+                Refresh Appointments
+              </button>
             </div>
+          </section>
 
-            {loading ? (
-              <div className={styles.emptyState}>
-                Loading follow-up schedule...
-              </div>
-            ) : sortedFollowUps.length === 0 ? (
-              <div className={styles.emptyState}>
-                No follow-up schedules found.
-              </div>
-            ) : (
-              sortedFollowUps.map((item) => (
-                <div key={item.id} className={styles.requestCard}>
-                  <div className={styles.requestInfo}>
-                    <b>
-                      {item.patient_name ||
-                        (item.patient_id
-                          ? `Patient #${item.patient_id}`
-                          : "Patient details unavailable")}
-                    </b>
-
-                    <p>{item.doctor_name || "Assigned doctor"}</p>
-
-                    <span>
-                      Follow-up Schedule: {formatDate(item.follow_up_date)}
-                    </span>
-
-                    {(item.appointment_date || item.appointment_time) && (
-                      <p className={styles.detailText}>
-                        Related Visit:{" "}
-                        {item.appointment_date
-                          ? formatDate(item.appointment_date)
-                          : "No date"}{" "}
-                        {item.appointment_time
-                          ? `at ${formatTime(item.appointment_time)}`
-                          : ""}
-                      </p>
-                    )}
-                  </div>
-
-                  <span
-                    className={`${styles.badge} ${getFollowUpBadgeClass(item)}`}
-                  >
-                    {getFollowUpTiming(item)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div style={{ height: "18px" }} />
-
-          <div className={styles.listCard}>
-            <div className={styles.listHeader}>
-              <h2>Approved Bookings</h2>
-              <span className={`${styles.badge} ${styles.statusApproved}`}>
-                {sortedAppointments.length} confirmed
-              </span>
+          <section className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Confirmed</div>
+              <div className={styles.statValue}>{sortedAppointments.length}</div>
+              <div className={styles.statMeta}>Approved bookings</div>
             </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Today</div>
+              <div className={styles.statValue}>{todayAppointments.length}</div>
+              <div className={styles.statMeta}>Clinic visits today</div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Upcoming</div>
+              <div className={styles.statValue}>{upcomingAppointments.length}</div>
+              <div className={styles.statMeta}>Still ahead</div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Follow-ups</div>
+              <div className={styles.statValue}>{sortedFollowUps.length}</div>
+              <div className={styles.statMeta}>Linked schedules</div>
+            </div>
+          </section>
 
-            {loading ? (
-              <div className={styles.emptyState}>
-                Loading confirmed appointments...
-              </div>
-            ) : error ? (
-              <div className={styles.emptyState}>{error}</div>
-            ) : sortedAppointments.length === 0 ? (
-              <div className={styles.emptyState}>
-                No confirmed appointments found.
-              </div>
-            ) : (
-              sortedAppointments.map((appt) => (
-                <div key={appt.id} className={styles.requestCard}>
-                  <div className={styles.requestInfo}>
-                    <b>{appt.patient_name}</b>
-                    <p>{appt.doctor_name}</p>
-                    <span>
-                      {formatDate(appt.date)} at {formatTime(appt.time)}
-                    </span>
-
-                    {appt.services && (
-                      <p className={styles.detailText}>
-                        Service: {appt.services}
-                      </p>
-                    )}
+          <section className={styles.commandGrid}>
+            <div className={styles.commandMain}>
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <div>
+                    <h2>Approved Booking Board</h2>
+                    <p className={styles.cardSubtext}>Search and filter confirmed bookings without losing clinic context.</p>
                   </div>
-
                   <span className={`${styles.badge} ${styles.statusApproved}`}>
-                    {appt.status}
+                    {filteredAppointments.length} shown
                   </span>
                 </div>
-              ))
+
+                <div className={styles.searchRow}>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    placeholder="Search patient, doctor, service, or mode"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </div>
+
+                <div className={styles.filterRow}>
+                  {filters.map((item) => (
+                    <button
+                      key={item}
+                      className={`${styles.filterChip} ${
+                        filter === item ? styles.filterChipActive : ""
+                      }`}
+                      onClick={() => setFilter(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+
+                {loading ? (
+                  <div className={styles.emptyState}>Loading confirmed appointments...</div>
+                ) : error ? (
+                  <div className={styles.emptyState}>{error}</div>
+                ) : filteredAppointments.length === 0 ? (
+                  <div className={styles.emptyState}>No confirmed appointments found.</div>
+                ) : (
+                  filteredAppointments.map((appt) => (
+                    <article key={appt.id} className={styles.requestCard}>
+                      <div className={styles.requestInfo}>
+                        <div className={styles.cardTitleRow}>
+                          <b>{appt.patient_name}</b>
+                          <span className={`${styles.badge} ${getAppointmentStatusClass(appt.status)}`}>
+                            {getStatusLabel(appt.status)}
+                          </span>
+                        </div>
+
+                        <p>{appt.doctor_name || "Assigned doctor unavailable"}</p>
+
+                        <span>
+                          {formatDate(appt.date)} at {formatTimeRange(appt)}
+                        </span>
+
+                        <div className={styles.metaPills}>
+                          {appt.services && <span>{appt.services}</span>}
+                          {appt.consultation_mode && <span>{appt.consultation_mode}</span>}
+                          {appt.appointment_type && <span>{appt.appointment_type}</span>}
+                          <span>Age: {formatPatientAge(appt)}</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.actions}>
+                        {canMarkNoShow(appt) && (
+                          <button
+                            className={styles.declineBtn}
+                            onClick={() => markAsNoShow(appt)}
+                            disabled={actionLoadingId === appt.id}
+                          >
+                            {actionLoadingId === appt.id ? "Updating..." : "Mark as No-Show"}
+                          </button>
+                        )}
+
+                        <button
+                          className={styles.secondaryBtn}
+                          onClick={() => openDetails(appt)}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <aside className={styles.commandSide}>
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <div>
+                    <h2>Follow-up Schedule</h2>
+                    <p className={styles.cardSubtext}>Keep post-visit continuity visible to staff.</p>
+                  </div>
+                  <span className={`${styles.badge} ${styles.statusApproved}`}>
+                    {sortedFollowUps.length} scheduled
+                  </span>
+                </div>
+
+                {loading ? (
+                  <div className={styles.emptyState}>Loading follow-up schedule...</div>
+                ) : sortedFollowUps.length === 0 ? (
+                  <div className={styles.emptyState}>No follow-up schedules found.</div>
+                ) : (
+                  sortedFollowUps.slice(0, 8).map((item) => (
+                    <article key={item.id} className={styles.compactItem}>
+                      <div>
+                        <b>
+                          {item.patient_name ||
+                            (item.patient_id
+                              ? `Patient #${item.patient_id}`
+                              : "Patient details unavailable")}
+                        </b>
+                        <span>{item.doctor_name || "Assigned doctor"}</span>
+                        <p>{formatDate(item.follow_up_date)}</p>
+                      </div>
+
+                      <span className={`${styles.badge} ${getFollowUpBadgeClass(item)}`}>
+                        {getFollowUpTiming(item)}
+                      </span>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              <div className={styles.quickActions}>
+                <div className={styles.quickActionCard}>
+                  <h3 className={styles.quickActionTitle}>Operational tip</h3>
+                  <p className={styles.quickActionText}>
+                    Use this page as the daily handoff view for confirmed patient flow and follow-up continuity.
+                  </p>
+                </div>
+              </div>
+            </aside>
+          </section>
+        </div>
+      </main>
+
+      {detailsOpen && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <h2>Appointment Details</h2>
+              <button className={styles.modalCloseBtn} onClick={closeDetails}>
+                ×
+              </button>
+            </div>
+
+            {detailsLoading ? (
+              <div className={styles.emptyState}>Loading appointment details...</div>
+            ) : selectedAppointment ? (
+              <div className={styles.modalGrid}>
+                <section className={styles.detailPanel}>
+                  <h3>Patient Details</h3>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Patient Name</span>
+                    <span className={styles.infoValue}>{selectedAppointment.patient_name || "Not provided"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Age</span>
+                    <span className={styles.infoValue}>{formatPatientAge(selectedAppointment)}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Address</span>
+                    <span className={styles.infoValue}>{selectedAppointment.patient_address || "Not provided"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Contact No.</span>
+                    <span className={styles.infoValue}>{selectedAppointment.patient_contact || "Not provided"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Email</span>
+                    <span className={styles.infoValue}>{selectedAppointment.patient_email || "Not provided"}</span>
+                  </div>
+
+                  {selectedAppointment.is_minor && (
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Minor Patient</span>
+                      <span className={styles.infoValue}>Yes</span>
+                    </div>
+                  )}
+
+                  {hasGuardianInfo(selectedAppointment) && (
+                    <>
+                      <h3>Guardian Details</h3>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Name</span>
+                        <span className={styles.infoValue}>{getGuardianName(selectedAppointment)}</span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Relationship</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_relationship || "Not provided"}
+                        </span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Contact</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_contact || "Not provided"}
+                        </span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Email</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_email || "Not provided"}
+                        </span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Consent</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_consent ? "Provided" : "Not provided"}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  <h3>Booking Details</h3>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Doctor</span>
+                    <span className={styles.infoValue}>{selectedAppointment.doctor_name || "Doctor unavailable"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Service</span>
+                    <span className={styles.infoValue}>{selectedAppointment.services || "Not specified"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Schedule</span>
+                    <span className={styles.infoValue}>
+                      {formatDate(selectedAppointment.date)} at {formatTimeRange(selectedAppointment)}
+                    </span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Status</span>
+                    <span className={styles.infoValue}>{getStatusLabel(selectedAppointment.status)}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Concern</span>
+                    <span className={styles.infoValue}>{selectedAppointment.concern || "Not provided"}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Patient Instructions</span>
+                    <span className={styles.infoValue}>
+                      {selectedAppointment.patient_instruction || "Not provided"}
+                    </span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Approval Email</span>
+                    <span className={styles.infoValue}>{getApprovalEmailStatus(selectedAppointment)}</span>
+                  </div>
+                </section>
+
+                <section className={styles.detailPanel}>
+                  <h3>Activity Timeline</h3>
+                  {appointmentLogs.length === 0 ? (
+                    <div className={styles.emptyState}>No activity logs found.</div>
+                  ) : (
+                    <div className={styles.timelineList}>
+                      {appointmentLogs.map((log) => (
+                        <div key={log.id} className={styles.timelineItem}>
+                          <b>{log.action}</b>
+                          <span>
+                            {log.performed_by_name || "System"} · {log.performed_by_role || "Role unavailable"}
+                          </span>
+                          <p>{formatDateTime(log.created_at)}</p>
+                          {log.reason && <small>{log.reason}</small>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            ) : (
+              <div className={styles.emptyState}>No appointment selected.</div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import Optional
 
 from pydantic import BaseModel
@@ -32,6 +32,8 @@ class AppointmentScheduleAssign(BaseModel):
 class AppointmentStatusUpdate(BaseModel):
     status: str
     cancel_reason: Optional[str] = None
+    patient_instruction: Optional[str] = None
+    send_email: Optional[bool] = False
 
 
 class AppointmentOut(BaseModel):
@@ -48,6 +50,14 @@ class AppointmentOut(BaseModel):
     patient_age: Optional[int]
     patient_age_label: Optional[str]
 
+    is_minor: Optional[bool] = False
+    guardian_first_name: Optional[str] = None
+    guardian_last_name: Optional[str] = None
+    guardian_relationship: Optional[str] = None
+    guardian_contact: Optional[str] = None
+    guardian_email: Optional[str] = None
+    guardian_consent: Optional[bool] = False
+
     doctor_name: Optional[str]
 
     date: Optional[date]
@@ -62,6 +72,10 @@ class AppointmentOut(BaseModel):
 
     status: str
     cancel_reason: Optional[str]
+
+    patient_instruction: Optional[str] = None
+    approval_email_sent: Optional[bool] = False
+    approval_email_sent_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, Text, Time
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text, Time
 from app.db import Base
 
 
@@ -33,3 +33,7 @@ class AppointmentModel(Base):
 
     status = Column(String, default="Pending", nullable=False)
     cancel_reason = Column(String, nullable=True)
+
+    patient_instruction = Column(Text, nullable=True)
+    approval_email_sent = Column(Boolean, default=False, nullable=False)
+    approval_email_sent_at = Column(DateTime(timezone=True), nullable=True)

@@ -18,6 +18,13 @@ type Appointment = {
   patient_address?: string | null
   patient_age?: number | null
   patient_age_label?: string | null
+  is_minor?: boolean | null
+  guardian_first_name?: string | null
+  guardian_last_name?: string | null
+  guardian_relationship?: string | null
+  guardian_contact?: string | null
+  guardian_email?: string | null
+  guardian_consent?: boolean | null
   doctor_name?: string | null
   date?: string | null
   time?: string | null
@@ -29,6 +36,9 @@ type Appointment = {
   concern?: string | null
   is_initial_evaluation_request?: boolean | null
   cancel_reason?: string | null
+  patient_instruction?: string | null
+  approval_email_sent?: boolean | null
+  approval_email_sent_at?: string | null
 }
 
 type AppointmentLog = {
@@ -152,6 +162,13 @@ export default function AppointmentRequests() {
     useState(getTodayInputDate())
   const [assigningSlotId, setAssigningSlotId] = useState<string | null>(null)
 
+  const [approvalOpen, setApprovalOpen] = useState(false)
+  const [approvalTarget, setApprovalTarget] = useState<Appointment | null>(null)
+  const [approvalSlot, setApprovalSlot] = useState<AssignableSlot | null>(null)
+  const [approvalInstruction, setApprovalInstruction] = useState("")
+  const [sendApprovalEmail, setSendApprovalEmail] = useState(true)
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false)
+
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "To be scheduled"
 
@@ -211,6 +228,30 @@ export default function AppointmentRequests() {
     return `${formatTime(slot.start_time)} to ${formatTime(slot.end_time)}`
   }
 
+  const getGuardianName = (appt?: Appointment | null) => {
+    if (!appt) return "Not provided"
+
+    const firstName = appt.guardian_first_name?.trim() || ""
+    const lastName = appt.guardian_last_name?.trim() || ""
+    const fullName = `${firstName} ${lastName}`.trim()
+
+    return fullName || "Not provided"
+  }
+
+  const hasGuardianInfo = (appt?: Appointment | null) => {
+    if (!appt) return false
+
+    return Boolean(
+      appt.is_minor ||
+        appt.guardian_first_name ||
+        appt.guardian_last_name ||
+        appt.guardian_relationship ||
+        appt.guardian_contact ||
+        appt.guardian_email ||
+        appt.guardian_consent
+    )
+  }
+
   const hasAssignedSchedule = (appointment: Appointment) => {
     return Boolean(
       appointment.schedule_id &&
@@ -219,6 +260,67 @@ export default function AppointmentRequests() {
         appointment.time &&
         appointment.end_time
     )
+  }
+
+  const buildDefaultApprovalInstruction = (
+    appointment: Appointment,
+    slot?: AssignableSlot | null
+  ) => {
+    const service = appointment.services || slot?.service_name || "your selected service"
+    const doctor =
+      slot?.doctor_name || appointment.doctor_name || "your assigned doctor"
+    const scheduleDate = slot?.schedule_date || appointment.date
+    const startTime = slot?.start_time || appointment.time
+    const endTime = slot?.end_time || appointment.end_time
+    const consultationMode =
+      slot?.consultation_mode || appointment.consultation_mode || "In-Person"
+
+    if (consultationMode === "Online Consultation") {
+      return `Your appointment for ${service} has been approved. It is scheduled on ${formatDate(
+        scheduleDate
+      )} from ${formatTime(startTime)} to ${formatTime(
+        endTime
+      )} with ${doctor}. Please make sure you have a stable internet connection and are in a well-lit area during the consultation. The clinic will provide the consultation access details before your schedule. If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal.`
+    }
+
+    if (
+      appointment.is_initial_evaluation_request ||
+      appointment.appointment_type === "Initial Evaluation" ||
+      appointment.appointment_type === "Initial Evaluation Request"
+    ) {
+      return `Your initial evaluation for ${service} has been approved and scheduled on ${formatDate(
+        scheduleDate
+      )} from ${formatTime(startTime)} to ${formatTime(
+        endTime
+      )} with ${doctor}. Please arrive at least 15 minutes before your appointment. The doctor will assess your concern first before confirming the next treatment or procedure plan. Please bring a valid ID and any previous prescriptions, laboratory results, or skin-related medical records if available.`
+    }
+
+    return `Your appointment for ${service} has been approved. It is scheduled on ${formatDate(
+      scheduleDate
+    )} from ${formatTime(startTime)} to ${formatTime(
+      endTime
+    )} with ${doctor}. Please arrive at least 15 minutes before your scheduled time and bring a valid ID, previous prescriptions, laboratory results, or skin-related medical records if available. If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal.`
+  }
+
+  const openApprovalModal = (
+    appointment: Appointment,
+    slot?: AssignableSlot | null
+  ) => {
+    setApprovalTarget(appointment)
+    setApprovalSlot(slot || null)
+    setApprovalInstruction(buildDefaultApprovalInstruction(appointment, slot))
+    setSendApprovalEmail(true)
+    setApprovalOpen(true)
+  }
+
+  const closeApprovalModal = () => {
+    if (approvalSubmitting) return
+
+    setApprovalOpen(false)
+    setApprovalTarget(null)
+    setApprovalSlot(null)
+    setApprovalInstruction("")
+    setSendApprovalEmail(true)
   }
 
   const getDateTimeValue = (appt: Appointment) => {
@@ -348,63 +450,39 @@ export default function AppointmentRequests() {
   }
 
   const updateStatus = async (id: number, status: "Approved" | "Declined") => {
-    const token = localStorage.getItem("token")
+    const target = requests.find((request) => request.id === id)
 
-    if (!token) {
-      router.push("/")
+    if (!target) {
+      alert("Appointment request was not found.")
       return
     }
 
-    const target = requests.find((request) => request.id === id)
-
     if (
       status === "Approved" &&
-      target?.is_initial_evaluation_request &&
+      target.is_initial_evaluation_request &&
       !hasAssignedSchedule(target)
     ) {
       await openScheduleModal(target)
       return
     }
 
-    if (status === "Declined") {
-      setDeclineTargetId(id)
-      setDeclineOpen(true)
+    if (status === "Approved") {
+      openApprovalModal(target)
       return
     }
 
-    try {
-      setSubmittingId(id)
-
-      const res = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      })
-
-      const data = await readJsonSafely(res)
-
-      if (!res.ok) {
-        throw new Error(getErrorMessage(data, "Failed to update appointment"))
-      }
-
-      await loadRequests()
-
-      if (detailsOpen && selectedAppointment?.id === id) {
-        await openDetails({ ...selectedAppointment, status })
-      }
-    } catch (err) {
-      console.error("Status update failed:", err)
-      alert(err instanceof Error ? err.message : "Unable to update the appointment status.")
-    } finally {
-      setSubmittingId(null)
-    }
+    setDeclineTargetId(id)
+    setDeclineOpen(true)
   }
 
   const assignAndApprove = async (slot: AssignableSlot) => {
-    if (!scheduleTarget) return
+    if (!scheduleTarget || !slot.is_available) return
+
+    openApprovalModal(scheduleTarget, slot)
+  }
+
+  const confirmApproval = async () => {
+    if (!approvalTarget) return
 
     const token = localStorage.getItem("token")
 
@@ -413,11 +491,47 @@ export default function AppointmentRequests() {
       return
     }
 
-    try {
-      setAssigningSlotId(slot.slot_id)
+    const finalInstruction = approvalInstruction.trim()
 
-      const assignRes = await fetch(
-        `${API_BASE_URL}/appointments/${scheduleTarget.id}/assign-schedule`,
+    if (!finalInstruction) {
+      alert("Please provide approval instructions for the patient.")
+      return
+    }
+
+    try {
+      setApprovalSubmitting(true)
+      setSubmittingId(approvalTarget.id)
+
+      if (approvalSlot) {
+        setAssigningSlotId(approvalSlot.slot_id)
+
+        const assignRes = await fetch(
+          `${API_BASE_URL}/appointments/${approvalTarget.id}/assign-schedule`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              schedule_id: approvalSlot.schedule_id,
+              start_time: approvalSlot.start_time,
+              end_time: approvalSlot.end_time,
+            }),
+          }
+        )
+
+        const assignData = await readJsonSafely(assignRes)
+
+        if (!assignRes.ok) {
+          throw new Error(
+            getErrorMessage(assignData, "Unable to assign schedule.")
+          )
+        }
+      }
+
+      const approveRes = await fetch(
+        `${API_BASE_URL}/appointments/${approvalTarget.id}/status`,
         {
           method: "PUT",
           headers: {
@@ -425,46 +539,57 @@ export default function AppointmentRequests() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            schedule_id: slot.schedule_id,
-            start_time: slot.start_time,
-            end_time: slot.end_time,
+            status: "Approved",
+            patient_instruction: finalInstruction,
+            send_email: sendApprovalEmail,
           }),
-        }
-      )
-
-      const assignData = await readJsonSafely(assignRes)
-
-      if (!assignRes.ok) {
-        throw new Error(getErrorMessage(assignData, "Unable to assign schedule."))
-      }
-
-      const approveRes = await fetch(
-        `${API_BASE_URL}/appointments/${scheduleTarget.id}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: "Approved" }),
         }
       )
 
       const approveData = await readJsonSafely(approveRes)
 
       if (!approveRes.ok) {
-        throw new Error(getErrorMessage(approveData, "Schedule assigned, but approval failed."))
+        throw new Error(
+          getErrorMessage(approveData, "Unable to approve appointment.")
+        )
       }
 
+      if (
+        approveData &&
+        typeof approveData === "object" &&
+        "email_warning" in approveData &&
+        (approveData as { email_warning?: unknown }).email_warning
+      ) {
+        alert(
+          "Appointment approved, but the email was not sent. Please check your email settings."
+        )
+      }
+
+      closeApprovalModal()
       setScheduleOpen(false)
       setScheduleTarget(null)
       setAssignableSlots([])
       setSlotError("")
+
       await loadRequests()
+
+      if (detailsOpen && selectedAppointment?.id === approvalTarget.id) {
+        await openDetails({
+          ...selectedAppointment,
+          status: "Approved",
+          patient_instruction: finalInstruction,
+        })
+      }
     } catch (err) {
-      console.error("Schedule assignment failed:", err)
-      alert(err instanceof Error ? err.message : "Unable to assign and approve appointment.")
+      console.error("Approval failed:", err)
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Unable to approve the appointment."
+      )
     } finally {
+      setApprovalSubmitting(false)
+      setSubmittingId(null)
       setAssigningSlotId(null)
     }
   }
@@ -625,8 +750,16 @@ export default function AppointmentRequests() {
                         <p className={styles.detailText}>Service: {req.services}</p>
                       )}
 
-                      {req.patient_age_label && (
-                        <p className={styles.detailText}>Age: {req.patient_age_label}</p>
+                      {(req.patient_age_label || req.patient_age) && (
+                        <p className={styles.detailText}>
+                          Age: {req.patient_age_label || req.patient_age}
+                        </p>
+                      )}
+
+                      {req.is_minor && (
+                        <p className={styles.detailText}>
+                          Minor patient · Guardian: {getGuardianName(req)}
+                        </p>
                       )}
 
                       {req.concern && (
@@ -715,7 +848,7 @@ export default function AppointmentRequests() {
 
             <p className={styles.pageSubtext}>
               {scheduleTarget.patient_name} requested {scheduleTarget.services || "a service"}.
-              Select an available doctor schedule, then the system will approve the request.
+              Select an available doctor schedule, then review the approval instructions before notifying the patient.
             </p>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "14px 0" }}>
@@ -774,7 +907,7 @@ export default function AppointmentRequests() {
                           onClick={() => assignAndApprove(slot)}
                           disabled={disabled}
                         >
-                          {isAssigning ? "Assigning..." : slot.is_available ? "Assign & Approve" : "Unavailable"}
+                          {isAssigning ? "Preparing..." : slot.is_available ? "Use Slot" : "Unavailable"}
                         </button>
                       </div>
                     </div>
@@ -782,6 +915,241 @@ export default function AppointmentRequests() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {approvalOpen && approvalTarget && (
+        <div className={styles.modalOverlay} onClick={closeApprovalModal}>
+          <div
+            className={styles.modalCard}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <h2>Approve Appointment</h2>
+                <p className={styles.pageSubtext}>
+                  Review the details and send clear next-step instructions to the patient.
+                </p>
+              </div>
+
+              <button
+                className={styles.modalCloseBtn}
+                onClick={closeApprovalModal}
+                disabled={approvalSubmitting}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.dashboardGrid}>
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <h2>Patient Details</h2>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Patient</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.patient_name || "Not provided"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Age</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.patient_age_label ||
+                      approvalTarget.patient_age ||
+                      "Not provided"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Contact No.</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.patient_contact || "Not provided"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Email</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.patient_email || "Not provided"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Address</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.patient_address || "Not provided"}
+                  </span>
+                </div>
+
+                {hasGuardianInfo(approvalTarget) && (
+                  <>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Minor Patient</span>
+                      <span className={styles.infoValue}>
+                        {approvalTarget.is_minor ? "Yes" : "No"}
+                      </span>
+                    </div>
+
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Guardian</span>
+                      <span className={styles.infoValue}>
+                        {getGuardianName(approvalTarget)}
+                      </span>
+                    </div>
+
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Relationship</span>
+                      <span className={styles.infoValue}>
+                        {approvalTarget.guardian_relationship || "Not provided"}
+                      </span>
+                    </div>
+
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Guardian Contact</span>
+                      <span className={styles.infoValue}>
+                        {approvalTarget.guardian_contact || "Not provided"}
+                      </span>
+                    </div>
+
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Guardian Email</span>
+                      <span className={styles.infoValue}>
+                        {approvalTarget.guardian_email || "Not provided"}
+                      </span>
+                    </div>
+
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Guardian Consent</span>
+                      <span className={styles.infoValue}>
+                        {approvalTarget.guardian_consent ? "Provided" : "Not provided"}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <h2>Appointment Details</h2>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Service</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.services ||
+                      approvalSlot?.service_name ||
+                      "Not provided"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Doctor</span>
+                  <span className={styles.infoValue}>
+                    {approvalSlot?.doctor_name ||
+                      approvalTarget.doctor_name ||
+                      "To be assigned by staff"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Schedule</span>
+                  <span className={styles.infoValue}>
+                    {formatDate(approvalSlot?.schedule_date || approvalTarget.date)}
+                    {" · "}
+                    {formatTime(approvalSlot?.start_time || approvalTarget.time)}
+                    {" to "}
+                    {formatTime(approvalSlot?.end_time || approvalTarget.end_time)}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Mode</span>
+                  <span className={styles.infoValue}>
+                    {approvalSlot?.consultation_mode ||
+                      approvalTarget.consultation_mode ||
+                      "In-Person"}
+                  </span>
+                </div>
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Concern</span>
+                  <span className={styles.infoValue}>
+                    {approvalTarget.concern || "Not provided"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.listCard} style={{ marginTop: 18 }}>
+              <div className={styles.listHeader}>
+                <h2>Approval Instructions for Patient</h2>
+              </div>
+
+              <textarea
+                value={approvalInstruction}
+                onChange={(event) => setApprovalInstruction(event.target.value)}
+                rows={7}
+                placeholder="Write what the patient needs to do before the appointment."
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: "14px",
+                  border: "1px solid var(--border-color, #dbe2ea)",
+                  background: "var(--input-bg, #ffffff)",
+                  color: "inherit",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                }}
+              />
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "14px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={sendApprovalEmail}
+                  onChange={(event) =>
+                    setSendApprovalEmail(event.target.checked)
+                  }
+                />
+                Send this instruction to the patient by email
+              </label>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.secondaryBtn}
+                onClick={closeApprovalModal}
+                disabled={approvalSubmitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                className={styles.acceptBtn}
+                onClick={confirmApproval}
+                disabled={approvalSubmitting}
+              >
+                {approvalSubmitting
+                  ? "Approving..."
+                  : sendApprovalEmail
+                    ? "Approve and Notify Patient"
+                    : "Approve Appointment"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -923,10 +1291,72 @@ export default function AppointmentRequests() {
                     </span>
                   </div>
 
+                  {hasGuardianInfo(selectedAppointment) && (
+                    <>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Minor Patient</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.is_minor ? "Yes" : "No"}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Name</span>
+                        <span className={styles.infoValue}>
+                          {getGuardianName(selectedAppointment)}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Relationship</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_relationship || "Not provided"}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Contact</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_contact || "Not provided"}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Email</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_email || "Not provided"}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Guardian Consent</span>
+                        <span className={styles.infoValue}>
+                          {selectedAppointment.guardian_consent ? "Provided" : "Not provided"}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Concern</span>
                     <span className={styles.infoValue}>
                       {selectedAppointment.concern || "Not provided"}
+                    </span>
+                  </div>
+
+                  {selectedAppointment.patient_instruction && (
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Patient Instructions</span>
+                      <span className={styles.infoValue}>
+                        {selectedAppointment.patient_instruction}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Approval Email</span>
+                    <span className={styles.infoValue}>
+                      {selectedAppointment.approval_email_sent ? "Sent" : "Not sent"}
                     </span>
                   </div>
                 </div>

@@ -10,11 +10,18 @@ import styles from "@/app/styles/patient.module.css";
 interface Appointment {
   id: number;
   doctor_name?: string | null;
-  date: string;
-  time: string;
+  doctor?: string | null;
+  date?: string | null;
+  time?: string | null;
+  end_time?: string | null;
   services?: string | null;
   status: string;
   cancel_reason?: string | null;
+  appointment_type?: string | null;
+  consultation_mode?: string | null;
+  patient_instruction?: string | null;
+  approval_email_sent?: boolean | null;
+  approval_email_sent_at?: string | null;
 
   // Follow-up / diagnosis report fields that may come from /appointments/my
   next_visit_date?: string | null;
@@ -35,6 +42,7 @@ const STATUS_FILTERS = [
   "Declined",
   "Cancelled",
   "Pending",
+  "No-Show",
 ] as const;
 
 type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -49,8 +57,19 @@ const normalizeStatus = (status?: string | null) => {
   if (cleanStatus === "declined") return "Declined";
   if (cleanStatus === "cancelled") return "Cancelled";
   if (cleanStatus === "canceled") return "Cancelled";
+  if (cleanStatus === "no-show") return "No-Show";
+  if (cleanStatus === "noshow") return "No-Show";
+  if (cleanStatus === "missed") return "No-Show";
 
   return status?.trim() || "Unknown";
+};
+
+const getStatusLabel = (status?: string | null) => {
+  const normalized = normalizeStatus(status);
+
+  if (normalized === "No-Show") return "Missed Appointment";
+
+  return normalized;
 };
 
 const normalizeAppointments = (data: unknown): Appointment[] => {
@@ -116,11 +135,15 @@ const getFollowUpPlan = (appt: Appointment) => {
 };
 
 const getDateTimeValue = (appt: Appointment) => {
-  return new Date(`${appt.date}T${appt.time || "00:00:00"}`).getTime();
+  if (!appt.date) return 0;
+
+  const value = new Date(`${appt.date}T${appt.time || "00:00:00"}`).getTime();
+
+  return Number.isNaN(value) ? 0 : value;
 };
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "No date";
+  if (!dateString) return "To be scheduled";
 
   const date = new Date(`${dateString}T00:00:00`);
 
@@ -134,7 +157,7 @@ const formatDate = (dateString?: string | null) => {
 };
 
 const formatTime = (timeString?: string | null) => {
-  if (!timeString) return "No time";
+  if (!timeString) return "To be scheduled";
 
   const date = new Date(`1970-01-01T${timeString}`);
 
@@ -145,6 +168,22 @@ const formatTime = (timeString?: string | null) => {
     minute: "2-digit",
     hour12: true,
   });
+};
+
+const formatTimeRange = (appt: Appointment) => {
+  if (!appt.time && !appt.end_time) return "To be scheduled";
+
+  if (appt.time && appt.end_time) {
+    return `${formatTime(appt.time)} to ${formatTime(appt.end_time)}`;
+  }
+
+  return formatTime(appt.time);
+};
+
+const getScheduleText = (appt: Appointment) => {
+  if (!appt.date && !appt.time) return "Schedule to be confirmed by staff";
+
+  return `${formatDate(appt.date)} • ${formatTimeRange(appt)}`;
 };
 
 const getTodayLocalString = () => {
@@ -181,7 +220,11 @@ export default function PatientHistory() {
     if (normalized === "Completed") return styles.statusCompleted;
     if (normalized === "Approved") return styles.statusApproved;
     if (normalized === "Pending") return styles.statusPending;
-    if (normalized === "Cancelled" || normalized === "Declined") {
+    if (
+      normalized === "Cancelled" ||
+      normalized === "Declined" ||
+      normalized === "No-Show"
+    ) {
       return styles.statusCancelled;
     }
 
@@ -327,6 +370,25 @@ export default function PatientHistory() {
     (appt) => normalizeStatus(appt.status) === "Pending"
   ).length;
 
+  const missedCount = appointments.filter(
+    (appt) => normalizeStatus(appt.status) === "No-Show"
+  ).length;
+
+  const renderInstructionBox = (appt: Appointment) => {
+    if (!appt.patient_instruction) return null;
+
+    return (
+      <div className={styles.noticeBox}>
+        <strong>Appointment Instructions:</strong> {appt.patient_instruction}
+        {appt.approval_email_sent && (
+          <div style={{ marginTop: "8px", fontSize: "13px", opacity: 0.9 }}>
+            Email notification was sent by the clinic.
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={navCollapsed ? "nav-collapsed" : "nav-active"}>
       <Navbar />
@@ -344,9 +406,9 @@ export default function PatientHistory() {
               <h1 className={styles.h1}>Appointment History</h1>
 
               <p className={styles.subtitle}>
-                View your past and current appointments, including booking
-                status, schedule details, cancellation notes, and follow-up
-                schedules.
+                View your past and current appointments, including approval
+                instructions, booking status, cancellation notes, missed appointment
+                records, and follow-up schedules.
               </p>
             </div>
 
@@ -369,6 +431,11 @@ export default function PatientHistory() {
             <div className={styles.summaryCard}>
               <p className={styles.summaryLabel}>Pending Requests</p>
               <p className={styles.summaryValue}>{pendingCount}</p>
+            </div>
+
+            <div className={styles.summaryCard}>
+              <p className={styles.summaryLabel}>Missed</p>
+              <p className={styles.summaryValue}>{missedCount}</p>
             </div>
           </div>
 
@@ -437,7 +504,7 @@ export default function PatientHistory() {
                   statusFilter === status ? styles.filterButtonActive : ""
                 }`}
               >
-                {status}
+                {status === "No-Show" ? "Missed" : status}
               </button>
             ))}
           </div>
@@ -458,7 +525,7 @@ export default function PatientHistory() {
             </div>
           ) : filteredAppointments.length === 0 ? (
             <div className={styles.emptyState}>
-              <h2>No {statusFilter} appointments found</h2>
+              <h2>No {statusFilter === "No-Show" ? "Missed" : statusFilter} appointments found</h2>
 
               <p>
                 There are no appointments under this status yet. Try checking
@@ -469,6 +536,8 @@ export default function PatientHistory() {
             <div className={styles.cards}>
               {filteredAppointments.map((appt) => {
                 const cleanStatus = normalizeStatus(appt.status);
+                const followUpDate = getFollowUpDate(appt);
+                const followUpPlan = getFollowUpPlan(appt);
 
                 return (
                   <article key={appt.id} className={styles.card}>
@@ -486,7 +555,7 @@ export default function PatientHistory() {
                           cleanStatus
                         )}`}
                       >
-                        {cleanStatus}
+                        {getStatusLabel(cleanStatus)}
                       </span>
                     </div>
 
@@ -503,7 +572,7 @@ export default function PatientHistory() {
                         <p className={styles.detailLabel}>Time</p>
 
                         <p className={styles.detailValue}>
-                          {formatTime(appt.time)}
+                          {formatTimeRange(appt)}
                         </p>
                       </div>
 
@@ -514,15 +583,36 @@ export default function PatientHistory() {
                           {appt.services || "Not specified"}
                         </p>
                       </div>
+
+                      <div className={styles.detailBox}>
+                        <p className={styles.detailLabel}>Mode</p>
+
+                        <p className={styles.detailValue}>
+                          {appt.consultation_mode || "In-Person"}
+                        </p>
+                      </div>
                     </div>
 
+                    {renderInstructionBox(appt)}
+
                     {(cleanStatus === "Declined" ||
-                      cleanStatus === "Cancelled") &&
+                      cleanStatus === "Cancelled" ||
+                      cleanStatus === "No-Show") &&
                       appt.cancel_reason && (
                         <div className={styles.noticeBox}>
                           <strong>Reason:</strong> {appt.cancel_reason}
                         </div>
                       )}
+
+                    {(followUpDate || followUpPlan) && (
+                      <div className={styles.noticeBox}>
+                        <strong>Follow-up:</strong>{" "}
+                        {followUpDate
+                          ? formatDate(followUpDate)
+                          : "Date not specified"}
+                        {followUpPlan ? ` • ${followUpPlan}` : ""}
+                      </div>
+                    )}
 
                     {cleanStatus === "Completed" && (
                       <div className={styles.noticeBox}>

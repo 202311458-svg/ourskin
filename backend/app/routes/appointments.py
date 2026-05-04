@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,12 +16,20 @@ from app.models.skin_analysis import SkinAnalysis
 from app.models.user import User
 from app.schemas.appointment import AppointmentCreate, AppointmentScheduleAssign, AppointmentStatusUpdate
 from app.core.security import get_current_user
+from app.core.email import send_appointment_approval_email
 
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 
-VALID_STATUSES = {"Pending", "Approved", "Declined", "Cancelled", "Completed"}
+VALID_STATUSES = {
+    "Pending",
+    "Approved",
+    "Declined",
+    "Cancelled",
+    "Completed",
+    "No-Show",
+}
 ACTIVE_BOOKING_STATUSES = ["Pending", "Approved"]
 SLOT_MINUTES = 60
 
@@ -31,11 +39,11 @@ ROLE_STATUS_TRANSITIONS = {
     },
     "staff": {
         "Pending": {"Approved", "Declined", "Cancelled"},
-        "Approved": {"Completed", "Cancelled"},
+        "Approved": {"Completed", "Cancelled", "No-Show"},
     },
     "admin": {
         "Pending": {"Approved", "Declined", "Cancelled"},
-        "Approved": {"Completed", "Cancelled"},
+        "Approved": {"Completed", "Cancelled", "No-Show"},
     },
     "doctor": {
         "Approved": {"Completed", "Cancelled"},
@@ -72,6 +80,52 @@ def format_date(value):
         return None
 
     return value.isoformat()
+
+
+def format_display_date(value):
+    if value is None:
+        return "To be scheduled"
+
+    return value.strftime("%B %d, %Y")
+
+
+def format_display_time(value):
+    if value is None:
+        return "To be scheduled"
+
+    return value.strftime("%I:%M %p")
+
+
+def build_default_approval_instruction(appointment: AppointmentModel):
+    date_text = format_display_date(appointment.date)
+    start_text = format_display_time(appointment.time)
+    end_text = format_display_time(appointment.end_time)
+
+    if appointment.consultation_mode == "Online Consultation":
+        return (
+            f"Your appointment for {appointment.services} has been approved. "
+            f"It is scheduled on {date_text} from {start_text} to {end_text} with {appointment.doctor_name or 'your assigned doctor'}. "
+            "Please make sure you have a stable internet connection and are in a well-lit area during the consultation. "
+            "The clinic will provide the consultation access details before your schedule. "
+            "If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal."
+        )
+
+    if appointment.appointment_type in ["Initial Evaluation", "Initial Evaluation Request"]:
+        return (
+            f"Your initial evaluation for {appointment.services} has been approved and scheduled on {date_text} from {start_text} to {end_text} "
+            f"with {appointment.doctor_name or 'your assigned doctor'}. "
+            "Please arrive at least 15 minutes before your appointment. "
+            "The doctor will assess your concern first before confirming the next treatment or procedure plan. "
+            "Please bring a valid ID and any previous prescriptions, laboratory results, or skin-related medical records if available."
+        )
+
+    return (
+        f"Your appointment for {appointment.services} has been approved. "
+        f"It is scheduled on {date_text} from {start_text} to {end_text} with {appointment.doctor_name or 'your assigned doctor'}. "
+        "Please arrive at least 15 minutes before your scheduled time and bring a valid ID, previous prescriptions, laboratory results, "
+        "or skin-related medical records if available. "
+        "If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal."
+    )
 
 
 def is_sunday(value: date):
@@ -206,7 +260,16 @@ def validate_status_transition(role: str, current_status: str, new_status: str):
         )
 
 
-def serialize_appointment(appointment: AppointmentModel):
+def serialize_appointment(appointment: AppointmentModel, db: Optional[Session] = None):
+    patient = None
+
+    if db is not None and appointment.patient_id:
+        patient = (
+            db.query(User)
+            .filter(User.id == appointment.patient_id)
+            .first()
+        )
+
     return {
         "id": appointment.id,
         "patient_id": appointment.patient_id,
@@ -220,6 +283,14 @@ def serialize_appointment(appointment: AppointmentModel):
         "patient_address": appointment.patient_address,
         "patient_age": appointment.patient_age,
         "patient_age_label": appointment.patient_age_label,
+
+        "is_minor": patient.is_minor if patient else False,
+        "guardian_first_name": patient.guardian_first_name if patient else None,
+        "guardian_last_name": patient.guardian_last_name if patient else None,
+        "guardian_relationship": patient.guardian_relationship if patient else None,
+        "guardian_contact": patient.guardian_contact if patient else None,
+        "guardian_email": patient.guardian_email if patient else None,
+        "guardian_consent": patient.guardian_consent if patient else False,
 
         "doctor_name": appointment.doctor_name or "To be assigned by staff",
 
@@ -235,6 +306,14 @@ def serialize_appointment(appointment: AppointmentModel):
 
         "status": appointment.status,
         "cancel_reason": appointment.cancel_reason,
+
+        "patient_instruction": appointment.patient_instruction,
+        "approval_email_sent": appointment.approval_email_sent,
+        "approval_email_sent_at": (
+            appointment.approval_email_sent_at.isoformat()
+            if appointment.approval_email_sent_at
+            else None
+        ),
     }
 
 
@@ -429,7 +508,7 @@ def create_appointment(
 
         return {
             "message": "Initial evaluation request created",
-            "appointment": serialize_appointment(appointment),
+            "appointment": serialize_appointment(appointment, db),
         }
 
     if data.schedule_id is None:
@@ -577,7 +656,7 @@ def create_appointment(
 
     return {
         "message": "Appointment created",
-        "appointment": serialize_appointment(appointment),
+        "appointment": serialize_appointment(appointment, db),
     }
 
 
@@ -606,7 +685,7 @@ def get_my_appointments(
             .first()
         )
 
-        item = serialize_appointment(appointment)
+        item = serialize_appointment(appointment, db)
 
         item.update({
             "diagnosis_report_id": diagnosis_report.id if diagnosis_report else None,
@@ -680,7 +759,13 @@ def update_appointment_status(
     validate_status_transition(role, current_status, new_status)
 
     if new_status == "Approved" and appointment.is_initial_evaluation_request:
-        if not appointment.schedule_id or not appointment.doctor_id or not appointment.date or not appointment.time or not appointment.end_time:
+        if (
+            not appointment.schedule_id
+            or not appointment.doctor_id
+            or not appointment.date
+            or not appointment.time
+            or not appointment.end_time
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Assign a doctor and schedule before approving this initial evaluation request",
@@ -713,11 +798,33 @@ def update_appointment_status(
                 detail="Appointment can only be completed after the scheduled time has passed",
             )
 
-    if new_status in ["Declined", "Cancelled"]:
+    if new_status == "No-Show" and appointment.date and appointment.time:
+        no_show_time = appointment.end_time or appointment.time
+
+        if datetime.combine(appointment.date, no_show_time) > datetime.now():
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment can only be marked as no-show after the scheduled time has passed",
+            )
+
+    approval_instruction = None
+    email_warning = None
+
+    if new_status == "Approved":
+        approval_instruction = clean_optional_text(body.patient_instruction)
+
+        if not approval_instruction:
+            approval_instruction = build_default_approval_instruction(appointment)
+
+        appointment.patient_instruction = approval_instruction
+        appointment.cancel_reason = None
+
+    elif new_status in ["Declined", "Cancelled", "No-Show"]:
         if not body.cancel_reason or not body.cancel_reason.strip():
             raise HTTPException(status_code=400, detail="Reason is required")
 
         appointment.cancel_reason = body.cancel_reason.strip()
+
     else:
         appointment.cancel_reason = None
 
@@ -733,12 +840,44 @@ def update_appointment_status(
         performed_by_id=current_user.id,
         performed_by_name=current_user.name,
         performed_by_role=current_user.role,
-        reason=appointment.cancel_reason,
+        reason=approval_instruction if new_status == "Approved" else appointment.cancel_reason,
     )
 
+    if new_status == "Approved" and body.send_email:
+        try:
+            schedule_date = format_display_date(appointment.date)
+            schedule_time = (
+                f"{format_display_time(appointment.time)} to {format_display_time(appointment.end_time)}"
+            )
+
+            send_appointment_approval_email(
+                email=appointment.patient_email,
+                patient_name=appointment.patient_name,
+                service=appointment.services,
+                doctor_name=appointment.doctor_name or "To be assigned by staff",
+                schedule_date=schedule_date,
+                schedule_time=schedule_time,
+                consultation_mode=appointment.consultation_mode,
+                instruction=approval_instruction or build_default_approval_instruction(appointment),
+            )
+
+            appointment.approval_email_sent = True
+            appointment.approval_email_sent_at = datetime.now(timezone.utc)
+
+            db.commit()
+            db.refresh(appointment)
+
+        except Exception as email_error:
+            email_warning = str(email_error)
+
     return {
-        "message": "Appointment updated successfully",
-        "appointment": serialize_appointment(appointment),
+        "message": (
+            "Appointment updated successfully"
+            if not email_warning
+            else "Appointment approved, but the email notification could not be sent."
+        ),
+        "email_warning": email_warning,
+        "appointment": serialize_appointment(appointment, db),
     }
 
 
@@ -753,7 +892,7 @@ def get_today_appointments(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment) for appointment in appointments]
+    return [serialize_appointment(appointment, db) for appointment in appointments]
 
 
 @router.get("/requests")
@@ -765,7 +904,7 @@ def get_pending_requests(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment) for appointment in appointments]
+    return [serialize_appointment(appointment, db) for appointment in appointments]
 
 
 @router.get("/confirmed")
@@ -777,7 +916,7 @@ def get_confirmed_appointments(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment) for appointment in appointments]
+    return [serialize_appointment(appointment, db) for appointment in appointments]
 
 
 @router.get("/history-with-analysis")
@@ -800,7 +939,7 @@ def get_patient_history(email: str, db: Session = Depends(get_db)):
         )
 
         results.append({
-            "appointment": serialize_appointment(appt),
+            "appointment": serialize_appointment(appt, db),
             "analyses": analyses,
         })
 
@@ -817,7 +956,7 @@ def get_appointment_history(
 
     appointments = (
         db.query(AppointmentModel)
-        .filter(AppointmentModel.status.in_(["Completed", "Cancelled", "Declined"]))
+        .filter(AppointmentModel.status.in_(["Completed", "Cancelled", "Declined", "No-Show"]))
         .order_by(AppointmentModel.id.desc())
         .all()
     )
@@ -835,7 +974,7 @@ def get_appointment_history(
             .first()
         )
 
-        item = serialize_appointment(appointment)
+        item = serialize_appointment(appointment, db)
 
         item.update({
             "last_action_by_name": latest_log.performed_by_name if latest_log else None,
@@ -1094,7 +1233,7 @@ def assign_schedule_to_initial_evaluation_request(
 
     return {
         "message": "Initial evaluation schedule assigned",
-        "appointment": serialize_appointment(appointment),
+        "appointment": serialize_appointment(appointment, db),
     }
 
 
@@ -1154,4 +1293,4 @@ def get_appointment_by_id(
     if current_user.role not in ["staff", "admin", "doctor", "patient"]:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    return serialize_appointment(appointment)
+    return serialize_appointment(appointment, db)

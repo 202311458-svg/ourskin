@@ -3,6 +3,7 @@
 import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -15,15 +16,22 @@ import styles from "@/app/styles/patient.module.css";
 
 type Appointment = {
   id: number;
-  patient_name?: string;
-  patient_email?: string;
-  doctor_name?: string;
-  doctor?: string;
-  date: string;
-  time: string;
-  services: string;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  doctor_name?: string | null;
+  doctor?: string | null;
+  date?: string | null;
+  time?: string | null;
+  end_time?: string | null;
+  services?: string | null;
   status: string;
   cancel_reason?: string | null;
+  appointment_type?: string | null;
+  consultation_mode?: string | null;
+  concern?: string | null;
+  patient_instruction?: string | null;
+  approval_email_sent?: boolean | null;
+  approval_email_sent_at?: string | null;
 
   // Follow-up / diagnosis report fields that may come from /appointments/my
   next_visit_date?: string | null;
@@ -91,6 +99,31 @@ const readJsonSafely = async (res: Response) => {
   }
 };
 
+const normalizeStatus = (status?: string | null) => {
+  const cleanStatus = (status || "").trim().toLowerCase();
+
+  if (cleanStatus === "pending") return "Pending";
+  if (cleanStatus === "approved") return "Approved";
+  if (cleanStatus === "confirmed") return "Approved";
+  if (cleanStatus === "completed") return "Completed";
+  if (cleanStatus === "declined") return "Declined";
+  if (cleanStatus === "cancelled") return "Cancelled";
+  if (cleanStatus === "canceled") return "Cancelled";
+  if (cleanStatus === "no-show") return "No-Show";
+  if (cleanStatus === "noshow") return "No-Show";
+  if (cleanStatus === "missed") return "No-Show";
+
+  return status?.trim() || "Unknown";
+};
+
+const getStatusLabel = (status?: string | null) => {
+  const normalized = normalizeStatus(status);
+
+  if (normalized === "No-Show") return "Missed Appointment";
+
+  return normalized;
+};
+
 export default function PatientDashboard() {
   const router = useRouter();
 
@@ -99,13 +132,6 @@ export default function PatientDashboard() {
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
-
-  const normalizeStatus = (status?: string) =>
-    (status || "").trim().toLowerCase();
-
-  const combineDateTime = (date: string, time: string) => {
-    return new Date(`${date}T${time || "00:00:00"}`);
-  };
 
   const getTodayLocalString = () => {
     const today = new Date();
@@ -116,10 +142,28 @@ export default function PatientDashboard() {
     return `${year}-${month}-${day}`;
   };
 
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return "No date";
+  const getAppointmentDateTime = (appt: Appointment) => {
+    if (!appt.date) return null;
 
-    return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
+    const value = new Date(`${appt.date}T${appt.time || "00:00:00"}`);
+
+    if (Number.isNaN(value.getTime())) return null;
+
+    return value;
+  };
+
+  const getDateTimeValue = (appt: Appointment) => {
+    return getAppointmentDateTime(appt)?.getTime() || 0;
+  };
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return "To be scheduled";
+
+    const date = new Date(`${dateStr}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) return dateStr;
+
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -127,12 +171,14 @@ export default function PatientDashboard() {
   };
 
   const formatTime = (timeStr?: string | null) => {
-    if (!timeStr) return "No time";
+    if (!timeStr) return "To be scheduled";
 
     const [hours, minutes] = timeStr.split(":");
     const tempDate = new Date();
 
-    tempDate.setHours(Number(hours), Number(minutes), 0);
+    tempDate.setHours(Number(hours), Number(minutes || "0"), 0);
+
+    if (Number.isNaN(tempDate.getTime())) return timeStr;
 
     return tempDate.toLocaleTimeString("en-US", {
       hour: "numeric",
@@ -141,7 +187,23 @@ export default function PatientDashboard() {
     });
   };
 
-  const getDoctorImage = (doctorName?: string, fallbackDoctor?: string) => {
+  const formatTimeRange = (appt: Appointment) => {
+    if (!appt.time && !appt.end_time) return "To be scheduled";
+
+    if (appt.time && appt.end_time) {
+      return `${formatTime(appt.time)} to ${formatTime(appt.end_time)}`;
+    }
+
+    return formatTime(appt.time);
+  };
+
+  const getScheduleText = (appt: Appointment) => {
+    if (!appt.date && !appt.time) return "Schedule to be confirmed by staff";
+
+    return `${formatDate(appt.date)} • ${formatTimeRange(appt)}`;
+  };
+
+  const getDoctorImage = (doctorName?: string | null, fallbackDoctor?: string | null) => {
     const finalDoctorName = doctorName || fallbackDoctor || "";
     return doctorImages[finalDoctorName] || "/default-doctor.png";
   };
@@ -162,6 +224,7 @@ export default function PatientDashboard() {
       appt.follow_up ||
       appt.follow_up_reason ||
       appt.reason ||
+      appt.notes ||
       ""
     );
   };
@@ -184,10 +247,14 @@ export default function PatientDashboard() {
   const getStatusBadgeClass = (status: string) => {
     const normalized = normalizeStatus(status);
 
-    if (normalized === "approved") return styles.badgeApproved;
-    if (normalized === "pending") return styles.badgePending;
-    if (normalized === "completed") return styles.badgeCompleted;
-    if (normalized === "declined" || normalized === "cancelled") {
+    if (normalized === "Approved") return styles.badgeApproved;
+    if (normalized === "Pending") return styles.badgePending;
+    if (normalized === "Completed") return styles.badgeCompleted;
+    if (
+      normalized === "Declined" ||
+      normalized === "Cancelled" ||
+      normalized === "No-Show"
+    ) {
       return styles.badgeDeclined;
     }
 
@@ -319,18 +386,14 @@ export default function PatientDashboard() {
 
   const approvedAppointments = useMemo(() => {
     return uniqueAppointmentsById(appointments).filter(
-      (appt) => normalizeStatus(appt.status) === "approved"
+      (appt) => normalizeStatus(appt.status) === "Approved"
     );
   }, [appointments]);
 
   const pendingAppointments = useMemo(() => {
     return uniqueAppointmentsById(appointments)
-      .filter((appt) => normalizeStatus(appt.status) === "pending")
-      .sort(
-        (a, b) =>
-          combineDateTime(b.date, b.time).getTime() -
-          combineDateTime(a.date, a.time).getTime()
-      );
+      .filter((appt) => normalizeStatus(appt.status) === "Pending")
+      .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a));
   }, [appointments]);
 
   const todayAppointments = useMemo(() => {
@@ -341,12 +404,11 @@ export default function PatientDashboard() {
     const now = new Date();
 
     return approvedAppointments
-      .filter((appt) => combineDateTime(appt.date, appt.time) > now)
-      .sort(
-        (a, b) =>
-          combineDateTime(a.date, a.time).getTime() -
-          combineDateTime(b.date, b.time).getTime()
-      );
+      .filter((appt) => {
+        const dateTime = getAppointmentDateTime(appt);
+        return Boolean(dateTime && dateTime > now);
+      })
+      .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b));
   }, [approvedAppointments]);
 
   const followUps = useMemo<FollowUpDisplay[]>(() => {
@@ -374,24 +436,23 @@ export default function PatientDashboard() {
     return uniqueAppointmentsById(appointments)
       .filter((appt) => {
         const status = normalizeStatus(appt.status);
-        const appointmentDateTime = combineDateTime(appt.date, appt.time);
+        const appointmentDateTime = getAppointmentDateTime(appt);
 
         return (
-          status === "completed" ||
-          status === "declined" ||
-          status === "cancelled" ||
-          (status === "approved" && appointmentDateTime < now)
+          status === "Completed" ||
+          status === "Declined" ||
+          status === "Cancelled" ||
+          status === "No-Show" ||
+          (status === "Approved" && Boolean(appointmentDateTime && appointmentDateTime < now))
         );
       })
-      .sort(
-        (a, b) =>
-          combineDateTime(b.date, b.time).getTime() -
-          combineDateTime(a.date, a.time).getTime()
-      );
+      .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a));
   }, [appointments]);
 
   const nearestUpcomingAppointment =
     upcomingAppointments.length > 0 ? upcomingAppointments[0] : null;
+
+
 
   const cancelAppointment = async (appointmentId: number) => {
     const token = localStorage.getItem("token");
@@ -466,6 +527,21 @@ export default function PatientDashboard() {
     }
   };
 
+  const renderInstructionBox = (appt: Appointment) => {
+    if (!appt.patient_instruction) return null;
+
+    return (
+      <div className={styles.reasonBox}>
+        <strong>Appointment Instructions:</strong> {appt.patient_instruction}
+        {appt.approval_email_sent && (
+          <div style={{ marginTop: "8px", fontSize: "13px", opacity: 0.9 }}>
+            Email notification was sent by the clinic.
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <Navbar />
@@ -486,6 +562,8 @@ export default function PatientDashboard() {
                 } today`}
           </p>
         </section>
+
+
 
         <section className={styles.dashboardGrid}>
           <div className={styles.leftColumn}>
@@ -536,6 +614,7 @@ export default function PatientDashboard() {
                   {recentAppointments.slice(0, 5).map((appt) => {
                     const followUpDate = getFollowUpDate(appt);
                     const followUpPlan = getFollowUpPlan(appt);
+                    const cleanStatus = normalizeStatus(appt.status);
 
                     return (
                       <div
@@ -547,7 +626,7 @@ export default function PatientDashboard() {
                             <p className={styles.recentAppointmentDoctor}>
                               {appt.doctor_name ||
                                 appt.doctor ||
-                                "Unknown Doctor"}
+                                "Assigned Doctor"}
                             </p>
 
                             <p className={styles.recentAppointmentService}>
@@ -557,15 +636,15 @@ export default function PatientDashboard() {
 
                           <span
                             className={`${styles.statusBadge} ${getStatusBadgeClass(
-                              appt.status
+                              cleanStatus
                             )}`}
                           >
-                            {appt.status}
+                            {getStatusLabel(cleanStatus)}
                           </span>
                         </div>
 
                         <p className={styles.recentAppointmentDate}>
-                          {formatDate(appt.date)} • {formatTime(appt.time)}
+                          {getScheduleText(appt)}
                         </p>
 
                         {(followUpDate || followUpPlan) && (
@@ -578,8 +657,9 @@ export default function PatientDashboard() {
                           </div>
                         )}
 
-                        {(normalizeStatus(appt.status) === "declined" ||
-                          normalizeStatus(appt.status) === "cancelled") &&
+                        {(cleanStatus === "Declined" ||
+                          cleanStatus === "Cancelled" ||
+                          cleanStatus === "No-Show") &&
                           appt.cancel_reason && (
                             <div className={styles.reasonBox}>
                               <strong>Reason:</strong> {appt.cancel_reason}
@@ -591,7 +671,7 @@ export default function PatientDashboard() {
                 </div>
               ) : (
                 <p className={styles.emptyStateText}>
-                  You don’t have any completed or declined appointments yet.
+                  You don’t have any completed, cancelled, or missed appointments yet.
                 </p>
               )}
             </div>
@@ -623,7 +703,7 @@ export default function PatientDashboard() {
                     <h2>
                       {nearestUpcomingAppointment.doctor_name ||
                         nearestUpcomingAppointment.doctor ||
-                        "Unknown Doctor"}
+                        "Assigned Doctor"}
                     </h2>
 
                     <p className={styles.upcomingSpecialty}>
@@ -631,13 +711,14 @@ export default function PatientDashboard() {
                     </p>
 
                     <p className={styles.upcomingDate}>
-                      {formatDate(nearestUpcomingAppointment.date)} |{" "}
-                      {formatTime(nearestUpcomingAppointment.time)}
+                      {getScheduleText(nearestUpcomingAppointment)}
                     </p>
 
                     <p className={styles.upcomingNote}>
-                      Status: {nearestUpcomingAppointment.status}
+                      Status: {getStatusLabel(nearestUpcomingAppointment.status)}
                     </p>
+
+                    {renderInstructionBox(nearestUpcomingAppointment)}
                   </div>
                 </div>
               ) : (
@@ -709,7 +790,7 @@ export default function PatientDashboard() {
                           <h4 className={styles.pendingDoctor}>
                             {appt.doctor_name ||
                               appt.doctor ||
-                              "Unknown Doctor"}
+                              "Doctor to be assigned"}
                           </h4>
 
                           <span className={styles.pendingBadge}>Pending</span>
@@ -720,7 +801,7 @@ export default function PatientDashboard() {
                         </p>
 
                         <p className={styles.pendingDateTime}>
-                          {formatDate(appt.date)} • {formatTime(appt.time)}
+                          {getScheduleText(appt)}
                         </p>
 
                         <button

@@ -8,13 +8,28 @@ import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
   id: number
+  patient_id?: number | null
   patient_name: string
-  doctor_name: string
-  date: string
-  time: string
+  patient_email?: string | null
+  patient_contact?: string | null
+  patient_address?: string | null
+  patient_age?: number | null
+  patient_age_label?: string | null
+  is_minor?: boolean | null
+  guardian_first_name?: string | null
+  guardian_last_name?: string | null
+  guardian_relationship?: string | null
+  guardian_contact?: string | null
+  guardian_email?: string | null
+  guardian_consent?: boolean | null
+  doctor_name?: string | null
+  date?: string | null
+  time?: string | null
+  end_time?: string | null
   status: string
   services?: string | null
   cancel_reason?: string | null
+  is_initial_evaluation_request?: boolean | null
 }
 
 type StaffFollowUp = {
@@ -71,6 +86,40 @@ const getTodayInputDate = () => {
   const timezoneOffset = today.getTimezoneOffset() * 60000
 
   return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0]
+}
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text()
+
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+const getErrorMessage = (result: unknown, fallback: string) => {
+  if (
+    result &&
+    typeof result === "object" &&
+    "detail" in result &&
+    typeof (result as { detail?: unknown }).detail === "string"
+  ) {
+    return (result as { detail: string }).detail
+  }
+
+  if (
+    result &&
+    typeof result === "object" &&
+    "message" in result &&
+    typeof (result as { message?: unknown }).message === "string"
+  ) {
+    return (result as { message: string }).message
+  }
+
+  return fallback
 }
 
 const getAppointmentsArray = (data: unknown): Appointment[] => {
@@ -137,29 +186,105 @@ const uniqueFollowUpsById = (followUps: StaffFollowUp[]) => {
   )
 }
 
-const readJsonSafely = async (res: Response) => {
-  const text = await res.text()
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "No date"
 
-  if (!text) return null
+  const date = new Date(`${dateString}T00:00:00`)
 
-  try {
-    return JSON.parse(text)
-  } catch {
-    return null
-  }
+  if (Number.isNaN(date.getTime())) return dateString
+
+  return date.toLocaleDateString("en-AU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
 }
 
-const getErrorMessage = (result: unknown, fallback: string) => {
-  if (
-    result &&
-    typeof result === "object" &&
-    "detail" in result &&
-    typeof (result as { detail?: unknown }).detail === "string"
-  ) {
-    return (result as { detail: string }).detail
+const formatTime = (timeString?: string | null) => {
+  if (!timeString) return ""
+
+  const parts = timeString.split(":")
+  const hour = Number(parts[0])
+  const minute = Number(parts[1])
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString
+
+  const date = new Date()
+  date.setHours(hour, minute, 0, 0)
+
+  return date.toLocaleTimeString("en-AU", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+const formatTimeRange = (appt: Appointment) => {
+  if (!appt.time) return "To be scheduled"
+
+  const start = formatTime(appt.time)
+  const end = appt.end_time ? formatTime(appt.end_time) : ""
+
+  return end ? `${start} to ${end}` : start
+}
+
+const getDateTimeValue = (appt: Appointment) => {
+  if (!appt.date || !appt.time) return Number.MAX_SAFE_INTEGER
+
+  const value = new Date(`${appt.date}T${appt.time}`).getTime()
+
+  return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value
+}
+
+const getFollowUpTiming = (item: StaffFollowUp) => {
+  const today = getTodayInputDate()
+  const status = (item.status || "").trim().toLowerCase()
+
+  if (status === "completed") return "Completed"
+  if (item.follow_up_date < today) return "Overdue"
+  if (item.follow_up_date === today) return "Due Today"
+
+  return "Upcoming"
+}
+
+const fetchAppointmentList = async (endpoint: string, token: string) => {
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  const result = await readJsonSafely(res)
+
+  if (!res.ok) {
+    console.error(`${endpoint} request failed:`, {
+      status: res.status,
+      result,
+    })
+
+    return []
   }
 
-  return fallback
+  return uniqueAppointmentsById(getAppointmentsArray(result))
+}
+
+const fetchFollowUpList = async (token: string) => {
+  const possibleEndpoints = ["/staff/follow-ups"]
+
+  for (const endpoint of possibleEndpoints) {
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const result = await readJsonSafely(res)
+
+      if (res.ok) {
+        return uniqueFollowUpsById(getFollowUpsArray(result))
+      }
+    } catch (err) {
+      console.error(`${endpoint} follow-up request failed:`, err)
+    }
+  }
+
+  return []
 }
 
 export default function StaffDashboard() {
@@ -170,7 +295,6 @@ export default function StaffDashboard() {
     requests: [],
     confirmed: [],
   })
-
   const [followUps, setFollowUps] = useState<StaffFollowUp[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -184,54 +308,6 @@ export default function StaffDashboard() {
   const [declineTargetId, setDeclineTargetId] = useState<number | null>(null)
   const [selectedReason, setSelectedReason] = useState("")
   const [otherReason, setOtherReason] = useState("")
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "No date"
-
-    const date = new Date(`${dateString}T00:00:00`)
-
-    if (Number.isNaN(date.getTime())) return dateString
-
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatTime = (timeString?: string | null) => {
-    if (!timeString) return ""
-
-    const parts = timeString.split(":")
-    const hour = Number(parts[0])
-    const minute = Number(parts[1])
-
-    if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString
-
-    const date = new Date()
-    date.setHours(hour, minute, 0, 0)
-
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  const getDateTimeValue = (appt: Appointment) => {
-    return new Date(`${appt.date}T${appt.time}`).getTime()
-  }
-
-  const getFollowUpTiming = (item: StaffFollowUp) => {
-    const today = getTodayInputDate()
-    const status = (item.status || "").trim().toLowerCase()
-
-    if (status === "completed") return "Completed"
-    if (item.follow_up_date < today) return "Overdue"
-    if (item.follow_up_date === today) return "Due Today"
-
-    return "Upcoming"
-  }
 
   const getFollowUpBadgeClass = (item: StaffFollowUp) => {
     const timing = getFollowUpTiming(item)
@@ -250,51 +326,6 @@ export default function StaffDashboard() {
     return status !== "completed" && item.follow_up_date <= today
   }
 
-  const fetchAppointmentList = async (endpoint: string, token: string) => {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-
-    const result = await readJsonSafely(res)
-
-    if (!res.ok) {
-      console.error(`${endpoint} request failed:`, {
-        status: res.status,
-        result,
-      })
-
-      return []
-    }
-
-    return uniqueAppointmentsById(getAppointmentsArray(result))
-  }
-
-  const fetchFollowUpList = async (token: string) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/doctor/follow-ups`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const result = await readJsonSafely(res)
-
-      console.log("STAFF FOLLOW UPS RESPONSE:", result)
-
-      if (!res.ok) {
-        console.error("/doctor/follow-ups request failed:", {
-          status: res.status,
-          result,
-        })
-
-        return []
-      }
-
-      return uniqueFollowUpsById(getFollowUpsArray(result))
-    } catch (err) {
-      console.error("/doctor/follow-ups request failed:", err)
-      return []
-    }
-  }
-
   const loadDashboard = useCallback(
     async (showLoader = true) => {
       const token = localStorage.getItem("token")
@@ -304,10 +335,7 @@ export default function StaffDashboard() {
         return
       }
 
-      if (showLoader) {
-        setLoading(true)
-      }
-
+      if (showLoader) setLoading(true)
       setError("")
 
       try {
@@ -324,21 +352,14 @@ export default function StaffDashboard() {
           requests: uniqueAppointmentsById(requestsData),
           confirmed: uniqueAppointmentsById(confirmedData),
         })
-
         setFollowUps(uniqueFollowUpsById(followUpData))
       } catch (err) {
         console.error("Dashboard load failed:", err)
         setError("Unable to load dashboard data right now.")
-        setData({
-          today: [],
-          requests: [],
-          confirmed: [],
-        })
+        setData({ today: [], requests: [], confirmed: [] })
         setFollowUps([])
       } finally {
-        if (showLoader) {
-          setLoading(false)
-        }
+        if (showLoader) setLoading(false)
       }
     },
     [router]
@@ -369,16 +390,11 @@ export default function StaffDashboard() {
       loadDashboard(false)
     }
 
-    const intervalId = window.setInterval(refreshDashboardQuietly, 3000)
+    const intervalId = window.setInterval(refreshDashboardQuietly, 5000)
 
-    const handleFocus = () => {
-      refreshDashboardQuietly()
-    }
-
+    const handleFocus = () => refreshDashboardQuietly()
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshDashboardQuietly()
-      }
+      if (!document.hidden) refreshDashboardQuietly()
     }
 
     window.addEventListener("focus", handleFocus)
@@ -417,13 +433,21 @@ export default function StaffDashboard() {
       const aCompleted = (a.status || "").toLowerCase() === "completed"
       const bCompleted = (b.status || "").toLowerCase() === "completed"
 
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1
-      }
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1
 
       return a.follow_up_date.localeCompare(b.follow_up_date)
     })
   }, [followUps])
+
+  const activeFollowUps = useMemo(() => {
+    return sortedFollowUps.filter(
+      (item) => (item.status || "").toLowerCase() !== "completed"
+    )
+  }, [sortedFollowUps])
+
+  const overdueFollowUps = useMemo(() => {
+    return activeFollowUps.filter((item) => getFollowUpTiming(item) === "Overdue")
+  }, [activeFollowUps])
 
   const resetDeclineModal = () => {
     setDeclineOpen(false)
@@ -446,51 +470,7 @@ export default function StaffDashboard() {
       return
     }
 
-    try {
-      setSubmittingAction({ id, action: "approve" })
-
-      const res = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: "Approved" }),
-      })
-
-      const result = await readJsonSafely(res)
-
-      if (!res.ok) {
-        throw new Error(
-          getErrorMessage(result, "Failed to approve appointment")
-        )
-      }
-
-      const approvedAppointment = data.requests.find((appt) => appt.id === id)
-
-      setData((prev) => ({
-        today: uniqueAppointmentsById(prev.today),
-        requests: uniqueAppointmentsById(
-          prev.requests.filter((appt) => appt.id !== id)
-        ),
-        confirmed: approvedAppointment
-          ? uniqueAppointmentsById([
-              ...prev.confirmed,
-              {
-                ...approvedAppointment,
-                status: "Approved",
-              },
-            ])
-          : uniqueAppointmentsById(prev.confirmed),
-      }))
-
-      await loadDashboard(false)
-    } catch (err) {
-      console.error("Approval failed:", err)
-      alert("Unable to approve the appointment.")
-    } finally {
-      setSubmittingAction(null)
-    }
+    router.push("/pages/staff/requests")
   }
 
   const confirmDecline = async () => {
@@ -532,23 +512,10 @@ export default function StaffDashboard() {
       const result = await readJsonSafely(res)
 
       if (!res.ok) {
-        throw new Error(
-          getErrorMessage(result, "Failed to decline appointment")
-        )
+        throw new Error(getErrorMessage(result, "Failed to decline appointment"))
       }
 
-      const declinedId = declineTargetId
-
-      setData((prev) => ({
-        today: uniqueAppointmentsById(prev.today),
-        requests: uniqueAppointmentsById(
-          prev.requests.filter((appt) => appt.id !== declinedId)
-        ),
-        confirmed: uniqueAppointmentsById(prev.confirmed),
-      }))
-
       resetDeclineModal()
-
       await loadDashboard(false)
     } catch (err) {
       console.error("Decline failed:", err)
@@ -558,7 +525,7 @@ export default function StaffDashboard() {
     }
   }
 
-  const markFollowUpCompleted = async (followUpId: number) => {
+  const completeFollowUp = async (followUpId: number) => {
     const token = localStorage.getItem("token")
 
     if (!token) {
@@ -566,468 +533,298 @@ export default function StaffDashboard() {
       return
     }
 
-    const selectedFollowUp = followUps.find((item) => item.id === followUpId)
-
-    if (!selectedFollowUp) {
-      alert("Follow-up schedule was not found.")
-      return
-    }
-
-    if (!canCompleteFollowUp(selectedFollowUp)) {
-      alert("This follow-up can only be completed on or after its scheduled date.")
-      return
-    }
-
     try {
       setUpdatingFollowUpId(followUpId)
 
-      const res = await fetch(`${API_BASE_URL}/doctor/follow-ups/${followUpId}`, {
+      const res = await fetch(`${API_BASE_URL}/staff/follow-ups/${followUpId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          status: "Completed",
-        }),
+        body: JSON.stringify({ status: "Completed" }),
       })
 
       const result = await readJsonSafely(res)
 
       if (!res.ok) {
-        throw new Error(
-          getErrorMessage(result, "Unable to complete follow-up schedule.")
-        )
+        throw new Error(getErrorMessage(result, "Unable to complete follow-up"))
       }
-
-      const updatedFollowUp =
-        result &&
-        typeof result === "object" &&
-        "follow_up" in result &&
-        (result as { follow_up?: StaffFollowUp }).follow_up
-          ? (result as { follow_up: StaffFollowUp }).follow_up
-          : null
-
-      setFollowUps((prev) =>
-        uniqueFollowUpsById(
-          prev.map((item) =>
-            item.id === followUpId
-              ? {
-                  ...item,
-                  ...(updatedFollowUp || {}),
-                  status: "Completed",
-                }
-              : item
-          )
-        )
-      )
 
       await loadDashboard(false)
     } catch (err) {
-      console.error("Follow-up completion failed:", err)
+      console.error("Follow-up update failed:", err)
       alert("Unable to mark this follow-up as completed.")
     } finally {
       setUpdatingFollowUpId(null)
     }
   }
 
+  const renderAppointmentCard = (appt: Appointment, variant: "today" | "request") => {
+    const isSubmitting = submittingAction?.id === appt.id
+    const isInitial = Boolean(appt.is_initial_evaluation_request)
+
+    return (
+      <article key={appt.id} className={styles.requestCard}>
+        <div className={styles.requestInfo}>
+          <div className={styles.cardTitleRow}>
+            <b>{appt.patient_name || "Patient details unavailable"}</b>
+            <span className={`${styles.badge} ${styles.statusPending}`}>
+              {variant === "request" ? "Needs Action" : normalizeStatus(appt.status)}
+            </span>
+          </div>
+
+          <p>{appt.doctor_name || "Doctor to be assigned"}</p>
+
+          <span>
+            {formatDate(appt.date)} {appt.time ? `at ${formatTimeRange(appt)}` : ""}
+          </span>
+
+          {appt.services && <p className={styles.detailText}>Service: {appt.services}</p>}
+
+          {isInitial && (
+            <span className={`${styles.badge} ${styles.statusPending}`}>
+              Initial Evaluation
+            </span>
+          )}
+        </div>
+
+        {variant === "request" && (
+          <div className={styles.actions}>
+            <button
+              className={styles.acceptBtn}
+              onClick={() => updateStatus(appt.id, "Approved")}
+              disabled={isSubmitting}
+            >
+              Review and Approve
+            </button>
+            <button
+              className={styles.declineBtn}
+              onClick={() => updateStatus(appt.id, "Declined")}
+              disabled={isSubmitting}
+            >
+              Decline
+            </button>
+          </div>
+        )}
+      </article>
+    )
+  }
+
   return (
     <div className="staffLayout">
       <StaffNavbar />
 
-      <div className="staffContent">
+      <main className="staffContent">
         <div className={styles.staffPage}>
-          <div className={styles.dashboardHeader}>
+          <section className={styles.dashboardHeader}>
             <div>
-              <h1>Dashboard</h1>
+              <span className={styles.eyebrow}>Staff Operations</span>
+              <h1>Clinic Command Center</h1>
               <p className={styles.pageSubtext}>
-                Manage today’s clinic flow, pending requests, and scheduled
-                follow-ups.
+                Track requests, today&apos;s approved visits, follow-ups, and upcoming appointment flow from one workspace.
               </p>
             </div>
 
-            <button
-              className={styles.secondaryBtn}
-              onClick={() => loadDashboard()}
-              disabled={submittingAction !== null || updatingFollowUpId !== null}
-            >
-              Refresh
-            </button>
-          </div>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => loadDashboard()}
+                disabled={submittingAction !== null || updatingFollowUpId !== null}
+              >
+                Refresh Workspace
+              </button>
+            </div>
+          </section>
 
           {loading ? (
-            <div className={styles.emptyState}>Loading dashboard...</div>
+            <div className={styles.emptyState}>Loading staff dashboard...</div>
           ) : error ? (
             <div className={styles.emptyState}>{error}</div>
           ) : (
             <>
-              <div className={styles.statsGrid}>
+              <section className={styles.statsGrid}>
                 <div className={styles.statCard}>
                   <div className={styles.statLabel}>Pending Requests</div>
-                  <div className={styles.statValue}>
-                    {pendingRequests.length}
-                  </div>
+                  <div className={styles.statValue}>{pendingRequests.length}</div>
                   <div className={styles.statMeta}>Needs staff action</div>
                 </div>
 
                 <div className={styles.statCard}>
-                  <div className={styles.statLabel}>Today’s Appointments</div>
+                  <div className={styles.statLabel}>Today&apos;s Appointments</div>
                   <div className={styles.statValue}>{sortedToday.length}</div>
                   <div className={styles.statMeta}>Approved for today</div>
                 </div>
 
                 <div className={styles.statCard}>
-                  <div className={styles.statLabel}>Confirmed Upcoming</div>
-                  <div className={styles.statValue}>
-                    {upcomingConfirmed.length}
-                  </div>
-                  <div className={styles.statMeta}>
-                    Future approved bookings
-                  </div>
+                  <div className={styles.statLabel}>Upcoming Confirmed</div>
+                  <div className={styles.statValue}>{upcomingConfirmed.length}</div>
+                  <div className={styles.statMeta}>Future approved bookings</div>
                 </div>
 
                 <div className={styles.statCard}>
-                  <div className={styles.statLabel}>Follow-ups</div>
-                  <div className={styles.statValue}>
-                    {
-                      sortedFollowUps.filter(
-                        (item) =>
-                          (item.status || "").toLowerCase() !== "completed"
-                      ).length
-                    }
-                  </div>
-                  <div className={styles.statMeta}>Active schedules</div>
+                  <div className={styles.statLabel}>Active Follow-ups</div>
+                  <div className={styles.statValue}>{activeFollowUps.length}</div>
+                  <div className={styles.statMeta}>{overdueFollowUps.length} overdue</div>
                 </div>
-              </div>
+              </section>
 
-              <div style={{ height: "18px" }} />
-
-              <div className={styles.listCard}>
-                <div className={styles.listHeader}>
-                  <h2>Follow-up Schedule</h2>
-                  <span className={`${styles.badge} ${styles.statusApproved}`}>
-                    {sortedFollowUps.length} total
-                  </span>
-                </div>
-
-                {sortedFollowUps.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    No follow-up schedules found.
-                  </div>
-                ) : (
-                  sortedFollowUps.slice(0, 6).map((item) => {
-                    const isCompleted =
-                      (item.status || "").toLowerCase() === "completed"
-
-                    const canComplete = canCompleteFollowUp(item)
-                    const isUpdating = updatingFollowUpId === item.id
-
-                    return (
-                      <div key={item.id} className={styles.requestCard}>
-                        <div className={styles.requestInfo}>
-                          <b>
-                            {item.patient_name ||
-                              (item.patient_id
-                                ? `Patient #${item.patient_id}`
-                                : "Patient details unavailable")}
-                          </b>
-
-                          <p>{item.doctor_name || "Assigned doctor"}</p>
-
-                          <span>
-                            Follow-up Schedule:{" "}
-                            {formatDate(item.follow_up_date)}
-                          </span>
-
-                          {(item.appointment_date || item.appointment_time) && (
-                            <p className={styles.detailText}>
-                              Related Visit:{" "}
-                              {item.appointment_date
-                                ? formatDate(item.appointment_date)
-                                : "No date"}{" "}
-                              {item.appointment_time
-                                ? `at ${formatTime(item.appointment_time)}`
-                                : ""}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className={styles.actions}>
-                          <span
-                            className={`${styles.badge} ${getFollowUpBadgeClass(
-                              item
-                            )}`}
-                          >
-                            {getFollowUpTiming(item)}
-                          </span>
-
-                          {!isCompleted && (
-                            <button
-                              className={
-                                canComplete
-                                  ? styles.acceptBtn
-                                  : styles.secondaryBtn
-                              }
-                              onClick={() => markFollowUpCompleted(item.id)}
-                              disabled={!canComplete || isUpdating}
-                              title={
-                                canComplete
-                                  ? "Mark this follow-up as completed"
-                                  : "This follow-up is not due yet"
-                              }
-                            >
-                              {isUpdating
-                                ? "Completing..."
-                                : canComplete
-                                ? "Mark Completed"
-                                : "Not Due Yet"}
-                            </button>
-                          )}
-                        </div>
+              <section className={styles.commandGrid}>
+                <div className={styles.commandMain}>
+                  <div className={styles.listCard}>
+                    <div className={styles.listHeader}>
+                      <div>
+                        <h2>Today&apos;s Clinic Flow</h2>
+                        <p className={styles.cardSubtext}>Approved appointments arranged by time.</p>
                       </div>
-                    )
-                  })
-                )}
-              </div>
-
-              <div style={{ height: "18px" }} />
-
-              <div className={styles.dashboardGrid}>
-                <div className={styles.listCard}>
-                  <div className={styles.listHeader}>
-                    <h2>Today’s Schedule</h2>
-                    <span
-                      className={`${styles.badge} ${styles.statusApproved}`}
-                    >
-                      {sortedToday.length} today
-                    </span>
-                  </div>
-
-                  {sortedToday.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      No approved appointments scheduled for today.
-                    </div>
-                  ) : (
-                    sortedToday.map((appt) => (
-                      <div key={appt.id} className={styles.requestCard}>
-                        <div className={styles.requestInfo}>
-                          <b>{appt.patient_name}</b>
-                          <p>{appt.doctor_name}</p>
-                          <span>
-                            {formatDate(appt.date)} at {formatTime(appt.time)}
-                          </span>
-
-                          {appt.services && (
-                            <p className={styles.detailText}>
-                              Service: {appt.services}
-                            </p>
-                          )}
-                        </div>
-
-                        <span
-                          className={`${styles.badge} ${styles.statusApproved}`}
-                        >
-                          {normalizeStatus(appt.status)}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className={styles.listCard}>
-                  <div className={styles.listHeader}>
-                    <h2>Needs Action</h2>
-                    <span
-                      className={`${styles.badge} ${styles.statusPending}`}
-                    >
-                      {pendingRequests.length} Pending
-                    </span>
-                  </div>
-
-                  {pendingRequests.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      No pending requests right now.
-                    </div>
-                  ) : (
-                    pendingRequests.slice(0, 5).map((req) => {
-                      const isSubmittingThis = submittingAction?.id === req.id
-
-                      const isApproving =
-                        isSubmittingThis &&
-                        submittingAction?.action === "approve"
-
-                      const isDeclining =
-                        isSubmittingThis &&
-                        submittingAction?.action === "decline"
-
-                      return (
-                        <div key={req.id} className={styles.requestCard}>
-                          <div className={styles.requestInfo}>
-                            <b>{req.patient_name}</b>
-                            <p>{req.doctor_name}</p>
-                            <span>
-                              {formatDate(req.date)} at {formatTime(req.time)}
-                            </span>
-
-                            {req.services && (
-                              <p className={styles.detailText}>
-                                Service: {req.services}
-                              </p>
-                            )}
-
-                            <span
-                              className={`${styles.badge} ${styles.statusPending}`}
-                            >
-                              {normalizeStatus(req.status)}
-                            </span>
-                          </div>
-
-                          <div className={styles.actions}>
-                            <button
-                              className={styles.acceptBtn}
-                              onClick={() => updateStatus(req.id, "Approved")}
-                              disabled={isSubmittingThis}
-                            >
-                              {isApproving ? "Approving..." : "Approve"}
-                            </button>
-
-                            <button
-                              className={styles.declineBtn}
-                              onClick={() => updateStatus(req.id, "Declined")}
-                              disabled={isSubmittingThis}
-                            >
-                              {isDeclining ? "Declining..." : "Decline"}
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div style={{ height: "18px" }} />
-
-              <div className={styles.listCard}>
-                <div className={styles.listHeader}>
-                  <h2>Upcoming Confirmed Appointments</h2>
-                  <span
-                    className={`${styles.badge} ${styles.statusApproved}`}
-                  >
-                    {upcomingConfirmed.length} Upcoming
-                  </span>
-                </div>
-
-                {upcomingConfirmed.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    No upcoming confirmed appointments.
-                  </div>
-                ) : (
-                  upcomingConfirmed.slice(0, 6).map((appt) => (
-                    <div key={appt.id} className={styles.requestCard}>
-                      <div className={styles.requestInfo}>
-                        <b>{appt.patient_name}</b>
-                        <p>{appt.doctor_name}</p>
-                        <span>
-                          {formatDate(appt.date)} at {formatTime(appt.time)}
-                        </span>
-
-                        {appt.services && (
-                          <p className={styles.detailText}>
-                            Service: {appt.services}
-                          </p>
-                        )}
-                      </div>
-
-                      <span
-                        className={`${styles.badge} ${styles.statusApproved}`}
-                      >
-                        {normalizeStatus(appt.status)}
+                      <span className={`${styles.badge} ${styles.statusApproved}`}>
+                        {sortedToday.length} visits
                       </span>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    {sortedToday.length === 0 ? (
+                      <div className={styles.emptyState}>No approved appointments for today.</div>
+                    ) : (
+                      sortedToday.slice(0, 6).map((appt) => renderAppointmentCard(appt, "today"))
+                    )}
+                  </div>
+
+                  <div className={styles.listCard}>
+                    <div className={styles.listHeader}>
+                      <div>
+                        <h2>Pending Requests</h2>
+                        <p className={styles.cardSubtext}>Prioritise patient requests that need confirmation.</p>
+                      </div>
+                      <span className={`${styles.badge} ${styles.statusPending}`}>
+                        {pendingRequests.length} pending
+                      </span>
+                    </div>
+
+                    {pendingRequests.length === 0 ? (
+                      <div className={styles.emptyState}>No pending requests. The queue is clear.</div>
+                    ) : (
+                      pendingRequests.slice(0, 5).map((appt) => renderAppointmentCard(appt, "request"))
+                    )}
+                  </div>
+                </div>
+
+                <aside className={styles.commandSide}>
+                  <div className={styles.listCard}>
+                    <div className={styles.listHeader}>
+                      <div>
+                        <h2>Follow-up Watchlist</h2>
+                        <p className={styles.cardSubtext}>Overdue and due-today follow-ups stay visible.</p>
+                      </div>
+                      <span className={`${styles.badge} ${styles.statusApproved}`}>
+                        {activeFollowUps.length} active
+                      </span>
+                    </div>
+
+                    {activeFollowUps.length === 0 ? (
+                      <div className={styles.emptyState}>No active follow-up schedules found.</div>
+                    ) : (
+                      activeFollowUps.slice(0, 6).map((item) => {
+                        const canComplete = canCompleteFollowUp(item)
+                        const isUpdating = updatingFollowUpId === item.id
+
+                        return (
+                          <article key={item.id} className={styles.compactItem}>
+                            <div>
+                              <b>
+                                {item.patient_name ||
+                                  (item.patient_id
+                                    ? `Patient #${item.patient_id}`
+                                    : "Patient details unavailable")}
+                              </b>
+                              <span>{item.doctor_name || "Assigned doctor"}</span>
+                              <p>{formatDate(item.follow_up_date)}</p>
+                            </div>
+
+                            <div className={styles.compactActions}>
+                              <span className={`${styles.badge} ${getFollowUpBadgeClass(item)}`}>
+                                {getFollowUpTiming(item)}
+                              </span>
+
+                              {canComplete && (
+                                <button
+                                  className={styles.secondaryBtn}
+                                  onClick={() => completeFollowUp(item.id)}
+                                  disabled={isUpdating}
+                                >
+                                  {isUpdating ? "Updating..." : "Complete"}
+                                </button>
+                              )}
+                            </div>
+                          </article>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  <div className={styles.quickActions}>
+                    <div className={styles.quickActionCard}>
+                      <h3 className={styles.quickActionTitle}>Smart queue habit</h3>
+                      <p className={styles.quickActionText}>
+                        Clear initial evaluation requests first because those need schedule coordination before approval.
+                      </p>
+                    </div>
+                    <div className={styles.quickActionCard}>
+                      <h3 className={styles.quickActionTitle}>Follow-up control</h3>
+                      <p className={styles.quickActionText}>
+                        Keep overdue follow-ups visible until completed to support the autonomous clinic workflow.
+                      </p>
+                    </div>
+                  </div>
+                </aside>
+              </section>
             </>
           )}
         </div>
-      </div>
+      </main>
 
       {declineOpen && (
-        <div className={styles.modalOverlay} onClick={resetDeclineModal}>
-          <div
-            className={styles.modalCard}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalCardSmall}>
             <div className={styles.modalHeader}>
               <h2>Decline Appointment</h2>
-              <button
-                className={styles.modalCloseBtn}
-                onClick={resetDeclineModal}
-                disabled={submittingAction !== null}
-              >
+              <button className={styles.modalCloseBtn} onClick={resetDeclineModal}>
                 ×
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className={styles.reasonList}>
               {declineReasons.map((reason) => (
-                <button
-                  key={reason}
-                  className={
-                    selectedReason === reason
-                      ? styles.acceptBtn
-                      : styles.secondaryBtn
-                  }
-                  onClick={() => setSelectedReason(reason)}
-                  disabled={submittingAction !== null}
-                >
-                  {reason}
-                </button>
+                <label key={reason} className={styles.reasonOption}>
+                  <input
+                    type="radio"
+                    name="declineReason"
+                    checked={selectedReason === reason}
+                    onChange={() => setSelectedReason(reason)}
+                  />
+                  <span>{reason}</span>
+                </label>
               ))}
-
-              {selectedReason === "Other" && (
-                <textarea
-                  placeholder="Enter reason..."
-                  value={otherReason}
-                  onChange={(e) => setOtherReason(e.target.value)}
-                  disabled={submittingAction !== null}
-                  style={{
-                    padding: "12px",
-                    minHeight: "90px",
-                    borderRadius: "12px",
-                    border: "1px solid var(--border-color, #dbe2ea)",
-                    resize: "none",
-                    fontFamily: "inherit",
-                  }}
-                />
-              )}
             </div>
 
-            <div
-              style={{
-                marginTop: 14,
-                display: "flex",
-                gap: 10,
-                justifyContent: "flex-end",
-              }}
-            >
+            {selectedReason === "Other" && (
+              <textarea
+                className={styles.reasonTextarea}
+                placeholder="Enter reason"
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+              />
+            )}
+
+            <div className={styles.modalActions}>
+              <button className={styles.secondaryBtn} onClick={resetDeclineModal}>
+                Cancel
+              </button>
               <button
                 className={styles.declineBtn}
                 onClick={confirmDecline}
-                disabled={submittingAction !== null}
+                disabled={submittingAction?.action === "decline"}
               >
-                {submittingAction?.action === "decline"
-                  ? "Declining..."
-                  : "Confirm"}
-              </button>
-
-              <button
-                className={styles.secondaryBtn}
-                onClick={resetDeclineModal}
-                disabled={submittingAction !== null}
-              >
-                Cancel
+                {submittingAction?.action === "decline" ? "Declining..." : "Confirm Decline"}
               </button>
             </div>
           </div>
