@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import StaffNavbar from "@/app/components/StaffNavbar"
 import { API_BASE_URL } from "@/lib/api"
+import { printHtmlDocument } from "@/lib/printExport"
 import styles from "@/app/styles/staff.module.css"
 
 type Appointment = {
@@ -103,7 +104,39 @@ const getAppointmentsArray = (data: unknown): Appointment[] => {
     return (data as { appointments: Appointment[] }).appointments
   }
 
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { data?: unknown }).data)
+  ) {
+    return (data as { data: Appointment[] }).data
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { items?: unknown }).items)
+  ) {
+    return (data as { items: Appointment[] }).items
+  }
+
   return []
+}
+
+const getAppointmentObject = (data: unknown): Appointment | null => {
+  if (!data || typeof data !== "object") return null
+
+  const record = data as Record<string, unknown>
+
+  if (record.appointment && typeof record.appointment === "object") {
+    return record.appointment as Appointment
+  }
+
+  if (record.data && typeof record.data === "object" && !Array.isArray(record.data)) {
+    return record.data as Appointment
+  }
+
+  return data as Appointment
 }
 
 const getFollowUpsArray = (data: unknown): StaffFollowUp[] => {
@@ -123,6 +156,36 @@ const getFollowUpsArray = (data: unknown): StaffFollowUp[] => {
     Array.isArray((data as { followUps?: unknown }).followUps)
   ) {
     return (data as { followUps: StaffFollowUp[] }).followUps
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { data?: unknown }).data)
+  ) {
+    return (data as { data: StaffFollowUp[] }).data
+  }
+
+  return []
+}
+
+const getAppointmentLogsArray = (data: unknown): AppointmentLog[] => {
+  if (Array.isArray(data)) return data as AppointmentLog[]
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { logs?: unknown }).logs)
+  ) {
+    return (data as { logs: AppointmentLog[] }).logs
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { data?: unknown }).data)
+  ) {
+    return (data as { data: AppointmentLog[] }).data
   }
 
   return []
@@ -237,7 +300,6 @@ const formatPatientAge = (appt: Appointment) => {
 
   return "Not provided"
 }
-
 
 const getGuardianName = (appt?: Appointment | null) => {
   if (!appt) return "Not provided"
@@ -435,6 +497,10 @@ export default function StaffAppointments() {
     return [...appointments].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [appointments])
 
+  const approvedAppointments = useMemo(() => {
+    return sortedAppointments.filter((appt) => normalizeStatus(appt.status) === "Approved")
+  }, [sortedAppointments])
+
   const todayAppointments = useMemo(() => {
     const today = getTodayInputDate()
     return sortedAppointments.filter((appt) => appt.date === today)
@@ -488,6 +554,54 @@ export default function StaffAppointments() {
     })
   }, [filter, search, sortedAppointments])
 
+  const handlePrintApprovedAppointments = () => {
+    const printableRows = approvedAppointments.map((appt, index) => {
+      const guardianDetails = appt.is_minor
+        ? `Minor. Guardian: ${getGuardianName(appt)}. Relationship: ${
+            appt.guardian_relationship || "Not provided"
+          }. Contact: ${appt.guardian_contact || "Not provided"}. Email: ${
+            appt.guardian_email || "Not provided"
+          }.`
+        : "No"
+
+      return [
+        index + 1,
+        formatDate(appt.date),
+        formatTimeRange(appt),
+        appt.patient_name || "Not provided",
+        appt.patient_contact || "Not provided",
+        appt.patient_email || "Not provided",
+        appt.patient_address || "Not provided",
+        formatPatientAge(appt),
+        guardianDetails,
+        appt.doctor_name || "Assigned doctor unavailable",
+        appt.services || "No service listed",
+        appt.consultation_mode || "Not provided",
+      ]
+    })
+
+    printHtmlDocument({
+      title: "OurSkin Approved Appointments",
+      subtitle: "All approved appointments currently loaded in the staff confirmed appointments board.",
+      headers: [
+        "#",
+        "Date",
+        "Time",
+        "Patient",
+        "Contact No.",
+        "Email",
+        "Address",
+        "Age",
+        "Minor / Guardian Info",
+        "Doctor",
+        "Service",
+        "Mode",
+      ],
+      rows: printableRows,
+      emptyMessage: "No approved appointments found.",
+      orientation: "landscape",
+    })
+  }
 
   const openDetails = async (appointment: Appointment) => {
     const token = localStorage.getItem("token")
@@ -517,11 +631,17 @@ export default function StaffAppointments() {
         throw new Error("Failed to fetch appointment details")
       }
 
+      const loadedAppointment = getAppointmentObject(appointmentData)
+
+      if (!loadedAppointment) {
+        throw new Error("Appointment details were not found")
+      }
+
       setSelectedAppointment({
-        ...(appointmentData as Appointment),
-        status: normalizeStatus((appointmentData as Appointment).status),
+        ...loadedAppointment,
+        status: normalizeStatus(loadedAppointment.status),
       })
-      setAppointmentLogs(Array.isArray(logsData) ? logsData : [])
+      setAppointmentLogs(getAppointmentLogsArray(logsData))
     } catch (err) {
       console.error("Failed to open appointment details:", err)
       setSelectedAppointment(null)
@@ -624,8 +744,16 @@ export default function StaffAppointments() {
             </div>
 
             <div className={styles.headerActions}>
+              <button
+                className={styles.secondaryBtn}
+                onClick={handlePrintApprovedAppointments}
+                disabled={loading || approvedAppointments.length === 0}
+              >
+                Export
+              </button>
+
               <button className={styles.secondaryBtn} onClick={loadAppointments}>
-                Refresh Appointments
+                Refresh
               </button>
             </div>
           </section>
@@ -633,7 +761,7 @@ export default function StaffAppointments() {
           <section className={styles.statsGrid}>
             <div className={styles.statCard}>
               <div className={styles.statLabel}>Confirmed</div>
-              <div className={styles.statValue}>{sortedAppointments.length}</div>
+              <div className={styles.statValue}>{approvedAppointments.length}</div>
               <div className={styles.statMeta}>Approved bookings</div>
             </div>
             <div className={styles.statCard}>
@@ -718,6 +846,7 @@ export default function StaffAppointments() {
                           {appt.consultation_mode && <span>{appt.consultation_mode}</span>}
                           {appt.appointment_type && <span>{appt.appointment_type}</span>}
                           <span>Age: {formatPatientAge(appt)}</span>
+                          {appt.is_minor && <span>Minor patient</span>}
                         </div>
                       </div>
 
@@ -784,6 +913,13 @@ export default function StaffAppointments() {
               </div>
 
               <div className={styles.quickActions}>
+                <div className={styles.quickActionCard}>
+                  <h3 className={styles.quickActionTitle}>Daily handoff</h3>
+                  <p className={styles.quickActionText}>
+                    Print approved appointments before clinic operations begin so staff have a physical backup list.
+                  </p>
+                </div>
+
                 <div className={styles.quickActionCard}>
                   <h3 className={styles.quickActionTitle}>Operational tip</h3>
                   <p className={styles.quickActionText}>
@@ -911,27 +1047,31 @@ export default function StaffAppointments() {
                 </section>
 
                 <section className={styles.detailPanel}>
-                  <h3>Activity Timeline</h3>
+                  <h3>Appointment Timeline</h3>
+
                   {appointmentLogs.length === 0 ? (
-                    <div className={styles.emptyState}>No activity logs found.</div>
+                    <div className={styles.emptyState}>No activity logs found for this appointment.</div>
                   ) : (
                     <div className={styles.timelineList}>
                       {appointmentLogs.map((log) => (
-                        <div key={log.id} className={styles.timelineItem}>
-                          <b>{log.action}</b>
-                          <span>
-                            {log.performed_by_name || "System"} · {log.performed_by_role || "Role unavailable"}
-                          </span>
-                          <p>{formatDateTime(log.created_at)}</p>
-                          {log.reason && <small>{log.reason}</small>}
-                        </div>
+                        <article key={log.id} className={styles.timelineItem}>
+                          <div>
+                            <b>{log.action}</b>
+                            <span>
+                              {log.performed_by_name || "System"}
+                              {log.performed_by_role ? `, ${log.performed_by_role}` : ""}
+                            </span>
+                            {log.reason && <p>{log.reason}</p>}
+                          </div>
+                          <small>{formatDateTime(log.created_at)}</small>
+                        </article>
                       ))}
                     </div>
                   )}
                 </section>
               </div>
             ) : (
-              <div className={styles.emptyState}>No appointment selected.</div>
+              <div className={styles.emptyState}>Appointment details unavailable.</div>
             )}
           </div>
         </div>

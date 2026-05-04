@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StaffNavbar from "@/app/components/StaffNavbar";
 import { API_BASE_URL, getAuth } from "@/lib/api";
+import { printHtmlDocument } from "@/lib/printExport";
 import staffStyles from "@/app/styles/staff.module.css";
 import styles from "./schedules.module.css";
 
@@ -256,6 +257,23 @@ function normaliseService(service: Partial<Service>, index: number): Service | n
     description: service.description || null,
     requires_initial_evaluation: Boolean(service.requires_initial_evaluation),
     is_active: service.is_active !== false,
+  };
+}
+
+function getSelectedWeekRange(dateValue: string) {
+  const selected = parseDateOnly(dateValue);
+  const day = selected.getDay();
+  const daysFromMonday = day === 0 ? -6 : 1 - day;
+
+  const weekStart = new Date(selected);
+  weekStart.setDate(selected.getDate() + daysFromMonday);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 5);
+
+  return {
+    weekStart: toDateInputValue(weekStart),
+    weekEnd: toDateInputValue(weekEnd),
   };
 }
 
@@ -993,6 +1011,72 @@ export default function StaffSchedulesPage() {
     }
   }
 
+  function handlePrintWeeklySchedules() {
+    const { weekStart, weekEnd } = getSelectedWeekRange(selectedDate);
+
+    const weeklyScheduleRows = filteredSchedules
+      .filter(
+        (schedule) =>
+          schedule.schedule_date >= weekStart && schedule.schedule_date <= weekEnd
+      )
+      .map((schedule) => ({
+        sortKey: `${schedule.schedule_date}-${schedule.start_time}`,
+        row: [
+          formatReadableDate(schedule.schedule_date),
+          schedule.is_available ? "Bookable" : "Unavailable",
+          schedule.doctor_name || "Doctor unavailable",
+          `${formatTime(schedule.start_time)} to ${formatTime(schedule.end_time)}`,
+          getScheduleMode(schedule),
+          schedule.services || schedule.unavailable_reason || "No services listed",
+        ],
+      }));
+
+    const weeklyClosureRows = clinicUnavailableDates
+      .filter(
+        (closure) =>
+          closure.closure_date >= weekStart && closure.closure_date <= weekEnd
+      )
+      .map((closure) => ({
+        sortKey: `${closure.closure_date}-00:00`,
+        row: [
+          formatReadableDate(closure.closure_date),
+          "Closed",
+          "Clinic Unavailable",
+          "Whole day",
+          "Clinic Closure",
+          closure.reason || "No reason provided",
+        ],
+      }));
+
+    const printableRows = [...weeklyScheduleRows, ...weeklyClosureRows]
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .map((item) => item.row);
+
+    const doctorFilterLabel =
+      filterDoctor === "all"
+        ? "All doctors"
+        : doctors.find((doctor) => doctor.id === Number(filterDoctor))?.name ||
+          "Selected doctor";
+
+    printHtmlDocument({
+      title: "OurSkin Weekly Doctor Schedule",
+      subtitle: `${formatReadableDate(weekStart)} to ${formatReadableDate(
+        weekEnd
+      )}. Monday to Saturday schedule. Filter: ${doctorFilterLabel}. Sundays are unavailable by default.`,
+      headers: [
+        "Date",
+        "Status",
+        "Doctor / Closure",
+        "Time",
+        "Mode",
+        "Services / Reason",
+      ],
+      rows: printableRows,
+      emptyMessage: "No doctor schedules or clinic closures found for this week.",
+      orientation: "landscape",
+    });
+  }
+
   return (
     <>
       <StaffNavbar />
@@ -1007,13 +1091,23 @@ export default function StaffSchedulesPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            className={staffStyles.actionBtn}
-            onClick={loadPageData}
-          >
-            Refresh
-          </button>
+          <div className={staffStyles.headerActions}>
+            <button
+              type="button"
+              className={staffStyles.secondaryBtn}
+              onClick={handlePrintWeeklySchedules}
+            >
+              Export
+            </button>
+
+            <button
+              type="button"
+              className={staffStyles.actionBtn}
+              onClick={loadPageData}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         <section className={staffStyles.statsGrid}>
