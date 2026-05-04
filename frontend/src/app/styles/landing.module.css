@@ -571,7 +571,7 @@
 }
 
 .osServiceActions {
-  display: flex; /* instead of grid */
+  display: flex; 
   gap: 10px;
   margin-top: auto;
   padding-top: 24px;
@@ -976,6 +976,12 @@
   transition: opacity 0.6s ease;
 }
 
+.osSlide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .active {
   opacity: 1;
   z-index: 2;
@@ -1013,17 +1019,6 @@
 
   .osAboutText {
     padding: 10px;
-  }
-
-  .osClinicGallery {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;
-  }
-
-  .osClinicPhoto,
-  .osClinicPhotoLarge {
-    height: 240px;
-    grid-row: auto;
   }
 
   .osCta {
@@ -1278,7 +1273,8 @@
 }
 
 .osAboutMinimalBody {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr; 
   gap: 40px;
   align-items: center;
 }
@@ -1302,9 +1298,8 @@
 
 /* RIGHT SIDE (IMPORTANT FIX) */
 .osAboutGallery {
-  flex: 1;
-  max-width: 420px;
-  margin-left: -10px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* CAROUSEL BOX */
@@ -1312,7 +1307,7 @@
   position: relative;
   width: 100%;
   max-width: 420px;
-  height: 320px;
+  height: 330px;
   border-radius: 26px;
   overflow: hidden;
   background: var(--os-card-soft);
@@ -1345,7 +1340,8 @@
 
 @media (max-width: 900px) {
   .osAboutMinimalBody {
-    flex-direction: column; 
+    display: grid;
+    grid-template-columns: 1fr; 
   }
 
   .osAboutGallery {

@@ -1,96 +1,113 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "@/app/styles/landing.module.css";
 
 const aboutImages = [
-    "/clinic1.jpg",
-    "/clinic2.jpg",
-    "/clinic3.jpg",
-    "/clinic4.jpg",
-    "/clinic5.jpg",
-    "/clinic6.jpg",
-    "/clinic7.jpg",
-    "/clinic8.jpg",
+  "/clinic1.jpg",
+  "/clinic2.jpg",
+  "/clinic3.jpg",
+  "/clinic4.jpg",
+  "/clinic5.jpg",
+  "/clinic6.jpg",
+  "/clinic7.jpg",
+  "/clinic8.jpg",
 ];
 
 export default function AboutCarousel() {
-    const [currentImage, setCurrentImage] = useState(0);
+  const [currentImage, setCurrentImage] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentImage((prev) =>
-                prev === aboutImages.length - 1 ? 0 : prev + 1
-            );
-        }, 3000);
+  // ✅ SIMPLE + STABLE AUTO SLIDE (no dependency issues)
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setCurrentImage((prev) =>
+        prev === aboutImages.length - 1 ? 0 : prev + 1
+      );
+    }, 3000);
 
-        return () => clearInterval(interval);
-    }, []);
-
-    const [startX, setStartX] = useState<number | null>(null);
-    const [endX, setEndX] = useState<number | null>(null);
-
-    const minSwipe = 50;
-
-    const onTouchStart = (e: React.TouchEvent) => {
-        setStartX(e.touches[0].clientX);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
+  }, []);
 
-    const onTouchMove = (e: React.TouchEvent) => {
-        setEndX(e.touches[0].clientX);
-    };
+  // ✅ SWIPE (mobile)
+  const [startX, setStartX] = useState<number | null>(null);
+  const [endX, setEndX] = useState<number | null>(null);
 
-    const onTouchEnd = () => {
-        if (startX === null || endX === null) return;
+  const minSwipe = 50;
 
-        const diff = startX - endX;
+  const onTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+    setEndX(null);
+  };
 
-        if (diff > minSwipe) {
-            setCurrentImage((prev) =>
-                prev === aboutImages.length - 1 ? 0 : prev + 1
-            );
-        }
+  const onTouchMove = (e: React.TouchEvent) => {
+    setEndX(e.touches[0].clientX);
+  };
 
-        if (diff < -minSwipe) {
-            setCurrentImage((prev) =>
-                prev === 0 ? aboutImages.length - 1 : prev - 1
-            );
-        }
-    };
+  const onTouchEnd = () => {
+    if (startX === null || endX === null) return;
 
-    return (
+    const diff = startX - endX;
+
+    if (diff > minSwipe) {
+      // swipe left
+      setCurrentImage((prev) =>
+        prev === aboutImages.length - 1 ? 0 : prev + 1
+      );
+    } else if (diff < -minSwipe) {
+      // swipe right
+      setCurrentImage((prev) =>
+        prev === 0 ? aboutImages.length - 1 : prev - 1
+      );
+    }
+
+    // reset
+    setStartX(null);
+    setEndX(null);
+  };
+
+  return (
+    <div
+      className={styles.osAboutCarousel}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {aboutImages.map((img, index) => (
         <div
-            className={styles.osAboutCarousel}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
+          key={index}
+          className={`${styles.osSlide} ${
+            index === currentImage ? styles.active : ""
+          }`}
         >
-            {aboutImages.map((img, index) => (
-                <div
-                    key={index}
-                    className={`${styles.osSlide} ${index === currentImage ? styles.active : ""
-                        }`}
-                >
-                    <Image
-                        src={img}
-                        alt={`clinic ${index}`}
-                        fill
-                        style={{ objectFit: "cover" }}
-                    />
-                </div>
-            ))}
-
-            <div className={styles.osCarouselDots}>
-                {aboutImages.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => setCurrentImage(index)}
-                        className={`${styles.dot} ${index === currentImage ? styles.dotActive : ""
-                            }`}
-                    />
-                ))}
-            </div>
+          <Image
+            src={img}
+            alt={`clinic ${index}`}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            style={{ objectFit: "cover" }}
+            priority={index === 0}
+          />
         </div>
-    );
+      ))}
+
+      {/* DOT NAVIGATION */}
+      <div className={styles.osCarouselDots}>
+        {aboutImages.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentImage(index)}
+            className={`${styles.dot} ${
+              index === currentImage ? styles.dotActive : ""
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
