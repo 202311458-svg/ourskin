@@ -7,12 +7,13 @@ import { FaMoon, FaSun } from "react-icons/fa";
 import AuthModal from "@/app/components/AuthModal";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
 import styles from "@/app/styles/landing.module.css";
+import AboutCarousel from "./components/AboutCarousel";
 
 type ServiceCategory = {
   title: string;
   shortTitle: string;
   description: string;
-  posterIndex: number;
+  key: string;
 };
 
 type Doctor = {
@@ -20,6 +21,7 @@ type Doctor = {
   name: string;
   role: string;
 };
+
 
 export default function Home() {
   const router = useRouter();
@@ -30,15 +32,86 @@ export default function Home() {
 
   const { darkMode, toggleDarkMode } = useDarkMode();
 
-  const serviceImages = [
-    "/service1.jpg",
-    "/service2.jpg",
-    "/service3.jpg",
-    "/service4.jpg",
-    "/service5.jpg",
-    "/service6.jpg",
-    "/service7.jpg",
-  ];
+  const serviceDetails: Record<string, string[]> = {
+    consultation: [
+      "Diagnosis and treatment of diseases of the skin, hair, and nails",
+      "Face-to-face / online consult",
+      "Dermoscopy and mole assessment",
+      "Skin cancer screening",
+    ],
+
+    allergy: [
+      "Patch test",
+      "30 allergens (baseline series)",
+      "80 allergens (comprehensive series)",
+    ],
+
+    facials: [
+      "OurSkin acne facial",
+      "OurSkin brightening facial",
+      "OurSkin anti-aging facial",
+    ],
+
+    surgical: [
+      "Skin biopsy (punch/shave/incision/excision)",
+      "Excision surgery",
+      "Incision and drainage",
+      "Nail surgery",
+      "Scar revision surgery",
+      "Wart removal (cautery/laser)",
+      "Benign skin growth removal",
+      "Callus and corn removal",
+      "Subcision",
+      "Microneedling",
+    ],
+
+    chemicalPeels: [
+      "Acne vulgaris and acne scars",
+      "Pigmentation (melasma, etc.)",
+      "Skin rejuvenation",
+      "TCA CROSS for acne scars",
+    ],
+
+    lasers: [
+      "Ablative CO2 laser",
+      "Fractional CO2 laser",
+      "Laser peeling",
+      "Skin tightening",
+      "Skin rejuvenation",
+      "Acne scars",
+      "Stretch marks",
+      "Carbon laser peel",
+      "Laser toning",
+      "Pigmentation treatment",
+      "Hair removal (1064 nm long-pulse Nd:YAG)",
+      "Vascular lesions treatment",
+      "Radiofrequency skin tightening",
+      "High intensity focused ultrasound (HIFU)",
+      "Lip lightening",
+      "Body lightening",
+      "Tattoo removal",
+    ],
+
+    injectables: [
+      "Intralesional steroid injections",
+      "Acne vulgaris treatment",
+      "Keloids and hypertrophic scars",
+      "Alopecia areata",
+      "Botulinum toxin injections (Botox)",
+      "Skin boosters",
+      "Hyaluronic acid fillers",
+      "Mesolipo fat dissolving injections",
+      "Hair growth solutions",
+      "Sclerotherapy for varicosities",
+    ],
+
+    cosmetic: [
+      "Blepharoplasty (eyelids)",
+      "Face lift (partial/full)",
+      "Rhinoplasty",
+      "Thread lifting",
+    ],
+  };
 
   const serviceCategories: ServiceCategory[] = [
     {
@@ -46,56 +119,57 @@ export default function Home() {
       shortTitle: "Consultation",
       description:
         "Face-to-face and online dermatology consultation for skin, hair, and nail concerns, including mole assessment and skin cancer screening.",
-      posterIndex: 0,
+
+      key: "consultation",
     },
     {
       title: "Contact Allergy Testing",
       shortTitle: "Allergy Testing",
       description:
         "Patch testing support for patients who need professional evaluation of possible contact allergies.",
-      posterIndex: 0,
+      key: "allergy",
     },
     {
       title: "OurSkin Signature Facials",
       shortTitle: "Facials",
       description:
         "Signature facial treatments designed to support acne care, brightening, anti-aging, and overall skin health.",
-      posterIndex: 0,
+      key: "facials",
     },
     {
       title: "Surgical Procedures",
       shortTitle: "Surgical",
       description:
         "Minor dermatologic procedures for selected skin, nail, scar, wart, growth, biopsy, and removal concerns.",
-      posterIndex: 1,
+      key: "surgical",
     },
     {
       title: "Chemical Peels",
       shortTitle: "Peels",
       description:
         "Professional peel treatments for acne, pigmentation, acne scars, rejuvenation, and selected resurfacing needs.",
-      posterIndex: 1,
+      key: "chemicalPeels",
     },
     {
       title: "Lasers and Energy-Based Devices",
       shortTitle: "Lasers and EBDs",
       description:
         "Advanced laser and energy-based treatments for pigmentation, acne scars, tightening, rejuvenation, hair removal, and selected skin concerns.",
-      posterIndex: 2,
+      key: "lasers",
     },
     {
       title: "Injectables",
       shortTitle: "Injectables",
       description:
         "Injectable dermatology and aesthetic treatments for selected skin, lifting, contouring, booster, and filler needs.",
-      posterIndex: 4,
+      key: "injectables",
     },
     {
       title: "Cosmetic Surgery",
       shortTitle: "Cosmetic Surgery",
       description:
         "Cosmetic surgical options for selected facial aesthetic concerns, including eyelid enhancement, face lift, rhinoplasty, and thread lifting.",
-      posterIndex: 6,
+      key: "cosmetic",
     },
   ];
 
@@ -136,21 +210,6 @@ export default function Home() {
       role: "Cosmetic Surgeon",
     },
   ];
-
-  const prevService = () => {
-    setCurrentService((prev) =>
-      prev === 0 ? serviceImages.length - 1 : prev - 1
-    );
-  };
-
-  const nextService = () => {
-    setCurrentService((prev) => (prev + 1) % serviceImages.length);
-  };
-
-  const openServicePoster = (posterIndex: number) => {
-    setCurrentService(posterIndex);
-    setServiceModalOpen(true);
-  };
 
   const handleLoginSuccess = (role: string, token: string) => {
     localStorage.setItem("token", token);
@@ -214,8 +273,8 @@ export default function Home() {
           <span className={styles.osKicker}>OurSkin Dermatology Center</span>
 
           <h1>
-            See Our Services
-            <span>Before You Book</span>
+            Find the Right Care
+            <span>For You Today!</span>
           </h1>
 
           <p>
@@ -246,12 +305,12 @@ export default function Home() {
           </div>
 
           <div className={styles.osHeroServiceList}>
-            {serviceCategories.slice(0, 6).map((service, index) => (
+            {serviceCategories.slice(0, 8).map((service, index) => (
               <button
                 type="button"
                 key={service.title}
                 className={styles.osHeroServiceItem}
-                onClick={() => openServicePoster(service.posterIndex)}
+                onClick={() => setCurrentService(index)}
               >
                 <span>{String(index + 1).padStart(2, "0")}</span>
 
@@ -295,7 +354,10 @@ export default function Home() {
               <div className={styles.osServiceActions}>
                 <button
                   type="button"
-                  onClick={() => openServicePoster(service.posterIndex)}
+                  onClick={() => {
+                    setCurrentService(index);
+                    setServiceModalOpen(true);
+                  }}
                 >
                   View Details
                 </button>
@@ -309,68 +371,57 @@ export default function Home() {
         </div>
       </section>
 
-{/* ABOUT */}
-<section
-  id="about"
-  className={`${styles.osSection} ${styles.osAboutMinimalSection}`}
->
-  <div className={styles.osAboutMinimal}>
-    <div className={styles.osAboutMinimalIntro}>
-      <span className={styles.osKicker}>About OurSkin</span>
+      {/* ABOUT */}
+      <section
+        id="about"
+        className={`${styles.osSection} ${styles.osAboutMinimalSection}`}
+      >
+        <div className={styles.osAboutMinimal}>
+          <div className={styles.osAboutMinimalIntro}>
+            <span className={styles.osKicker}>About OurSkin</span>
 
-      <h2>Specialist skin care with a more organized patient experience.</h2>
+            <h2>Specialist skin care with a more organized patient experience.</h2>
 
-      <p>
-        OurSkin Dermatology Center provides medical, aesthetic, and cosmetic
-        skin care services supported by professional consultation, digital
-        records, and follow-up care.
-      </p>
-    </div>
-
-    <div className={styles.osAboutMinimalBody}>
-      <div className={styles.osAboutMinimalText}>
-        <p>
-          Led by dermatologists and cosmetic surgeons, OurSkin focuses on safe,
-          personalized treatment planning for skin, hair, and aesthetic
-          concerns.
-        </p>
-
-        <div className={styles.osAboutMinimalPoints}>
-          <div>
-            <strong>Professional care</strong>
-            <span>Consultation guided by skin concerns and treatment needs.</span>
+            <p>
+              OurSkin Dermatology Center provides medical, aesthetic, and cosmetic
+              skin care services supported by professional consultation, digital
+              records, and follow-up care.
+            </p>
           </div>
 
-          <div>
-            <strong>Digital support</strong>
-            <span>Online booking, patient records, and follow-up monitoring.</span>
-          </div>
+          <div className={styles.osAboutMinimalBody}>
+            <div className={styles.osAboutMinimalText}>
+              <p>
+                Led by Board-certified Dermatologists and Cosmetic Surgeons, OurSkin focuses on safe,
+                personalized treatment planning for skin, hair, and aesthetic
+                concerns.
+              </p>
 
-          <div>
-            <strong>Comfortable setting</strong>
-            <span>A calm clinic environment designed for better visits.</span>
+              <div className={styles.osAboutMinimalPoints}>
+                <div>
+                  <strong>Professional care</strong>
+                  <span>Consultation guided by skin concerns and treatment needs.</span>
+                </div>
+
+                <div>
+                  <strong>Digital support</strong>
+                  <span>Online booking, patient records, and follow-up monitoring.</span>
+                </div>
+
+                <div>
+                  <strong>Comfortable setting</strong>
+                  <span>A calm clinic environment designed for better visits.</span>
+                </div>
+              </div>
+            </div>
+
+<div className={styles.osAboutGallery}>
+  <AboutCarousel />
+</div>
+
           </div>
         </div>
-      </div>
-
-      <div className={styles.osAboutMinimalPhotos}>
-        <Image
-          src="/clinic2.jpg"
-          alt="OurSkin clinic reception area"
-          width={420}
-          height={280}
-        />
-
-        <Image
-          src="/clinic3.jpg"
-          alt="OurSkin clinic interior"
-          width={420}
-          height={280}
-        />
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* DOCTORS */}
       <section
@@ -379,7 +430,7 @@ export default function Home() {
       >
         <div className={styles.osSectionHeader}>
           <span className={styles.osKicker}>Doctors</span>
-          <h2>Meet the Specialists Behind OurSkin</h2>
+          <h2>Meet the Specialists Behind OurSkin Dermatology Center</h2>
 
           <p>
             OurSkin is supported by dermatologists and cosmetic surgeons who
@@ -508,46 +559,54 @@ export default function Home() {
       {/* SERVICE MODAL */}
       {serviceModalOpen && (
         <div className={styles.osModal}>
-          <div className={styles.osServiceModal}>
+          <div className={styles.osServiceModalText}>
+
             <div className={styles.osServiceModalHeader}>
-              <h2>OurSkin Services</h2>
+              <h2>{serviceCategories[currentService].title}</h2>
 
               <button
                 type="button"
                 onClick={() => setServiceModalOpen(false)}
-                aria-label="Close services modal"
               >
                 Close
               </button>
             </div>
 
-            <div className={styles.osServicePosterWrap}>
-              <button
-                type="button"
-                className={`${styles.osPosterArrow} ${styles.osPosterArrowLeft}`}
-                onClick={prevService}
-                aria-label="Previous service"
-              >
-                ‹
-              </button>
+            <div className={styles.osServiceModalBody}>
+              <p>{serviceCategories[currentService].description}</p>
 
-              <Image
-                src={serviceImages[currentService]}
-                alt={`OurSkin service ${currentService + 1}`}
-                width={720}
-                height={900}
-                priority
-              />
+              <ul>
+                {serviceDetails[
+                  serviceCategories[currentService].key
+                ]?.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
 
-              <button
-                type="button"
-                className={`${styles.osPosterArrow} ${styles.osPosterArrowRight}`}
-                onClick={nextService}
-                aria-label="Next service"
-              >
-                ›
-              </button>
+              <div className={styles.osServiceModalActions}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServiceModalOpen(false);
+                    setModal(true);
+                  }}
+                >
+                  Book Now
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentService((prev) =>
+                      prev === serviceCategories.length - 1 ? 0 : prev + 1
+                    )
+                  }
+                >
+                  Next Service
+                </button>
+              </div>
             </div>
+
           </div>
         </div>
       )}

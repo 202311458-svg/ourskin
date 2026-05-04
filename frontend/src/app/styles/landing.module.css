@@ -1,951 +1,1068 @@
-
-        .osLanding {
-          --os-bg: #fff7f5;
-          --os-surface: rgba(255, 255, 255, 0.78);
-          --os-surface-solid: #ffffff;
-          --os-card: #ffffff;
-          --os-card-soft: #fff1f5;
-          --os-text: #2f2428;
-          --os-muted: #6d6266;
-          --os-brand: #8a334f;
-          --os-brand-dark: #66243a;
-          --os-brand-soft: rgba(138, 51, 79, 0.1);
-          --os-border: rgba(138, 51, 79, 0.15);
-          --os-shadow: 0 24px 70px rgba(138, 51, 79, 0.14);
-
-          min-height: 100vh;
-          position: relative;
-          overflow-x: hidden;
-          background:
-            radial-gradient(circle at top left, rgba(255, 217, 226, 0.9), transparent 34%),
-            radial-gradient(circle at 85% 12%, rgba(255, 241, 226, 0.85), transparent 30%),
-            var(--os-bg);
-          color: var(--os-text);
-          font-family: "Poppins", sans-serif;
-        }
-
-        .osLanding.osDark {
-          --os-bg: #0e121b;
-          --os-surface: rgba(20, 24, 34, 0.78);
-          --os-surface-solid: #151923;
-          --os-card: #171b26;
-          --os-card-soft: #1e2330;
-          --os-text: #f7f3f5;
-          --os-muted: #c8c0c5;
-          --os-brand: #f5a0c4;
-          --os-brand-dark: #f472b6;
-          --os-brand-soft: rgba(245, 160, 196, 0.12);
-          --os-border: rgba(255, 255, 255, 0.1);
-          --os-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-
-          background:
-            radial-gradient(circle at top left, rgba(138, 51, 79, 0.25), transparent 34%),
-            radial-gradient(circle at 85% 12%, rgba(244, 114, 182, 0.16), transparent 30%),
-            var(--os-bg);
-        }
-
-        .osBgGlow {
-          position: fixed;
-          border-radius: 999px;
-          filter: blur(18px);
-          pointer-events: none;
-          opacity: 0.5;
-          z-index: 0;
-        }
-
-        .osBgGlowOne {
-          width: 260px;
-          height: 260px;
-          left: -80px;
-          top: 160px;
-          background: rgba(138, 51, 79, 0.16);
-        }
-
-        .osBgGlowTwo {
-          width: 320px;
-          height: 320px;
-          right: -120px;
-          top: 480px;
-          background: rgba(255, 197, 210, 0.45);
-        }
-
-        .osLanding.osDark .osBgGlowTwo {
-          background: rgba(244, 114, 182, 0.1);
-        }
-
-        .osNav {
-          position: fixed;
-          top: 18px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: min(1180px, calc(100% - 32px));
-          height: 76px;
-          z-index: 100;
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          gap: 24px;
-          padding: 12px 18px;
-          border: 1px solid var(--os-border);
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.74);
-          backdrop-filter: blur(18px);
-          box-shadow: 0 18px 55px rgba(138, 51, 79, 0.12);
-        }
-
-        .osLanding.osDark .osNav {
-          background: rgba(15, 19, 29, 0.82);
-          box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
-        }
-
-        .osLogoWrap {
-          display: flex;
-          align-items: center;
-          width: 170px;
-          text-decoration: none;
-        }
-
-        .osLogoWrap img {
-          width: 150px !important;
-          height: auto !important;
-          object-fit: contain;
-        }
-
-        .osNavLinks {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 34px;
-        }
-
-        .osNavLinks a {
-          color: var(--os-text);
-          font-size: 15px;
-          font-weight: 700;
-          text-decoration: none;
-          transition: color 0.2s ease;
-        }
-
-        .osNavLinks a:hover {
-          color: var(--os-brand);
-        }
-
-        .osNavActions {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .osThemeBtn,
-        .osLoginBtn {
-          border: 0;
-          font-family: inherit;
-          cursor: pointer;
-        }
-
-        .osThemeBtn {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 14px;
-          border-radius: 999px;
-          color: var(--os-brand);
-          background: var(--os-brand-soft);
-          font-weight: 800;
-        }
-
-        .osLoginBtn {
-          background: transparent;
-          color: var(--os-brand);
-          font-size: 15px;
-          font-weight: 800;
-        }
-
-        .osHero {
-          position: relative;
-          z-index: 1;
-          width: min(1180px, calc(100% - 40px));
-          margin: 0 auto;
-          min-height: 100vh;
-          padding: 150px 0 72px;
-          display: grid;
-          grid-template-columns: 0.92fr 1.08fr;
-          align-items: center;
-          gap: 48px;
-        }
-
-        .osHeroText h1 {
-          margin: 0;
-          color: var(--os-brand);
-          font-size: clamp(48px, 6.7vw, 88px);
-          line-height: 0.95;
-          letter-spacing: -0.065em;
-        }
-
-        .osHeroText h1 span {
-          display: block;
-          color: var(--os-text);
-        }
-
-        .osHeroText p {
-          max-width: 570px;
-          margin: 26px 0 0;
-          color: var(--os-muted);
-          font-size: 17px;
-          line-height: 1.85;
-        }
-
-        .osKicker {
-          display: inline-flex;
-          width: fit-content;
-          margin-bottom: 16px;
-          padding: 8px 14px;
-          border-radius: 999px;
-          color: var(--os-brand);
-          background: var(--os-brand-soft);
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .osHeroButtons {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 14px;
-          margin-top: 32px;
-        }
-
-        .osPrimaryBtn,
-        .osSecondaryBtn {
-          min-height: 48px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 13px 24px;
-          border-radius: 999px;
-          font-family: inherit;
-          font-size: 15px;
-          font-weight: 900;
-          cursor: pointer;
-          text-decoration: none;
-          transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease,
-            background 0.2s ease;
-        }
-
-        .osPrimaryBtn {
-          border: 0;
-          color: #ffffff;
-          background: var(--os-brand);
-          box-shadow: 0 16px 36px rgba(138, 51, 79, 0.24);
-        }
-
-        .osSecondaryBtn {
-          border: 1px solid var(--os-border);
-          color: var(--os-brand);
-          background: var(--os-surface);
-        }
-
-        .osPrimaryBtn:hover,
-        .osSecondaryBtn:hover {
-          transform: translateY(-2px);
-        }
-
-        .osHeroStats {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
-          max-width: 560px;
-          margin-top: 34px;
-        }
-
-        .osHeroStats div {
-          padding: 16px;
-          border: 1px solid var(--os-border);
-          border-radius: 22px;
-          background: var(--os-surface);
-          box-shadow: 0 10px 28px rgba(138, 51, 79, 0.08);
-        }
-
-        .osHeroStats strong,
-        .osHeroStats span {
-          display: block;
-        }
-
-        .osHeroStats strong {
-          color: var(--os-brand);
-          font-size: 17px;
-          margin-bottom: 4px;
-        }
-
-        .osHeroStats span {
-          color: var(--os-muted);
-          font-size: 13px;
-        }
-
-        .osHeroPanel {
-          position: relative;
-          overflow: hidden;
-          border: 1px solid var(--os-border);
-          border-radius: 42px;
-          padding: 30px;
-          background:
-            linear-gradient(145deg, var(--os-surface), var(--os-card-soft));
-          box-shadow: var(--os-shadow);
-        }
-
-        .osHeroPanel::after {
-          content: "";
-          position: absolute;
-          right: -110px;
-          top: -110px;
-          width: 260px;
-          height: 260px;
-          border-radius: 50%;
-          background: var(--os-brand-soft);
-        }
-
-        .osHeroPanelHeader {
-          position: relative;
-          z-index: 1;
-          margin-bottom: 24px;
-        }
-
-        .osHeroPanelHeader span {
-          color: var(--os-brand);
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .osHeroPanelHeader h2 {
-          max-width: 480px;
-          margin: 8px 0 0;
-          color: var(--os-text);
-          font-size: clamp(30px, 3.2vw, 44px);
-          line-height: 1.05;
-          letter-spacing: -0.04em;
-        }
-
-        .osHeroServiceList {
-          position: relative;
-          z-index: 1;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 14px;
-        }
-
-        .osHeroServiceItem {
-          display: grid;
-          grid-template-columns: 42px 1fr;
-          gap: 14px;
-          align-items: center;
-          border: 1px solid var(--os-border);
-          border-radius: 24px;
-          padding: 16px;
-          background: var(--os-card);
-          color: var(--os-text);
-          text-align: left;
-          font-family: inherit;
-          cursor: pointer;
-          transition:
-            transform 0.2s ease,
-            border-color 0.2s ease,
-            box-shadow 0.2s ease;
-        }
-
-        .osHeroServiceItem:hover {
-          transform: translateY(-4px);
-          border-color: rgba(138, 51, 79, 0.34);
-          box-shadow: 0 14px 35px rgba(138, 51, 79, 0.12);
-        }
-
-        .osHeroServiceItem > span {
-          width: 42px;
-          height: 42px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: var(--os-brand);
-          color: #ffffff;
-          font-size: 12px;
-          font-weight: 900;
-        }
-
-        .osHeroServiceItem strong,
-        .osHeroServiceItem small {
-          display: block;
-        }
-
-        .osHeroServiceItem strong {
-          color: var(--os-brand);
-          font-size: 16px;
-          margin-bottom: 3px;
-        }
-
-        .osHeroServiceItem small {
-          color: var(--os-muted);
-          font-size: 12px;
-          line-height: 1.4;
-        }
-
-        .osSection {
-          position: relative;
-          z-index: 1;
-          width: min(1180px, calc(100% - 40px));
-          margin: 0 auto;
-          padding: 86px 0;
-        }
-
-        .osSectionHeader {
-          max-width: 760px;
-          margin: 0 auto 42px;
-          text-align: center;
-        }
-
-        .osSectionHeader h2 {
-          margin: 0;
-          color: var(--os-text);
-          font-size: clamp(34px, 4.4vw, 58px);
-          line-height: 1.06;
-          letter-spacing: -0.055em;
-        }
-
-        .osSectionHeader p {
-          margin: 18px auto 0;
-          color: var(--os-muted);
-          font-size: 16px;
-          line-height: 1.75;
-        }
-
-        .osServicesSection {
-          padding-top: 40px;
-        }
-
-        .osServiceGrid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 18px;
-        }
-
-        .osServiceCard {
-          min-height: 330px;
-          display: flex;
-          flex-direction: column;
-          padding: 24px;
-          border: 1px solid var(--os-border);
-          border-radius: 30px;
-          background: var(--os-card);
-          box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
-          transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease,
-            border-color 0.2s ease;
-        }
-
-        .osServiceCard:hover {
-          transform: translateY(-7px);
-          border-color: rgba(138, 51, 79, 0.34);
-          box-shadow: 0 24px 60px rgba(138, 51, 79, 0.15);
-        }
-
-        .osServiceNumber {
-          width: 44px;
-          height: 44px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 22px;
-          border-radius: 50%;
-          background: var(--os-brand-soft);
-          color: var(--os-brand);
-          font-size: 13px;
-          font-weight: 900;
-        }
-
-        .osServiceContent span {
-          display: inline-flex;
-          margin-bottom: 10px;
-          color: var(--os-brand);
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-
-        .osServiceContent h3 {
-          margin: 0 0 12px;
-          color: var(--os-text);
-          font-size: 21px;
-          line-height: 1.22;
-          letter-spacing: -0.02em;
-        }
-
-        .osServiceContent p {
-          margin: 0;
-          color: var(--os-muted);
-          font-size: 14px;
-          line-height: 1.72;
-        }
-
-        .osServiceActions {
-          display: grid;
-          grid-template-columns: 1fr 0.72fr;
-          gap: 10px;
-          margin-top: auto;
-          padding-top: 24px;
-        }
-
-        .osServiceActions button {
-          min-height: 42px;
-          border-radius: 999px;
-          border: 1px solid var(--os-border);
-          font-family: inherit;
-          font-size: 13px;
-          font-weight: 900;
-          cursor: pointer;
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease;
-        }
-
-        .osServiceActions button:first-child {
-          color: var(--os-brand);
-          background: transparent;
-        }
-
-        .osServiceActions button:last-child {
-          color: #ffffff;
-          background: var(--os-brand);
-        }
-
-        .osServiceActions button:hover {
-          transform: translateY(-2px);
-        }
-
-
-
-        .osClinicPhoto img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          transition: transform 0.45s ease;
-        }
-
-        .osClinicPhoto:hover img {
-          transform: scale(1.04);
-        }
-
-        .osDoctorGrid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 18px;
-        }
-
-        .osDoctorCard {
-          min-height: 318px;
-          padding: 22px;
-          border: 1px solid var(--os-border);
-          border-radius: 30px;
-          background: var(--os-card);
-          box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
-          text-align: center;
-        }
-
-        .osDoctorCard img {
-          width: 148px;
-          height: 148px;
-          object-fit: cover;
-          border-radius: 50%;
-          margin-bottom: 18px;
-          border: 6px solid var(--os-card-soft);
-        }
-
-        .osDoctorCard h3 {
-          margin: 0;
-          color: var(--os-text);
-          font-size: 17px;
-          line-height: 1.35;
-        }
-
-        .osDoctorCard p {
-          margin: 8px 0 0;
-          color: var(--os-brand);
-          font-size: 13px;
-          font-weight: 800;
-        }
-
-        .osCta {
-          position: relative;
-          z-index: 1;
-          width: min(1180px, calc(100% - 40px));
-          margin: 20px auto 0;
-          padding: 72px 32px;
-          border-radius: 42px;
-          background:
-            radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 34%),
-            var(--os-brand);
-          color: #ffffff;
-          text-align: center;
-          box-shadow: 0 24px 70px rgba(138, 51, 79, 0.25);
-        }
-
-        .osCta span {
-          display: inline-flex;
-          margin-bottom: 14px;
-          padding: 8px 14px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.16);
-          color: #ffffff;
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .osCta h2 {
-          max-width: 760px;
-          margin: 0 auto;
-          font-size: clamp(32px, 4.5vw, 58px);
-          line-height: 1.05;
-          letter-spacing: -0.055em;
-        }
-
-        .osCta p {
-          max-width: 680px;
-          margin: 18px auto 28px;
-          color: rgba(255, 255, 255, 0.86);
-          font-size: 16px;
-          line-height: 1.75;
-        }
-
-        .osCta button {
-          border: 0;
-          border-radius: 999px;
-          padding: 14px 26px;
-          background: #ffffff;
-          color: var(--os-brand);
-          font-family: inherit;
-          font-size: 15px;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .osContactGrid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
-        }
-
-        .osContactCard {
-          padding: 28px;
-          border: 1px solid var(--os-border);
-          border-radius: 30px;
-          background: var(--os-card);
-          box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
-        }
-
-        .osContactCard span {
-          color: var(--os-brand);
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .osContactCard h3 {
-          margin: 10px 0 12px;
-          color: var(--os-text);
-          font-size: 22px;
-        }
-
-        .osContactCard p {
-          margin: 0;
-          color: var(--os-muted);
-          font-size: 14px;
-          line-height: 1.75;
-        }
-
-        .osContactCard a {
-          display: inline-flex;
-          width: fit-content;
-          margin-top: 18px;
-          color: var(--os-brand);
-          font-weight: 900;
-          text-decoration: none;
-        }
-
-        .osSocialLinks {
-          display: flex;
-          gap: 14px;
-          flex-wrap: wrap;
-        }
-
-        .osFooter {
-          position: relative;
-          z-index: 1;
-          margin-top: 30px;
-          padding: 34px 20px;
-          text-align: center;
-          color: var(--os-muted);
-        }
-
-        .osFooter p {
-          margin: 0;
-          font-size: 14px;
-        }
-
-        .osModal {
-          position: fixed;
-          inset: 0;
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 18px;
-          background: rgba(10, 12, 18, 0.72);
-          backdrop-filter: blur(10px);
-        }
-
-        .osServiceModal {
-          width: min(760px, 100%);
-          max-height: 92vh;
-          overflow: hidden;
-          border: 1px solid var(--os-border);
-          border-radius: 30px;
-          background: var(--os-card);
-          box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
-        }
-
-        .osServiceModalHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 18px 20px;
-          border-bottom: 1px solid var(--os-border);
-        }
-
-        .osServiceModalHeader h2 {
-          margin: 0;
-          color: var(--os-text);
-          font-size: 22px;
-        }
-
-        .osServiceModalHeader button {
-          border: 0;
-          border-radius: 999px;
-          padding: 10px 16px;
-          background: var(--os-brand);
-          color: #ffffff;
-          font-family: inherit;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .osServicePosterWrap {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          max-height: calc(92vh - 72px);
-          overflow: auto;
-          padding: 20px;
-          background: var(--os-card-soft);
-        }
-
-        .osServicePosterWrap img {
-          width: auto;
-          max-width: 100%;
-          height: auto;
-          max-height: calc(92vh - 120px);
-          object-fit: contain;
-          border-radius: 18px;
-        }
-
-        .osPosterArrow {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 2;
-          width: 44px;
-          height: 44px;
-          border: 0;
-          border-radius: 50%;
-          background: var(--os-brand);
-          color: #ffffff;
-          font-size: 34px;
-          line-height: 1;
-          cursor: pointer;
-        }
-
-        .osPosterArrowLeft {
-          left: 18px;
-        }
-
-        .osPosterArrowRight {
-          right: 18px;
-        }
-
-        @media (max-width: 1180px) {
-          .osHero,
-          .osAboutCard {
-            grid-template-columns: 1fr;
-          }
-
-          .osHero {
-            padding-top: 130px;
-          }
-
-          .osServiceGrid,
-          .osDoctorGrid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-
-        @media (max-width: 820px) {
-          .osNav {
-            top: 10px;
-            width: calc(100% - 20px);
-            height: auto;
-            grid-template-columns: 1fr auto;
-            border-radius: 28px;
-          }
-
-          .osLogoWrap {
-            width: auto;
-          }
-
-          .osLogoWrap img {
-            width: 128px !important;
-          }
-
-          .osNavLinks {
-            grid-column: 1 / -1;
-            order: 3;
-            justify-content: flex-start;
-            gap: 18px;
-            overflow-x: auto;
-            padding-top: 8px;
-          }
-
-          .osNavLinks a {
-            white-space: nowrap;
-            font-size: 14px;
-          }
-
-          .osThemeBtn span {
-            display: none;
-          }
-
-          .osHero {
-            width: min(100% - 28px, 1180px);
-            padding-top: 150px;
-            gap: 30px;
-          }
-
-          .osHeroText h1 {
-            font-size: clamp(42px, 13vw, 64px);
-          }
-
-          .osHeroText p {
-            font-size: 15px;
-          }
-
-          .osHeroStats,
-          .osHeroServiceList,
-          .osServiceGrid,
-          .osDoctorGrid,
-          .osContactGrid {
-            grid-template-columns: 1fr;
-          }
-
-          .osHeroPanel {
-            padding: 22px;
-            border-radius: 30px;
-          }
-
-          .osSection {
-            width: min(100% - 28px, 1180px);
-            padding: 64px 0;
-          }
-
-          .osSectionHeader h2,
-          .osAboutText h2,
-          .osCta h2 {
-            font-size: clamp(32px, 10vw, 46px);
-          }
-
-          .osServiceCard {
-            min-height: auto;
-          }
-
-          .osAboutCard {
-            padding: 18px;
-            border-radius: 30px;
-          }
-
-          .osAboutText {
-            padding: 10px;
-          }
-
-          .osClinicGallery {
-            grid-template-columns: 1fr;
-            grid-template-rows: none;
-          }
-
-          .osClinicPhoto,
-          .osClinicPhotoLarge {
-            height: 240px;
-            grid-row: auto;
-          }
-
-          .osCta {
-            width: min(100% - 28px, 1180px);
-            padding: 56px 22px;
-            border-radius: 30px;
-          }
-        }
-
-        @media (max-width: 520px) {
-          .osNavActions {
-            gap: 6px;
-          }
-
-          .osLoginBtn {
-            font-size: 14px;
-          }
-
-          .osHeroButtons,
-          .osPrimaryBtn,
-          .osSecondaryBtn {
-            width: 100%;
-          }
-
-          .osHeroStats div,
-          .osHeroServiceItem,
-          .osServiceCard,
-          .osContactCard {
-            border-radius: 22px;
-          }
-
-          .osServiceActions {
-            grid-template-columns: 1fr;
-          }
-
-          .osClinicPhoto,
-          .osClinicPhotoLarge {
-            height: 215px;
-          }
-        }
- 
-
-        .osAboutCleanSection {
+.osLanding {
+  --os-bg: #fff7f5;
+  --os-surface: rgba(255, 255, 255, 0.78);
+  --os-surface-solid: #ffffff;
+  --os-card: #ffffff;
+  --os-card-soft: #fff1f5;
+  --os-text: #2f2428;
+  --os-muted: #6d6266;
+  --os-brand: #8a334f;
+  --os-brand-dark: #66243a;
+  --os-brand-soft: rgba(138, 51, 79, 0.1);
+  --os-border: rgba(138, 51, 79, 0.15);
+  --os-shadow: 0 24px 70px rgba(138, 51, 79, 0.14);
+
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(255, 217, 226, 0.9),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 85% 12%,
+      rgba(255, 241, 226, 0.85),
+      transparent 30%
+    ),
+    var(--os-bg);
+  color: var(--os-text);
+  font-family: "Poppins", sans-serif;
+}
+
+.osLanding.osDark {
+  --os-bg: #0e121b;
+  --os-surface: rgba(20, 24, 34, 0.78);
+  --os-surface-solid: #151923;
+  --os-card: #171b26;
+  --os-card-soft: #1e2330;
+  --os-text: #f7f3f5;
+  --os-muted: #c8c0c5;
+  --os-brand: #f5a0c4;
+  --os-brand-dark: #f472b6;
+  --os-brand-soft: rgba(245, 160, 196, 0.12);
+  --os-border: rgba(255, 255, 255, 0.1);
+  --os-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(138, 51, 79, 0.25),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 85% 12%,
+      rgba(244, 114, 182, 0.16),
+      transparent 30%
+    ),
+    var(--os-bg);
+}
+
+.osBgGlow {
+  position: fixed;
+  border-radius: 999px;
+  filter: blur(18px);
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.osBgGlowOne {
+  width: 260px;
+  height: 260px;
+  left: -80px;
+  top: 160px;
+  background: rgba(138, 51, 79, 0.16);
+}
+
+.osBgGlowTwo {
+  width: 320px;
+  height: 320px;
+  right: -120px;
+  top: 480px;
+  background: rgba(255, 197, 210, 0.45);
+}
+
+.osLanding.osDark .osBgGlowTwo {
+  background: rgba(244, 114, 182, 0.1);
+}
+
+.osNav {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1180px, calc(100% - 32px));
+  height: 76px;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 18px;
+  border: 1px solid var(--os-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 55px rgba(138, 51, 79, 0.12);
+}
+
+.osLanding.osDark .osNav {
+  background: rgba(15, 19, 29, 0.82);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+}
+
+.osLogoWrap {
+  display: flex;
+  align-items: center;
+  width: 170px;
+  text-decoration: none;
+}
+
+.osLogoWrap img {
+  width: 150px !important;
+  height: auto !important;
+  object-fit: contain;
+}
+
+.osNavLinks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 34px;
+}
+
+.osNavLinks a {
+  color: var(--os-text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.osNavLinks a:hover {
+  color: var(--os-brand);
+}
+
+.osNavActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.osThemeBtn,
+.osLoginBtn {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.osThemeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--os-brand);
+  background: var(--os-brand-soft);
+  font-weight: 800;
+}
+
+.osLoginBtn {
+  background: transparent;
+  color: var(--os-brand);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.osHero {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 150px 0 72px;
+  display: grid;
+  grid-template-columns: 0.92fr 1.08fr;
+  align-items: center;
+  gap: 48px;
+}
+
+.osHeroText h1 {
+  margin: 0;
+  color: var(--os-brand);
+  font-size: clamp(48px, 6.7vw, 88px);
+  line-height: 0.95;
+  letter-spacing: -0.065em;
+}
+
+.osHeroText h1 span {
+  display: block;
+  color: var(--os-text);
+}
+
+.osHeroText p {
+  max-width: 570px;
+  margin: 26px 0 0;
+  color: var(--os-muted);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.osKicker {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--os-brand);
+  background: var(--os-brand-soft);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.osHeroButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.osPrimaryBtn,
+.osSecondaryBtn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 24px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.osPrimaryBtn {
+  border: 0;
+  color: #ffffff;
+  background: var(--os-brand);
+  box-shadow: 0 16px 36px rgba(138, 51, 79, 0.24);
+}
+
+.osSecondaryBtn {
+  border: 1px solid var(--os-border);
+  color: var(--os-brand);
+  background: var(--os-surface);
+}
+
+.osPrimaryBtn:hover,
+.osSecondaryBtn:hover {
+  transform: translateY(-2px);
+}
+
+.osHeroStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 34px;
+}
+
+.osHeroStats div {
+  padding: 16px;
+  border: 1px solid var(--os-border);
+  border-radius: 22px;
+  background: var(--os-surface);
+  box-shadow: 0 10px 28px rgba(138, 51, 79, 0.08);
+}
+
+.osHeroStats strong,
+.osHeroStats span {
+  display: block;
+}
+
+.osHeroStats strong {
+  color: var(--os-brand);
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+
+.osHeroStats span {
+  color: var(--os-muted);
+  font-size: 13px;
+}
+
+.osHeroPanel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--os-border);
+  border-radius: 42px;
+  padding: 30px;
+  background: linear-gradient(145deg, var(--os-surface), var(--os-card-soft));
+  box-shadow: var(--os-shadow);
+}
+
+.osHeroPanel::after {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -110px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: var(--os-brand-soft);
+}
+
+.osHeroPanelHeader {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+}
+
+.osHeroPanelHeader span {
+  color: var(--os-brand);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.osHeroPanelHeader h2 {
+  max-width: 480px;
+  margin: 8px 0 0;
+  color: var(--os-text);
+  font-size: clamp(30px, 3.2vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.osHeroServiceList {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.osHeroServiceItem {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--os-border);
+  border-radius: 24px;
+  padding: 16px;
+  background: var(--os-card);
+  color: var(--os-text);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.osHeroServiceItem:hover {
+  transform: translateY(-4px);
+  border-color: rgba(138, 51, 79, 0.34);
+  box-shadow: 0 14px 35px rgba(138, 51, 79, 0.12);
+}
+
+.osHeroServiceItem > span {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--os-brand);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.osHeroServiceItem strong,
+.osHeroServiceItem small {
+  display: block;
+}
+
+.osHeroServiceItem strong {
+  color: var(--os-brand);
+  font-size: 16px;
+  margin-bottom: 3px;
+}
+
+.osHeroServiceItem small {
+  color: var(--os-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.osServiceModalText {
+  width: 40%;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--os-card);
+  border-radius: 30px;
+}
+
+.osServiceModalBody {
+  padding: 18px 6px;
+}
+
+.osServiceModalBody p {
+  color: var(--os-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.osServiceModalBody ul {
+  margin-top: 16px;
+  padding-left: 18px;
+}
+
+.osServiceModalBody li {
+  margin-bottom: 10px;
+  color: var(--os-text);
+  font-size: 14px;
+  line-height: 1.6;
+  list-style: disc;
+}
+
+.osServiceModalActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.osServiceModalActions button {
+  flex: 1;
+  min-width: 140px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.osServiceModalActions button:first-child {
+  background: var(--os-brand);
+  color: white;
+}
+
+.osServiceModalActions button:last-child {
+  background: var(--os-brand-soft);
+  color: var(--os-brand);
+}
+
+.osServiceModalActions button:hover {
+  transform: translateY(-2px);
+}
+
+.osSection {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 86px 0;
+}
+
+.osSectionHeader {
+  max-width: 760px;
+  margin: 0 auto 42px;
+  text-align: center;
+}
+
+.osSectionHeader h2 {
+  margin: 0;
+  color: var(--os-text);
+  font-size: clamp(34px, 4.4vw, 58px);
+  line-height: 1.06;
+  letter-spacing: -0.055em;
+}
+
+.osSectionHeader p {
+  margin: 18px auto 0;
+  color: var(--os-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.osServicesSection {
+  padding-top: 40px;
+}
+
+.osServiceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.osServiceCard {
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid var(--os-border);
+  border-radius: 30px;
+  background: var(--os-card);
+  box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.osServiceCard:hover {
+  transform: translateY(-7px);
+  border-color: rgba(138, 51, 79, 0.34);
+  box-shadow: 0 24px 60px rgba(138, 51, 79, 0.15);
+}
+
+.osServiceNumber {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  border-radius: 50%;
+  background: var(--os-brand-soft);
+  color: var(--os-brand);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.osServiceContent span {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--os-brand);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.osServiceContent h3 {
+  margin: 0 0 12px;
+  color: var(--os-text);
+  font-size: 21px;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+.osServiceContent p {
+  margin: 0;
+  color: var(--os-muted);
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.osServiceActions {
+  display: grid;
+  grid-template-columns: 1fr 0.72fr;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.osServiceActions button {
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--os-border);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.osServiceActions button:first-child {
+  color: var(--os-brand);
+  background: transparent;
+}
+
+.osServiceActions button:last-child {
+  color: #ffffff;
+  background: var(--os-brand);
+}
+
+.osServiceActions button:hover {
+  transform: translateY(-2px);
+}
+
+.osClinicPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s ease;
+}
+
+.osClinicPhoto:hover img {
+  transform: scale(1.04);
+}
+
+.osDoctorGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.osDoctorCard {
+  min-height: 318px;
+  padding: 22px;
+  border: 1px solid var(--os-border);
+  border-radius: 30px;
+  background: var(--os-card);
+  box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
+  text-align: center;
+}
+
+.osDoctorCard img {
+  width: 148px;
+  height: 148px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 18px;
+  border: 6px solid var(--os-card-soft);
+}
+
+.osDoctorCard h3 {
+  margin: 0;
+  color: var(--os-text);
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.osDoctorCard p {
+  margin: 8px 0 0;
+  color: var(--os-brand);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.osCta {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 40px));
+  margin: 20px auto 0;
+  padding: 72px 32px;
+  border-radius: 42px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(255, 255, 255, 0.2),
+      transparent 34%
+    ),
+    var(--os-brand);
+  color: #ffffff;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(138, 51, 79, 0.25);
+}
+
+.osCta span {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.osCta h2 {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: clamp(32px, 4.5vw, 58px);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+.osCta p {
+  max-width: 680px;
+  margin: 18px auto 28px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.osCta button {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 26px;
+  background: #ffffff;
+  color: var(--os-brand);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.osContactGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.osContactCard {
+  padding: 28px;
+  border: 1px solid var(--os-border);
+  border-radius: 30px;
+  background: var(--os-card);
+  box-shadow: 0 18px 45px rgba(138, 51, 79, 0.08);
+}
+
+.osContactCard span {
+  color: var(--os-brand);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.osContactCard h3 {
+  margin: 10px 0 12px;
+  color: var(--os-text);
+  font-size: 22px;
+}
+
+.osContactCard p {
+  margin: 0;
+  color: var(--os-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.osContactCard a {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 18px;
+  color: var(--os-brand);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.osSocialLinks {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.osFooter {
+  position: relative;
+  z-index: 1;
+  margin-top: 30px;
+  padding: 34px 20px;
+  text-align: center;
+  color: var(--os-muted);
+}
+
+.osFooter p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.osModal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(10, 12, 18, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.osServiceModal {
+  width: min(760px, 100%);
+  max-height: 92vh;
+  overflow: hidden;
+  border: 1px solid var(--os-border);
+  border-radius: 30px;
+  background: var(--os-card);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+}
+
+.osServiceModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--os-border);
+}
+
+.osServiceModalHeader h2 {
+  margin: 0;
+  color: var(--os-text);
+  font-size: 22px;
+}
+
+.osServiceModalHeader button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: var(--os-brand);
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.osServicePosterWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(92vh - 72px);
+  overflow: auto;
+  padding: 20px;
+  background: var(--os-card-soft);
+}
+
+.osServicePosterWrap img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(92vh - 120px);
+  object-fit: contain;
+  border-radius: 18px;
+}
+
+.osPosterArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--os-brand);
+  color: #ffffff;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.osPosterArrowLeft {
+  left: 18px;
+}
+
+.osPosterArrowRight {
+  right: 18px;
+}
+
+@media (max-width: 1180px) {
+  .osHero,
+  .osAboutCard {
+    grid-template-columns: 1fr;
+  }
+
+  .osHero {
+    padding-top: 130px;
+  }
+
+  .osServiceGrid,
+  .osDoctorGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .osNav {
+    top: 10px;
+    width: calc(100% - 20px);
+    height: auto;
+    grid-template-columns: 1fr auto;
+    border-radius: 28px;
+  }
+
+  .osLogoWrap {
+    width: auto;
+  }
+
+  .osLogoWrap img {
+    width: 128px !important;
+  }
+
+  .osNavLinks {
+    grid-column: 1 / -1;
+    order: 3;
+    justify-content: flex-start;
+    gap: 18px;
+    overflow-x: auto;
+    padding-top: 8px;
+  }
+
+  .osNavLinks a {
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  .osThemeBtn span {
+    display: none;
+  }
+
+  .osHero {
+    width: min(100% - 28px, 1180px);
+    padding-top: 150px;
+    gap: 30px;
+  }
+
+  .osHeroText h1 {
+    font-size: clamp(42px, 13vw, 64px);
+  }
+
+  .osHeroText p {
+    font-size: 15px;
+  }
+
+  .osHeroStats,
+  .osHeroServiceList,
+  .osServiceGrid,
+  .osDoctorGrid,
+  .osContactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .osHeroPanel {
+    padding: 22px;
+    border-radius: 30px;
+  }
+
+  .osSection {
+    width: min(100% - 28px, 1180px);
+    padding: 64px 0;
+  }
+
+  .osSectionHeader h2,
+  .osAboutText h2,
+  .osCta h2 {
+    font-size: clamp(32px, 10vw, 46px);
+  }
+
+  .osServiceCard {
+    min-height: auto;
+  }
+
+/* each slide */
+.osSlide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.active {
+  opacity: 1;
+  z-index: 2;
+}
+
+/* dots */
+.osCarouselDots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.4);
+  border: none;
+  cursor: pointer;
+}
+
+.dotActive {
+  background: white;
+  transform: scale(1.2);
+}
+
+  .osAboutCard {
+    padding: 18px;
+    border-radius: 30px;
+  }
+
+  .osAboutText {
+    padding: 10px;
+  }
+
+  .osClinicGallery {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .osClinicPhoto,
+  .osClinicPhotoLarge {
+    height: 240px;
+    grid-row: auto;
+  }
+
+  .osCta {
+    width: min(100% - 28px, 1180px);
+    padding: 56px 22px;
+    border-radius: 30px;
+  }
+}
+
+@media (max-width: 520px) {
+  .osNavActions {
+    gap: 6px;
+  }
+
+  .osLoginBtn {
+    font-size: 14px;
+  }
+
+  .osHeroButtons,
+  .osPrimaryBtn,
+  .osSecondaryBtn {
+    width: 100%;
+  }
+
+  .osHeroStats div,
+  .osHeroServiceItem,
+  .osServiceCard,
+  .osContactCard {
+    border-radius: 22px;
+  }
+
+  .osServiceActions {
+    grid-template-columns: 1fr;
+  }
+
+  .osClinicPhoto,
+  .osClinicPhotoLarge {
+    height: 215px;
+  }
+}
+
+.osAboutCleanSection {
   width: min(1040px, calc(100% - 40px)) !important;
   padding-top: 54px !important;
   padding-bottom: 70px !important;
@@ -1158,10 +1275,9 @@
 }
 
 .osAboutMinimalBody {
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 24px;
-  align-items: stretch;
+  display: flex;
+  gap: 40px;
+  align-items: center;
 }
 
 .osAboutMinimalText {
@@ -1179,6 +1295,23 @@
   color: var(--os-muted);
   font-size: 15px;
   line-height: 1.75;
+}
+
+/* RIGHT SIDE (IMPORTANT FIX) */
+.osAboutGallery {
+  flex: 1;
+  max-width: 420px;
+  margin-left: -10px;
+}
+
+/* CAROUSEL BOX */
+.osAboutCarousel {
+  position: relative;
+  width: 420px;
+  height: 320px;
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--os-card-soft);
 }
 
 .osAboutMinimalPoints {
@@ -1204,25 +1337,6 @@
   color: var(--os-muted);
   font-size: 13px;
   line-height: 1.5;
-}
-
-.osAboutMinimalPhotos {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.osAboutMinimalPhotos img {
-  width: 100%;
-  height: 100%;
-  min-height: 320px;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  border-radius: 26px;
-  border: 1px solid var(--os-border);
-  background: var(--os-card-soft);
-  box-shadow: 0 14px 36px rgba(138, 51, 79, 0.1);
 }
 
 @media (max-width: 900px) {
@@ -1752,8 +1866,16 @@
 
 :global(body.darkMode) .animatedBackground {
   background:
-    radial-gradient(circle at 15% 20%, rgba(147, 52, 93, 0.28), transparent 28%),
-    radial-gradient(circle at 85% 15%, rgba(244, 114, 182, 0.18), transparent 28%),
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(147, 52, 93, 0.28),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(244, 114, 182, 0.18),
+      transparent 28%
+    ),
     linear-gradient(135deg, #0f1117 0%, #20111a 50%, #321827 100%);
 }
 
@@ -1762,7 +1884,6 @@
   border-bottom: 1px solid #2d3340;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
-
 
 :global(body.darkMode) .registerNavLinks a {
   color: #e5e7eb;
@@ -2001,7 +2122,6 @@
   }
 }
 
-
 .dobCard {
   display: flex;
   align-items: center;
@@ -2080,7 +2200,6 @@
   color: #82334c;
 }
 
-
 @media (max-width: 640px) {
   .dobCard {
     align-items: flex-start;
@@ -2090,9 +2209,6 @@
     grid-template-columns: 1fr;
   }
 }
-
-
-
 
 .registerLandingPage {
   min-height: 100vh;
@@ -2301,4 +2417,3 @@
     font-size: 36px;
   }
 }
-
