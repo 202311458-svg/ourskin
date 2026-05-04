@@ -24,9 +24,15 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentScheduleAssign(BaseModel):
-    schedule_id: int
+    # For regular weekly schedules, schedule_id can still be used.
+    # For Surgical/Cosmetic initial evaluation, staff may assign manually
+    # based on staff-doctor coordination without using doctor_schedules.
+    schedule_id: Optional[int] = None
+    doctor_id: Optional[int] = None
+    schedule_date: Optional[date] = None
     start_time: time
     end_time: time
+    consultation_mode: Optional[str] = "In-Person"
 
 
 class AppointmentStatusUpdate(BaseModel):

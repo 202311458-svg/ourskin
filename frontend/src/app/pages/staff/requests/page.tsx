@@ -55,11 +55,11 @@ type AppointmentLog = {
 type AssignableSlot = {
   id: string
   slot_id: string
-  schedule_id: number
+  schedule_id?: number | null
   doctor_id: number
   doctor_name: string
   doctor_specialty?: string | null
-  service_id: number
+  service_id?: number | null
   service_name: string
   schedule_date: string
   start_time: string
@@ -68,6 +68,23 @@ type AssignableSlot = {
   appointment_type: string
   is_available: boolean
   unavailable_reason?: string | null
+}
+
+type AssignableDoctor = {
+  id: number
+  name: string
+  email?: string | null
+  specialty?: string | null
+  profile_image?: string | null
+  bio?: string | null
+}
+
+type ManualEvaluationForm = {
+  doctor_id: string
+  schedule_date: string
+  start_time: string
+  end_time: string
+  consultation_mode: "In-Person" | "Online Consultation"
 }
 
 const declineReasons = [
@@ -155,12 +172,17 @@ export default function AppointmentRequests() {
 
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [scheduleTarget, setScheduleTarget] = useState<Appointment | null>(null)
-  const [assignableSlots, setAssignableSlots] = useState<AssignableSlot[]>([])
-  const [slotLoading, setSlotLoading] = useState(false)
-  const [slotError, setSlotError] = useState("")
-  const [assignmentWeekStart, setAssignmentWeekStart] =
-    useState(getTodayInputDate())
-  const [assigningSlotId, setAssigningSlotId] = useState<string | null>(null)
+  const [assignableDoctors, setAssignableDoctors] = useState<AssignableDoctor[]>([])
+  const [doctorLoading, setDoctorLoading] = useState(false)
+  const [scheduleError, setScheduleError] = useState("")
+  const [manualEvaluationForm, setManualEvaluationForm] =
+    useState<ManualEvaluationForm>({
+      doctor_id: "",
+      schedule_date: getTodayInputDate(),
+      start_time: "13:00",
+      end_time: "14:00",
+      consultation_mode: "In-Person",
+    })
 
   const [approvalOpen, setApprovalOpen] = useState(false)
   const [approvalTarget, setApprovalTarget] = useState<Appointment | null>(null)
@@ -224,8 +246,10 @@ export default function AppointmentRequests() {
     return end ? `${start} to ${end}` : start
   }
 
-  const formatSlotTimeRange = (slot: AssignableSlot) => {
-    return `${formatTime(slot.start_time)} to ${formatTime(slot.end_time)}`
+  const toTimeInputValue = (value?: string | null, fallback = "13:00") => {
+    if (!value) return fallback
+
+    return value.slice(0, 5)
   }
 
   const getGuardianName = (appt?: Appointment | null) => {
@@ -254,8 +278,7 @@ export default function AppointmentRequests() {
 
   const hasAssignedSchedule = (appointment: Appointment) => {
     return Boolean(
-      appointment.schedule_id &&
-        appointment.doctor_id &&
+      appointment.doctor_id &&
         appointment.date &&
         appointment.time &&
         appointment.end_time
@@ -381,32 +404,7 @@ export default function AppointmentRequests() {
     return [...requests].sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b))
   }, [requests])
 
-  const openScheduleModal = async (appointment: Appointment) => {
-    setScheduleTarget(appointment)
-    setScheduleOpen(true)
-    setSlotError("")
-    setAssignableSlots([])
-    setAssignmentWeekStart(getTodayInputDate())
-
-    await loadAssignableSlots(appointment, getTodayInputDate())
-  }
-
-  const closeScheduleModal = () => {
-    if (assigningSlotId) return
-
-    setScheduleOpen(false)
-    setScheduleTarget(null)
-    setAssignableSlots([])
-    setSlotError("")
-    setAssigningSlotId(null)
-  }
-
-  const loadAssignableSlots = async (
-    appointment = scheduleTarget,
-    weekStart = assignmentWeekStart
-  ) => {
-    if (!appointment) return
-
+  const loadAssignableDoctors = async (appointment: Appointment) => {
     const token = localStorage.getItem("token")
 
     if (!token) {
@@ -414,18 +412,12 @@ export default function AppointmentRequests() {
       return
     }
 
-    setSlotLoading(true)
-    setSlotError("")
+    setDoctorLoading(true)
+    setScheduleError("")
 
     try {
-      const params = new URLSearchParams()
-
-      if (weekStart) {
-        params.set("week_start", weekStart)
-      }
-
       const res = await fetch(
-        `${API_BASE_URL}/appointments/${appointment.id}/assignable-slots?${params.toString()}`,
+        `${API_BASE_URL}/appointments/${appointment.id}/assignable-doctors`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -434,19 +426,100 @@ export default function AppointmentRequests() {
       const data = await readJsonSafely(res)
 
       if (!res.ok) {
-        throw new Error(getErrorMessage(data, "Unable to load available slots."))
+        throw new Error(getErrorMessage(data, "Unable to load doctors for this service."))
       }
 
-      setAssignableSlots(Array.isArray(data) ? data : [])
+      const doctors = Array.isArray(data) ? data : []
+      setAssignableDoctors(doctors)
+
+      if (!appointment.doctor_id && doctors.length === 1) {
+        setManualEvaluationForm((current) => ({
+          ...current,
+          doctor_id: String((doctors[0] as AssignableDoctor).id),
+        }))
+      }
     } catch (err) {
-      console.error("Assignable slots load failed:", err)
-      setSlotError(
-        err instanceof Error ? err.message : "Unable to load available slots."
+      console.error("Assignable doctors load failed:", err)
+      setScheduleError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load doctors for this service."
       )
-      setAssignableSlots([])
+      setAssignableDoctors([])
     } finally {
-      setSlotLoading(false)
+      setDoctorLoading(false)
     }
+  }
+
+  const openScheduleModal = async (appointment: Appointment) => {
+    setScheduleTarget(appointment)
+    setScheduleOpen(true)
+    setScheduleError("")
+    setAssignableDoctors([])
+    setManualEvaluationForm({
+      doctor_id: appointment.doctor_id ? String(appointment.doctor_id) : "",
+      schedule_date: appointment.date || getTodayInputDate(),
+      start_time: toTimeInputValue(appointment.time, "13:00"),
+      end_time: toTimeInputValue(appointment.end_time, "14:00"),
+      consultation_mode:
+        appointment.consultation_mode === "Online Consultation"
+          ? "Online Consultation"
+          : "In-Person",
+    })
+
+    await loadAssignableDoctors(appointment)
+  }
+
+  const closeScheduleModal = () => {
+    if (approvalSubmitting) return
+
+    setScheduleOpen(false)
+    setScheduleTarget(null)
+    setAssignableDoctors([])
+    setScheduleError("")
+  }
+
+  const getSelectedEvaluationDoctor = () => {
+    return assignableDoctors.find(
+      (doctor) => String(doctor.id) === manualEvaluationForm.doctor_id
+    )
+  }
+
+  const validateManualEvaluationSchedule = () => {
+    if (!scheduleTarget) return "Appointment request was not found."
+
+    if (!manualEvaluationForm.doctor_id) {
+      return "Please select a doctor for this initial evaluation."
+    }
+
+    if (!manualEvaluationForm.schedule_date) {
+      return "Please select an appointment date."
+    }
+
+    if (!manualEvaluationForm.start_time || !manualEvaluationForm.end_time) {
+      return "Please select the start time and end time."
+    }
+
+    const start = new Date(
+      `${manualEvaluationForm.schedule_date}T${manualEvaluationForm.start_time}`
+    )
+    const end = new Date(
+      `${manualEvaluationForm.schedule_date}T${manualEvaluationForm.end_time}`
+    )
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "Please select a valid appointment date and time."
+    }
+
+    if (end <= start) {
+      return "End time must be later than the start time."
+    }
+
+    if (start <= new Date()) {
+      return "Past schedules cannot be assigned."
+    }
+
+    return ""
   }
 
   const updateStatus = async (id: number, status: "Approved" | "Declined") => {
@@ -475,10 +548,43 @@ export default function AppointmentRequests() {
     setDeclineOpen(true)
   }
 
-  const assignAndApprove = async (slot: AssignableSlot) => {
-    if (!scheduleTarget || !slot.is_available) return
+  const prepareManualScheduleApproval = () => {
+    if (!scheduleTarget) return
 
-    openApprovalModal(scheduleTarget, slot)
+    const validationMessage = validateManualEvaluationSchedule()
+
+    if (validationMessage) {
+      setScheduleError(validationMessage)
+      return
+    }
+
+    const selectedDoctor = getSelectedEvaluationDoctor()
+
+    if (!selectedDoctor) {
+      setScheduleError("Selected doctor was not found.")
+      return
+    }
+
+    const manualSlot: AssignableSlot = {
+      id: `manual-${scheduleTarget.id}`,
+      slot_id: `manual-${scheduleTarget.id}`,
+      schedule_id: null,
+      doctor_id: selectedDoctor.id,
+      doctor_name: selectedDoctor.name,
+      doctor_specialty: selectedDoctor.specialty,
+      service_id: scheduleTarget.service_id,
+      service_name: scheduleTarget.services || "Initial Evaluation",
+      schedule_date: manualEvaluationForm.schedule_date,
+      start_time: manualEvaluationForm.start_time,
+      end_time: manualEvaluationForm.end_time,
+      consultation_mode: manualEvaluationForm.consultation_mode,
+      appointment_type: "Initial Evaluation",
+      is_available: true,
+      unavailable_reason: null,
+    }
+
+    setScheduleError("")
+    openApprovalModal(scheduleTarget, manualSlot)
   }
 
   const confirmApproval = async () => {
@@ -503,8 +609,6 @@ export default function AppointmentRequests() {
       setSubmittingId(approvalTarget.id)
 
       if (approvalSlot) {
-        setAssigningSlotId(approvalSlot.slot_id)
-
         const assignRes = await fetch(
           `${API_BASE_URL}/appointments/${approvalTarget.id}/assign-schedule`,
           {
@@ -514,9 +618,12 @@ export default function AppointmentRequests() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              schedule_id: approvalSlot.schedule_id,
+              schedule_id: approvalSlot.schedule_id || null,
+              doctor_id: approvalSlot.doctor_id,
+              schedule_date: approvalSlot.schedule_date,
               start_time: approvalSlot.start_time,
               end_time: approvalSlot.end_time,
+              consultation_mode: approvalSlot.consultation_mode,
             }),
           }
         )
@@ -568,8 +675,8 @@ export default function AppointmentRequests() {
       closeApprovalModal()
       setScheduleOpen(false)
       setScheduleTarget(null)
-      setAssignableSlots([])
-      setSlotError("")
+      setAssignableDoctors([])
+      setScheduleError("")
 
       await loadRequests()
 
@@ -590,7 +697,6 @@ export default function AppointmentRequests() {
     } finally {
       setApprovalSubmitting(false)
       setSubmittingId(null)
-      setAssigningSlotId(null)
     }
   }
 
@@ -836,85 +942,245 @@ export default function AppointmentRequests() {
         <div className={styles.modalOverlay} onClick={closeScheduleModal}>
           <div className={styles.modalCard} onClick={(event) => event.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>Schedule Initial Evaluation</h2>
+              <div>
+                <h2>Schedule Initial Evaluation</h2>
+                <p className={styles.pageSubtext}>
+                  This schedule is manually coordinated by staff and the doctor. It is not pulled from the weekly doctor schedule.
+                </p>
+              </div>
+
               <button
                 className={styles.modalCloseBtn}
                 onClick={closeScheduleModal}
-                disabled={Boolean(assigningSlotId)}
+                disabled={approvalSubmitting}
               >
                 ×
               </button>
             </div>
 
-            <p className={styles.pageSubtext}>
-              {scheduleTarget.patient_name} requested {scheduleTarget.services || "a service"}.
-              Select an available doctor schedule, then review the approval instructions before notifying the patient.
-            </p>
+            <div className={styles.listCard} style={{ marginTop: 14 }}>
+              <div className={styles.listHeader}>
+                <div>
+                  <h2>{scheduleTarget.patient_name}</h2>
+                  <p className={styles.pageSubtext}>
+                    Requested service: {scheduleTarget.services || "Initial Evaluation"}
+                  </p>
+                </div>
+                <span className={`${styles.badge} ${styles.statusPending}`}>
+                  Staff-Coordinated
+                </span>
+              </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "14px 0" }}>
-              <input
-                type="date"
-                value={assignmentWeekStart}
-                onChange={(event) => setAssignmentWeekStart(event.target.value)}
-                style={{
-                  minHeight: 42,
-                  borderRadius: 12,
-                  border: "1px solid var(--border-color, #dbe2ea)",
-                  padding: "0 12px",
-                }}
-              />
-
-              <button
-                className={styles.secondaryBtn}
-                onClick={() => loadAssignableSlots(scheduleTarget, assignmentWeekStart)}
-                disabled={slotLoading || Boolean(assigningSlotId)}
-              >
-                {slotLoading ? "Loading..." : "Load Week Slots"}
-              </button>
+              {scheduleTarget.concern && (
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Concern</span>
+                  <span className={styles.infoValue}>{scheduleTarget.concern}</span>
+                </div>
+              )}
             </div>
 
-            {slotError && <div className={styles.emptyState}>{slotError}</div>}
+            <div className={styles.dashboardGrid} style={{ marginTop: 16 }}>
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <h2>Doctor</h2>
+                </div>
 
-            {slotLoading ? (
-              <div className={styles.emptyState}>Loading available evaluation slots...</div>
-            ) : assignableSlots.length === 0 ? (
-              <div className={styles.emptyState}>
-                No available slots found for this week. Create a doctor schedule for this service first.
-              </div>
-            ) : (
-              <div style={{ display: "grid", gap: 10, maxHeight: "440px", overflowY: "auto" }}>
-                {assignableSlots.map((slot) => {
-                  const disabled = !slot.is_available || Boolean(assigningSlotId)
-                  const isAssigning = assigningSlotId === slot.slot_id
+                <label className={styles.infoLabel} htmlFor="manualDoctor">
+                  Select doctor for this service
+                </label>
+                <select
+                  id="manualDoctor"
+                  value={manualEvaluationForm.doctor_id}
+                  onChange={(event) =>
+                    setManualEvaluationForm((current) => ({
+                      ...current,
+                      doctor_id: event.target.value,
+                    }))
+                  }
+                  disabled={doctorLoading || approvalSubmitting}
+                  style={{
+                    width: "100%",
+                    minHeight: 44,
+                    borderRadius: 12,
+                    border: "1px solid var(--border-color, #dbe2ea)",
+                    background: "var(--input-bg, #ffffff)",
+                    color: "inherit",
+                    padding: "0 12px",
+                    marginTop: 8,
+                  }}
+                >
+                  <option value="">
+                    {doctorLoading ? "Loading doctors..." : "Select doctor"}
+                  </option>
+                  {assignableDoctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.name}{doctor.specialty ? ` · ${doctor.specialty}` : ""}
+                    </option>
+                  ))}
+                </select>
 
-                  return (
-                    <div key={slot.slot_id} className={styles.requestCard}>
-                      <div className={styles.requestInfo}>
-                        <b>{slot.doctor_name}</b>
-                        <p>{slot.doctor_specialty || slot.consultation_mode}</p>
-                        <span>
-                          {formatDate(slot.schedule_date)} at {formatSlotTimeRange(slot)}
-                        </span>
-                        <p className={styles.detailText}>{slot.service_name}</p>
-                        {!slot.is_available && (
-                          <p className={styles.detailText}>{slot.unavailable_reason || "Unavailable"}</p>
-                        )}
-                      </div>
-
-                      <div className={styles.actions}>
-                        <button
-                          className={slot.is_available ? styles.acceptBtn : styles.secondaryBtn}
-                          onClick={() => assignAndApprove(slot)}
-                          disabled={disabled}
-                        >
-                          {isAssigning ? "Preparing..." : slot.is_available ? "Use Slot" : "Unavailable"}
-                        </button>
-                      </div>
+                {doctorLoading ? (
+                  <div className={styles.emptyState} style={{ marginTop: 12 }}>
+                    Loading doctors assigned to this service...
+                  </div>
+                ) : assignableDoctors.length === 0 ? (
+                  <div className={styles.emptyState} style={{ marginTop: 12 }}>
+                    No doctor is assigned to this service yet. Check the doctor-service setup first.
+                  </div>
+                ) : getSelectedEvaluationDoctor() ? (
+                  <div className={styles.requestCard} style={{ marginTop: 12 }}>
+                    <div className={styles.requestInfo}>
+                      <b>{getSelectedEvaluationDoctor()?.name}</b>
+                      <p>{getSelectedEvaluationDoctor()?.specialty || "Doctor"}</p>
+                      {getSelectedEvaluationDoctor()?.bio && (
+                        <p className={styles.detailText}>{getSelectedEvaluationDoctor()?.bio}</p>
+                      )}
                     </div>
-                  )
-                })}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={styles.listCard}>
+                <div className={styles.listHeader}>
+                  <h2>Manual Schedule</h2>
+                </div>
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  <label className={styles.infoLabel} htmlFor="manualDate">
+                    Appointment Date
+                  </label>
+                  <input
+                    id="manualDate"
+                    type="date"
+                    value={manualEvaluationForm.schedule_date}
+                    onChange={(event) =>
+                      setManualEvaluationForm((current) => ({
+                        ...current,
+                        schedule_date: event.target.value,
+                      }))
+                    }
+                    min={getTodayInputDate()}
+                    disabled={approvalSubmitting}
+                    style={{
+                      minHeight: 44,
+                      borderRadius: 12,
+                      border: "1px solid var(--border-color, #dbe2ea)",
+                      background: "var(--input-bg, #ffffff)",
+                      color: "inherit",
+                      padding: "0 12px",
+                    }}
+                  />
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label className={styles.infoLabel} htmlFor="manualStart">
+                        Start Time
+                      </label>
+                      <input
+                        id="manualStart"
+                        type="time"
+                        value={manualEvaluationForm.start_time}
+                        onChange={(event) =>
+                          setManualEvaluationForm((current) => ({
+                            ...current,
+                            start_time: event.target.value,
+                          }))
+                        }
+                        disabled={approvalSubmitting}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          borderRadius: 12,
+                          border: "1px solid var(--border-color, #dbe2ea)",
+                          background: "var(--input-bg, #ffffff)",
+                          color: "inherit",
+                          padding: "0 12px",
+                          marginTop: 8,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={styles.infoLabel} htmlFor="manualEnd">
+                        End Time
+                      </label>
+                      <input
+                        id="manualEnd"
+                        type="time"
+                        value={manualEvaluationForm.end_time}
+                        onChange={(event) =>
+                          setManualEvaluationForm((current) => ({
+                            ...current,
+                            end_time: event.target.value,
+                          }))
+                        }
+                        disabled={approvalSubmitting}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          borderRadius: 12,
+                          border: "1px solid var(--border-color, #dbe2ea)",
+                          background: "var(--input-bg, #ffffff)",
+                          color: "inherit",
+                          padding: "0 12px",
+                          marginTop: 8,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <label className={styles.infoLabel} htmlFor="manualMode">
+                    Consultation Mode
+                  </label>
+                  <select
+                    id="manualMode"
+                    value={manualEvaluationForm.consultation_mode}
+                    onChange={(event) =>
+                      setManualEvaluationForm((current) => ({
+                        ...current,
+                        consultation_mode: event.target.value as ManualEvaluationForm["consultation_mode"],
+                      }))
+                    }
+                    disabled={approvalSubmitting}
+                    style={{
+                      minHeight: 44,
+                      borderRadius: 12,
+                      border: "1px solid var(--border-color, #dbe2ea)",
+                      background: "var(--input-bg, #ffffff)",
+                      color: "inherit",
+                      padding: "0 12px",
+                    }}
+                  >
+                    <option value="In-Person">In-Person</option>
+                    <option value="Online Consultation">Online Consultation</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {scheduleError && (
+              <div className={styles.emptyState} style={{ marginTop: 14 }}>
+                {scheduleError}
               </div>
             )}
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.secondaryBtn}
+                onClick={closeScheduleModal}
+                disabled={approvalSubmitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                className={styles.acceptBtn}
+                onClick={prepareManualScheduleApproval}
+                disabled={doctorLoading || approvalSubmitting || assignableDoctors.length === 0}
+              >
+                Continue to Approval
+              </button>
+            </div>
           </div>
         </div>
       )}

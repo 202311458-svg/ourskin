@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -83,24 +84,40 @@ def generate_hourly_slots(schedule: DoctorSchedule):
     return slots
 
 
-def has_approved_slot(
+def has_blocking_doctor_appointment(
     db: Session,
-    schedule_id: int,
+    doctor_id: int,
+    appointment_date: date,
     slot_start: time,
     slot_end: time,
 ):
+    """
+    Checks doctor-level booking conflicts instead of schedule_id-only conflicts.
+
+    Approved appointments always block a slot. Pending initial evaluation requests
+    also block once staff has assigned a doctor/date/time, because those are
+    already coordinated internally with the doctor.
+    """
     return (
         db.query(AppointmentModel)
         .filter(
-            AppointmentModel.schedule_id == schedule_id,
-            AppointmentModel.time == slot_start,
-            AppointmentModel.end_time == slot_end,
-            AppointmentModel.status == "Approved",
+            AppointmentModel.doctor_id == doctor_id,
+            AppointmentModel.date == appointment_date,
+            AppointmentModel.time.isnot(None),
+            AppointmentModel.end_time.isnot(None),
+            AppointmentModel.time < slot_end,
+            AppointmentModel.end_time > slot_start,
+            or_(
+                AppointmentModel.status == "Approved",
+                and_(
+                    AppointmentModel.status == "Pending",
+                    AppointmentModel.is_initial_evaluation_request == True,
+                ),
+            ),
         )
         .first()
         is not None
     )
-
 
 def serialize_service(service: Service):
     return {
@@ -327,9 +344,10 @@ def get_schedules_by_service(
             if slot_start_datetime <= now:
                 continue
 
-            approved = has_approved_slot(
+            blocked = has_blocking_doctor_appointment(
                 db=db,
-                schedule_id=schedule.id,
+                doctor_id=doctor.id,
+                appointment_date=schedule.schedule_date,
                 slot_start=slot_start,
                 slot_end=slot_end,
             )
@@ -341,8 +359,8 @@ def get_schedules_by_service(
                     doctor=doctor,
                     slot_start=slot_start,
                     slot_end=slot_end,
-                    is_available=not approved,
-                    unavailable_reason="Already booked" if approved else None,
+                    is_available=not blocked,
+                    unavailable_reason="Already booked" if blocked else None,
                 )
             )
 

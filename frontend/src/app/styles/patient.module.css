@@ -1993,3 +1993,483 @@
   display: block;
   margin-bottom: 0.35rem;
 }
+
+
+.doctorCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.doctorAvatar {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 20px;
+  object-fit: cover;
+  background: #f4e5ec;
+  border: 1px solid rgba(130, 51, 76, 0.16);
+}
+
+.doctorInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.doctorInfo strong {
+  color: #82334c;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.doctorInfo span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.doctorSelectedBadge {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(130, 51, 76, 0.1);
+  color: #82334c;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.doctorBio {
+  margin: 12px 0 0;
+  text-align: left;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.doctorWeekPanel {
+  margin-top: 14px;
+  width: 100%;
+  text-align: left;
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(130, 51, 76, 0.055);
+  border: 1px solid rgba(130, 51, 76, 0.12);
+}
+
+.doctorWeekTitle {
+  display: block;
+  margin-bottom: 8px;
+  color: #82334c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.doctorSchedulePreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.doctorSchedulePreviewItem {
+  display: block;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 1px solid rgba(130, 51, 76, 0.12);
+  color: #374151;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.doctorScheduleEmpty {
+  display: block;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+body.darkMode .doctorAvatar {
+  background: #1f2937;
+  border-color: rgba(244, 114, 182, 0.25);
+}
+
+body.darkMode .doctorInfo strong,
+body.darkMode .doctorWeekTitle,
+body.darkMode .doctorSelectedBadge {
+  color: #f9a8d4;
+}
+
+body.darkMode .doctorInfo span,
+body.darkMode .doctorBio,
+body.darkMode .doctorScheduleEmpty {
+  color: #cbd5e1;
+}
+
+body.darkMode .doctorSelectedBadge {
+  background: rgba(244, 114, 182, 0.12);
+}
+
+body.darkMode .doctorWeekPanel {
+  background: rgba(244, 114, 182, 0.08);
+  border-color: rgba(244, 114, 182, 0.18);
+}
+
+body.darkMode .doctorSchedulePreviewItem {
+  background: #111827;
+  border-color: rgba(244, 114, 182, 0.16);
+  color: #e5e7eb;
+}
+
+@media (max-width: 640px) {
+  .doctorCardHeader {
+    align-items: flex-start;
+  }
+
+  .doctorAvatar {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    border-radius: 16px;
+  }
+}
+
+
+
+.doctorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.doctorCard {
+  width: 100%;
+  min-height: 100%;
+  border: 1px solid rgba(130, 51, 76, 0.16);
+  border-radius: 22px;
+  padding: 18px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.06);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.doctorCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(130, 51, 76, 0.42);
+  box-shadow: 0 18px 45px rgba(130, 51, 76, 0.14);
+}
+
+.doctorCardActive {
+  background: linear-gradient(135deg, rgba(130, 51, 76, 0.12), rgba(130, 51, 76, 0.04));
+  border-color: rgba(130, 51, 76, 0.64);
+  box-shadow: 0 18px 48px rgba(130, 51, 76, 0.18);
+}
+
+.doctorCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.doctorAvatar {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 20px;
+  object-fit: cover;
+  background: #f7e8ef;
+  border: 1px solid rgba(130, 51, 76, 0.2);
+  box-shadow: 0 10px 24px rgba(130, 51, 76, 0.12);
+}
+
+.doctorInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.doctorInfo strong {
+  color: #82334c;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.doctorInfo span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.doctorSelectedBadge {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(130, 51, 76, 0.1);
+  color: #82334c;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.doctorBio {
+  margin: 12px 0 0;
+  text-align: left;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.doctorWeekPanel {
+  margin-top: 14px;
+  width: 100%;
+  text-align: left;
+  border-radius: 18px;
+  padding: 12px;
+  background: #fbf6f8;
+  border: 1px solid rgba(130, 51, 76, 0.14);
+}
+
+.doctorWeekTitle {
+  display: block;
+  margin-bottom: 10px;
+  color: #82334c;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.doctorSchedulePreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doctorSchedulePreviewItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid rgba(130, 51, 76, 0.14);
+  color: #374151;
+  line-height: 1.35;
+}
+
+.doctorSchedulePreviewItem strong {
+  grid-column: 1 / -1;
+  color: #111827;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.doctorSchedulePreviewItem span {
+  color: #4b5563;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.doctorSchedulePreviewItem em {
+  justify-self: end;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(130, 51, 76, 0.1);
+  color: #82334c;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.doctorScheduleEmpty {
+  display: block;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+:global(body.darkMode) .doctorCard {
+  background: #151922;
+  color: #e5e7eb;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+:global(body.darkMode) .doctorCard:hover {
+  border-color: rgba(244, 114, 182, 0.42);
+  box-shadow: 0 18px 45px rgba(244, 114, 182, 0.12);
+}
+
+:global(body.darkMode) .doctorCardActive {
+  background: linear-gradient(135deg, rgba(130, 51, 76, 0.42), rgba(21, 25, 34, 0.98));
+  border-color: rgba(244, 114, 182, 0.5);
+}
+
+:global(body.darkMode) .doctorAvatar {
+  background: #1f2937;
+  border-color: rgba(244, 114, 182, 0.28);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+}
+
+:global(body.darkMode) .doctorInfo strong,
+:global(body.darkMode) .doctorWeekTitle,
+:global(body.darkMode) .doctorSelectedBadge {
+  color: #f9a8d4;
+}
+
+:global(body.darkMode) .doctorInfo span,
+:global(body.darkMode) .doctorBio,
+:global(body.darkMode) .doctorScheduleEmpty {
+  color: #cbd5e1;
+}
+
+:global(body.darkMode) .doctorSelectedBadge {
+  background: rgba(244, 114, 182, 0.14);
+}
+
+:global(body.darkMode) .doctorWeekPanel {
+  background: rgba(10, 13, 20, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(body.darkMode) .doctorSchedulePreviewItem {
+  background: #0f1420;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+:global(body.darkMode) .doctorSchedulePreviewItem strong {
+  color: #f8fafc;
+}
+
+:global(body.darkMode) .doctorSchedulePreviewItem span {
+  color: #d1d5db;
+}
+
+:global(body.darkMode) .doctorSchedulePreviewItem em {
+  background: rgba(244, 114, 182, 0.16);
+  color: #f9a8d4;
+}
+
+@media (max-width: 960px) {
+  .doctorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .doctorCard {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .doctorCardHeader {
+    align-items: flex-start;
+  }
+
+  .doctorAvatar {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    border-radius: 16px;
+  }
+
+  .doctorSchedulePreviewItem {
+    grid-template-columns: 1fr;
+  }
+
+  .doctorSchedulePreviewItem em {
+    justify-self: start;
+  }
+}
+
+
+.doctorGrid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.doctorCard {
+  display: block;
+  width: 100%;
+}
+
+.doctorCardHeader {
+  align-items: flex-start;
+}
+
+.doctorWeekPanel {
+  margin-top: 16px;
+}
+
+.doctorSchedulePreviewList {
+  gap: 10px;
+}
+
+.doctorSchedulePreviewItem {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.doctorSchedulePreviewItem strong {
+  grid-column: auto;
+  font-size: 0.92rem;
+}
+
+.doctorSchedulePreviewItem span {
+  font-size: 0.95rem;
+}
+
+.doctorSchedulePreviewItem em {
+  justify-self: start;
+  font-size: 0.75rem;
+}
+
+.scheduleGrid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: 920px;
+  margin: 0 auto;
+  gap: 12px;
+}
+
+.scheduleOption {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  text-align: left;
+  align-items: start;
+}
+
+.scheduleOption strong,
+.scheduleOption span,
+.scheduleOption p,
+.scheduleOption small {
+  text-align: left;
+}
+
+.scheduleOption p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .doctorGrid,
+  .scheduleGrid {
+    max-width: 100%;
+  }
+}

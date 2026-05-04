@@ -56,17 +56,23 @@ type BookingSchedule = {
   unavailable_reason?: string | null;
 };
 
-type BookingPreference = "doctor" | "time";
+type DoctorSchedulePreviewGroup = {
+  key: string;
+  schedule_date: string;
+  start_time: string;
+  end_time: string;
+  consultation_mode: string;
+};
 
 type AgeInfo = {
   years: number | null;
   label: string;
 };
 
-const regularSteps = [
+const regularBookingSteps = [
   "Patient Details",
   "Select Service",
-  "Booking Preference",
+  "Select Doctor",
   "Concern",
   "Summary",
 ];
@@ -74,7 +80,7 @@ const regularSteps = [
 const initialEvaluationSteps = [
   "Patient Details",
   "Select Service",
-  "Concern",
+  "Initial Evaluation Request",
   "Summary",
 ];
 
@@ -140,6 +146,18 @@ function formatDate(value: string) {
   });
 }
 
+function formatShortDate(value: string) {
+  if (!value) return "";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return date.toLocaleDateString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function formatTime(value: string) {
   if (!value) return "";
 
@@ -154,6 +172,48 @@ function formatTime(value: string) {
   });
 }
 
+function formatDoctorScheduleDate(value: string) {
+  if (!value) return "";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatPreviewTime(value: string) {
+  if (!value) return "";
+
+  const [hour, minute] = value.split(":");
+  const date = new Date();
+
+  date.setHours(Number(hour), Number(minute), 0, 0);
+
+  const options: Intl.DateTimeFormatOptions = {
+    hour: "numeric",
+    hour12: true,
+  };
+
+  if (date.getMinutes() !== 0) {
+    options.minute = "2-digit";
+  }
+
+  return date
+    .toLocaleTimeString("en-US", options)
+    .replace(/\s/g, " ")
+    .toUpperCase();
+}
+
+function formatCompactTimeRange(startTime: string, endTime: string) {
+  if (!startTime || !endTime) return "";
+
+  return `${formatPreviewTime(startTime)} - ${formatPreviewTime(endTime)}`;
+}
+
 function getFullName(user: UserProfile | null) {
   if (!user) return "";
 
@@ -162,13 +222,54 @@ function getFullName(user: UserProfile | null) {
   return fullName || user.name || "";
 }
 
-function getTodayDateValue() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function parseDateOnly(value: string) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function getCurrentWeekStartDateValue() {
+  const today = new Date();
+  const day = today.getDay();
+  const daysFromMonday = day === 0 ? -6 : 1 - day;
+  const weekStart = new Date(today);
+
+  weekStart.setDate(today.getDate() + daysFromMonday);
+
+  return toDateInputValue(weekStart);
+}
+
+function getWeekEndDateValue(weekStartValue: string) {
+  const weekStart = parseDateOnly(weekStartValue);
+  const weekEnd = new Date(weekStart);
+
+  weekEnd.setDate(weekStart.getDate() + 5);
+
+  return toDateInputValue(weekEnd);
+}
+
+function getDoctorImageSrc(profileImage?: string | null) {
+  if (!profileImage) return "/default-doctor.png";
+
+  const cleanImage = profileImage.trim();
+
+  if (!cleanImage) return "/default-doctor.png";
+
+  if (cleanImage.startsWith("http://") || cleanImage.startsWith("https://")) {
+    return cleanImage;
+  }
+
+  if (cleanImage.startsWith("/")) {
+    return cleanImage;
+  }
+
+  return `${API_BASE_URL}/${cleanImage}`;
 }
 
 export default function PatientBookingPage() {
@@ -180,12 +281,7 @@ export default function PatientBookingPage() {
   const [schedules, setSchedules] = useState<BookingSchedule[]>([]);
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [bookingPreference, setBookingPreference] =
-    useState<BookingPreference>("doctor");
-
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
-  const [preferredWeekStart, setPreferredWeekStart] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
 
   const [patientAddress, setPatientAddress] = useState("");
@@ -199,6 +295,12 @@ export default function PatientBookingPage() {
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  const currentWeekStart = useMemo(() => getCurrentWeekStartDateValue(), []);
+  const currentWeekEnd = useMemo(
+    () => getWeekEndDateValue(currentWeekStart),
+    [currentWeekStart]
+  );
 
   const patientName = useMemo(() => getFullName(user), [user]);
 
@@ -225,11 +327,11 @@ export default function PatientBookingPage() {
     selectedService?.requires_initial_evaluation
   );
 
-  const wizardSteps = requiresInitialEvaluation
-    ? initialEvaluationSteps
-    : regularSteps;
+  const bookingSteps = useMemo(() => {
+    return requiresInitialEvaluation ? initialEvaluationSteps : regularBookingSteps;
+  }, [requiresInitialEvaluation]);
 
-  const finalStep = requiresInitialEvaluation ? 4 : 5;
+  const finalStep = bookingSteps.length;
 
   const selectedDoctor = useMemo(() => {
     return (
@@ -244,29 +346,65 @@ export default function PatientBookingPage() {
     );
   }, [schedules, selectedScheduleId]);
 
-  const availableTimes = useMemo(() => {
-    const uniqueTimes = Array.from(
-      new Set(
-        schedules
-          .filter((schedule) => schedule.is_available)
-          .map((schedule) => schedule.start_time)
-      )
-    );
+  useEffect(() => {
+    setCurrentStep((step) => Math.min(step, finalStep));
+  }, [finalStep]);
 
-    return uniqueTimes.sort((a, b) => a.localeCompare(b));
-  }, [schedules]);
+  const selectedDoctorSchedules = useMemo(() => {
+    if (!selectedDoctorId) return [];
 
-  const scheduleOptions = useMemo(() => {
-    if (bookingPreference === "doctor") {
-      return schedules;
-    }
+    return schedules
+      .filter((schedule) => String(schedule.doctor_id) === selectedDoctorId)
+      .sort((a, b) => {
+        const dateCompare = a.schedule_date.localeCompare(b.schedule_date);
 
-    if (!selectedTime) {
-      return [];
-    }
+        if (dateCompare !== 0) return dateCompare;
 
-    return schedules.filter((schedule) => schedule.start_time === selectedTime);
-  }, [bookingPreference, schedules, selectedTime]);
+        return a.start_time.localeCompare(b.start_time);
+      });
+  }, [schedules, selectedDoctorId]);
+
+
+  const sortedDoctors = useMemo(() => {
+    const now = new Date();
+
+    const getScheduleDateTime = (schedule: BookingSchedule) => {
+      return new Date(`${schedule.schedule_date}T${schedule.start_time}`).getTime();
+    };
+
+    const getNearestScheduleTime = (doctorId: number) => {
+      const doctorSchedules = schedules
+        .filter((schedule) => schedule.doctor_id === doctorId && schedule.is_available)
+        .map((schedule) => ({
+          schedule,
+          time: getScheduleDateTime(schedule),
+        }))
+        .filter(({ time }) => Number.isFinite(time));
+
+      const futureSchedules = doctorSchedules
+        .filter(({ time }) => time >= now.getTime())
+        .sort((a, b) => a.time - b.time);
+
+      if (futureSchedules.length > 0) {
+        return futureSchedules[0].time;
+      }
+
+      const fallbackSchedules = doctorSchedules.sort((a, b) => a.time - b.time);
+
+      return fallbackSchedules[0]?.time ?? Number.POSITIVE_INFINITY;
+    };
+
+    return [...doctors].sort((a, b) => {
+      const aNearestSchedule = getNearestScheduleTime(a.id);
+      const bNearestSchedule = getNearestScheduleTime(b.id);
+
+      if (aNearestSchedule !== bNearestSchedule) {
+        return aNearestSchedule - bNearestSchedule;
+      }
+
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [doctors, schedules]);
 
   const getHeaders = useCallback(() => {
     const { token } = getAuth();
@@ -279,8 +417,6 @@ export default function PatientBookingPage() {
 
   const resetScheduleSelections = useCallback(() => {
     setSelectedDoctorId("");
-    setPreferredWeekStart("");
-    setSelectedTime("");
     setSelectedScheduleId("");
     setSchedules([]);
   }, []);
@@ -428,60 +564,79 @@ export default function PatientBookingPage() {
     resetScheduleSelections();
     setDoctors([]);
 
-    const service = services.find((item) => String(item.id) === serviceId);
-
-    if (!serviceId || service?.requires_initial_evaluation) {
+    if (!serviceId) {
       return;
     }
 
-    await fetchDoctorsByService(serviceId);
+    const selected = services.find((service) => String(service.id) === serviceId);
+
+    if (selected?.requires_initial_evaluation) {
+      return;
+    }
+
+    await Promise.all([
+      fetchDoctorsByService(serviceId),
+      fetchSchedulesByService({
+        serviceId,
+        weekStart: currentWeekStart,
+      }),
+    ]);
   }
 
-  function handlePreferenceChange(preference: BookingPreference) {
-    setBookingPreference(preference);
-    setMessage("");
-    setError("");
-    setSelectedDoctorId("");
-    setPreferredWeekStart("");
-    setSelectedTime("");
-    setSelectedScheduleId("");
-    setSchedules([]);
-  }
-
-  async function handleDoctorChange(doctorId: string) {
+  function handleDoctorChange(doctorId: string) {
     setSelectedDoctorId(doctorId);
     setSelectedScheduleId("");
-    setSchedules([]);
-    setMessage("");
-
-    if (!selectedServiceId || !doctorId) return;
-
-    await fetchSchedulesByService({
-      serviceId: selectedServiceId,
-      doctorId,
-    });
-  }
-
-  async function handlePreferredWeekChange(dateValue: string) {
-    setPreferredWeekStart(dateValue);
-    setSelectedTime("");
-    setSelectedScheduleId("");
-    setSchedules([]);
-    setMessage("");
-
-    if (!selectedServiceId || !dateValue) return;
-
-    await fetchSchedulesByService({
-      serviceId: selectedServiceId,
-      weekStart: dateValue,
-    });
-  }
-
-  function handleTimeChange(timeValue: string) {
-    setSelectedTime(timeValue);
-    setSelectedScheduleId("");
     setMessage("");
     setError("");
+  }
+
+  function getDoctorWeekSchedules(doctorId: number) {
+    return schedules
+      .filter((schedule) => schedule.doctor_id === doctorId)
+      .sort((a, b) => {
+        const dateCompare = a.schedule_date.localeCompare(b.schedule_date);
+
+        if (dateCompare !== 0) return dateCompare;
+
+        return a.start_time.localeCompare(b.start_time);
+      });
+  }
+
+  function getDoctorSchedulePreviewGroups(doctorId: number) {
+    const groupedSchedules = new Map<string, DoctorSchedulePreviewGroup>();
+
+    getDoctorWeekSchedules(doctorId).forEach((schedule) => {
+      const consultationMode = schedule.consultation_mode || "In Person";
+      const groupKey = `${schedule.schedule_date}-${consultationMode}`;
+      const currentGroup = groupedSchedules.get(groupKey);
+
+      if (!currentGroup) {
+        groupedSchedules.set(groupKey, {
+          key: groupKey,
+          schedule_date: schedule.schedule_date,
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          consultation_mode: consultationMode,
+        });
+        return;
+      }
+
+      if (schedule.start_time < currentGroup.start_time) {
+        currentGroup.start_time = schedule.start_time;
+      }
+
+      if (schedule.end_time > currentGroup.end_time) {
+        currentGroup.end_time = schedule.end_time;
+      }
+    });
+
+    return Array.from(groupedSchedules.values()).sort((a, b) => {
+      const dateCompare = a.schedule_date.localeCompare(b.schedule_date);
+
+      if (dateCompare !== 0) return dateCompare;
+
+      return a.start_time.localeCompare(b.start_time);
+    });
   }
 
   function validateCurrentStep() {
@@ -507,6 +662,11 @@ export default function PatientBookingPage() {
     }
 
     if (currentStep === 3 && !requiresInitialEvaluation) {
+      if (!selectedDoctorId) {
+        setError("Please select a doctor.");
+        return false;
+      }
+
       if (!selectedSchedule) {
         setError("Please select an available appointment schedule.");
         return false;
@@ -544,6 +704,13 @@ export default function PatientBookingPage() {
       return;
     }
 
+    if (!requiresInitialEvaluation && !selectedDoctorId) {
+      setError("Please select a doctor.");
+      setSubmitting(false);
+      setCurrentStep(3);
+      return;
+    }
+
     if (!requiresInitialEvaluation && !selectedSchedule) {
       setError("Please select an available appointment schedule.");
       setSubmitting(false);
@@ -572,18 +739,22 @@ export default function PatientBookingPage() {
             patient_contact: patientContact.trim(),
             patient_address: patientAddress.trim(),
             patient_age: patientAge,
-            patient_age_label: patientAgeLabel !== "Not set" ? patientAgeLabel : null,
+            patient_age_label:
+              patientAgeLabel !== "Not set" ? patientAgeLabel : null,
             concern: concern.trim() || null,
+            appointment_type: "Initial Evaluation",
           }
         : {
             schedule_id: selectedSchedule?.schedule_id,
             service_id: Number(selectedServiceId),
+            doctor_id: Number(selectedDoctorId),
             start_time: selectedSchedule?.start_time,
             end_time: selectedSchedule?.end_time,
             patient_contact: patientContact.trim(),
             patient_address: patientAddress.trim(),
             patient_age: patientAge,
-            patient_age_label: patientAgeLabel !== "Not set" ? patientAgeLabel : null,
+            patient_age_label:
+              patientAgeLabel !== "Not set" ? patientAgeLabel : null,
             concern: concern.trim() || null,
           };
 
@@ -606,10 +777,7 @@ export default function PatientBookingPage() {
       );
 
       setSelectedServiceId("");
-      setBookingPreference("doctor");
       setSelectedDoctorId("");
-      setPreferredWeekStart("");
-      setSelectedTime("");
       setSelectedScheduleId("");
       setSchedules([]);
       setDoctors([]);
@@ -631,29 +799,27 @@ export default function PatientBookingPage() {
 
     if (currentStep === 2) {
       return requiresInitialEvaluation
-        ? "Next: Add Concern"
-        : "Next: Choose Preference";
+        ? "Next: Request Initial Evaluation"
+        : "Next: Select Doctor";
     }
 
-    if (requiresInitialEvaluation && currentStep === 3) {
-      return "Next: Review Request";
+    if (currentStep === 3) {
+      return requiresInitialEvaluation
+        ? "Next: Review Request"
+        : "Next: Add Concern";
     }
 
-    if (!requiresInitialEvaluation && currentStep === 3) {
-      return "Next: Concern";
-    }
-
-    if (!requiresInitialEvaluation && currentStep === 4) {
+    if (currentStep === 4) {
       return "Next: Review Booking";
     }
 
     return "Next";
   }
 
-  const showBookingPreferenceStep = currentStep === 3 && !requiresInitialEvaluation;
-  const showConcernStep =
-    (requiresInitialEvaluation && currentStep === 3) ||
-    (!requiresInitialEvaluation && currentStep === 4);
+  const showDoctorStep = !requiresInitialEvaluation && currentStep === 3;
+  const showConcernStep = requiresInitialEvaluation
+    ? currentStep === 3
+    : currentStep === 4;
   const showSummaryStep = currentStep === finalStep;
 
   return (
@@ -681,7 +847,7 @@ export default function PatientBookingPage() {
         </section>
 
         <section className={styles.bookingStepper}>
-          {wizardSteps.map((step, index) => {
+          {bookingSteps.map((step, index) => {
             const stepNumber = index + 1;
             const isActive = currentStep === stepNumber;
             const isDone = currentStep > stepNumber;
@@ -789,8 +955,10 @@ export default function PatientBookingPage() {
                   <div>
                     <h2>Select Service</h2>
                     <p>
-                      Services are loaded from the clinic database and matched
-                      with doctors and staff-managed schedules.
+                      Select the service you need. Regular services will continue
+                      to doctor and schedule selection. Surgical and cosmetic
+                      surgery requests will go straight to an initial evaluation
+                      request.
                     </p>
                   </div>
                 </div>
@@ -824,92 +992,162 @@ export default function PatientBookingPage() {
                   <div className={styles.noticeBox}>
                     <strong>Initial evaluation request</strong>
                     <p>
-                      Surgical and Cosmetic Surgery requests will be submitted
-                      for staff review first. You do not need to choose a doctor
-                      or time on this step because staff will coordinate the
-                      initial evaluation schedule.
+                      Surgical and cosmetic surgery services require an initial
+                      evaluation first. You do not need to choose a doctor or
+                      appointment time yet. Staff will review the request and
+                      coordinate the next step.
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {showBookingPreferenceStep && (
+            {showDoctorStep && (
               <div className={styles.bookingCard}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <h2>Choose Booking Preference</h2>
+                    <h2>Select Doctor</h2>
                     <p>
-                      Choose whether you want to book by doctor or by preferred
-                      appointment time.
+                      Choose a doctor for {selectedService?.name || "the selected service"}.
+                      Current weekly schedules are shown from {formatShortDate(currentWeekStart)} to {formatShortDate(currentWeekEnd)}.
                     </p>
                   </div>
                 </div>
 
-                <div className={styles.preferenceGrid}>
-                  <button
-                    type="button"
-                    className={`${styles.preferenceCard} ${
-                      bookingPreference === "doctor"
-                        ? styles.preferenceCardActive
-                        : ""
-                    }`}
-                    onClick={() => handlePreferenceChange("doctor")}
-                  >
-                    <strong>Prefer Doctor</strong>
-                    <span>
-                      Select a doctor who performs the selected service, then
-                      choose from their available hourly slots.
-                    </span>
-                  </button>
+                {loadingDoctors ? (
+                  <div className={styles.emptyState}>Loading doctors...</div>
+                ) : doctors.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    No doctors are assigned to this service yet.
+                  </div>
+                ) : (
+                  <div className={styles.doctorGrid}>
+                    {sortedDoctors.map((doctor) => {
+                      const active = selectedDoctorId === String(doctor.id);
+                      const doctorScheduleGroups = getDoctorSchedulePreviewGroups(doctor.id);
 
-                  <button
-                    type="button"
-                    className={`${styles.preferenceCard} ${
-                      bookingPreference === "time"
-                        ? styles.preferenceCardActive
-                        : ""
-                    }`}
-                    onClick={() => handlePreferenceChange("time")}
-                  >
-                    <strong>Prefer Appointment Time</strong>
-                    <span>
-                      Select a week and preferred time first, then choose from
-                      doctors available during that weekly schedule.
-                    </span>
-                  </button>
-                </div>
+                      return (
+                        <button
+                          key={doctor.id}
+                          type="button"
+                          className={`${styles.doctorCard} ${
+                            active ? styles.doctorCardActive : ""
+                          }`}
+                          onClick={() => handleDoctorChange(String(doctor.id))}
+                        >
+                          <div className={styles.doctorCardHeader}>
+                            <img
+                              src={getDoctorImageSrc(doctor.profile_image)}
+                              alt={doctor.name || "Doctor"}
+                              className={styles.doctorAvatar}
+                              onError={(event) => {
+                                event.currentTarget.src = "/default-doctor.png";
+                              }}
+                            />
 
-                {bookingPreference === "doctor" && (
+                            <div className={styles.doctorInfo}>
+                              <strong>{doctor.name}</strong>
+                              <span>{doctor.specialty || "Doctor"}</span>
+                              {active && (
+                                <em className={styles.doctorSelectedBadge}>
+                                  Selected
+                                </em>
+                              )}
+                            </div>
+                          </div>
+
+                          {doctor.bio && (
+                            <p className={styles.doctorBio}>{doctor.bio}</p>
+                          )}
+
+                          <div className={styles.doctorWeekPanel}>
+                            <span className={styles.doctorWeekTitle}>
+                              This week&apos;s schedule
+                            </span>
+
+                            {loadingSchedules ? (
+                              <small className={styles.doctorScheduleEmpty}>
+                                Loading schedule...
+                              </small>
+                            ) : doctorScheduleGroups.length === 0 ? (
+                              <small className={styles.doctorScheduleEmpty}>
+                                No schedule this week
+                              </small>
+                            ) : (
+                              <div className={styles.doctorSchedulePreviewList}>
+                                {doctorScheduleGroups.slice(0, 3).map((schedule) => (
+                                  <span
+                                    key={schedule.key}
+                                    className={styles.doctorSchedulePreviewItem}
+                                  >
+                                    <strong>{formatDoctorScheduleDate(schedule.schedule_date)}</strong>
+                                    <span>{formatCompactTimeRange(schedule.start_time, schedule.end_time)}</span>
+                                    <em>{schedule.consultation_mode || "In Person"}</em>
+                                  </span>
+                                ))}
+
+                                {doctorScheduleGroups.length > 3 && (
+                                  <small className={styles.doctorScheduleEmpty}>
+                                    +{doctorScheduleGroups.length - 3} more schedule
+                                    {doctorScheduleGroups.length - 3 > 1 ? "s" : ""}
+                                  </small>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!requiresInitialEvaluation && (
                   <div className={styles.bookingSubSection}>
-                    <h3>Select Doctor</h3>
+                    <h3>Select Available Schedule</h3>
 
-                    {loadingDoctors ? (
-                      <div className={styles.emptyState}>Loading doctors...</div>
-                    ) : doctors.length === 0 ? (
+                    {loadingSchedules ? (
                       <div className={styles.emptyState}>
-                        No doctors are assigned to this service yet.
+                        Loading this week&apos;s schedules...
+                      </div>
+                    ) : !selectedDoctorId ? (
+                      <div className={styles.emptyState}>
+                        Select a doctor to view available hourly slots.
+                      </div>
+                    ) : selectedDoctorSchedules.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        This doctor has no available schedule for the current week.
                       </div>
                     ) : (
-                      <div className={styles.doctorGrid}>
-                        {doctors.map((doctor) => {
-                          const active =
-                            selectedDoctorId === String(doctor.id);
+                      <div className={styles.scheduleGrid}>
+                        {selectedDoctorSchedules.map((schedule) => {
+                          const active = selectedScheduleId === schedule.slot_id;
 
                           return (
                             <button
-                              key={doctor.id}
+                              key={schedule.slot_id}
                               type="button"
-                              className={`${styles.doctorCard} ${
-                                active ? styles.doctorCardActive : ""
+                              disabled={!schedule.is_available}
+                              className={`${styles.scheduleOption} ${
+                                active ? styles.scheduleOptionActive : ""
                               }`}
-                              onClick={() =>
-                                handleDoctorChange(String(doctor.id))
-                              }
+                              onClick={() => {
+                                if (!schedule.is_available) return;
+                                setSelectedScheduleId(schedule.slot_id);
+                              }}
                             >
-                              <strong>{doctor.name}</strong>
-                              <span>{doctor.specialty || "Doctor"}</span>
-                              {doctor.bio && <p>{doctor.bio}</p>}
+                              <strong>
+                                {formatDate(schedule.schedule_date)}
+                              </strong>
+                              <span>
+                                {formatTime(schedule.start_time)} to{" "}
+                                {formatTime(schedule.end_time)}
+                              </span>
+                              <p>{schedule.doctor_name}</p>
+                              <small>
+                                {schedule.is_available
+                                  ? `${schedule.consultation_mode} · ${schedule.appointment_type}`
+                                  : schedule.unavailable_reason || "Unavailable"}
+                              </small>
                             </button>
                           );
                         })}
@@ -918,102 +1156,16 @@ export default function PatientBookingPage() {
                   </div>
                 )}
 
-                {bookingPreference === "time" && (
-                  <div className={styles.bookingSubSection}>
-                    <h3>Select Preferred Week and Time</h3>
-
-                    <div className={styles.noticeBox}>
-                      <strong>Weekly availability</strong>
-                      <p>
-                        Available times are shown for the selected week only,
-                        Monday to Saturday. Sunday is unavailable by default.
-                      </p>
-                    </div>
-
-                    <div className={styles.patientInfoGrid}>
-                      <div className={styles.formGroup}>
-                        <label>Week Starting Date</label>
-                        <input
-                          type="date"
-                          min={getTodayDateValue()}
-                          value={preferredWeekStart}
-                          onChange={(event) =>
-                            handlePreferredWeekChange(event.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label>Available Time</label>
-                        <select
-                          value={selectedTime}
-                          disabled={
-                            !preferredWeekStart || availableTimes.length === 0
-                          }
-                          onChange={(event) =>
-                            handleTimeChange(event.target.value)
-                          }
-                        >
-                          <option value="">Select time</option>
-                          {availableTimes.map((timeValue) => (
-                            <option key={timeValue} value={timeValue}>
-                              {formatTime(timeValue)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                {requiresInitialEvaluation && selectedDoctorId && (
+                  <div className={styles.noticeBox}>
+                    <strong>Schedule will be coordinated</strong>
+                    <p>
+                      You selected {selectedDoctor?.name || "a doctor"}. Staff
+                      will review this request and coordinate the initial
+                      evaluation schedule.
+                    </p>
                   </div>
                 )}
-
-                <div className={styles.bookingSubSection}>
-                  <h3>Select Available Schedule</h3>
-
-                  {loadingSchedules ? (
-                    <div className={styles.emptyState}>Loading schedules...</div>
-                  ) : scheduleOptions.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      {bookingPreference === "doctor"
-                        ? "Select a doctor to view available hourly slots."
-                        : "Select a week and time to view available doctors."}
-                    </div>
-                  ) : (
-                    <div className={styles.scheduleGrid}>
-                      {scheduleOptions.map((schedule) => {
-                        const active = selectedScheduleId === schedule.slot_id;
-
-                        return (
-                          <button
-                            key={schedule.slot_id}
-                            type="button"
-                            disabled={!schedule.is_available}
-                            className={`${styles.scheduleOption} ${
-                              active ? styles.scheduleOptionActive : ""
-                            }`}
-                            onClick={() => {
-                              if (!schedule.is_available) return;
-                              setSelectedScheduleId(schedule.slot_id);
-                            }}
-                          >
-                            <strong>
-                              {formatDate(schedule.schedule_date)}
-                            </strong>
-                            <span>
-                              {formatTime(schedule.start_time)} to{" "}
-                              {formatTime(schedule.end_time)}
-                            </span>
-                            <p>{schedule.doctor_name}</p>
-                            <small>
-                              {schedule.is_available
-                                ? `${schedule.consultation_mode} · ${schedule.appointment_type}`
-                                : schedule.unavailable_reason || "Unavailable"}
-                            </small>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
@@ -1021,10 +1173,15 @@ export default function PatientBookingPage() {
               <div className={styles.bookingCard}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <h2>Concern or Reason for Visit</h2>
+                    <h2>
+                      {requiresInitialEvaluation
+                        ? "Request Initial Evaluation"
+                        : "Concern or Reason for Visit"}
+                    </h2>
                     <p>
-                      Add a short note to help the clinic understand your
-                      appointment request.
+                      {requiresInitialEvaluation
+                        ? "Add a short note about the surgical or cosmetic surgery concern you want evaluated by the clinic."
+                        : "Add a short note to help the clinic understand your appointment request."}
                     </p>
                   </div>
                 </div>
@@ -1093,69 +1250,62 @@ export default function PatientBookingPage() {
                     <strong>{selectedService?.name || "Not selected"}</strong>
                   </div>
 
-                  {!requiresInitialEvaluation && (
-                    <div>
-                      <span>Booking Preference</span>
-                      <strong>
-                        {bookingPreference === "doctor"
-                          ? "Prefer Doctor"
-                          : "Prefer Appointment Time"}
-                      </strong>
-                    </div>
+                  {requiresInitialEvaluation ? (
+                    <>
+                      <div>
+                        <span>Request Type</span>
+                        <strong>Initial Evaluation Request</strong>
+                      </div>
+
+                      <div>
+                        <span>Evaluation Schedule</span>
+                        <strong>To be coordinated by staff after review</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span>Doctor</span>
+                        <strong>
+                          {selectedSchedule?.doctor_name ||
+                            selectedDoctor?.name ||
+                            "Not selected"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Date</span>
+                        <strong>
+                          {selectedSchedule
+                            ? formatDate(selectedSchedule.schedule_date)
+                            : "Not selected"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Time</span>
+                        <strong>
+                          {selectedSchedule
+                            ? `${formatTime(selectedSchedule.start_time)} to ${formatTime(
+                                selectedSchedule.end_time
+                              )}`
+                            : "Not selected"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Mode</span>
+                        <strong>
+                          {selectedSchedule?.consultation_mode || "Not selected"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Appointment Type</span>
+                        <strong>{selectedSchedule?.appointment_type || "Regular"}</strong>
+                      </div>
+                    </>
                   )}
-
-                  <div>
-                    <span>Doctor</span>
-                    <strong>
-                      {requiresInitialEvaluation
-                        ? "To be assigned by staff"
-                        : selectedSchedule?.doctor_name ||
-                          selectedDoctor?.name ||
-                          "Not selected"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Date</span>
-                    <strong>
-                      {requiresInitialEvaluation
-                        ? "To be scheduled by staff"
-                        : selectedSchedule
-                        ? formatDate(selectedSchedule.schedule_date)
-                        : "Not selected"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Time</span>
-                    <strong>
-                      {requiresInitialEvaluation
-                        ? "To be scheduled by staff"
-                        : selectedSchedule
-                        ? `${formatTime(selectedSchedule.start_time)} to ${formatTime(
-                            selectedSchedule.end_time
-                          )}`
-                        : "Not selected"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Mode</span>
-                    <strong>
-                      {requiresInitialEvaluation
-                        ? "To be confirmed by staff"
-                        : selectedSchedule?.consultation_mode || "Not selected"}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Appointment Type</span>
-                    <strong>
-                      {requiresInitialEvaluation
-                        ? "Initial Evaluation Request"
-                        : selectedSchedule?.appointment_type || "Regular"}
-                    </strong>
-                  </div>
 
                   <div>
                     <span>Concern</span>
@@ -1167,7 +1317,8 @@ export default function PatientBookingPage() {
                   type="button"
                   className={styles.primaryBtn}
                   disabled={
-                    submitting || (!requiresInitialEvaluation && !selectedSchedule)
+                    submitting ||
+                    (!requiresInitialEvaluation && (!selectedDoctorId || !selectedSchedule))
                   }
                   onClick={handleSubmit}
                 >
@@ -1179,7 +1330,9 @@ export default function PatientBookingPage() {
                 </button>
 
                 <p className={styles.summaryHelp}>
-                  Requests remain pending until reviewed and approved by staff.
+                  {requiresInitialEvaluation
+                    ? "Initial evaluation requests remain pending until staff reviews and coordinates the schedule."
+                    : "Requests remain pending until reviewed and approved by staff."}
                 </p>
               </div>
             )}

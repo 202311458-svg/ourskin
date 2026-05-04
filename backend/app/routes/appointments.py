@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -329,20 +330,40 @@ def find_active_same_service_request(db: Session, patient_id: int, service_id: i
     )
 
 
-def find_approved_slot_conflict(
+def find_doctor_time_conflict(
     db: Session,
-    schedule_id: int,
+    doctor_id: int,
+    appointment_date: date,
     slot_start: time,
     slot_end: time,
     exclude_appointment_id: Optional[int] = None,
 ):
+    """
+    Single source of truth for doctor availability conflicts.
+
+    Blocks when the same doctor has an overlapping appointment on the same date.
+    Approved appointments always block. Pending initial evaluation requests also block
+    once staff has assigned a doctor/date/time, because those are already internally
+    coordinated with the doctor.
+
+    Regular pending patient requests do not block other patients until approved.
+    """
     query = (
         db.query(AppointmentModel)
         .filter(
-            AppointmentModel.schedule_id == schedule_id,
-            AppointmentModel.time == slot_start,
-            AppointmentModel.end_time == slot_end,
-            AppointmentModel.status == "Approved",
+            AppointmentModel.doctor_id == doctor_id,
+            AppointmentModel.date == appointment_date,
+            AppointmentModel.time.isnot(None),
+            AppointmentModel.end_time.isnot(None),
+            AppointmentModel.time < slot_end,
+            AppointmentModel.end_time > slot_start,
+            or_(
+                AppointmentModel.status == "Approved",
+                and_(
+                    AppointmentModel.status == "Pending",
+                    AppointmentModel.is_initial_evaluation_request == True,
+                ),
+            ),
         )
     )
 
@@ -350,6 +371,19 @@ def find_approved_slot_conflict(
         query = query.filter(AppointmentModel.id != exclude_appointment_id)
 
     return query.first()
+
+def validate_manual_initial_evaluation_schedule(
+    schedule_date: date,
+    slot_start: time,
+    slot_end: time,
+):
+    if slot_end <= slot_start:
+        raise HTTPException(status_code=400, detail="End time must be later than the start time")
+
+    selected_start = datetime.combine(schedule_date, slot_start)
+
+    if selected_start <= datetime.now():
+        raise HTTPException(status_code=400, detail="Past schedules cannot be assigned")
 
 
 def generate_hourly_slots(schedule: DoctorSchedule):
@@ -400,6 +434,20 @@ def serialize_assignable_slot(
         "appointment_type": "Initial Evaluation",
         "is_available": is_available,
         "unavailable_reason": unavailable_reason,
+    }
+
+
+def serialize_assignable_doctor(doctor: User):
+    return {
+        "id": doctor.id,
+        "name": doctor.name,
+        "first_name": doctor.first_name,
+        "last_name": doctor.last_name,
+        "email": doctor.email,
+        "specialty": doctor.specialty,
+        "profile_image": doctor.profile_image,
+        "bio": doctor.bio,
+        "status": doctor.status,
     }
 
 
@@ -581,17 +629,18 @@ def create_appointment(
         slot_end=data.end_time,
     )
 
-    approved_conflict = find_approved_slot_conflict(
+    doctor_conflict = find_doctor_time_conflict(
         db=db,
-        schedule_id=schedule.id,
+        doctor_id=doctor.id,
+        appointment_date=schedule.schedule_date,
         slot_start=data.start_time,
         slot_end=data.end_time,
     )
 
-    if approved_conflict:
+    if doctor_conflict:
         raise HTTPException(
             status_code=409,
-            detail="This time slot already has an approved appointment",
+            detail="This doctor already has an appointment during this time slot",
         )
 
     patient_same_slot_request = (
@@ -760,30 +809,36 @@ def update_appointment_status(
 
     if new_status == "Approved" and appointment.is_initial_evaluation_request:
         if (
-            not appointment.schedule_id
-            or not appointment.doctor_id
+            not appointment.doctor_id
             or not appointment.date
             or not appointment.time
             or not appointment.end_time
         ):
             raise HTTPException(
                 status_code=400,
-                detail="Assign a doctor and schedule before approving this initial evaluation request",
+                detail="Assign a doctor, date, and time before approving this initial evaluation request",
             )
 
-    if new_status == "Approved" and appointment.schedule_id and appointment.time and appointment.end_time:
-        approved_conflict = find_approved_slot_conflict(
+    if (
+        new_status == "Approved"
+        and appointment.doctor_id
+        and appointment.date
+        and appointment.time
+        and appointment.end_time
+    ):
+        doctor_conflict = find_doctor_time_conflict(
             db=db,
-            schedule_id=appointment.schedule_id,
+            doctor_id=appointment.doctor_id,
+            appointment_date=appointment.date,
             slot_start=appointment.time,
             slot_end=appointment.end_time,
             exclude_appointment_id=appointment.id,
         )
 
-        if approved_conflict:
+        if doctor_conflict:
             raise HTTPException(
                 status_code=409,
-                detail="This time slot already has an approved appointment",
+                detail="This doctor already has an appointment during this time slot",
             )
 
         if datetime.combine(appointment.date, appointment.time) <= datetime.now():
@@ -986,6 +1041,60 @@ def get_appointment_history(
     return results
 
 
+@router.get("/{id}/assignable-doctors")
+def get_assignable_initial_evaluation_doctors(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ["staff", "admin"]:
+        raise HTTPException(status_code=403, detail="Staff or admin access only")
+
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if not appointment.is_initial_evaluation_request:
+        raise HTTPException(status_code=400, detail="This appointment is not an initial evaluation request")
+
+    if appointment.status != "Pending":
+        raise HTTPException(status_code=400, detail="Only pending initial evaluation requests can be assigned")
+
+    service = (
+        db.query(Service)
+        .filter(Service.id == appointment.service_id, Service.is_active == True)
+        .first()
+    )
+
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    doctor_links = (
+        db.query(DoctorService)
+        .filter(DoctorService.service_id == service.id)
+        .all()
+    )
+
+    allowed_doctor_ids = [link.doctor_id for link in doctor_links]
+
+    if not allowed_doctor_ids:
+        return []
+
+    doctors = (
+        db.query(User)
+        .filter(
+            User.id.in_(allowed_doctor_ids),
+            User.role == "doctor",
+            User.status == "Active",
+        )
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    return [serialize_assignable_doctor(doctor) for doctor in doctors]
+
+
 @router.get("/{id}/assignable-slots")
 def get_assignable_initial_evaluation_slots(
     id: int,
@@ -1087,9 +1196,10 @@ def get_assignable_initial_evaluation_slots(
             if slot_start_datetime <= now:
                 continue
 
-            approved = find_approved_slot_conflict(
+            blocked = find_doctor_time_conflict(
                 db=db,
-                schedule_id=schedule.id,
+                doctor_id=doctor.id,
+                appointment_date=schedule.schedule_date,
                 slot_start=slot_start,
                 slot_end=slot_end,
             )
@@ -1101,8 +1211,8 @@ def get_assignable_initial_evaluation_slots(
                     doctor=doctor,
                     slot_start=slot_start,
                     slot_end=slot_end,
-                    is_available=approved is None,
-                    unavailable_reason="Already booked" if approved else None,
+                    is_available=blocked is None,
+                    unavailable_reason="Already booked" if blocked else None,
                 )
             )
 
@@ -1139,83 +1249,156 @@ def assign_schedule_to_initial_evaluation_request(
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
 
-    schedule = (
-        db.query(DoctorSchedule)
-        .filter(DoctorSchedule.id == body.schedule_id)
-        .first()
-    )
-
-    if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
-
-    doctor = (
-        db.query(User)
-        .filter(
-            User.id == schedule.doctor_id,
-            User.role == "doctor",
-            User.status == "Active",
+    if body.schedule_id is not None:
+        schedule = (
+            db.query(DoctorSchedule)
+            .filter(DoctorSchedule.id == body.schedule_id)
+            .first()
         )
-        .first()
-    )
 
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
+        if not schedule:
+            raise HTTPException(status_code=404, detail="Schedule not found")
 
-    if not schedule.is_available:
-        raise HTTPException(status_code=400, detail="Selected schedule is unavailable")
-
-    if is_sunday(schedule.schedule_date):
-        raise HTTPException(status_code=400, detail="Sundays are unavailable for scheduling")
-
-    clinic_closed = (
-        db.query(ClinicUnavailableDate)
-        .filter(ClinicUnavailableDate.closure_date == schedule.schedule_date)
-        .first()
-    )
-
-    if clinic_closed:
-        raise HTTPException(status_code=400, detail="Clinic is unavailable on this date")
-
-    doctor_service = (
-        db.query(DoctorService)
-        .filter(
-            DoctorService.doctor_id == doctor.id,
-            DoctorService.service_id == service.id,
+        doctor = (
+            db.query(User)
+            .filter(
+                User.id == schedule.doctor_id,
+                User.role == "doctor",
+                User.status == "Active",
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not doctor_service:
-        raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
 
-    if not service_matches_schedule(schedule.services, service.name):
-        raise HTTPException(status_code=400, detail="Selected schedule is not assigned to this service")
+        if not schedule.is_available:
+            raise HTTPException(status_code=400, detail="Selected schedule is unavailable")
 
-    validate_slot_inside_schedule(
-        schedule=schedule,
-        slot_start=body.start_time,
-        slot_end=body.end_time,
-    )
+        if is_sunday(schedule.schedule_date):
+            raise HTTPException(status_code=400, detail="Sundays are unavailable for scheduling")
 
-    approved_conflict = find_approved_slot_conflict(
-        db=db,
-        schedule_id=schedule.id,
-        slot_start=body.start_time,
-        slot_end=body.end_time,
-        exclude_appointment_id=appointment.id,
-    )
+        clinic_closed = (
+            db.query(ClinicUnavailableDate)
+            .filter(ClinicUnavailableDate.closure_date == schedule.schedule_date)
+            .first()
+        )
 
-    if approved_conflict:
-        raise HTTPException(status_code=409, detail="This time slot already has an approved appointment")
+        if clinic_closed:
+            raise HTTPException(status_code=400, detail="Clinic is unavailable on this date")
 
-    appointment.doctor_id = doctor.id
-    appointment.schedule_id = schedule.id
-    appointment.doctor_name = doctor.name
-    appointment.date = schedule.schedule_date
-    appointment.time = body.start_time
-    appointment.end_time = body.end_time
-    appointment.appointment_type = "Initial Evaluation"
-    appointment.consultation_mode = schedule.consultation_mode or "In-Person"
+        doctor_service = (
+            db.query(DoctorService)
+            .filter(
+                DoctorService.doctor_id == doctor.id,
+                DoctorService.service_id == service.id,
+            )
+            .first()
+        )
+
+        if not doctor_service:
+            raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
+
+        if not service_matches_schedule(schedule.services, service.name):
+            raise HTTPException(status_code=400, detail="Selected schedule is not assigned to this service")
+
+        validate_slot_inside_schedule(
+            schedule=schedule,
+            slot_start=body.start_time,
+            slot_end=body.end_time,
+        )
+
+        doctor_conflict = find_doctor_time_conflict(
+            db=db,
+            doctor_id=doctor.id,
+            appointment_date=schedule.schedule_date,
+            slot_start=body.start_time,
+            slot_end=body.end_time,
+            exclude_appointment_id=appointment.id,
+        )
+
+        if doctor_conflict:
+            raise HTTPException(
+                status_code=409,
+                detail="This doctor already has an appointment during this time slot",
+            )
+
+        appointment.doctor_id = doctor.id
+        appointment.schedule_id = schedule.id
+        appointment.doctor_name = doctor.name
+        appointment.date = schedule.schedule_date
+        appointment.time = body.start_time
+        appointment.end_time = body.end_time
+        appointment.appointment_type = "Initial Evaluation"
+        appointment.consultation_mode = schedule.consultation_mode or "In-Person"
+
+    else:
+        if body.doctor_id is None:
+            raise HTTPException(status_code=400, detail="Doctor is required")
+
+        if body.schedule_date is None:
+            raise HTTPException(status_code=400, detail="Schedule date is required")
+
+        doctor = (
+            db.query(User)
+            .filter(
+                User.id == body.doctor_id,
+                User.role == "doctor",
+                User.status == "Active",
+            )
+            .first()
+        )
+
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+
+        doctor_service = (
+            db.query(DoctorService)
+            .filter(
+                DoctorService.doctor_id == doctor.id,
+                DoctorService.service_id == service.id,
+            )
+            .first()
+        )
+
+        if not doctor_service:
+            raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
+
+        validate_manual_initial_evaluation_schedule(
+            schedule_date=body.schedule_date,
+            slot_start=body.start_time,
+            slot_end=body.end_time,
+        )
+
+        doctor_conflict = find_doctor_time_conflict(
+            db=db,
+            doctor_id=doctor.id,
+            appointment_date=body.schedule_date,
+            slot_start=body.start_time,
+            slot_end=body.end_time,
+            exclude_appointment_id=appointment.id,
+        )
+
+        if doctor_conflict:
+            raise HTTPException(
+                status_code=409,
+                detail="This doctor already has an appointment during this time slot",
+            )
+
+        consultation_mode = clean_optional_text(body.consultation_mode) or "In-Person"
+
+        if consultation_mode not in ["In-Person", "Online Consultation"]:
+            raise HTTPException(status_code=400, detail="Invalid consultation mode")
+
+        appointment.doctor_id = doctor.id
+        appointment.schedule_id = None
+        appointment.doctor_name = doctor.name
+        appointment.date = body.schedule_date
+        appointment.time = body.start_time
+        appointment.end_time = body.end_time
+        appointment.appointment_type = "Initial Evaluation"
+        appointment.consultation_mode = consultation_mode
+
     appointment.is_initial_evaluation_request = True
 
     db.commit()
@@ -1228,7 +1411,7 @@ def assign_schedule_to_initial_evaluation_request(
         performed_by_id=current_user.id,
         performed_by_name=current_user.name,
         performed_by_role=current_user.role,
-        reason=f"Assigned to {doctor.name} on {schedule.schedule_date.isoformat()} from {format_time(body.start_time)} to {format_time(body.end_time)}",
+        reason=f"Assigned to {appointment.doctor_name} on {appointment.date.isoformat()} from {format_time(appointment.time)} to {format_time(appointment.end_time)}",
     )
 
     return {
