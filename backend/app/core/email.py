@@ -1,12 +1,12 @@
 import os
-import smtplib
-from email.mime.text import MIMEText
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
 
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL")
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "OurSkin")
 
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
@@ -21,19 +21,61 @@ MUTED_COLOR = "#6f5b63"
 CARD_COLOR = "#ffffff"
 BORDER_COLOR = "#eed9e1"
 
+BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
+
 
 def send_email(to_email: str, subject: str, html_content: str):
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise ValueError("EMAIL_USER or EMAIL_PASS is not set in .env")
+    """
+    Sends transactional email using Brevo API.
 
-    msg = MIMEText(html_content, "html")
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_USER
-    msg["To"] = to_email
+    Important:
+    This function keeps the same name and arguments as your old Gmail SMTP function,
+    which means your existing auth and appointment routes should not break.
+    """
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(msg)
+    if not BREVO_API_KEY:
+        raise ValueError("BREVO_API_KEY is not set in .env or Render environment variables.")
+
+    if not BREVO_SENDER_EMAIL:
+        raise ValueError("BREVO_SENDER_EMAIL is not set in .env or Render environment variables.")
+
+    payload = {
+        "sender": {
+            "name": BREVO_SENDER_NAME,
+            "email": BREVO_SENDER_EMAIL,
+        },
+        "to": [
+            {
+                "email": to_email,
+            }
+        ],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+    }
+
+    try:
+        response = httpx.post(
+            BREVO_SEND_EMAIL_URL,
+            json=payload,
+            headers=headers,
+            timeout=20,
+        )
+
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Brevo email failed. Status: {response.status_code}. Response: {response.text}"
+            )
+
+        return response.json()
+
+    except httpx.RequestError as error:
+        raise RuntimeError(f"Brevo request failed: {str(error)}")
 
 
 def build_email_template(
@@ -137,6 +179,7 @@ def build_appointment_approval_template(
     safe_schedule_date = schedule_date or "To be scheduled"
     safe_schedule_time = schedule_time or "To be scheduled"
     safe_consultation_mode = consultation_mode or "In-Person"
+    safe_instruction = instruction or "Please arrive on time and check your patient portal for the latest appointment details."
 
     return f"""
     <!DOCTYPE html>
@@ -208,7 +251,7 @@ def build_appointment_approval_template(
                   </h2>
 
                   <p style="margin:0; font-size:15px; line-height:1.8; color:{MUTED_COLOR}; white-space:pre-line;">
-                    {instruction}
+                    {safe_instruction}
                   </p>
                 </td>
               </tr>
@@ -226,6 +269,106 @@ def build_appointment_approval_template(
                 <td style="padding:18px 24px 28px 24px; text-align:center; border-top:1px solid {BORDER_COLOR};">
                   <p style="margin:0; font-size:12px; line-height:1.6; color:#8f7a82;">
                     This approval notification was sent by OurSkin Dermatology Clinic. Please check your patient portal for the latest appointment details.
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+def build_appointment_decline_template(
+    patient_name: str,
+    service: str,
+    reason: str,
+):
+    portal_link = f"{FRONTEND_URL.rstrip('/')}/pages/patient/history"
+
+    safe_patient_name = patient_name or "Patient"
+    safe_service = service or "Appointment"
+    safe_reason = reason or "Please check your patient portal for more details."
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Appointment request update</title>
+    </head>
+    <body style="margin:0; padding:0; background:{BG_COLOR}; font-family:Arial, Helvetica, sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:{BG_COLOR}; padding:40px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+              style="max-width:620px; background:{CARD_COLOR}; border:1px solid {BORDER_COLOR}; border-radius:20px; overflow:hidden;">
+
+              <tr>
+                <td style="background:{BRAND_COLOR}; padding:18px 24px; text-align:center;">
+                  <div style="color:#ffffff; font-size:24px; font-weight:700; letter-spacing:0.4px;">
+                    {APP_NAME}
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:34px 32px 14px 32px;">
+                  <h1 style="margin:0 0 12px 0; font-size:28px; line-height:1.25; color:{TEXT_COLOR}; text-align:center;">
+                    Appointment request update
+                  </h1>
+
+                  <p style="margin:0; font-size:16px; line-height:1.7; color:{MUTED_COLOR}; text-align:center;">
+                    Hello {safe_patient_name}, we have an update regarding your appointment request.
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:16px 32px;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                    style="background:#fff8fb; border:1px solid {BORDER_COLOR}; border-radius:16px; padding:18px;">
+                    <tr>
+                      <td style="padding:8px 0; color:{MUTED_COLOR}; font-size:14px; width:38%;">Service</td>
+                      <td style="padding:8px 0; color:{TEXT_COLOR}; font-size:14px; font-weight:700;">{safe_service}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0; color:{MUTED_COLOR}; font-size:14px;">Update</td>
+                      <td style="padding:8px 0; color:{TEXT_COLOR}; font-size:14px; font-weight:700;">Request not approved at this time</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:10px 32px 8px 32px;">
+                  <h2 style="margin:0 0 10px 0; font-size:18px; color:{TEXT_COLOR};">
+                    Message from OurSkin
+                  </h2>
+
+                  <p style="margin:0; font-size:15px; line-height:1.8; color:{MUTED_COLOR}; white-space:pre-line;">
+                    {safe_reason}
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td align="center" style="padding:24px 32px 20px 32px;">
+                  <a href="{portal_link}"
+                     style="display:inline-block; background:{BRAND_COLOR}; color:#ffffff; text-decoration:none; padding:14px 28px; border-radius:10px; font-size:15px; font-weight:700;">
+                    View Appointment History
+                  </a>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:18px 24px 28px 24px; text-align:center; border-top:1px solid {BORDER_COLOR};">
+                  <p style="margin:0; font-size:12px; line-height:1.6; color:#8f7a82;">
+                    This notification was sent by OurSkin Dermatology Clinic. Please check your patient portal for the latest appointment details.
                   </p>
                 </td>
               </tr>
@@ -262,6 +405,25 @@ def send_appointment_approval_email(
     send_email(
         email,
         "Your OurSkin appointment has been approved",
+        html_content,
+    )
+
+
+def send_appointment_decline_email(
+    email: str,
+    patient_name: str,
+    service: str,
+    reason: str,
+):
+    html_content = build_appointment_decline_template(
+        patient_name=patient_name,
+        service=service,
+        reason=reason,
+    )
+
+    send_email(
+        email,
+        "Update on your OurSkin appointment request",
         html_content,
     )
 
