@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./users.module.css";
+import styles from "@/app/styles/admin.module.css";
 
 type User = {
   id: number;
@@ -17,8 +17,30 @@ type User = {
   created_at: string;
 };
 
+function getRoleClass(role?: string) {
+  const cleanRole = (role || "").toLowerCase();
+
+  if (cleanRole === "patient") return styles.patient;
+  if (cleanRole === "staff") return styles.staff;
+  if (cleanRole === "doctor") return styles.doctor;
+  if (cleanRole === "admin") return styles.admin;
+
+  return styles.neutral;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  return date.toLocaleDateString();
+}
+
 export default function AdminUsersPage() {
   const router = useRouter();
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,35 +57,43 @@ export default function AdminUsersPage() {
       return;
     }
 
-    fetch(`${API_BASE_URL}/admin/users`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
+    async function loadUsers() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await fetch(`${API_BASE_URL}/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         if (!res.ok) {
           throw new Error("Failed to fetch users");
         }
-        return res.json();
-      })
-      .then((data) => {
+
+        const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.error("Users fetch error:", err);
+      } catch (loadError) {
+        console.error("Users fetch error:", loadError);
         setError("Unable to load user records.");
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    }
+
+    loadUsers();
   }, [router]);
 
   const filteredUsers = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
+
     return users.filter((user) => {
       const matchesSearch =
-        user.name?.toLowerCase().includes(search.toLowerCase()) ||
-        user.email?.toLowerCase().includes(search.toLowerCase()) ||
-        user.contact?.toLowerCase().includes(search.toLowerCase());
+        !keyword ||
+        user.name?.toLowerCase().includes(keyword) ||
+        user.email?.toLowerCase().includes(keyword) ||
+        user.contact?.toLowerCase().includes(keyword);
 
       const matchesRole =
         roleFilter === "all" || user.role?.toLowerCase() === roleFilter;
@@ -80,11 +110,12 @@ export default function AdminUsersPage() {
   const stats = useMemo(() => {
     return {
       total: users.length,
-      patients: users.filter((u) => u.role?.toLowerCase() === "patient").length,
-      staff: users.filter((u) =>
-        ["admin", "staff", "doctor"].includes(u.role?.toLowerCase())
+      patients: users.filter((user) => user.role?.toLowerCase() === "patient")
+        .length,
+      internal: users.filter((user) =>
+        ["admin", "staff", "doctor"].includes(user.role?.toLowerCase())
       ).length,
-      verified: users.filter((u) => u.is_verified).length,
+      verified: users.filter((user) => user.is_verified).length,
     };
   }, [users]);
 
@@ -92,7 +123,7 @@ export default function AdminUsersPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <div className="staffContent">
+      <main className={`staffContent ${styles.usersPage}`}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Users</h1>
@@ -107,15 +138,18 @@ export default function AdminUsersPage() {
             <span>Total Users</span>
             <strong>{stats.total}</strong>
           </div>
-          <div className={styles.statCard}>
+
+          <div className={`${styles.statCard} ${styles.greenAccent}`}>
             <span>Patients</span>
             <strong>{stats.patients}</strong>
           </div>
-          <div className={styles.statCard}>
+
+          <div className={`${styles.statCard} ${styles.blueAccent}`}>
             <span>Internal Users</span>
-            <strong>{stats.staff}</strong>
+            <strong>{stats.internal}</strong>
           </div>
-          <div className={styles.statCard}>
+
+          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
             <span>Verified</span>
             <strong>{stats.verified}</strong>
           </div>
@@ -126,13 +160,13 @@ export default function AdminUsersPage() {
             type="text"
             placeholder="Search by name, email, or contact"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             className={styles.searchInput}
           />
 
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(event) => setRoleFilter(event.target.value)}
             className={styles.selectInput}
           >
             <option value="all">All Roles</option>
@@ -144,7 +178,7 @@ export default function AdminUsersPage() {
 
           <select
             value={verificationFilter}
-            onChange={(e) => setVerificationFilter(e.target.value)}
+            onChange={(event) => setVerificationFilter(event.target.value)}
             className={styles.selectInput}
           >
             <option value="all">All Verification</option>
@@ -153,13 +187,16 @@ export default function AdminUsersPage() {
           </select>
         </div>
 
-        <div className={styles.tableCard}>
+        <section className={styles.tableCard}>
           {loading ? (
             <p className={styles.message}>Loading users...</p>
           ) : error ? (
             <p className={styles.error}>{error}</p>
           ) : filteredUsers.length === 0 ? (
-            <p className={styles.message}>No users found.</p>
+            <div className={styles.emptyState}>
+              <h3>No users found</h3>
+              <p>Try adjusting the search or filter criteria.</p>
+            </div>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -173,51 +210,57 @@ export default function AdminUsersPage() {
                   <th>Created</th>
                 </tr>
               </thead>
+
               <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <strong>{user.name}</strong>
-                    </td>
-                    <td>{user.email}</td>
-                    <td>{user.contact || "N/A"}</td>
-                    <td>
-                      <span className={`${styles.roleBadge} ${styles[user.role?.toLowerCase()] || ""}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.verificationBadge} ${
-                          user.is_verified ? styles.verified : styles.unverified
-                        }`}
-                      >
-                        {user.is_verified ? "Verified" : "Unverified"}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${
-                          (user.status || "Active").toLowerCase() === "active"
-                            ? styles.active
-                            : styles.inactive
-                        }`}
-                      >
-                        {user.status || "Active"}
-                      </span>
-                    </td>
-                    <td>
-                      {user.created_at
-                        ? new Date(user.created_at).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                  </tr>
-                ))}
+                {filteredUsers.map((user) => {
+                  const status = user.status || "Active";
+                  const isActive = status.toLowerCase() === "active";
+
+                  return (
+                    <tr key={user.id}>
+                      <td>
+                        <strong className={styles.patientName}>
+                          {user.name || "Unnamed User"}
+                        </strong>
+                      </td>
+                      <td>{user.email || "N/A"}</td>
+                      <td>{user.contact || "N/A"}</td>
+                      <td>
+                        <span
+                          className={`${styles.roleBadge} ${getRoleClass(
+                            user.role
+                          )}`}
+                        >
+                          {user.role || "N/A"}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.verificationBadge} ${
+                            user.is_verified ? styles.verified : styles.unverified
+                          }`}
+                        >
+                          {user.is_verified ? "Verified" : "Unverified"}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            isActive ? styles.active : styles.inactive
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                      <td>{formatDate(user.created_at)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

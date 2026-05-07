@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./audit-logs.module.css";
+import styles from "@/app/styles/admin.module.css";
 
 type AuditLog = {
   id: number;
@@ -22,7 +22,6 @@ type ApiErrorResponse = {
   detail?: string;
   message?: string;
 };
-
 
 const API_BASE = API_BASE_URL;
 
@@ -107,14 +106,23 @@ function getActionType(action: string) {
   return "system";
 }
 
+function getActionClass(action: string) {
+  const actionType = getActionType(action);
+
+  if (actionType === "create") return styles.create;
+  if (actionType === "update") return styles.update;
+  if (actionType === "status") return styles.status;
+  if (actionType === "danger") return styles.danger;
+
+  return styles.system;
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return "N/A";
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
+  if (Number.isNaN(date.getTime())) return "N/A";
 
   return date.toLocaleString([], {
     year: "numeric",
@@ -131,7 +139,6 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
@@ -178,7 +185,7 @@ export default function AuditLogsPage() {
   const enhancedLogs = useMemo(() => {
     return logs.map((log) => ({
       ...log,
-      module: log.module || getModuleFromAction(log.action),
+      module: log.module || getModuleFromAction(log.action || ""),
     }));
   }, [logs]);
 
@@ -186,12 +193,13 @@ export default function AuditLogsPage() {
     const keyword = search.toLowerCase().trim();
 
     return enhancedLogs.filter((log) => {
-      const moduleName = log.module || getModuleFromAction(log.action);
-      const actionType = getActionType(log.action);
+      const moduleName = log.module || getModuleFromAction(log.action || "");
+      const actionType = getActionType(log.action || "");
 
       const matchesSearch =
-        log.action.toLowerCase().includes(keyword) ||
-        log.description.toLowerCase().includes(keyword) ||
+        !keyword ||
+        (log.action || "").toLowerCase().includes(keyword) ||
+        (log.description || "").toLowerCase().includes(keyword) ||
         String(log.actor_id || "").includes(keyword) ||
         String(log.target_id || "").includes(keyword) ||
         (log.actor_name || "").toLowerCase().includes(keyword) ||
@@ -224,7 +232,7 @@ export default function AuditLogsPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <div className="staffContent">
+      <main className={`staffContent ${styles.auditLogsPage}`}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Audit Logs</h1>
@@ -241,17 +249,17 @@ export default function AuditLogsPage() {
             <strong>{stats.total}</strong>
           </div>
 
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.greenAccent}`}>
             <span>Account Actions</span>
             <strong>{stats.account}</strong>
           </div>
 
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.blueAccent}`}>
             <span>Appointment Actions</span>
             <strong>{stats.appointment}</strong>
           </div>
 
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
             <span>Medical Actions</span>
             <strong>{stats.medical}</strong>
           </div>
@@ -292,7 +300,7 @@ export default function AuditLogsPage() {
           </select>
         </div>
 
-        <div className={styles.tableCard}>
+        <section className={styles.tableCard}>
           {loading ? (
             <p className={styles.message}>Loading audit logs...</p>
           ) : error ? (
@@ -319,69 +327,47 @@ export default function AuditLogsPage() {
               </thead>
 
               <tbody>
-                {filteredLogs.map((log) => {
-                  const actionType = getActionType(log.action);
-                  const moduleName = log.module || getModuleFromAction(log.action);
-
-                  return (
-                    <tr key={log.id}>
-                      <td className={styles.dateCell}>
-                        {formatDateTime(log.created_at)}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`${styles.actionBadge} ${
-                            styles[actionType]
-                          }`}
-                        >
-                          {formatAction(log.action)}
+                {filteredLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td className={styles.dateCell}>
+                      {formatDateTime(log.created_at)}
+                    </td>
+                    <td>
+                      <span
+                        className={`${styles.actionBadge} ${getActionClass(
+                          log.action || ""
+                        )}`}
+                      >
+                        {formatAction(log.action || "System")}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.moduleBadge}>{log.module}</span>
+                    </td>
+                    <td className={styles.descriptionCell}>
+                      {log.description || "No description provided"}
+                    </td>
+                    <td>
+                      <div className={styles.personCell}>
+                        <strong>{log.actor_name || "System"}</strong>
+                        <span>{log.actor_id ? `ID: ${log.actor_id}` : "No ID"}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className={styles.personCell}>
+                        <strong>{log.target_name || "N/A"}</strong>
+                        <span>
+                          {log.target_id ? `ID: ${log.target_id}` : "No target ID"}
                         </span>
-                      </td>
-
-                      <td>
-                        <span className={styles.moduleBadge}>
-                          {moduleName}
-                        </span>
-                      </td>
-
-                      <td className={styles.descriptionCell}>
-                        {log.description || "No description provided"}
-                      </td>
-
-                      <td>
-                        {log.actor_name ? (
-                          <div className={styles.personCell}>
-                            <strong>{log.actor_name}</strong>
-                            <span>ID #{log.actor_id || "N/A"}</span>
-                          </div>
-                        ) : (
-                          <span className={styles.idText}>
-                            Actor ID #{log.actor_id || "N/A"}
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        {log.target_name ? (
-                          <div className={styles.personCell}>
-                            <strong>{log.target_name}</strong>
-                            <span>ID #{log.target_id || "N/A"}</span>
-                          </div>
-                        ) : (
-                          <span className={styles.idText}>
-                            Target ID #{log.target_id || "N/A"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

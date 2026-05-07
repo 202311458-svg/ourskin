@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./admindash.module.css";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
+import styles from "@/app/styles/admin.module.css";
 
 type DashboardStats = {
   total_users: number;
@@ -45,6 +45,17 @@ type ApiErrorResponse = {
 };
 
 const API_BASE = API_BASE_URL;
+
+const EMPTY_STATS: DashboardStats = {
+  total_users: 0,
+  total_patients: 0,
+  total_staff: 0,
+  total_doctors: 0,
+  total_appointments: 0,
+  pending_appointments: 0,
+  approved_appointments: 0,
+  total_ai_logs: 0,
+};
 
 async function safeJson<T>(res: Response): Promise<T | null> {
   try {
@@ -127,12 +138,12 @@ function uniqueFollowUpsById(followUps: FollowUp[]) {
   );
 }
 
-function formatDate(dateString?: string | null) {
-  if (!dateString) return "No date";
+function formatDate(value?: string | null) {
+  if (!value) return "No date";
 
-  const date = new Date(`${dateString}T00:00:00`);
+  const date = new Date(`${value}T00:00:00`);
 
-  if (Number.isNaN(date.getTime())) return dateString;
+  if (Number.isNaN(date.getTime())) return value;
 
   return date.toLocaleDateString("en-US", {
     year: "numeric",
@@ -141,14 +152,14 @@ function formatDate(dateString?: string | null) {
   });
 }
 
-function formatTime(timeString?: string | null) {
-  if (!timeString) return "";
+function formatTime(value?: string | null) {
+  if (!value) return "";
 
-  const parts = timeString.split(":");
+  const parts = value.split(":");
   const hour = Number(parts[0]);
   const minute = Number(parts[1]);
 
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
 
   const date = new Date();
   date.setHours(hour, minute, 0, 0);
@@ -162,20 +173,13 @@ function formatTime(timeString?: string | null) {
 
 function getFollowUpTiming(item: FollowUp) {
   const today = getTodayInputDate();
-  const status = (item.status || "").trim().toLowerCase();
+  const status = (item.status || "").toLowerCase();
 
   if (status === "completed") return "Completed";
   if (item.follow_up_date < today) return "Overdue";
   if (item.follow_up_date === today) return "Due Today";
 
   return "Upcoming";
-}
-
-function canCompleteFollowUp(item: FollowUp) {
-  const today = getTodayInputDate();
-  const status = (item.status || "").trim().toLowerCase();
-
-  return status !== "completed" && item.follow_up_date <= today;
 }
 
 function getFollowUpBadgeClass(item: FollowUp) {
@@ -188,20 +192,17 @@ function getFollowUpBadgeClass(item: FollowUp) {
   return styles.followUpBadgeUpcoming;
 }
 
+function canCompleteFollowUp(item: FollowUp) {
+  const today = getTodayInputDate();
+  const status = (item.status || "").toLowerCase();
+
+  return status !== "completed" && item.follow_up_date <= today;
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
 
-  const [stats, setStats] = useState<DashboardStats>({
-    total_users: 0,
-    total_patients: 0,
-    total_staff: 0,
-    total_doctors: 0,
-    total_appointments: 0,
-    pending_appointments: 0,
-    approved_appointments: 0,
-    total_ai_logs: 0,
-  });
-
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -223,7 +224,6 @@ export default function AdminDashboardPage() {
         status: res.status,
         data,
       });
-
       return [];
     }
 
@@ -241,13 +241,10 @@ export default function AdminDashboardPage() {
       }
 
       try {
-        if (showLoader) {
-          setLoading(true);
-        }
-
+        if (showLoader) setLoading(true);
         setError("");
 
-        const [dashboardRes, followUpData] = await Promise.all([
+        const [statsRes, followUpData] = await Promise.all([
           fetch(`${API_BASE}/admin/dashboard`, {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -256,35 +253,23 @@ export default function AdminDashboardPage() {
           fetchFollowUps(token),
         ]);
 
-        const dashboardData = await safeJson<DashboardApiResponse>(
-          dashboardRes
-        );
+        const data = await safeJson<DashboardApiResponse>(statsRes);
 
-        if (!dashboardRes.ok) {
+        if (!statsRes.ok) {
           throw new Error(
-            getApiErrorMessage(dashboardData, "Unable to load dashboard data.")
+            getApiErrorMessage(data, "Unable to load dashboard data")
           );
         }
 
         setStats({
-          total_users: dashboardData?.total_users || 0,
-          total_patients: dashboardData?.total_patients || 0,
-          total_staff: dashboardData?.total_staff || 0,
-          total_doctors: dashboardData?.total_doctors || 0,
-          total_appointments: dashboardData?.total_appointments || 0,
-          pending_appointments: dashboardData?.pending_appointments || 0,
-          approved_appointments: dashboardData?.approved_appointments || 0,
-          total_ai_logs: dashboardData?.total_ai_logs || 0,
+          ...EMPTY_STATS,
+          ...(data || {}),
         });
-
         setFollowUps(uniqueFollowUpsById(followUpData));
       } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, "Unable to load dashboard data."));
-        setFollowUps([]);
+        setError(getErrorMessage(loadError, "Unable to load dashboard."));
       } finally {
-        if (showLoader) {
-          setLoading(false);
-        }
+        if (showLoader) setLoading(false);
       }
     },
     [router]
@@ -302,17 +287,14 @@ export default function AdminDashboardPage() {
 
   const dashboardInsights = useMemo(() => {
     const internalUsers = stats.total_staff + stats.total_doctors;
-
     const appointmentApprovalRate = getPercent(
       stats.approved_appointments,
       stats.total_appointments
     );
-
     const pendingRate = getPercent(
       stats.pending_appointments,
       stats.total_appointments
     );
-
     const patientShare = getPercent(stats.total_patients, stats.total_users);
     const internalShare = getPercent(internalUsers, stats.total_users);
 
@@ -330,9 +312,7 @@ export default function AdminDashboardPage() {
       const aCompleted = (a.status || "").toLowerCase() === "completed";
       const bCompleted = (b.status || "").toLowerCase() === "completed";
 
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1;
-      }
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
 
       return a.follow_up_date.localeCompare(b.follow_up_date);
     });
@@ -449,9 +429,7 @@ export default function AdminDashboardPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          status: "Completed",
-        }),
+        body: JSON.stringify({ status: "Completed" }),
       });
 
       const data = await safeJson<
@@ -470,11 +448,7 @@ export default function AdminDashboardPage() {
         uniqueFollowUpsById(
           prev.map((item) =>
             item.id === followUpId
-              ? {
-                  ...item,
-                  ...(data?.follow_up || {}),
-                  status: "Completed",
-                }
+              ? { ...item, ...(data?.follow_up || {}), status: "Completed" }
               : item
           )
         )
@@ -497,7 +471,7 @@ export default function AdminDashboardPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <main className="staffContent">
+      <main className={`staffContent ${styles.dashboardPage}`}>
         <section className={styles.heroSection}>
           <div className={styles.heroContent}>
             <p className={styles.eyebrow}>Admin Control Center</p>
@@ -555,7 +529,7 @@ export default function AdminDashboardPage() {
               ))}
             </section>
 
-            <section className={styles.statsGrid} style={{ marginTop: 18 }}>
+            <section className={styles.statsGrid}>
               {operationalCards.map((card) => (
                 <div
                   key={card.label}
@@ -610,7 +584,7 @@ export default function AdminDashboardPage() {
 
                           {(item.appointment_date || item.appointment_time) && (
                             <small>
-                              Related Visit:{" "}
+                              Related Visit: {" "}
                               {item.appointment_date
                                 ? formatDate(item.appointment_date)
                                 : "No date"}{" "}
@@ -657,22 +631,24 @@ export default function AdminDashboardPage() {
 
               {sortedFollowUps.length > 5 && (
                 <div className={styles.followUpFooter}>
-                  <Link href="/pages/admin/appointments">
-                    View all follow-ups
-                  </Link>
+                  <Link href="/pages/admin/appointments">View all follow-ups</Link>
                 </div>
               )}
             </section>
 
-            <section className={styles.stateCard} style={{ marginTop: 22 }}>
-              <h2 style={{ margin: 0 }}>Operational Snapshot</h2>
-              <p style={{ color: "#94a3b8", marginBottom: 0 }}>
-                {dashboardInsights.pendingRate}% of appointment records are
-                pending, while {dashboardInsights.internalShare}% of users are
-                internal clinic users. Completed follow-ups:{" "}
-                {completedFollowUps.length}. Active follow-ups:{" "}
-                {activeFollowUps.length}.
-              </p>
+            <section className={styles.panelCard}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>Operational Snapshot</h2>
+                  <p>
+                    {dashboardInsights.pendingRate}% of appointment records are
+                    pending, while {dashboardInsights.internalShare}% of users
+                    are internal clinic users. Completed follow-ups: {" "}
+                    {completedFollowUps.length}. Active follow-ups: {" "}
+                    {activeFollowUps.length}.
+                  </p>
+                </div>
+              </div>
             </section>
           </>
         )}

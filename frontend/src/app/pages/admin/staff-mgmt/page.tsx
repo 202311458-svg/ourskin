@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./staff-mgmt.module.css";
+import styles from "@/app/styles/admin.module.css";
 
 type StaffUser = {
   id: number;
@@ -97,24 +97,36 @@ function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
   return fallback;
 }
 
+function capitalizeFirst(value?: string) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+function formatDate(value?: string) {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  return date.toLocaleDateString();
+}
+
 export default function StaffManagementPage() {
   const router = useRouter();
 
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-
   const [selectedStaff, setSelectedStaff] = useState<StaffUser | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
@@ -162,7 +174,6 @@ export default function StaffManagementPage() {
         });
 
         const usersData = await safeJson<UserOption[]>(usersRes);
-
         setUsers(Array.isArray(usersData) ? usersData : []);
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load admin records"));
@@ -179,6 +190,7 @@ export default function StaffManagementPage() {
 
     return staff.filter((member) => {
       const matchesSearch =
+        !keyword ||
         member.full_name.toLowerCase().includes(keyword) ||
         member.email.toLowerCase().includes(keyword) ||
         (member.department || "").toLowerCase().includes(keyword);
@@ -187,8 +199,7 @@ export default function StaffManagementPage() {
         roleFilter === "all" || member.role.toLowerCase() === roleFilter;
 
       const matchesStatus =
-        statusFilter === "all" ||
-        member.status.toLowerCase() === statusFilter;
+        statusFilter === "all" || member.status.toLowerCase() === statusFilter;
 
       return matchesSearch && matchesRole && matchesStatus;
     });
@@ -206,11 +217,6 @@ export default function StaffManagementPage() {
     };
   }, [staff]);
 
-  function capitalizeFirst(value?: string) {
-    if (!value) return "";
-    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-  }
-
   function closeEditModal() {
     if (actionLoading) return;
     setShowEditModal(false);
@@ -226,7 +232,6 @@ export default function StaffManagementPage() {
     const normalized = normalizeStaff(member);
 
     setSelectedStaff(normalized);
-
     setEditForm({
       id: normalized.id,
       full_name: normalized.full_name,
@@ -235,7 +240,6 @@ export default function StaffManagementPage() {
       department: normalized.department || "",
       phone: normalized.phone || normalized.contact || "",
     });
-
     setShowEditModal(true);
   }
 
@@ -269,9 +273,7 @@ export default function StaffManagementPage() {
         return;
       }
 
-      if (data) {
-        setStaff((prev) => [normalizeStaff(data), ...prev]);
-      }
+      if (data) setStaff((prev) => [normalizeStaff(data), ...prev]);
 
       setSelectedUser(null);
       setShowAddModal(false);
@@ -424,7 +426,7 @@ export default function StaffManagementPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <div className="staffContent">
+      <main className={`staffContent ${styles.staffMgmtPage}`}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Staff Management</h1>
@@ -450,18 +452,15 @@ export default function StaffManagementPage() {
             <span>Total Staff</span>
             <strong>{stats.total}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.greenAccent}`}>
             <span>Active</span>
             <strong>{stats.active}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.blueAccent}`}>
             <span>Admins</span>
             <strong>{stats.admins}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
             <span>Inactive</span>
             <strong>{stats.inactive}</strong>
           </div>
@@ -498,13 +497,16 @@ export default function StaffManagementPage() {
           </select>
         </div>
 
-        <div className={styles.tableCard}>
+        <section className={styles.tableCard}>
           {loading ? (
             <p className={styles.message}>Loading staff records...</p>
           ) : error ? (
             <p className={styles.error}>{error}</p>
           ) : filteredStaff.length === 0 ? (
-            <p className={styles.message}>No staff records found.</p>
+            <div className={styles.emptyState}>
+              <h3>No staff records found</h3>
+              <p>Try adjusting the search or filters.</p>
+            </div>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -530,17 +532,14 @@ export default function StaffManagementPage() {
                           height={42}
                           className={styles.avatar}
                         />
-
                         <div>
                           <strong>{member.full_name}</strong>
                           <p>{member.email}</p>
                         </div>
                       </div>
                     </td>
-
                     <td>{capitalizeFirst(member.role)}</td>
                     <td>{member.department || "N/A"}</td>
-
                     <td>
                       <span
                         className={`${styles.statusBadge} ${
@@ -552,13 +551,7 @@ export default function StaffManagementPage() {
                         {capitalizeFirst(member.status)}
                       </span>
                     </td>
-
-                    <td>
-                      {member.created_at
-                        ? new Date(member.created_at).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-
+                    <td>{formatDate(member.created_at)}</td>
                     <td>
                       <div className={styles.actions}>
                         <button
@@ -568,7 +561,6 @@ export default function StaffManagementPage() {
                         >
                           View
                         </button>
-
                         <button
                           type="button"
                           className={styles.editBtn}
@@ -576,7 +568,6 @@ export default function StaffManagementPage() {
                         >
                           Edit
                         </button>
-
                         {member.status.toLowerCase() === "active" ? (
                           <button
                             type="button"
@@ -605,12 +596,12 @@ export default function StaffManagementPage() {
               </tbody>
             </table>
           )}
-        </div>
+        </section>
 
         {showAddModal && (
           <div className={styles.modalOverlay}>
-            <div className={styles.modalCardLarge}>
-              <h2>Add Staff</h2>
+            <div className={styles.modalCard}>
+              <h3>Add Staff</h3>
               <p>Select a verified user to promote to staff.</p>
 
               <div className={styles.selectBox}>
@@ -634,14 +625,15 @@ export default function StaffManagementPage() {
               <div className={styles.modalActions}>
                 <button
                   type="button"
+                  className={styles.dangerConfirmBtn}
                   onClick={handleAddStaff}
                   disabled={actionLoading}
                 >
                   {actionLoading ? "Adding..." : "Confirm"}
                 </button>
-
                 <button
                   type="button"
+                  className={styles.cancelBtn}
                   onClick={() => setShowAddModal(false)}
                   disabled={actionLoading}
                 >
@@ -656,18 +648,27 @@ export default function StaffManagementPage() {
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
               <div className={styles.modalHeader}>
-                <h2>Staff Profile</h2>
+                <div>
+                  <h2>Staff Details</h2>
+                  <p>Review staff account information and access status.</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.topCloseButton}
+                  onClick={() => setShowViewModal(false)}
+                >
+                  Close
+                </button>
               </div>
 
               <div className={styles.profileSection}>
                 <Image
                   src={selectedStaff.profile_image || "/default-avatar.png"}
                   alt={selectedStaff.full_name}
-                  width={42}
-                  height={42}
+                  width={44}
+                  height={44}
                   className={styles.avatar}
                 />
-
                 <div className={styles.profileInfo}>
                   <h3>{selectedStaff.full_name}</h3>
                   <p>{selectedStaff.email}</p>
@@ -676,53 +677,44 @@ export default function StaffManagementPage() {
 
               <div className={styles.profileGrid}>
                 <div>
-                  <strong>Role:</strong> {capitalizeFirst(selectedStaff.role)}
+                  <strong>Role</strong>
+                  <p>{capitalizeFirst(selectedStaff.role)}</p>
                 </div>
-
                 <div>
-                  <strong>Department:</strong>{" "}
-                  {selectedStaff.department || "N/A"}
+                  <strong>Status</strong>
+                  <p>{capitalizeFirst(selectedStaff.status)}</p>
                 </div>
-
                 <div>
-                  <strong>Status:</strong>{" "}
-                  {capitalizeFirst(selectedStaff.status)}
+                  <strong>Department</strong>
+                  <p>{selectedStaff.department || "N/A"}</p>
                 </div>
-
                 <div>
-                  <strong>Phone:</strong>{" "}
-                  {selectedStaff.phone || selectedStaff.contact || "N/A"}
+                  <strong>Contact</strong>
+                  <p>{selectedStaff.phone || selectedStaff.contact || "N/A"}</p>
                 </div>
-
                 <div>
-                  <strong>Created:</strong>{" "}
-                  {selectedStaff.created_at
-                    ? new Date(selectedStaff.created_at).toLocaleDateString()
-                    : "N/A"}
+                  <strong>Created</strong>
+                  <p>{formatDate(selectedStaff.created_at)}</p>
                 </div>
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
         )}
 
-        {showEditModal && (
+        {showEditModal && selectedStaff && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalCardLarge}>
-              <h2>Edit Staff</h2>
-              <p>Update staff details, role, and department information.</p>
+              <div className={styles.modalHeader}>
+                <div>
+                  <h2>Edit Staff</h2>
+                  <p>Update internal user profile and role information.</p>
+                </div>
+              </div>
 
               <div className={styles.editGrid}>
-                <label>Full Name</label>
+                <label htmlFor="full_name">Full Name</label>
                 <input
+                  id="full_name"
                   value={editForm.full_name}
                   onChange={(event) =>
                     setEditForm((prev) => ({
@@ -732,17 +724,15 @@ export default function StaffManagementPage() {
                   }
                 />
 
-                <label>Email Locked</label>
-                <input value={editForm.email} disabled />
+                <label htmlFor="email">Email</label>
+                <input id="email" value={editForm.email} disabled />
 
-                <label>Role</label>
+                <label htmlFor="role">Role</label>
                 <select
+                  id="role"
                   value={editForm.role}
                   onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      role: event.target.value,
-                    }))
+                    setEditForm((prev) => ({ ...prev, role: event.target.value }))
                   }
                 >
                   <option value="admin">Admin</option>
@@ -750,8 +740,9 @@ export default function StaffManagementPage() {
                   <option value="doctor">Doctor</option>
                 </select>
 
-                <label>Department</label>
+                <label htmlFor="department">Department</label>
                 <input
+                  id="department"
                   value={editForm.department}
                   onChange={(event) =>
                     setEditForm((prev) => ({
@@ -759,11 +750,11 @@ export default function StaffManagementPage() {
                       department: event.target.value,
                     }))
                   }
-                  placeholder="Example: Front Desk"
                 />
 
-                <label>Phone</label>
+                <label htmlFor="phone">Phone</label>
                 <input
+                  id="phone"
                   value={editForm.phone}
                   onChange={(event) =>
                     setEditForm((prev) => ({
@@ -771,27 +762,21 @@ export default function StaffManagementPage() {
                       phone: event.target.value,
                     }))
                   }
-                  placeholder="Example: 09123456789"
-                />
-
-                <label>Profile Image Locked</label>
-                <input
-                  value="Cannot edit from admin staff management"
-                  disabled
                 />
               </div>
 
               <div className={styles.modalActions}>
                 <button
                   type="button"
+                  className={styles.dangerConfirmBtn}
                   onClick={handleUpdateStaff}
                   disabled={actionLoading}
                 >
                   {actionLoading ? "Saving..." : "Save Changes"}
                 </button>
-
                 <button
                   type="button"
+                  className={styles.cancelBtn}
                   onClick={closeEditModal}
                   disabled={actionLoading}
                 >
@@ -813,28 +798,21 @@ export default function StaffManagementPage() {
                       : styles.successIcon
                   }`}
                 >
-                  {confirmAction.type === "deactivate" ? "!" : "✓"}
+                  !
                 </div>
-
                 <div>
-                  <p className={styles.confirmEyebrow}>
-                    {confirmAction.type === "deactivate"
-                      ? "Account Deactivation"
-                      : "Account Reactivation"}
-                  </p>
-
+                  <p className={styles.confirmEyebrow}>Confirm Status Change</p>
                   <h2>
                     {confirmAction.type === "deactivate"
-                      ? "Deactivate this account?"
-                      : "Reactivate this account?"}
+                      ? "Deactivate staff account?"
+                      : "Reactivate staff account?"}
                   </h2>
                 </div>
               </div>
 
               <p className={styles.confirmText}>
-                {confirmAction.type === "deactivate"
-                  ? "This user will no longer be able to access the OurSkin system. Their profile, appointment history, and activity records will remain saved for tracking."
-                  : "This user will regain access to the OurSkin system based on their assigned role."}
+                This will update the account status for {" "}
+                {confirmAction.member.full_name}.
               </p>
 
               <div className={styles.confirmUserBox}>
@@ -842,22 +820,9 @@ export default function StaffManagementPage() {
                   <span>Name</span>
                   <strong>{confirmAction.member.full_name}</strong>
                 </div>
-
                 <div>
                   <span>Email</span>
                   <strong>{confirmAction.member.email}</strong>
-                </div>
-
-                <div>
-                  <span>Role</span>
-                  <strong>{capitalizeFirst(confirmAction.member.role)}</strong>
-                </div>
-
-                <div>
-                  <span>Status</span>
-                  <strong>
-                    {capitalizeFirst(confirmAction.member.status)}
-                  </strong>
                 </div>
               </div>
 
@@ -870,7 +835,6 @@ export default function StaffManagementPage() {
                 >
                   Cancel
                 </button>
-
                 <button
                   type="button"
                   className={
@@ -882,16 +846,16 @@ export default function StaffManagementPage() {
                   disabled={actionLoading}
                 >
                   {actionLoading
-                    ? "Processing..."
+                    ? "Updating..."
                     : confirmAction.type === "deactivate"
-                    ? "Yes, Deactivate"
-                    : "Yes, Reactivate"}
+                    ? "Deactivate"
+                    : "Reactivate"}
                 </button>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,0 +1,2794 @@
+.page,
+.pageWrapper,
+.container,
+.headerRow,
+.filtersRow,
+.statsGrid,
+.tableCard,
+.tableWrapper,
+.reportCard,
+.statCard,
+.panelCard,
+.appointmentCard,
+.emptyState,
+.message,
+.error,
+.modalCard,
+.modalCardLarge,
+.confirmCard,
+.profileSection,
+.profileGrid,
+.confirmUserBox,
+.rateGrid,
+.twoColumnGrid,
+.appointmentsList,
+.followUpPanel,
+.followUpRow,
+.followUpCompactRow {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.page {
+  min-height: 100vh;
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  max-width: calc(100% - 240px);
+  padding: 32px;
+  background: #fff7fb;
+  color: #1f2937;
+  overflow-x: hidden;
+  transition: margin-left 0.25s ease, width 0.25s ease;
+}
+
+.collapsed {
+  margin-left: 90px;
+  width: calc(100% - 90px);
+  max-width: calc(100% - 90px);
+}
+
+.pageWrapper {
+  padding: 30px 40px;
+  color: #1f2937;
+}
+
+.container {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.dashboardPage,
+.appointmentsPage,
+.aiLogsPage,
+.auditLogsPage,
+.reportsPage,
+.staffMgmtPage,
+.usersPage {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:global(.staffContent).dashboardPage,
+:global(.staffContent).appointmentsPage,
+:global(.staffContent).aiLogsPage,
+:global(.staffContent).auditLogsPage,
+:global(.staffContent).reportsPage,
+:global(.staffContent).staffMgmtPage,
+:global(.staffContent).usersPage {
+  overflow-x: hidden;
+}
+
+/* ---------- Shared headers ---------- */
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.title {
+  margin: 0;
+  color: #251722;
+  font-size: clamp(1.55rem, 2.4vw, 2rem);
+  font-weight: 950;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.subtitle {
+  max-width: 820px;
+  margin: 7px 0 0;
+  color: #7b6570;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ---------- Shared cards and stats ---------- */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard,
+.reportCard,
+.panelCard,
+.appointmentCard,
+.tableCard,
+.emptyState,
+.message,
+.error,
+.stateCard {
+  background: #ffffff;
+  border: 1px solid #f0dce5;
+  border-radius: 24px;
+  box-shadow: 0 16px 38px rgba(39, 18, 31, 0.07);
+}
+
+.statCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 116px;
+  padding: 20px;
+}
+
+.statCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #93345d;
+}
+
+.statCard span {
+  display: block;
+  color: #7b6570;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.statCard strong {
+  display: block;
+  margin-top: 12px;
+  color: #251722;
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.statCard p {
+  margin: 10px 0 0;
+  color: #7b6570;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.pinkAccent::before {
+  background: #93345d;
+}
+
+.greenAccent::before {
+  background: #027a48;
+}
+
+.blueAccent::before {
+  background: #3730a3;
+}
+
+.orangeAccent::before {
+  background: #b54708;
+}
+
+.statTop {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.statLabel {
+  color: #7b6570;
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-align: right;
+}
+
+/* ---------- Shared filters and fields ---------- */
+.filtersRow,
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.searchInput,
+.selectInput,
+.textArea,
+.editGrid input,
+.editGrid select,
+.selectBox select {
+  min-height: 46px;
+  border: 1px solid #e6d8df;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #251722;
+  outline: none;
+  font-size: 0.94rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.searchInput,
+.selectInput {
+  padding: 0 15px;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 300px;
+}
+
+.selectInput {
+  min-width: 180px;
+}
+
+.textArea {
+  width: 100%;
+  min-height: 120px;
+  padding: 13px 14px;
+  resize: vertical;
+}
+
+.searchInput:focus,
+.selectInput:focus,
+.textArea:focus,
+.editGrid input:focus,
+.editGrid select:focus,
+.selectBox select:focus {
+  border-color: #93345d;
+  box-shadow: 0 0 0 4px rgba(147, 52, 93, 0.11);
+}
+
+/* ---------- Shared buttons ---------- */
+.refreshButton,
+.addButton,
+.primaryAction,
+.secondaryAction,
+.approveBtn,
+.declineBtn,
+.cancelBtn,
+.cancelAppointmentBtn,
+.confirmDeclineBtn,
+.confirmCancelBtn,
+.viewBtn,
+.editBtn,
+.deactivateBtn,
+.cancelConfirmBtn,
+.dangerConfirmBtn,
+.successConfirmBtn,
+.followUpCompleteBtn,
+.followUpDisabledBtn,
+.topCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 14px;
+  font-size: 0.84rem;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.refreshButton,
+.addButton,
+.primaryAction,
+.topCloseButton,
+.dangerConfirmBtn {
+  background: #93345d;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(147, 52, 93, 0.2);
+}
+
+.refreshButton:hover,
+.addButton:hover,
+.primaryAction:hover,
+.topCloseButton:hover,
+.dangerConfirmBtn:hover,
+.viewBtn:hover,
+.editBtn:hover,
+.deactivateBtn:hover,
+.approveBtn:hover,
+.declineBtn:hover,
+.cancelAppointmentBtn:hover,
+.followUpCompleteBtn:hover {
+  transform: translateY(-1px);
+}
+
+.secondaryAction,
+.cancelBtn,
+.cancelConfirmBtn {
+  background: #faf7f8;
+  color: #633247;
+  border: 1px solid #f0dce5;
+}
+
+.approveBtn,
+.successConfirmBtn,
+.followUpCompleteBtn {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.declineBtn,
+.confirmDeclineBtn,
+.deactivateBtn {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.cancelAppointmentBtn,
+.confirmCancelBtn,
+.editBtn {
+  background: #fff4e5;
+  color: #92400e;
+}
+
+.viewBtn {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+button:disabled,
+.refreshButton:disabled,
+.addButton:disabled,
+.approveBtn:disabled,
+.declineBtn:disabled,
+.cancelBtn:disabled,
+.cancelAppointmentBtn:disabled,
+.confirmDeclineBtn:disabled,
+.confirmCancelBtn:disabled,
+.cancelConfirmBtn:disabled,
+.dangerConfirmBtn:disabled,
+.successConfirmBtn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Shared tables ---------- */
+.tableCard {
+  overflow: hidden;
+}
+
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #f0dce5;
+  border-radius: 18px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: #fff7fb;
+}
+
+.table th,
+.table td {
+  padding: 15px 16px;
+  text-align: left;
+  border-bottom: 1px solid #f1e7ec;
+  color: #251722;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.table th {
+  color: #7b6570;
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: #fffafb;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.patientName,
+.patientCell strong,
+.personCell strong,
+.staffCell strong {
+  color: #251722;
+  font-weight: 900;
+}
+
+.patientCell,
+.personCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.patientCell p,
+.personCell span,
+.staffCell p,
+.mutedText,
+.reasonText,
+.noReason,
+.idText {
+  color: #7b6570;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.descriptionCell {
+  min-width: 260px;
+  max-width: 520px;
+  color: #4b3f46;
+  line-height: 1.5;
+}
+
+.dateCell {
+  min-width: 150px;
+  color: #4b3f46;
+  font-weight: 700;
+}
+
+/* ---------- Badges ---------- */
+.statusBadge,
+.roleBadge,
+.verificationBadge,
+.actionBadge,
+.moduleBadge,
+.followUpBadge,
+.aiBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 84px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.patient {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.staff {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.doctor {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.verified,
+.active,
+.approved,
+.mild,
+.completed,
+.create,
+.followUpBadgeCompleted {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.unverified,
+.pending,
+.moderate,
+.status,
+.followUpBadgeDue {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.inactive,
+.declined,
+.severe,
+.danger,
+.followUpBadgeOverdue {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.cancelled,
+.neutral,
+.system {
+  background: #f4f4f5;
+  color: #4b5563;
+}
+
+.reviewed,
+.update,
+.followUpBadgeUpcoming {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.moduleBadge {
+  background: #faf7f8;
+  color: #93345d;
+  border: 1px solid #f0dce5;
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+.heroSection {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 1px solid #f0dce5;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top left, rgba(147, 52, 93, 0.18), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #fff7fb 52%, #fdf2f8 100%);
+  box-shadow: 0 20px 46px rgba(39, 18, 31, 0.09);
+}
+
+.heroSection::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  bottom: -80px;
+  width: 230px;
+  height: 230px;
+  border-radius: 999px;
+  background: rgba(147, 52, 93, 0.08);
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.eyebrow,
+.panelEyebrow {
+  margin: 0 0 8px;
+  color: #93345d;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.heroContent h1 {
+  margin: 0;
+  color: #251722;
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  font-weight: 950;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+
+.heroContent p {
+  max-width: 780px;
+  margin: 12px 0 0;
+  color: #7b6570;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.heroPanel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 245px;
+  border: 1px solid rgba(147, 52, 93, 0.18);
+  border-radius: 24px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.heroPanel span,
+.breakdownItem span,
+.aiBox span {
+  display: block;
+  color: #8a6a78;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.heroPanel strong {
+  display: block;
+  margin-top: 10px;
+  color: #93345d;
+  font-size: 2.35rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.heroPanel p {
+  margin: 10px 0 0;
+  color: #7b6570;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.panelCard {
+  padding: 22px;
+}
+
+.panelHeader,
+.cardHeader,
+.sectionHeader,
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.panelHeader h2,
+.sectionHeader h2 {
+  margin: 0;
+  color: #251722;
+  font-size: 1.2rem;
+  font-weight: 950;
+}
+
+.panelHeader p,
+.sectionHeader p {
+  margin: 6px 0 0;
+  color: #7b6570;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.panelHeader a,
+.followUpFooter a {
+  color: #93345d;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.pipelineList {
+  display: grid;
+  gap: 14px;
+}
+
+.pipelineItem,
+.breakdownItem,
+.aiBox,
+.quickActions a,
+.detailItem,
+.modalAppointmentBox,
+.profileSection,
+.profileGrid div,
+.confirmUserBox {
+  background: #faf7f8;
+  border: 1px solid #f0dce5;
+  border-radius: 18px;
+}
+
+.pipelineItem {
+  padding: 16px;
+}
+
+.pipelineItem > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.pipelineItem span,
+.pipelineItem p {
+  color: #7b6570;
+  font-size: 0.88rem;
+}
+
+.pipelineItem strong {
+  color: #251722;
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 9px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: #eceff3;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.greenBar {
+  background: #027a48;
+}
+
+.orangeBar {
+  background: #b54708;
+}
+
+.breakdownGrid,
+.rateGrid,
+.cardDetails,
+.profileGrid,
+.confirmUserBox,
+.modalAppointmentBox {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.breakdownItem,
+.detailItem,
+.rateGrid div {
+  padding: 16px;
+}
+
+.breakdownItem strong,
+.aiBox strong,
+.rateGrid strong {
+  display: block;
+  margin-top: 10px;
+  color: #251722;
+  font-size: 1.65rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.breakdownItem p,
+.aiBox p,
+.rateGrid span {
+  color: #7b6570;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.aiBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+}
+
+.aiBadge {
+  min-width: 0;
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.quickActions {
+  display: grid;
+  gap: 10px;
+}
+
+.quickActions a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 15px;
+  color: #251722;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.quickActions a::after {
+  content: "Open";
+  color: #93345d;
+  font-size: 0.8rem;
+}
+
+.followUpPanel {
+  margin: 24px 0;
+  padding: 22px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top left, rgba(147, 52, 93, 0.22), transparent 32%),
+    linear-gradient(135deg, #151821 0%, #1c2230 100%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+.followUpHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.followUpHeader h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.25rem;
+  font-weight: 950;
+}
+
+.followUpHeader p {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.followUpCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: #f9a8d4;
+  background: rgba(244, 114, 182, 0.14);
+  border: 1px solid rgba(244, 114, 182, 0.28);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.followUpEmpty {
+  padding: 18px;
+  border-radius: 16px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+}
+
+.followUpList,
+.followUpCompactList {
+  display: grid;
+  gap: 11px;
+}
+
+.followUpRow,
+.followUpCompactRow {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  padding: 15px 16px;
+}
+
+.followUpRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.followUpCompactRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.25fr) repeat(3, minmax(130px, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.followUpMain,
+.followUpPatient,
+.followUpInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.followUpMain strong,
+.followUpPatient strong,
+.followUpInfo strong {
+  color: #f8fafc;
+  font-size: 0.94rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followUpMain span,
+.followUpMain small,
+.followUpPatient span,
+.followUpInfo span {
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followUpInfo span {
+  color: #94a3b8;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.followUpActions,
+.followUpStatusArea {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.followUpDisabledBtn {
+  color: #94a3b8;
+  background: #2d3341;
+  cursor: not-allowed;
+}
+
+.followUpFooter {
+  margin-top: 14px;
+}
+
+/* =========================================================
+   APPOINTMENTS
+   ========================================================= */
+.appointmentsList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.appointmentCard {
+  padding: 20px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.appointmentCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 46px rgba(39, 18, 31, 0.09);
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0dce5;
+}
+
+.cardTop h3 {
+  margin: 0;
+  color: #251722;
+  font-size: 1.08rem;
+  font-weight: 950;
+}
+
+.cardTop p {
+  margin: 5px 0 0;
+  color: #7b6570;
+  font-size: 0.9rem;
+}
+
+.cardDetails {
+  margin-top: 16px;
+}
+
+.detailItem span,
+.modalAppointmentBox span,
+.confirmUserBox span {
+  display: block;
+  margin-bottom: 5px;
+  color: #8a6a78;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.detailItem strong,
+.modalAppointmentBox strong,
+.confirmUserBox strong {
+  display: block;
+  color: #251722;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #f0dce5;
+}
+
+.actionButtons,
+.actions,
+.modalActions,
+.confirmActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.noAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #faf7f8;
+  color: #7b6570;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.fullWidthCard,
+.emptyState {
+  grid-column: 1 / -1;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.emptyState h3 {
+  margin: 0 0 8px;
+  color: #251722;
+  font-size: 1.08rem;
+  font-weight: 950;
+}
+
+.emptyState p {
+  margin: 0;
+  color: #7b6570;
+}
+
+/* =========================================================
+   STAFF MANAGEMENT
+   ========================================================= */
+.staffCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+}
+
+.avatar,
+.profileInitial {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #f6e8ef;
+}
+
+.profileInitial {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #93345d;
+  font-weight: 950;
+}
+
+.staffMgmtPage .actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  gap: 8px;
+  min-width: 290px;
+}
+
+.staffMgmtPage .actions button {
+  width: 100%;
+}
+
+/* =========================================================
+   MODALS AND DETAILS
+   ========================================================= */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(4px);
+}
+
+.modalCard,
+.modalCardLarge,
+.confirmCard {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 26px;
+  animation: modalPop 0.18s ease-out;
+}
+
+.modalCardLarge {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.modalHeader,
+.confirmTop,
+.profileSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.modalHeader {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modalCard h3,
+.modalCardLarge h2,
+.modalHeader h2,
+.confirmTop h2,
+.profileInfo h3,
+.infoBlock h3 {
+  margin: 0;
+  color: #251722;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.modalText,
+.modalCard p,
+.modalCardLarge p,
+.profileInfo p,
+.confirmText,
+.emptyMiniText {
+  color: #7b6570;
+  line-height: 1.55;
+}
+
+.profileSection {
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.profileGrid {
+  margin-bottom: 18px;
+}
+
+.profileGrid div {
+  padding: 14px;
+  color: #4b3f46;
+  line-height: 1.5;
+}
+
+.infoBlock,
+.detailMiniBlock,
+.prescriptionTable {
+  border: 1px solid #f0dce5;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.infoBlock,
+.detailMiniBlock {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.detailMiniBlock strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #251722;
+}
+
+.detailMiniBlock p,
+.detailList {
+  color: #4b3f46;
+  line-height: 1.6;
+}
+
+.structuredSection,
+.assessmentGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.prescriptionTable {
+  overflow: hidden;
+}
+
+.prescriptionHeader,
+.prescriptionRow {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+}
+
+.prescriptionHeader {
+  background: #fff7fb;
+}
+
+.prescriptionHeader span,
+.prescriptionRow p {
+  padding: 13px 14px;
+  border-bottom: 1px solid #f0dce5;
+}
+
+.prescriptionHeader span {
+  color: #7b6570;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.prescriptionRow p {
+  margin: 0;
+  color: #4b3f46;
+  line-height: 1.5;
+  border-right: 1px solid #f0dce5;
+}
+
+.prescriptionRow p:last-child {
+  border-right: 0;
+}
+
+.confirmIcon,
+.modalWarningIcon,
+.modalNeutralIcon {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.warningIcon,
+.modalWarningIcon {
+  background: #fff1f2;
+  color: #93345d;
+}
+
+.successIcon {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.modalNeutralIcon {
+  background: #fff4e5;
+  color: #92400e;
+}
+
+.confirmEyebrow,
+.modalEyebrow {
+  margin: 0 0 4px;
+  color: #93345d;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================================================
+   MESSAGES
+   ========================================================= */
+.message,
+.error {
+  padding: 28px 20px;
+  color: #7b6570;
+  text-align: center;
+  font-weight: 800;
+}
+
+.error {
+  color: #b42318;
+}
+
+/* =========================================================
+   TABLE TO MOBILE CARD SYSTEM
+   Add the matching page identity class to the main wrapper.
+   ========================================================= */
+@media (max-width: 1200px) {
+  .usersPage .tableCard,
+  .aiLogsPage .tableCard,
+  .auditLogsPage .tableCard,
+  .staffMgmtPage .tableCard,
+  .reportsPage .tableWrapper {
+    overflow: visible !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .usersPage .table,
+  .usersPage .table thead,
+  .usersPage .table tbody,
+  .usersPage .table tr,
+  .usersPage .table th,
+  .usersPage .table td,
+  .aiLogsPage .table,
+  .aiLogsPage .table thead,
+  .aiLogsPage .table tbody,
+  .aiLogsPage .table tr,
+  .aiLogsPage .table th,
+  .aiLogsPage .table td,
+  .auditLogsPage .table,
+  .auditLogsPage .table thead,
+  .auditLogsPage .table tbody,
+  .auditLogsPage .table tr,
+  .auditLogsPage .table th,
+  .auditLogsPage .table td,
+  .staffMgmtPage .table,
+  .staffMgmtPage .table thead,
+  .staffMgmtPage .table tbody,
+  .staffMgmtPage .table tr,
+  .staffMgmtPage .table th,
+  .staffMgmtPage .table td,
+  .reportsPage .table,
+  .reportsPage .table thead,
+  .reportsPage .table tbody,
+  .reportsPage .table tr,
+  .reportsPage .table th,
+  .reportsPage .table td {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .usersPage .table thead,
+  .aiLogsPage .table thead,
+  .auditLogsPage .table thead,
+  .staffMgmtPage .table thead,
+  .reportsPage .table thead {
+    display: none !important;
+  }
+
+  .usersPage .table tbody,
+  .aiLogsPage .table tbody,
+  .auditLogsPage .table tbody,
+  .staffMgmtPage .table tbody,
+  .reportsPage .table tbody {
+    display: grid;
+    gap: 16px;
+  }
+
+  .usersPage .table tr,
+  .aiLogsPage .table tr,
+  .auditLogsPage .table tr,
+  .staffMgmtPage .table tr,
+  .reportsPage .table tr {
+    display: block;
+    padding: 18px;
+    border: 1px solid #f0dce5;
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(39, 18, 31, 0.07);
+  }
+
+  .usersPage .table td,
+  .aiLogsPage .table td,
+  .auditLogsPage .table td,
+  .staffMgmtPage .table td,
+  .reportsPage .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0 !important;
+    border-bottom: 1px solid #f1e7ec !important;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .usersPage .table td:last-child,
+  .aiLogsPage .table td:last-child,
+  .auditLogsPage .table td:last-child,
+  .staffMgmtPage .table td:last-child,
+  .reportsPage .table td:last-child {
+    border-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .usersPage .table td::before,
+  .aiLogsPage .table td::before,
+  .auditLogsPage .table td::before,
+  .staffMgmtPage .table td::before,
+  .reportsPage .table td::before {
+    flex: 0 0 42%;
+    color: #8a6a78;
+    font-size: 0.72rem;
+    font-weight: 950;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+  }
+
+  .usersPage .table td:nth-child(1)::before { content: "Name"; }
+  .usersPage .table td:nth-child(2)::before { content: "Email"; }
+  .usersPage .table td:nth-child(3)::before { content: "Contact"; }
+  .usersPage .table td:nth-child(4)::before { content: "Role"; }
+  .usersPage .table td:nth-child(5)::before { content: "Verified"; }
+  .usersPage .table td:nth-child(6)::before { content: "Status"; }
+  .usersPage .table td:nth-child(7)::before { content: "Created"; }
+
+  .aiLogsPage .table td:nth-child(1)::before { content: "Patient"; }
+  .aiLogsPage .table td:nth-child(2)::before { content: "Assigned Doctor"; }
+  .aiLogsPage .table td:nth-child(3)::before { content: "AI Condition"; }
+  .aiLogsPage .table td:nth-child(4)::before { content: "Severity"; }
+  .aiLogsPage .table td:nth-child(5)::before { content: "Confidence"; }
+  .aiLogsPage .table td:nth-child(6)::before { content: "Review Status"; }
+  .aiLogsPage .table td:nth-child(7)::before { content: "Date Analyzed"; }
+  .aiLogsPage .table td:nth-child(8)::before { content: "Action"; }
+
+  .auditLogsPage .table td:nth-child(1)::before { content: "Date & Time"; }
+  .auditLogsPage .table td:nth-child(2)::before { content: "Action"; }
+  .auditLogsPage .table td:nth-child(3)::before { content: "Module"; }
+  .auditLogsPage .table td:nth-child(4)::before { content: "Description"; }
+  .auditLogsPage .table td:nth-child(5)::before { content: "Performed By"; }
+  .auditLogsPage .table td:nth-child(6)::before { content: "Target"; }
+
+  .staffMgmtPage .table td:nth-child(1)::before { content: "Staff"; }
+  .staffMgmtPage .table td:nth-child(2)::before { content: "Role"; }
+  .staffMgmtPage .table td:nth-child(3)::before { content: "Department"; }
+  .staffMgmtPage .table td:nth-child(4)::before { content: "Status"; }
+  .staffMgmtPage .table td:nth-child(5)::before { content: "Created"; }
+  .staffMgmtPage .table td:nth-child(6)::before { content: "Actions"; }
+
+  .reportsPage .table td:nth-child(1)::before { content: "Category"; }
+  .reportsPage .table td:nth-child(2)::before { content: "Total"; }
+  .reportsPage .table td:nth-child(3)::before { content: "Status"; }
+  .reportsPage .table td:nth-child(4)::before { content: "Rate"; }
+  .reportsPage .table td:nth-child(5)::before { content: "Change"; }
+
+  .staffMgmtPage .staffCell,
+  .aiLogsPage .patientCell,
+  .auditLogsPage .personCell {
+    justify-content: flex-end;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .staffMgmtPage .actions {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .staffMgmtPage .viewBtn,
+  .staffMgmtPage .editBtn,
+  .staffMgmtPage .deactivateBtn,
+  .aiLogsPage .viewBtn {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 1200px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardGrid,
+  .twoColumnGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroSection {
+    flex-direction: column;
+  }
+
+  .heroPanel {
+    width: 100%;
+  }
+
+  .followUpCompactRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .followUpStatusArea {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .page,
+  .collapsed {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 92px 16px 28px;
+  }
+
+  .pageWrapper {
+    padding: 92px 16px 28px;
+  }
+
+  .headerRow,
+  .panelHeader,
+  .cardTop,
+  .followUpHeader,
+  .sectionHeader,
+  .modalHeader,
+  .confirmTop,
+  .profileSection {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filtersRow,
+  .heroActions,
+  .actionButtons,
+  .actions,
+  .modalActions,
+  .confirmActions,
+  .cardFooter,
+  .followUpActions,
+  .followUpStatusArea {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchInput,
+  .selectInput,
+  .refreshButton,
+  .addButton,
+  .primaryAction,
+  .secondaryAction,
+  .approveBtn,
+  .declineBtn,
+  .cancelBtn,
+  .cancelAppointmentBtn,
+  .confirmDeclineBtn,
+  .confirmCancelBtn,
+  .viewBtn,
+  .editBtn,
+  .deactivateBtn,
+  .noAction,
+  .panelHeader a,
+  .topCloseButton {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .searchInput,
+  .selectInput {
+    min-width: 0;
+  }
+
+  .heroSection,
+  .statCard,
+  .reportCard,
+  .panelCard,
+  .appointmentCard,
+  .emptyState,
+  .message,
+  .error,
+  .followUpPanel {
+    border-radius: 20px;
+    padding: 18px;
+  }
+
+  .breakdownGrid,
+  .rateGrid,
+  .cardDetails,
+  .profileGrid,
+  .confirmUserBox,
+  .modalAppointmentBox,
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .aiBox,
+  .followUpRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modalOverlay {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .modalCard,
+  .modalCardLarge,
+  .confirmCard {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 28px);
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .prescriptionHeader {
+    display: none;
+  }
+
+  .prescriptionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .prescriptionRow p {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .page,
+  .collapsed,
+  .pageWrapper {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .statCard strong,
+  .heroPanel strong,
+  .breakdownItem strong,
+  .aiBox strong,
+  .rateGrid strong {
+    font-size: 1.5rem;
+  }
+
+  .usersPage .table td,
+  .aiLogsPage .table td,
+  .auditLogsPage .table td,
+  .staffMgmtPage .table td,
+  .reportsPage .table td {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .usersPage .table td::before,
+  .aiLogsPage .table td::before,
+  .auditLogsPage .table td::before,
+  .staffMgmtPage .table td::before,
+  .reportsPage .table td::before {
+    flex: unset;
+  }
+
+  .staffMgmtPage .staffCell,
+  .aiLogsPage .patientCell,
+  .auditLogsPage .personCell {
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+:global(body.darkMode) .page,
+:global(body.darkMode) .pageWrapper {
+  background: var(--main-bg, var(--bg-main, #0f1117)) !important;
+  color: var(--text-main, #e5e7eb) !important;
+}
+
+:global(body.darkMode) .title,
+:global(body.darkMode) .heroContent h1,
+:global(body.darkMode) .panelHeader h2,
+:global(body.darkMode) .sectionHeader h2,
+:global(body.darkMode) .statCard strong,
+:global(body.darkMode) .pipelineItem strong,
+:global(body.darkMode) .breakdownItem strong,
+:global(body.darkMode) .aiBox strong,
+:global(body.darkMode) .quickActions a,
+:global(body.darkMode) .cardTop h3,
+:global(body.darkMode) .detailItem strong,
+:global(body.darkMode) .rateGrid strong,
+:global(body.darkMode) .profileInfo h3,
+:global(body.darkMode) .modalCard h3,
+:global(body.darkMode) .modalCardLarge h2,
+:global(body.darkMode) .modalHeader h2,
+:global(body.darkMode) .confirmTop h2,
+:global(body.darkMode) .confirmUserBox strong,
+:global(body.darkMode) .emptyState h3,
+:global(body.darkMode) .patientName,
+:global(body.darkMode) .patientCell strong,
+:global(body.darkMode) .personCell strong,
+:global(body.darkMode) .staffCell strong,
+:global(body.darkMode) .infoBlock h3,
+:global(body.darkMode) .detailMiniBlock strong {
+  color: var(--text-heading, #f8fafc) !important;
+}
+
+:global(body.darkMode) .subtitle,
+:global(body.darkMode) .heroContent p,
+:global(body.darkMode) .heroPanel p,
+:global(body.darkMode) .statCard span,
+:global(body.darkMode) .statCard p,
+:global(body.darkMode) .statLabel,
+:global(body.darkMode) .pipelineItem span,
+:global(body.darkMode) .pipelineItem p,
+:global(body.darkMode) .breakdownItem p,
+:global(body.darkMode) .aiBox p,
+:global(body.darkMode) .message,
+:global(body.darkMode) .emptyState p,
+:global(body.darkMode) .detailItem span,
+:global(body.darkMode) .rateGrid span,
+:global(body.darkMode) .modalCard p,
+:global(body.darkMode) .modalCardLarge p,
+:global(body.darkMode) .modalText,
+:global(body.darkMode) .confirmText,
+:global(body.darkMode) .profileInfo p,
+:global(body.darkMode) .patientCell p,
+:global(body.darkMode) .personCell span,
+:global(body.darkMode) .staffCell p,
+:global(body.darkMode) .mutedText,
+:global(body.darkMode) .reasonText,
+:global(body.darkMode) .noReason,
+:global(body.darkMode) .idText,
+:global(body.darkMode) .emptyMiniText,
+:global(body.darkMode) .detailList {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+:global(body.darkMode) .statCard,
+:global(body.darkMode) .reportCard,
+:global(body.darkMode) .panelCard,
+:global(body.darkMode) .appointmentCard,
+:global(body.darkMode) .tableCard,
+:global(body.darkMode) .emptyState,
+:global(body.darkMode) .message,
+:global(body.darkMode) .modalCard,
+:global(body.darkMode) .modalCardLarge,
+:global(body.darkMode) .confirmCard,
+:global(body.darkMode) .stateCard,
+:global(body.darkMode) .infoBlock,
+:global(body.darkMode) .detailMiniBlock,
+:global(body.darkMode) .prescriptionTable,
+:global(body.darkMode) .usersPage .table tr,
+:global(body.darkMode) .aiLogsPage .table tr,
+:global(body.darkMode) .auditLogsPage .table tr,
+:global(body.darkMode) .staffMgmtPage .table tr,
+:global(body.darkMode) .reportsPage .table tr {
+  background: var(--bg-card, #151821) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+:global(body.darkMode) .heroSection {
+  background:
+    radial-gradient(circle at top left, rgba(244, 114, 182, 0.18), transparent 34%),
+    linear-gradient(135deg, #151821 0%, #1c2230 100%) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+:global(body.darkMode) .heroPanel,
+:global(body.darkMode) .pipelineItem,
+:global(body.darkMode) .breakdownItem,
+:global(body.darkMode) .aiBox,
+:global(body.darkMode) .quickActions a,
+:global(body.darkMode) .detailItem,
+:global(body.darkMode) .rateGrid div,
+:global(body.darkMode) .modalAppointmentBox,
+:global(body.darkMode) .profileSection,
+:global(body.darkMode) .profileGrid div,
+:global(body.darkMode) .confirmUserBox,
+:global(body.darkMode) .secondaryAction,
+:global(body.darkMode) .cancelBtn,
+:global(body.darkMode) .cancelConfirmBtn,
+:global(body.darkMode) .noAction {
+  background: var(--bg-soft, #1d2230) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .eyebrow,
+:global(body.darkMode) .panelEyebrow,
+:global(body.darkMode) .heroPanel span,
+:global(body.darkMode) .breakdownItem span,
+:global(body.darkMode) .aiBox span,
+:global(body.darkMode) .confirmEyebrow,
+:global(body.darkMode) .modalEyebrow,
+:global(body.darkMode) .editGrid label,
+:global(body.darkMode) .confirmUserBox span,
+:global(body.darkMode) .detailItem span,
+:global(body.darkMode) .modalAppointmentBox span {
+  color: var(--primary-color, #f9a8d4) !important;
+}
+
+:global(body.darkMode) .heroPanel strong,
+:global(body.darkMode) .panelHeader a,
+:global(body.darkMode) .followUpFooter a,
+:global(body.darkMode) .quickActions a::after {
+  color: var(--primary-color, #f9a8d4) !important;
+}
+
+:global(body.darkMode) .searchInput,
+:global(body.darkMode) .selectInput,
+:global(body.darkMode) .textArea,
+:global(body.darkMode) .editGrid input,
+:global(body.darkMode) .editGrid select,
+:global(body.darkMode) .selectBox select {
+  background: var(--input-bg, #111827) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .searchInput::placeholder,
+:global(body.darkMode) .textArea::placeholder,
+:global(body.darkMode) .editGrid input::placeholder {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+:global(body.darkMode) .tableWrapper,
+:global(body.darkMode) .table th,
+:global(body.darkMode) .table td,
+:global(body.darkMode) .cardTop,
+:global(body.darkMode) .cardFooter,
+:global(body.darkMode) .prescriptionHeader,
+:global(body.darkMode) .prescriptionRow p,
+:global(body.darkMode) .usersPage .table td,
+:global(body.darkMode) .aiLogsPage .table td,
+:global(body.darkMode) .auditLogsPage .table td,
+:global(body.darkMode) .staffMgmtPage .table td,
+:global(body.darkMode) .reportsPage .table td {
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .table thead,
+:global(body.darkMode) .table th,
+:global(body.darkMode) .prescriptionHeader {
+  background: var(--bg-soft, #1d2230) !important;
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+:global(body.darkMode) .table td,
+:global(body.darkMode) .descriptionCell,
+:global(body.darkMode) .dateCell,
+:global(body.darkMode) .detailMiniBlock p,
+:global(body.darkMode) .prescriptionRow p {
+  color: var(--text-main, #e5e7eb) !important;
+}
+
+:global(body.darkMode) .table tbody tr:hover {
+  background: var(--bg-soft, #1d2230) !important;
+}
+
+:global(body.darkMode) .usersPage .table td::before,
+:global(body.darkMode) .aiLogsPage .table td::before,
+:global(body.darkMode) .auditLogsPage .table td::before,
+:global(body.darkMode) .staffMgmtPage .table td::before,
+:global(body.darkMode) .reportsPage .table td::before {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+:global(body.darkMode) .progressTrack {
+  background: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .verified,
+:global(body.darkMode) .active,
+:global(body.darkMode) .approved,
+:global(body.darkMode) .mild,
+:global(body.darkMode) .completed,
+:global(body.darkMode) .create,
+:global(body.darkMode) .followUpBadgeCompleted,
+:global(body.darkMode) .approveBtn,
+:global(body.darkMode) .successConfirmBtn,
+:global(body.darkMode) .followUpCompleteBtn {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86efac !important;
+}
+
+:global(body.darkMode) .unverified,
+:global(body.darkMode) .pending,
+:global(body.darkMode) .moderate,
+:global(body.darkMode) .status,
+:global(body.darkMode) .followUpBadgeDue,
+:global(body.darkMode) .cancelAppointmentBtn,
+:global(body.darkMode) .confirmCancelBtn,
+:global(body.darkMode) .editBtn {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+:global(body.darkMode) .inactive,
+:global(body.darkMode) .declined,
+:global(body.darkMode) .severe,
+:global(body.darkMode) .danger,
+:global(body.darkMode) .followUpBadgeOverdue,
+:global(body.darkMode) .declineBtn,
+:global(body.darkMode) .confirmDeclineBtn,
+:global(body.darkMode) .deactivateBtn {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .cancelled,
+:global(body.darkMode) .neutral,
+:global(body.darkMode) .system {
+  background: rgba(148, 163, 184, 0.16) !important;
+  color: #cbd5e1 !important;
+}
+
+:global(body.darkMode) .reviewed,
+:global(body.darkMode) .update,
+:global(body.darkMode) .followUpBadgeUpcoming,
+:global(body.darkMode) .viewBtn,
+:global(body.darkMode) .patient {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #c4b5fd !important;
+}
+
+:global(body.darkMode) .doctor {
+  background: rgba(14, 165, 233, 0.16) !important;
+  color: #7dd3fc !important;
+}
+
+:global(body.darkMode) .staff {
+  background: rgba(168, 85, 247, 0.16) !important;
+  color: #d8b4fe !important;
+}
+
+:global(body.darkMode) .admin {
+  background: rgba(248, 113, 113, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+:global(body.darkMode) .moduleBadge {
+  background: rgba(244, 114, 182, 0.14) !important;
+  color: var(--primary-color, #f9a8d4) !important;
+  border-color: rgba(244, 114, 182, 0.32) !important;
+}
+
+/* =========================================================
+   AI REVIEW MONITOR + REPORTS FINAL RESPONSIVE FIX
+   Paste-safe override. Keep this at the very bottom.
+   ========================================================= */
+
+.aiLogsPage,
+.reportsPage {
+  overflow-x: hidden !important;
+}
+
+.aiLogsPage .container,
+.reportsPage .container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.aiLogsPage .statsGrid,
+.reportsPage .statsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.aiLogsPage .filtersRow,
+.reportsPage .filtersRow {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(180px, 240px)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+.aiLogsPage .searchInput,
+.aiLogsPage .selectInput,
+.reportsPage .searchInput,
+.reportsPage .selectInput {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Convert AI logs and report tables into clean record cards, not sideways tables. */
+.aiLogsPage .tableCard,
+.reportsPage .tableWrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.reportsPage .reportCard {
+  overflow: hidden !important;
+}
+
+.aiLogsPage .table,
+.aiLogsPage .table thead,
+.aiLogsPage .table tbody,
+.aiLogsPage .table tr,
+.aiLogsPage .table th,
+.aiLogsPage .table td,
+.reportsPage .table,
+.reportsPage .table thead,
+.reportsPage .table tbody,
+.reportsPage .table tr,
+.reportsPage .table th,
+.reportsPage .table td {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.aiLogsPage .table thead,
+.reportsPage .table thead {
+  display: none !important;
+}
+
+.aiLogsPage .table tbody {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(390px, 100%), 1fr)) !important;
+  gap: 16px !important;
+}
+
+.reportsPage .table tbody {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)) !important;
+  gap: 14px !important;
+}
+
+.aiLogsPage .table tr,
+.reportsPage .table tr {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 18px !important;
+  border: 1px solid #f0dce5 !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 30px rgba(39, 18, 31, 0.07) !important;
+}
+
+.aiLogsPage .table tr:hover,
+.reportsPage .table tr:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(39, 18, 31, 0.1) !important;
+}
+
+.aiLogsPage .table td,
+.reportsPage .table td {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  gap: 14px !important;
+  padding: 11px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #f1e7ec !important;
+  color: #251722 !important;
+  text-align: right !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+.aiLogsPage .table td:last-child,
+.reportsPage .table td:last-child {
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.aiLogsPage .table td::before,
+.reportsPage .table td::before {
+  content: attr(data-label) !important;
+  flex: 0 0 42% !important;
+  color: #8a6a78 !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.045em !important;
+}
+
+.aiLogsPage .patientCell {
+  align-items: flex-end !important;
+  text-align: right !important;
+}
+
+.aiLogsPage .statusBadge,
+.reportsPage .statusBadge {
+  max-width: 100% !important;
+}
+
+.aiLogsPage .viewBtn {
+  width: 100% !important;
+}
+
+/* Reports need compact internal tables so cards do not feel heavy. */
+.reportsPage .twoColumnGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)) !important;
+  gap: 18px !important;
+}
+
+.reportsPage .rateGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)) !important;
+  gap: 14px !important;
+}
+
+@media (max-width: 900px) {
+  .aiLogsPage .filtersRow,
+  .reportsPage .filtersRow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .aiLogsPage .table tbody,
+  .reportsPage .table tbody {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .aiLogsPage .statsGrid,
+  .reportsPage .statsGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .aiLogsPage .table tr,
+  .reportsPage .table tr {
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .aiLogsPage .table td,
+  .reportsPage .table td {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  .aiLogsPage .table td::before,
+  .reportsPage .table td::before {
+    flex: unset !important;
+  }
+
+  .aiLogsPage .patientCell {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+}
+
+/* Dark mode for the new AI/report card layout. */
+:global(body.darkMode) .aiLogsPage .tableCard,
+:global(body.darkMode) .reportsPage .tableWrapper {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table tr,
+:global(body.darkMode) .reportsPage .table tr {
+  background: var(--bg-card, #151821) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table tr:hover,
+:global(body.darkMode) .reportsPage .table tr:hover {
+  background: var(--bg-soft, #1d2230) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table td,
+:global(body.darkMode) .reportsPage .table td {
+  color: var(--text-main, #e5e7eb) !important;
+  border-bottom-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table td::before,
+:global(body.darkMode) .reportsPage .table td::before {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .statsGrid .statCard,
+:global(body.darkMode) .reportsPage .statsGrid .statCard,
+:global(body.darkMode) .reportsPage .reportCard,
+:global(body.darkMode) .reportsPage .rateGrid div {
+  background: var(--bg-card, #151821) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+/* =========================================================
+   AI LOGS + REPORTS FULL-WIDTH VERTICAL FINAL FIX
+   Keeps the admin content inside the viewport and stacks records vertically.
+   Keep this block at the very bottom of admin.module.css.
+   ========================================================= */
+
+.page {
+  margin-left: 260px !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  padding: 32px 40px !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.collapsed {
+  margin-left: 90px !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.container {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+@media (min-width: 901px) {
+  :global(body:not(.navCollapsed)) .page {
+    margin-left: 260px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  :global(body.navCollapsed) .page {
+    margin-left: 90px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+.aiLogsPage .headerRow,
+.reportsPage .headerRow,
+.aiLogsPage .statsGrid,
+.reportsPage .statsGrid,
+.aiLogsPage .filtersRow,
+.reportsPage .filtersRow,
+.aiLogsPage .tableCard,
+.reportsPage .reportCard,
+.reportsPage .tableWrapper,
+.reportsPage .twoColumnGrid,
+.reportsPage .rateGrid {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.aiLogsPage .statsGrid,
+.reportsPage .statsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)) !important;
+  gap: 16px !important;
+  overflow: visible !important;
+}
+
+.aiLogsPage .filtersRow,
+.reportsPage .filtersRow {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) minmax(180px, 240px) !important;
+  gap: 12px !important;
+  overflow: visible !important;
+}
+
+.aiLogsPage .searchInput,
+.aiLogsPage .selectInput,
+.reportsPage .searchInput,
+.reportsPage .selectInput {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Stack all AI records and report rows vertically. No side-by-side cards. */
+.aiLogsPage .tableCard,
+.reportsPage .tableWrapper {
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.aiLogsPage .table,
+.aiLogsPage .table thead,
+.aiLogsPage .table tbody,
+.aiLogsPage .table tr,
+.aiLogsPage .table th,
+.aiLogsPage .table td,
+.reportsPage .table,
+.reportsPage .table thead,
+.reportsPage .table tbody,
+.reportsPage .table tr,
+.reportsPage .table th,
+.reportsPage .table td {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.aiLogsPage .table thead,
+.reportsPage .table thead {
+  display: none !important;
+}
+
+.aiLogsPage .table tbody,
+.reportsPage .table tbody {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.aiLogsPage .table tr,
+.reportsPage .table tr {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 18px 20px !important;
+  border: 1px solid #f0dce5 !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 30px rgba(39, 18, 31, 0.07) !important;
+  overflow: hidden !important;
+}
+
+.aiLogsPage .table td,
+.reportsPage .table td {
+  display: grid !important;
+  grid-template-columns: minmax(160px, 260px) minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 16px !important;
+  padding: 12px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #f1e7ec !important;
+  color: #251722 !important;
+  text-align: right !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+.aiLogsPage .table td:last-child,
+.reportsPage .table td:last-child {
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.aiLogsPage .table td::before,
+.reportsPage .table td::before {
+  content: attr(data-label) !important;
+  color: #8a6a78 !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.045em !important;
+}
+
+.aiLogsPage .patientCell {
+  align-items: flex-end !important;
+  text-align: right !important;
+  min-width: 0 !important;
+}
+
+.aiLogsPage .patientCell p,
+.aiLogsPage .patientCell strong {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+.aiLogsPage .viewBtn {
+  width: 100% !important;
+  max-width: 280px !important;
+  justify-self: end !important;
+}
+
+/* Reports sections should stack vertically, not side by side. */
+.reportsPage .twoColumnGrid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+}
+
+.reportsPage .reportCard {
+  padding: 22px !important;
+  overflow: hidden !important;
+}
+
+.reportsPage .rateGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)) !important;
+  gap: 14px !important;
+}
+
+@media (max-width: 1100px) {
+  .aiLogsPage .filtersRow,
+  .reportsPage .filtersRow {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .page,
+  .collapsed,
+  :global(body:not(.navCollapsed)) .page,
+  :global(body.navCollapsed) .page {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 92px 16px 28px !important;
+  }
+
+  .aiLogsPage .statsGrid,
+  .reportsPage .statsGrid,
+  .reportsPage .rateGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .page,
+  .collapsed {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .aiLogsPage .table tr,
+  .reportsPage .table tr,
+  .reportsPage .reportCard {
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .aiLogsPage .table td,
+  .reportsPage .table td {
+    grid-template-columns: 1fr !important;
+    text-align: left !important;
+    gap: 6px !important;
+  }
+
+  .aiLogsPage .patientCell {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  .aiLogsPage .viewBtn {
+    max-width: 100% !important;
+    justify-self: stretch !important;
+  }
+}
+
+:global(body.darkMode) .page {
+  background: var(--main-bg, var(--bg-main, #0f1117)) !important;
+  color: var(--text-main, #e5e7eb) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .tableCard,
+:global(body.darkMode) .reportsPage .tableWrapper {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table tr,
+:global(body.darkMode) .reportsPage .table tr,
+:global(body.darkMode) .reportsPage .reportCard,
+:global(body.darkMode) .aiLogsPage .statCard,
+:global(body.darkMode) .reportsPage .statCard,
+:global(body.darkMode) .reportsPage .rateGrid div {
+  background: var(--bg-card, #151821) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table td,
+:global(body.darkMode) .reportsPage .table td {
+  color: var(--text-main, #e5e7eb) !important;
+  border-bottom-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogsPage .table td::before,
+:global(body.darkMode) .reportsPage .table td::before {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+/* =========================================================
+   FINAL PATCH . SIDEBAR GAP + SIMPLIFIED AI LOG CARDS
+   Keep this block at the very bottom of admin.module.css.
+   ========================================================= */
+
+:global(html),
+:global(body) {
+  background: #fff7fb !important;
+}
+
+:global(body.darkMode),
+:global(body.darkMode) :global(.staffLayout),
+:global(body.darkMode) :global(.staffContent) {
+  background: var(--main-bg, var(--bg-main, #0f1117)) !important;
+}
+
+:global(body:not(.darkMode)) :global(.staffLayout),
+:global(body:not(.darkMode)) :global(.staffContent) {
+  background: #fff7fb !important;
+}
+
+@media (min-width: 901px) {
+  .page {
+    margin-left: 280px !important;
+    width: calc(100vw - 280px) !important;
+    max-width: calc(100vw - 280px) !important;
+    padding: 32px 40px !important;
+  }
+
+  :global(body.navCollapsed) .page,
+  .page.collapsed,
+  .collapsed {
+    margin-left: 90px !important;
+    width: calc(100vw - 90px) !important;
+    max-width: calc(100vw - 90px) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .page,
+  .collapsed,
+  :global(body.navCollapsed) .page,
+  :global(body:not(.navCollapsed)) .page {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+.aiLogSection {
+  width: 100%;
+  max-width: 100%;
+}
+
+.aiLogList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.aiLogCard {
+  width: 100%;
+  border: 1px solid #f0dce5;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(39, 18, 31, 0.07);
+  padding: 18px 20px;
+  overflow: hidden;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.aiLogCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(147, 52, 93, 0.24);
+  box-shadow: 0 16px 34px rgba(39, 18, 31, 0.1);
+}
+
+.aiLogCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1e7ec;
+}
+
+.aiLogPatientBlock {
+  min-width: 0;
+}
+
+.aiLogPatientBlock span {
+  display: block;
+  margin-bottom: 6px;
+  color: #8a6a78;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.aiLogPatientBlock strong {
+  display: block;
+  color: #251722;
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.aiLogPatientBlock p {
+  margin: 5px 0 0;
+  color: #7b6570;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.aiLogMiniBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.aiLogPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.aiLogPreviewItem {
+  min-width: 0;
+  border: 1px solid #f3e7ec;
+  border-radius: 16px;
+  background: #faf7f8;
+  padding: 13px 14px;
+}
+
+.aiLogPreviewItem span {
+  display: block;
+  margin-bottom: 6px;
+  color: #8a6a78;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.aiLogPreviewItem strong {
+  display: block;
+  color: #251722;
+  font-size: 0.95rem;
+  font-weight: 850;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.aiLogCardFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #f1e7ec;
+}
+
+.aiLogCardFooter .viewBtn {
+  width: auto !important;
+  min-width: 180px;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .aiLogCardTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .aiLogMiniBadges {
+    justify-content: flex-start;
+  }
+
+  .aiLogPreviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .aiLogCardFooter,
+  .aiLogCardFooter .viewBtn {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .aiLogCard {
+    padding: 16px;
+    border-radius: 18px;
+  }
+}
+
+:global(body.darkMode) .aiLogCard {
+  background: var(--bg-card, #151821) !important;
+  color: var(--text-main, #e5e7eb) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+  box-shadow: var(--shadow-soft, 0 16px 38px rgba(0, 0, 0, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogCardTop,
+:global(body.darkMode) .aiLogCardFooter {
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogPreviewItem {
+  background: var(--bg-soft, #1d2230) !important;
+  border-color: var(--border-color, rgba(148, 163, 184, 0.22)) !important;
+}
+
+:global(body.darkMode) .aiLogPatientBlock strong,
+:global(body.darkMode) .aiLogPreviewItem strong {
+  color: var(--text-heading, #f8fafc) !important;
+}
+
+:global(body.darkMode) .aiLogPatientBlock p,
+:global(body.darkMode) .aiLogPatientBlock span,
+:global(body.darkMode) .aiLogPreviewItem span {
+  color: var(--text-muted, #94a3b8) !important;
+}

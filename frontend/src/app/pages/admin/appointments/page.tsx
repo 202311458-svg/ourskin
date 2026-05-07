@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "./adminappt.module.css";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
+import styles from "@/app/styles/admin.module.css";
 
 type AppointmentStatus =
   | "Pending"
@@ -163,11 +163,11 @@ function getFollowUpTiming(item: FollowUp) {
 function getFollowUpStatusClass(item: FollowUp) {
   const timing = getFollowUpTiming(item);
 
-  if (timing === "Completed") return styles.completed;
-  if (timing === "Overdue") return styles.declined;
-  if (timing === "Due Today") return styles.pending;
+  if (timing === "Completed") return styles.followUpBadgeCompleted;
+  if (timing === "Overdue") return styles.followUpBadgeOverdue;
+  if (timing === "Due Today") return styles.followUpBadgeDue;
 
-  return styles.approved;
+  return styles.followUpBadgeUpcoming;
 }
 
 function canCompleteFollowUp(item: FollowUp) {
@@ -232,10 +232,8 @@ export default function AdminAppointmentsPage() {
     number | null
   >(null);
   const [error, setError] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
@@ -273,10 +271,7 @@ export default function AdminAppointmentsPage() {
       }
 
       try {
-        if (showLoader) {
-          setLoading(true);
-        }
-
+        if (showLoader) setLoading(true);
         setError("");
 
         const [appointmentsRes, followUpData] = await Promise.all([
@@ -304,7 +299,6 @@ export default function AdminAppointmentsPage() {
             Array.isArray(appointmentData) ? appointmentData : []
           )
         );
-
         setFollowUps(uniqueFollowUpsById(followUpData));
       } catch (loadError: unknown) {
         setError(
@@ -315,9 +309,7 @@ export default function AdminAppointmentsPage() {
         );
         setFollowUps([]);
       } finally {
-        if (showLoader) {
-          setLoading(false);
-        }
+        if (showLoader) setLoading(false);
       }
     },
     [router]
@@ -343,6 +335,7 @@ export default function AdminAppointmentsPage() {
       const status = normalizeStatus(appointment.status);
 
       const matchesSearch =
+        !keyword ||
         (appointment.patient_name || "").toLowerCase().includes(keyword) ||
         (appointment.patient_email || "").toLowerCase().includes(keyword) ||
         (appointment.doctor_name || "").toLowerCase().includes(keyword) ||
@@ -361,9 +354,7 @@ export default function AdminAppointmentsPage() {
       const aCompleted = normalizeStatus(a.status) === "completed";
       const bCompleted = normalizeStatus(b.status) === "completed";
 
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1;
-      }
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
 
       return a.follow_up_date.localeCompare(b.follow_up_date);
     });
@@ -498,9 +489,7 @@ export default function AdminAppointmentsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          status: "Completed",
-        }),
+        body: JSON.stringify({ status: "Completed" }),
       });
 
       const data = await safeJson<
@@ -518,11 +507,7 @@ export default function AdminAppointmentsPage() {
         uniqueFollowUpsById(
           prev.map((item) =>
             item.id === followUpId
-              ? {
-                  ...item,
-                  ...(data?.follow_up || {}),
-                  status: "Completed",
-                }
+              ? { ...item, ...(data?.follow_up || {}), status: "Completed" }
               : item
           )
         )
@@ -567,7 +552,7 @@ export default function AdminAppointmentsPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <main className="staffContent">
+      <main className={`staffContent ${styles.appointmentsPage}`}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Appointments</h1>
@@ -583,18 +568,15 @@ export default function AdminAppointmentsPage() {
             <span>Total Appointments</span>
             <strong>{stats.total}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
             <span>Pending</span>
             <strong>{stats.pending}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.greenAccent}`}>
             <span>Approved</span>
             <strong>{stats.approved}</strong>
           </div>
-
-          <div className={styles.statCard}>
+          <div className={`${styles.statCard} ${styles.blueAccent}`}>
             <span>Active Follow-ups</span>
             <strong>{stats.followUps}</strong>
           </div>
@@ -615,9 +597,8 @@ export default function AdminAppointmentsPage() {
           {loading ? (
             <p className={styles.message}>Loading follow-up schedules...</p>
           ) : sortedFollowUps.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No follow-up schedules found</h3>
-              <p>Doctor-created follow-ups will appear here.</p>
+            <div className={styles.followUpEmpty}>
+              Doctor-created follow-ups will appear here.
             </div>
           ) : (
             <div className={styles.followUpCompactList}>
@@ -636,7 +617,6 @@ export default function AdminAppointmentsPage() {
                             ? `Patient #${item.patient_id}`
                             : "Patient details unavailable")}
                       </strong>
-
                       <span>{item.patient_email || "No email provided"}</span>
                     </div>
 
@@ -647,38 +627,35 @@ export default function AdminAppointmentsPage() {
 
                     <div className={styles.followUpInfo}>
                       <span>Doctor</span>
-                      <strong>{item.doctor_name || "Assigned doctor"}</strong>
+                      <strong>{item.doctor_name || "Not assigned"}</strong>
                     </div>
 
                     <div className={styles.followUpInfo}>
-                      <span>Visit</span>
+                      <span>Related Visit</span>
                       <strong>
                         {item.appointment_date
-                          ? formatDate(item.appointment_date)
-                          : "No date"}{" "}
-                        {item.appointment_time
-                          ? `at ${formatTime(item.appointment_time)}`
-                          : ""}
+                          ? `${formatDate(item.appointment_date)} ${formatTime(
+                              item.appointment_time
+                            )}`
+                          : "N/A"}
                       </strong>
                     </div>
 
                     <div className={styles.followUpStatusArea}>
                       <span
-                        className={`${styles.statusBadge} ${getFollowUpStatusClass(
+                        className={`${styles.followUpBadge} ${getFollowUpStatusClass(
                           item
                         )}`}
                       >
                         {timing}
                       </span>
 
-                      {isCompleted ? (
-                        <span className={styles.noAction}>Completed</span>
-                      ) : (
+                      {!isCompleted && (
                         <button
                           type="button"
                           className={
                             canComplete
-                              ? styles.approveBtn
+                              ? styles.followUpCompleteBtn
                               : styles.followUpDisabledBtn
                           }
                           onClick={() => markFollowUpCompleted(item.id)}
@@ -702,7 +679,7 @@ export default function AdminAppointmentsPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Search by patient, email, doctor, service, or status"
+            placeholder="Search patient, doctor, service, or status"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className={styles.searchInput}
@@ -713,7 +690,7 @@ export default function AdminAppointmentsPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
             className={styles.selectInput}
           >
-            <option value="all">All Statuses</option>
+            <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="completed">Completed</option>
@@ -722,38 +699,31 @@ export default function AdminAppointmentsPage() {
           </select>
         </div>
 
-        <section className={styles.appointmentsList}>
-          {loading ? (
-            <div className={styles.fullWidthCard}>
-              <p className={styles.message}>Loading appointments...</p>
-            </div>
-          ) : error ? (
-            <div className={styles.fullWidthCard}>
-              <p className={styles.error}>{error}</p>
-            </div>
-          ) : filteredAppointments.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No appointments found</h3>
-              <p>Appointments that match your filters will appear here.</p>
-            </div>
-          ) : (
-            filteredAppointments.map((appointment) => {
-              const status = normalizeStatus(appointment.status);
-              const isPending = status === "pending";
-              const isApproved = status === "approved";
-              const reasonLabel =
-                status === "cancelled"
-                  ? "Cancellation Reason"
-                  : status === "declined"
-                  ? "Decline Reason"
-                  : "Reason";
+        {loading ? (
+          <p className={styles.message}>Loading appointments...</p>
+        ) : error ? (
+          <p className={styles.error}>{error}</p>
+        ) : filteredAppointments.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h3>No appointments found</h3>
+            <p>Try adjusting the search or status filter.</p>
+          </div>
+        ) : (
+          <section className={styles.appointmentsList}>
+            {filteredAppointments.map((appointment) => {
+              const status = formatStatus(appointment.status);
+              const normalized = normalizeStatus(appointment.status);
+              const isUpdating = actionLoading === appointment.id;
+              const canApprove = normalized === "pending";
+              const canDecline = normalized === "pending";
+              const canCancel = normalized === "approved";
 
               return (
                 <article key={appointment.id} className={styles.appointmentCard}>
                   <div className={styles.cardTop}>
                     <div>
-                      <h3>{appointment.patient_name || "Unnamed Patient"}</h3>
-                      <p>{appointment.patient_email || "No email provided"}</p>
+                      <h3>{appointment.patient_name || "Unknown Patient"}</h3>
+                      <p>{appointment.patient_email || "No email available"}</p>
                     </div>
 
                     <span
@@ -761,181 +731,167 @@ export default function AdminAppointmentsPage() {
                         appointment.status
                       )}`}
                     >
-                      {formatStatus(appointment.status)}
+                      {status}
                     </span>
                   </div>
 
                   <div className={styles.cardDetails}>
                     <div className={styles.detailItem}>
                       <span>Doctor</span>
-                      <strong>{appointment.doctor_name || "N/A"}</strong>
+                      <strong>{appointment.doctor_name || "Not assigned"}</strong>
                     </div>
-
                     <div className={styles.detailItem}>
                       <span>Schedule</span>
                       <strong>
                         {formatSchedule(appointment.date, appointment.time)}
                       </strong>
                     </div>
-
                     <div className={styles.detailItem}>
                       <span>Service</span>
                       <strong>{appointment.services || "N/A"}</strong>
                     </div>
-
                     <div className={styles.detailItem}>
-                      <span>{reasonLabel}</span>
-                      <strong>
-                        {appointment.cancel_reason &&
-                        appointment.cancel_reason.trim()
-                          ? appointment.cancel_reason
-                          : "N/A"}
-                      </strong>
+                      <span>Reason</span>
+                      <strong>{appointment.cancel_reason || "N/A"}</strong>
                     </div>
                   </div>
 
                   <div className={styles.cardFooter}>
-                    {isPending ? (
+                    {canApprove || canDecline || canCancel ? (
                       <div className={styles.actionButtons}>
-                        <button
-                          type="button"
-                          className={styles.approveBtn}
-                          onClick={() =>
-                            updateAppointmentStatus(appointment.id, "Approved")
-                          }
-                          disabled={actionLoading === appointment.id}
-                        >
-                          {actionLoading === appointment.id
-                            ? "Updating..."
-                            : "Approve"}
-                        </button>
+                        {canApprove && (
+                          <button
+                            type="button"
+                            className={styles.approveBtn}
+                            disabled={isUpdating}
+                            onClick={() =>
+                              updateAppointmentStatus(
+                                appointment.id,
+                                "Approved"
+                              )
+                            }
+                          >
+                            {isUpdating ? "Updating..." : "Approve"}
+                          </button>
+                        )}
 
-                        <button
-                          type="button"
-                          className={styles.declineBtn}
-                          onClick={() => openReasonModal(appointment, "decline")}
-                          disabled={actionLoading === appointment.id}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    ) : isApproved ? (
-                      <div className={styles.actionButtons}>
-                        <button
-                          type="button"
-                          className={styles.cancelAppointmentBtn}
-                          onClick={() => openReasonModal(appointment, "cancel")}
-                          disabled={actionLoading === appointment.id}
-                        >
-                          {actionLoading === appointment.id
-                            ? "Updating..."
-                            : "Cancel Appointment"}
-                        </button>
+                        {canDecline && (
+                          <button
+                            type="button"
+                            className={styles.declineBtn}
+                            disabled={isUpdating}
+                            onClick={() => openReasonModal(appointment, "decline")}
+                          >
+                            Decline
+                          </button>
+                        )}
+
+                        {canCancel && (
+                          <button
+                            type="button"
+                            className={styles.cancelAppointmentBtn}
+                            disabled={isUpdating}
+                            onClick={() => openReasonModal(appointment, "cancel")}
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </div>
                     ) : (
-                      <span className={styles.noAction}>No action required</span>
+                      <span className={styles.noAction}>No action needed</span>
                     )}
                   </div>
                 </article>
               );
-            })
-          )}
-        </section>
-
-        {selectedAppointment && modalAction && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalCard}>
-              <div className={styles.modalHeader}>
-                <div
-                  className={
-                    modalAction === "decline"
-                      ? styles.modalWarningIcon
-                      : styles.modalNeutralIcon
-                  }
-                >
-                  {modalAction === "decline" ? "!" : "×"}
-                </div>
-
-                <div>
-                  <p className={styles.modalEyebrow}>
-                    {modalAction === "decline"
-                      ? "Decline Appointment"
-                      : "Cancel Appointment"}
-                  </p>
-
-                  <h3>
-                    {modalAction === "decline"
-                      ? "Decline this appointment?"
-                      : "Cancel this approved appointment?"}
-                  </h3>
-                </div>
-              </div>
-
-              <p className={styles.modalText}>
-                {modalAction === "decline"
-                  ? "Please provide a reason before declining this pending appointment. This reason will remain visible in the appointment record."
-                  : "Please provide a reason before cancelling this approved appointment. The record will remain saved for tracking and history."}
-              </p>
-
-              <div className={styles.modalAppointmentBox}>
-                <div>
-                  <span>Patient</span>
-                  <strong>{selectedAppointment.patient_name}</strong>
-                </div>
-
-                <div>
-                  <span>Schedule</span>
-                  <strong>
-                    {formatSchedule(
-                      selectedAppointment.date,
-                      selectedAppointment.time
-                    )}
-                  </strong>
-                </div>
-              </div>
-
-              <textarea
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder={
-                  modalAction === "decline"
-                    ? "Enter decline reason..."
-                    : "Enter cancellation reason..."
-                }
-                className={styles.textArea}
-              />
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={closeReasonModal}
-                  disabled={actionLoading !== null}
-                >
-                  Keep Appointment
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    modalAction === "decline"
-                      ? styles.confirmDeclineBtn
-                      : styles.confirmCancelBtn
-                  }
-                  onClick={handleConfirmReasonAction}
-                  disabled={actionLoading !== null}
-                >
-                  {actionLoading !== null
-                    ? "Processing..."
-                    : modalAction === "decline"
-                    ? "Confirm Decline"
-                    : "Confirm Cancellation"}
-                </button>
-              </div>
-            </div>
-          </div>
+            })}
+          </section>
         )}
       </main>
+
+      {selectedAppointment && modalAction && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <div
+                className={
+                  modalAction === "decline"
+                    ? styles.modalWarningIcon
+                    : styles.modalNeutralIcon
+                }
+              >
+                !
+              </div>
+
+              <div>
+                <p className={styles.modalEyebrow}>
+                  {modalAction === "decline" ? "Decline Request" : "Cancel Booking"}
+                </p>
+                <h3>
+                  {modalAction === "decline"
+                    ? "Decline this appointment?"
+                    : "Cancel this appointment?"}
+                </h3>
+              </div>
+            </div>
+
+            <p className={styles.modalText}>
+              Please provide a clear reason. This helps the clinic keep the
+              appointment history complete.
+            </p>
+
+            <div className={styles.modalAppointmentBox}>
+              <div>
+                <span>Patient</span>
+                <strong>{selectedAppointment.patient_name}</strong>
+              </div>
+              <div>
+                <span>Schedule</span>
+                <strong>
+                  {formatSchedule(
+                    selectedAppointment.date,
+                    selectedAppointment.time
+                  )}
+                </strong>
+              </div>
+            </div>
+
+            <textarea
+              className={styles.textArea}
+              placeholder="Enter reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={closeReasonModal}
+                disabled={actionLoading !== null}
+              >
+                Keep Appointment
+              </button>
+
+              <button
+                type="button"
+                className={
+                  modalAction === "decline"
+                    ? styles.confirmDeclineBtn
+                    : styles.confirmCancelBtn
+                }
+                onClick={handleConfirmReasonAction}
+                disabled={actionLoading !== null}
+              >
+                {actionLoading !== null
+                  ? "Updating..."
+                  : modalAction === "decline"
+                  ? "Confirm Decline"
+                  : "Confirm Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
