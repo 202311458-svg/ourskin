@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.user import User
 from app.models.doctor_schedule import DoctorSchedule
+from app.models.doctor_service import DoctorService
 from app.models.service import Service
 from app.routes.auth import get_current_user
 from app.models.clinic_unavailable_date import ClinicUnavailableDate
@@ -26,8 +27,12 @@ UNAVAILABLE_REASONS = [
     "Doctor Leave",
     "Clinic Event",
     "Emergency Closure",
+    "Maintenance",
     "Other",
 ]
+
+CLINIC_START_TIME = time(10, 0)
+CLINIC_END_TIME = time(19, 0)
 
 
 class DoctorScheduleCreate(BaseModel):
@@ -52,8 +57,8 @@ class DoctorScheduleUpdate(BaseModel):
     consultation_mode: Optional[str] = None
     unavailable_reason: Optional[str] = None
     schedule_note: Optional[str] = None
-    
-    
+
+
 class ClinicUnavailableDateCreate(BaseModel):
     closure_date: date
     reason: str
@@ -90,8 +95,22 @@ def clean_optional_text(value: Optional[str]):
     return cleaned if cleaned else None
 
 
+def normalize_text(value: Optional[str]):
+    return " ".join((value or "").strip().lower().split())
+
+
 def is_sunday(schedule_date: date):
     return schedule_date.weekday() == 6
+
+
+def is_past_schedule(schedule_date: date, start_time: time):
+    selected_start = datetime.combine(schedule_date, start_time)
+
+    return selected_start <= datetime.now()
+
+
+def is_whole_hour(value: time):
+    return value.minute == 0 and value.second == 0 and value.microsecond == 0
 
 
 def validate_consultation_mode(consultation_mode: str):
@@ -127,6 +146,73 @@ def validate_unavailable_reason(is_available: bool, unavailable_reason: Optional
     return cleaned_reason
 
 
+def parse_services(value: str):
+    services = [item.strip() for item in (value or "").split(",") if item.strip()]
+
+    if not services:
+        raise HTTPException(
+            status_code=400,
+            detail="Services field is required."
+        )
+
+    return services
+
+
+def validate_services_for_doctor(db: Session, doctor_id: int, services_value: str):
+    selected_names = parse_services(services_value)
+
+    active_services = (
+        db.query(Service)
+        .filter(Service.is_active == True)
+        .all()
+    )
+
+    active_service_map = {
+        normalize_text(service.name): service
+        for service in active_services
+    }
+
+    missing_names = [
+        service_name
+        for service_name in selected_names
+        if normalize_text(service_name) not in active_service_map
+    ]
+
+    if missing_names:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown or inactive service selected: {', '.join(missing_names)}."
+        )
+
+    selected_services = [
+        active_service_map[normalize_text(service_name)]
+        for service_name in selected_names
+    ]
+
+    doctor_service_links = (
+        db.query(DoctorService)
+        .filter(DoctorService.doctor_id == doctor_id)
+        .all()
+    )
+
+    allowed_service_ids = {link.service_id for link in doctor_service_links}
+
+    if allowed_service_ids:
+        disallowed = [
+            service.name
+            for service in selected_services
+            if service.id not in allowed_service_ids
+        ]
+
+        if disallowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Selected doctor is not assigned to this service: {', '.join(disallowed)}."
+            )
+
+    return ", ".join(service.name for service in selected_services)
+
+
 def has_overlapping_schedule(
     db: Session,
     doctor_id: int,
@@ -145,12 +231,21 @@ def has_overlapping_schedule(
     if exclude_schedule_id is not None:
         query = query.filter(DoctorSchedule.id != exclude_schedule_id)
 
-    return query.first() is not None
+    return query.first()
 
-def has_schedule_for_date(
+
+def get_clinic_closure_for_date(db: Session, schedule_date: date):
+    return (
+        db.query(ClinicUnavailableDate)
+        .filter(ClinicUnavailableDate.closure_date == schedule_date)
+        .first()
+    )
+
+
+def get_schedules_for_date(
     db: Session,
     schedule_date: date,
-    exclude_schedule_id: Optional[int] = None
+    exclude_schedule_id: Optional[int] = None,
 ):
     query = db.query(DoctorSchedule).filter(
         DoctorSchedule.schedule_date == schedule_date,
@@ -159,8 +254,39 @@ def has_schedule_for_date(
     if exclude_schedule_id is not None:
         query = query.filter(DoctorSchedule.id != exclude_schedule_id)
 
-    return query.first()
+    return query.all()
 
+
+def validate_schedule_window(schedule_date: date, start_time: time, end_time: time):
+    if end_time <= start_time:
+        raise HTTPException(
+            status_code=400,
+            detail="End time must be later than start time."
+        )
+
+    if not is_whole_hour(start_time) or not is_whole_hour(end_time):
+        raise HTTPException(
+            status_code=400,
+            detail="Schedules must use whole-hour times only."
+        )
+
+    if start_time < CLINIC_START_TIME or end_time > CLINIC_END_TIME:
+        raise HTTPException(
+            status_code=400,
+            detail="Schedules must be within 10:00 AM to 7:00 PM."
+        )
+
+    if is_sunday(schedule_date):
+        raise HTTPException(
+            status_code=400,
+            detail="Sundays are unavailable for scheduling."
+        )
+
+    if is_past_schedule(schedule_date, start_time):
+        raise HTTPException(
+            status_code=400,
+            detail="Past time slots cannot be scheduled."
+        )
 
 
 def serialize_schedule(schedule: DoctorSchedule, db: Session):
@@ -217,6 +343,7 @@ def get_doctors(
     doctors = (
         db.query(User)
         .filter(User.role == "doctor")
+        .filter((User.status == "Active") | (User.status == None))
         .order_by(User.name.asc())
         .all()
     )
@@ -228,9 +355,10 @@ def get_doctors(
             "email": doctor.email,
             "specialty": doctor.specialty,
             "availability": doctor.availability,
-            "status": doctor.status,
+            "status": doctor.status or "Active",
         }
         for doctor in doctors
+        if doctor.name and "placeholder" not in doctor.name.lower()
     ]
 
 
@@ -289,32 +417,57 @@ def create_doctor_schedule(
 
     doctor = (
         db.query(User)
-        .filter(User.id == payload.doctor_id, User.role == "doctor")
+        .filter(
+            User.id == payload.doctor_id,
+            User.role == "doctor",
+        )
+        .filter((User.status == "Active") | (User.status == None))
         .first()
     )
 
     if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found.")
+        raise HTTPException(status_code=404, detail="Active doctor not found.")
 
-    services = payload.services.strip()
+    validate_schedule_window(
+        schedule_date=payload.schedule_date,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+    )
 
-    if not services:
+    clinic_closure = get_clinic_closure_for_date(
+        db=db,
+        schedule_date=payload.schedule_date,
+    )
+
+    if clinic_closure:
         raise HTTPException(
-            status_code=400,
-            detail="Services field is required."
+            status_code=409,
+            detail="This date is marked unavailable for the clinic. Remove the closure before adding a doctor schedule."
         )
 
-    if payload.end_time <= payload.start_time:
+    existing_schedules = get_schedules_for_date(
+        db=db,
+        schedule_date=payload.schedule_date,
+    )
+
+    if existing_schedules:
+        existing_doctor = (
+            db.query(User)
+            .filter(User.id == existing_schedules[0].doctor_id)
+            .first()
+        )
+        existing_doctor_name = existing_doctor.name if existing_doctor else "another doctor"
+
         raise HTTPException(
-            status_code=400,
-            detail="End time must be later than start time."
+            status_code=409,
+            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
         )
 
-    if is_sunday(payload.schedule_date):
-        raise HTTPException(
-            status_code=400,
-            detail="Sundays are unavailable for scheduling."
-        )
+    services = validate_services_for_doctor(
+        db=db,
+        doctor_id=payload.doctor_id,
+        services_value=payload.services,
+    )
 
     consultation_mode = validate_consultation_mode(payload.consultation_mode)
 
@@ -323,37 +476,18 @@ def create_doctor_schedule(
         unavailable_reason=payload.unavailable_reason
     )
 
-    existing_schedule_for_date = has_schedule_for_date(
-        db=db,
-        schedule_date=payload.schedule_date,
-    )
-
-    if existing_schedule_for_date:
-        existing_doctor = (
-            db.query(User)
-            .filter(User.id == existing_schedule_for_date.doctor_id)
-            .first()
-        )
-
-        existing_doctor_name = (
-            existing_doctor.name if existing_doctor else "another doctor"
-        )
-
-        raise HTTPException(
-            status_code=409,
-            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
-        )
-
-    if has_overlapping_schedule(
+    conflicting_schedule = has_overlapping_schedule(
         db=db,
         doctor_id=payload.doctor_id,
         schedule_date=payload.schedule_date,
         start_time=payload.start_time,
         end_time=payload.end_time,
-    ):
+    )
+
+    if conflicting_schedule:
         raise HTTPException(
             status_code=409,
-            detail="This schedule overlaps with an existing doctor schedule."
+            detail="This doctor already has a schedule that overlaps with the selected time."
         )
 
     schedule = DoctorSchedule(
@@ -404,25 +538,25 @@ def update_doctor_schedule(
     if payload.doctor_id is not None:
         doctor = (
             db.query(User)
-            .filter(User.id == payload.doctor_id, User.role == "doctor")
+            .filter(
+                User.id == payload.doctor_id,
+                User.role == "doctor",
+            )
+            .filter((User.status == "Active") | (User.status == None))
             .first()
         )
 
         if not doctor:
-            raise HTTPException(status_code=404, detail="Doctor not found.")
+            raise HTTPException(status_code=404, detail="Active doctor not found.")
 
         schedule.doctor_id = payload.doctor_id
 
     if payload.services is not None:
-        services = payload.services.strip()
-
-        if not services:
-            raise HTTPException(
-                status_code=400,
-                detail="Services field is required."
-            )
-
-        schedule.services = services
+        schedule.services = validate_services_for_doctor(
+            db=db,
+            doctor_id=schedule.doctor_id,
+            services_value=payload.services,
+        )
 
     if payload.schedule_date is not None:
         schedule.schedule_date = payload.schedule_date
@@ -449,16 +583,40 @@ def update_doctor_schedule(
     if payload.schedule_note is not None:
         schedule.schedule_note = clean_optional_text(payload.schedule_note)
 
-    if schedule.end_time <= schedule.start_time:
+    validate_schedule_window(
+        schedule_date=schedule.schedule_date,
+        start_time=schedule.start_time,
+        end_time=schedule.end_time,
+    )
+
+    clinic_closure = get_clinic_closure_for_date(
+        db=db,
+        schedule_date=schedule.schedule_date,
+    )
+
+    if clinic_closure:
         raise HTTPException(
-            status_code=400,
-            detail="End time must be later than start time."
+            status_code=409,
+            detail="This date is marked unavailable for the clinic. Remove the closure before updating this doctor schedule."
         )
 
-    if is_sunday(schedule.schedule_date):
+    existing_schedules = get_schedules_for_date(
+        db=db,
+        schedule_date=schedule.schedule_date,
+        exclude_schedule_id=schedule.id,
+    )
+
+    if existing_schedules:
+        existing_doctor = (
+            db.query(User)
+            .filter(User.id == existing_schedules[0].doctor_id)
+            .first()
+        )
+        existing_doctor_name = existing_doctor.name if existing_doctor else "another doctor"
+
         raise HTTPException(
-            status_code=400,
-            detail="Sundays are unavailable for scheduling."
+            status_code=409,
+            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
         )
 
     if not schedule.is_available:
@@ -469,39 +627,19 @@ def update_doctor_schedule(
     else:
         schedule.unavailable_reason = None
 
-    existing_schedule_for_date = has_schedule_for_date(
-        db=db,
-        schedule_date=schedule.schedule_date,
-        exclude_schedule_id=schedule.id,
-    )
-
-    if existing_schedule_for_date:
-        existing_doctor = (
-            db.query(User)
-            .filter(User.id == existing_schedule_for_date.doctor_id)
-            .first()
-        )
-
-        existing_doctor_name = (
-            existing_doctor.name if existing_doctor else "another doctor"
-        )
-
-        raise HTTPException(
-            status_code=409,
-            detail=f"Only one doctor can be scheduled per day. {existing_doctor_name} is already scheduled for this date."
-        )
-
-    if has_overlapping_schedule(
+    conflicting_schedule = has_overlapping_schedule(
         db=db,
         doctor_id=schedule.doctor_id,
         schedule_date=schedule.schedule_date,
         start_time=schedule.start_time,
         end_time=schedule.end_time,
         exclude_schedule_id=schedule.id,
-    ):
+    )
+
+    if conflicting_schedule:
         raise HTTPException(
             status_code=409,
-            detail="This schedule overlaps with an existing doctor schedule."
+            detail="This doctor already has a schedule that overlaps with the selected time."
         )
 
     try:
@@ -575,10 +713,33 @@ def create_clinic_unavailable_date(
             detail="Unavailable reason is required."
         )
 
+    if reason not in UNAVAILABLE_REASONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid unavailable reason."
+        )
+
     if is_sunday(payload.closure_date):
         raise HTTPException(
             status_code=400,
             detail="Sundays are already unavailable by default."
+        )
+
+    if payload.closure_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Past dates cannot be marked unavailable."
+        )
+
+    existing_schedules = get_schedules_for_date(
+        db=db,
+        schedule_date=payload.closure_date,
+    )
+
+    if existing_schedules:
+        raise HTTPException(
+            status_code=409,
+            detail="Remove the doctor schedules on this date before marking the clinic unavailable."
         )
 
     unavailable_date = ClinicUnavailableDate(
@@ -620,14 +781,32 @@ def update_clinic_unavailable_date(
     if not unavailable_date:
         raise HTTPException(status_code=404, detail="Unavailable date not found.")
 
-    if payload.closure_date is not None:
-        if is_sunday(payload.closure_date):
-            raise HTTPException(
-                status_code=400,
-                detail="Sundays are already unavailable by default."
-            )
+    next_closure_date = payload.closure_date or unavailable_date.closure_date
 
-        unavailable_date.closure_date = payload.closure_date
+    if is_sunday(next_closure_date):
+        raise HTTPException(
+            status_code=400,
+            detail="Sundays are already unavailable by default."
+        )
+
+    if next_closure_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Past dates cannot be marked unavailable."
+        )
+
+    existing_schedules = get_schedules_for_date(
+        db=db,
+        schedule_date=next_closure_date,
+    )
+
+    if existing_schedules:
+        raise HTTPException(
+            status_code=409,
+            detail="Remove the doctor schedules on this date before marking the clinic unavailable."
+        )
+
+    unavailable_date.closure_date = next_closure_date
 
     if payload.reason is not None:
         reason = payload.reason.strip()
@@ -636,6 +815,12 @@ def update_clinic_unavailable_date(
             raise HTTPException(
                 status_code=400,
                 detail="Unavailable reason is required."
+            )
+
+        if reason not in UNAVAILABLE_REASONS:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid unavailable reason."
             )
 
         unavailable_date.reason = reason
