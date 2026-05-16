@@ -72,7 +72,9 @@ type AssignableSlot = {
 
 type AssignableDoctor = {
   id: number
-  name: string
+  name?: string | null
+  first_name?: string | null
+  last_name?: string | null
   email?: string | null
   specialty?: string | null
   profile_image?: string | null
@@ -95,6 +97,75 @@ const declineReasons = [
   "Duplicate appointment detected.",
   "Other",
 ]
+
+const INITIAL_EVALUATION_DOCTOR_RULES: Record<string, string[][]> = {
+  surgical: [["raisa", "rosete"]],
+  "cosmetic surgery": [["reinier"], ["konrad"]],
+}
+
+const normalizeLookupValue = (value?: string | null) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+
+const getDoctorDisplayName = (doctor: AssignableDoctor) => {
+  const fullName = normalizeLookupValue(doctor.name)
+
+  if (fullName) return doctor.name?.trim() || "Unnamed doctor"
+
+  return [doctor.first_name, doctor.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || "Unnamed doctor"
+}
+
+const getDoctorLookupText = (doctor: AssignableDoctor) =>
+  normalizeLookupValue(
+    [
+      doctor.name,
+      doctor.first_name,
+      doctor.last_name,
+      doctor.email,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  )
+
+const getAllowedInitialEvaluationDoctorRules = (service?: string | null) => {
+  const normalizedService = normalizeLookupValue(service)
+
+  return INITIAL_EVALUATION_DOCTOR_RULES[normalizedService] || []
+}
+
+const isDoctorAllowedForInitialEvaluation = (
+  service: string | null | undefined,
+  doctor: AssignableDoctor
+) => {
+  const doctorRules = getAllowedInitialEvaluationDoctorRules(service)
+
+  if (doctorRules.length === 0) return true
+
+  const doctorLookup = getDoctorLookupText(doctor)
+
+  return doctorRules.some((rule) =>
+    rule.every((token) => doctorLookup.includes(token))
+  )
+}
+
+const getInitialEvaluationDoctorRuleLabel = (service?: string | null) => {
+  const normalizedService = normalizeLookupValue(service)
+
+  if (normalizedService === "surgical") {
+    return "Surgical initial evaluations can only be assigned to Dr. Raisa Rosete."
+  }
+
+  if (normalizedService === "cosmetic surgery") {
+    return "Cosmetic Surgery initial evaluations can only be assigned to Dr. Reinier or Dr. Konrad."
+  }
+
+  return ""
+}
 
 const getTodayInputDate = () => {
   const today = new Date()
@@ -429,15 +500,32 @@ export default function AppointmentRequests() {
         throw new Error(getErrorMessage(data, "Unable to load doctors for this service."))
       }
 
-      const doctors = Array.isArray(data) ? data : []
+      const doctors = (Array.isArray(data) ? data : []).filter(
+        (doctor): doctor is AssignableDoctor =>
+          Boolean(doctor) &&
+          typeof doctor === "object" &&
+          "id" in doctor &&
+          isDoctorAllowedForInitialEvaluation(
+            appointment.services,
+            doctor as AssignableDoctor
+          )
+      )
+
       setAssignableDoctors(doctors)
 
-      if (!appointment.doctor_id && doctors.length === 1) {
-        setManualEvaluationForm((current) => ({
-          ...current,
-          doctor_id: String((doctors[0] as AssignableDoctor).id),
-        }))
-      }
+      const currentDoctorId = appointment.doctor_id ? String(appointment.doctor_id) : ""
+      const canUseCurrentDoctor =
+        currentDoctorId &&
+        doctors.some((doctor) => String(doctor.id) === currentDoctorId)
+
+      setManualEvaluationForm((current) => ({
+        ...current,
+        doctor_id: canUseCurrentDoctor
+          ? currentDoctorId
+          : doctors.length === 1
+            ? String(doctors[0].id)
+            : "",
+      }))
     } catch (err) {
       console.error("Assignable doctors load failed:", err)
       setScheduleError(
@@ -570,7 +658,7 @@ export default function AppointmentRequests() {
       slot_id: `manual-${scheduleTarget.id}`,
       schedule_id: null,
       doctor_id: selectedDoctor.id,
-      doctor_name: selectedDoctor.name,
+      doctor_name: getDoctorDisplayName(selectedDoctor),
       doctor_specialty: selectedDoctor.specialty,
       service_id: scheduleTarget.service_id,
       service_name: scheduleTarget.services || "Initial Evaluation",
@@ -1014,10 +1102,17 @@ export default function AppointmentRequests() {
                   </option>
                   {assignableDoctors.map((doctor) => (
                     <option key={doctor.id} value={doctor.id}>
-                      {doctor.name}{doctor.specialty ? ` · ${doctor.specialty}` : ""}
+                      {getDoctorDisplayName(doctor)}
+                      {doctor.specialty ? ` · ${doctor.specialty}` : ""}
                     </option>
                   ))}
                 </select>
+
+                {getInitialEvaluationDoctorRuleLabel(scheduleTarget.services) && (
+                  <p className={styles.detailText} style={{ marginTop: 8 }}>
+                    {getInitialEvaluationDoctorRuleLabel(scheduleTarget.services)}
+                  </p>
+                )}
 
                 {doctorLoading ? (
                   <div className={styles.emptyState} style={{ marginTop: 12 }}>
@@ -1025,12 +1120,16 @@ export default function AppointmentRequests() {
                   </div>
                 ) : assignableDoctors.length === 0 ? (
                   <div className={styles.emptyState} style={{ marginTop: 12 }}>
-                    No doctor is assigned to this service yet. Check the doctor-service setup first.
+                    No eligible doctor is assigned to this service yet. Check the doctor-service setup first.
                   </div>
                 ) : getSelectedEvaluationDoctor() ? (
                   <div className={styles.requestCard} style={{ marginTop: 12 }}>
                     <div className={styles.requestInfo}>
-                      <b>{getSelectedEvaluationDoctor()?.name}</b>
+                      <b>
+                        {getSelectedEvaluationDoctor()
+                          ? getDoctorDisplayName(getSelectedEvaluationDoctor() as AssignableDoctor)
+                          : "Selected doctor"}
+                      </b>
                       <p>{getSelectedEvaluationDoctor()?.specialty || "Doctor"}</p>
                       {getSelectedEvaluationDoctor()?.bio && (
                         <p className={styles.detailText}>{getSelectedEvaluationDoctor()?.bio}</p>

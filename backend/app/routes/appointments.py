@@ -34,6 +34,51 @@ VALID_STATUSES = {
 ACTIVE_BOOKING_STATUSES = ["Pending", "Approved"]
 SLOT_MINUTES = 60
 
+INITIAL_EVALUATION_DOCTOR_RULES = {
+    "surgical": ["raisa rosete"],
+    "cosmetic surgery": ["reinier", "konrad"],
+}
+
+
+def normalize_lookup_text(value: Optional[str]):
+    if value is None:
+        return ""
+
+    return " ".join(str(value).strip().lower().split())
+
+
+def get_doctor_lookup_text(doctor: User):
+    return normalize_lookup_text(
+        " ".join(
+            [
+                doctor.name or "",
+                doctor.first_name or "",
+                doctor.last_name or "",
+                doctor.email or "",
+            ]
+        )
+    )
+
+
+def get_initial_evaluation_doctor_rules(service_name: Optional[str]):
+    normalized_service = normalize_lookup_text(service_name)
+
+    return INITIAL_EVALUATION_DOCTOR_RULES.get(normalized_service, [])
+
+
+def is_doctor_allowed_for_initial_evaluation_service(service_name: Optional[str], doctor: User):
+    allowed_names = get_initial_evaluation_doctor_rules(service_name)
+
+    if not allowed_names:
+        return True
+
+    doctor_lookup = get_doctor_lookup_text(doctor)
+
+    return any(
+        all(token in doctor_lookup for token in allowed_name.split())
+        for allowed_name in allowed_names
+    )
+
 ROLE_STATUS_TRANSITIONS = {
     "patient": {
         "Pending": {"Cancelled"},
@@ -819,6 +864,31 @@ def update_appointment_status(
                 detail="Assign a doctor, date, and time before approving this initial evaluation request",
             )
 
+        service = (
+            db.query(Service)
+            .filter(Service.id == appointment.service_id, Service.is_active == True)
+            .first()
+        )
+
+        doctor = (
+            db.query(User)
+            .filter(
+                User.id == appointment.doctor_id,
+                User.role == "doctor",
+                User.status == "Active",
+            )
+            .first()
+        )
+
+        if not service:
+            raise HTTPException(status_code=404, detail="Service not found")
+
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+
+        if not is_doctor_allowed_for_initial_evaluation_service(service.name, doctor):
+            raise HTTPException(status_code=400, detail="Selected doctor is not allowed for this initial evaluation service")
+
     if (
         new_status == "Approved"
         and appointment.doctor_id
@@ -1092,6 +1162,12 @@ def get_assignable_initial_evaluation_doctors(
         .all()
     )
 
+    doctors = [
+        doctor
+        for doctor in doctors
+        if is_doctor_allowed_for_initial_evaluation_service(service.name, doctor)
+    ]
+
     return [serialize_assignable_doctor(doctor) for doctor in doctors]
 
 
@@ -1137,8 +1213,30 @@ def get_assignable_initial_evaluation_slots(
     if not allowed_doctor_ids:
         return []
 
+    allowed_doctors = (
+        db.query(User)
+        .filter(
+            User.id.in_(allowed_doctor_ids),
+            User.role == "doctor",
+            User.status == "Active",
+        )
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    allowed_doctors = [
+        doctor
+        for doctor in allowed_doctors
+        if is_doctor_allowed_for_initial_evaluation_service(service.name, doctor)
+    ]
+
+    allowed_doctor_ids = [doctor.id for doctor in allowed_doctors]
+
+    if not allowed_doctor_ids:
+        return []
+
     if doctor_id is not None and doctor_id not in allowed_doctor_ids:
-        raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
+        raise HTTPException(status_code=400, detail="Selected doctor is not allowed for this initial evaluation service")
 
     today = date.today()
     now = datetime.now()
@@ -1299,6 +1397,9 @@ def assign_schedule_to_initial_evaluation_request(
         if not doctor_service:
             raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
 
+        if not is_doctor_allowed_for_initial_evaluation_service(service.name, doctor):
+            raise HTTPException(status_code=400, detail="Selected doctor is not allowed for this initial evaluation service")
+
         if not service_matches_schedule(schedule.services, service.name):
             raise HTTPException(status_code=400, detail="Selected schedule is not assigned to this service")
 
@@ -1363,6 +1464,9 @@ def assign_schedule_to_initial_evaluation_request(
 
         if not doctor_service:
             raise HTTPException(status_code=400, detail="Selected doctor does not perform this service")
+
+        if not is_doctor_allowed_for_initial_evaluation_service(service.name, doctor):
+            raise HTTPException(status_code=400, detail="Selected doctor is not allowed for this initial evaluation service")
 
         validate_manual_initial_evaluation_schedule(
             schedule_date=body.schedule_date,
