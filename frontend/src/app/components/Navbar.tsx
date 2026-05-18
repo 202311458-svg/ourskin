@@ -4,17 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
-  FaHome,
-  FaCalendarAlt,
+  FaClinicMedical,
+  FaTachometerAlt,
+  FaCalendarPlus,
   FaHistory,
-  FaUser,
-  FaPlusCircle,
+  FaFileMedicalAlt,
+  FaUserCircle,
   FaSignOutAlt,
   FaMoon,
   FaSun,
   FaBars,
   FaTimes,
-  FaNotesMedical,
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
@@ -31,21 +31,20 @@ export default function Navbar() {
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const navItems = [
-
     {
-  name: "OurSkin",
-  path: "/pages/patient/home",
-  icon: <FaHome />,
-},
+      name: "OurSkin",
+      path: "/pages/patient/home",
+      icon: <FaClinicMedical />,
+    },
     {
       name: "Dashboard",
       path: "/pages/patient/dashboard",
-      icon: <FaCalendarAlt />,
+      icon: <FaTachometerAlt />,
     },
     {
       name: "Book Appointment",
       path: "/pages/patient/book",
-      icon: <FaPlusCircle />,
+      icon: <FaCalendarPlus />,
     },
     {
       name: "Appointment History",
@@ -55,12 +54,12 @@ export default function Navbar() {
     {
       name: "Medical Records",
       path: "/pages/patient/records",
-      icon: <FaNotesMedical />,
+      icon: <FaFileMedicalAlt />,
     },
     {
       name: "Profile",
       path: "/pages/patient/profile",
-      icon: <FaUser />,
+      icon: <FaUserCircle />,
     },
   ];
 

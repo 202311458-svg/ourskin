@@ -1,0 +1,240 @@
+.section {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #0ea5e9);
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  color: var(--text-primary, #111827);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.countBadge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #075985;
+  background: rgba(186, 230, 253, 0.9);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.loadingCard,
+.emptyCard {
+  padding: 24px;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 22px;
+  color: var(--text-secondary, #64748b);
+  background: rgba(248, 250, 252, 0.88);
+  text-align: center;
+}
+
+.urgentStack {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.urgentCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(248, 113, 113, 0.16), transparent 36%),
+    linear-gradient(135deg, rgba(255, 247, 247, 0.98), rgba(255, 255, 255, 0.94));
+  box-shadow: 0 18px 44px rgba(127, 29, 29, 0.08);
+}
+
+.urgentLabel {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #991b1b;
+  background: rgba(254, 226, 226, 0.95);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.urgentCard h3,
+.announcementCard h3 {
+  margin: 0;
+  color: var(--text-primary, #111827);
+  font-size: 1.14rem;
+}
+
+.urgentCard p,
+.announcementCard p {
+  margin: 8px 0 0;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.65;
+}
+
+.expiryText {
+  flex-shrink: 0;
+  color: #991b1b;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.announcementCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 220px;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+}
+
+.importantCard {
+  border-color: rgba(245, 158, 11, 0.32);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.cardTop,
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.categoryBadge,
+.priorityBadge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.categoryBadge {
+  color: #334155;
+  background: rgba(226, 232, 240, 0.92);
+}
+
+.priorityNormal {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+}
+
+.priorityImportant {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.95);
+}
+
+.cardFooter {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  color: var(--text-secondary, #64748b);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1080px) {
+  .cardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .sectionHeader,
+  .urgentCard,
+  .cardTop,
+  .cardFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .urgentCard,
+  .announcementCard {
+    border-radius: 20px;
+  }
+}
+
+:global(.dark) .sectionHeader h2,
+:global(body.dark) .sectionHeader h2,
+:global([data-theme="dark"]) .sectionHeader h2,
+:global(.dark) .urgentCard h3,
+:global(body.dark) .urgentCard h3,
+:global([data-theme="dark"]) .urgentCard h3,
+:global(.dark) .announcementCard h3,
+:global(body.dark) .announcementCard h3,
+:global([data-theme="dark"]) .announcementCard h3 {
+  color: #f8fafc;
+}
+
+:global(.dark) .urgentCard p,
+:global(body.dark) .urgentCard p,
+:global([data-theme="dark"]) .urgentCard p,
+:global(.dark) .announcementCard p,
+:global(body.dark) .announcementCard p,
+:global([data-theme="dark"]) .announcementCard p,
+:global(.dark) .cardFooter,
+:global(body.dark) .cardFooter,
+:global([data-theme="dark"]) .cardFooter,
+:global(.dark) .loadingCard,
+:global(body.dark) .loadingCard,
+:global([data-theme="dark"]) .loadingCard,
+:global(.dark) .emptyCard,
+:global(body.dark) .emptyCard,
+:global([data-theme="dark"]) .emptyCard {
+  color: #cbd5e1;
+}
+
+:global(.dark) .urgentCard,
+:global(body.dark) .urgentCard,
+:global([data-theme="dark"]) .urgentCard,
+:global(.dark) .announcementCard,
+:global(body.dark) .announcementCard,
+:global([data-theme="dark"]) .announcementCard,
+:global(.dark) .loadingCard,
+:global(body.dark) .loadingCard,
+:global([data-theme="dark"]) .loadingCard,
+:global(.dark) .emptyCard,
+:global(body.dark) .emptyCard,
+:global([data-theme="dark"]) .emptyCard {
+  border-color: rgba(148, 163, 184, 0.24);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.9));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}

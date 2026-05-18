@@ -7,10 +7,11 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 
 from app.db import engine, Base, SessionLocal
-from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups
+from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
+
 
 load_dotenv()
 
@@ -57,6 +58,7 @@ app.include_router(users.router)
 app.include_router(ai_analysis.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
+app.include_router(announcements.router)
 app.include_router(admin.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)

@@ -1,0 +1,553 @@
+.pageShell {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--text-primary, #172033);
+}
+
+.heroCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.14), transparent 35%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+.heroCard h1,
+.formHeader h2,
+.sectionHeader h2 {
+  margin: 0;
+  color: var(--text-primary, #111827);
+  letter-spacing: -0.04em;
+}
+
+.heroCard h1 {
+  font-size: clamp(2rem, 4vw, 3.3rem);
+}
+
+.heroCard p {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.7;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent, #0ea5e9);
+}
+
+.primaryButton,
+.secondaryButton,
+.ghostButton,
+.dangerButton,
+.statusTab {
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.primaryButton {
+  border-radius: 999px;
+  padding: 13px 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.28);
+  white-space: nowrap;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.ghostButton:hover,
+.dangerButton:hover,
+.statusTab:hover {
+  transform: translateY(-1px);
+}
+
+.secondaryButton {
+  border-radius: 999px;
+  padding: 11px 16px;
+  color: var(--text-primary, #172033);
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.ghostButton {
+  border-radius: 999px;
+  padding: 10px 15px;
+  color: var(--text-secondary, #64748b);
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.dangerButton {
+  border-radius: 999px;
+  padding: 11px 16px;
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.statCard {
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.statCard span {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+}
+
+.statCard strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 2rem;
+  color: var(--text-primary, #111827);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.statusTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.statusTab {
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--text-secondary, #64748b);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.statusTabActive {
+  color: #ffffff;
+  background: #0284c7;
+  border-color: #0284c7;
+  box-shadow: 0 12px 24px rgba(2, 132, 199, 0.22);
+}
+
+.searchInput {
+  width: min(100%, 320px);
+  padding: 12px 15px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  color: var(--text-primary, #111827);
+  background: rgba(255, 255, 255, 0.92);
+  outline: none;
+}
+
+.formPanel,
+.contentPanel {
+  padding: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+}
+
+.formPanel {
+  margin-bottom: 18px;
+}
+
+.formHeader,
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGrid span {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--text-secondary, #64748b);
+}
+
+.formGrid input,
+.formGrid textarea,
+.formGrid select {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: var(--text-primary, #111827);
+  background: rgba(248, 250, 252, 0.95);
+  outline: none;
+  font: inherit;
+}
+
+.formGrid textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.checkboxField {
+  grid-column: 1 / -1;
+  flex-direction: row !important;
+  align-items: center;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.checkboxField input {
+  width: auto;
+}
+
+.formActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.announcementGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.announcementCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+}
+
+.cardUrgent {
+  border-color: rgba(239, 68, 68, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 247, 247, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.cardImportant {
+  border-color: rgba(245, 158, 11, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.cardTop,
+.cardActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pinBadge,
+.categoryBadge,
+.priorityBadge,
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.pinBadge {
+  color: #075985;
+  background: rgba(186, 230, 253, 0.9);
+}
+
+.categoryBadge {
+  color: #334155;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.priorityNormal {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+}
+
+.priorityImportant {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.95);
+}
+
+.priorityUrgent {
+  color: #991b1b;
+  background: rgba(254, 226, 226, 0.95);
+}
+
+.statusDraft {
+  color: #475569;
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.statusPublished {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+}
+
+.statusArchived {
+  color: #6b21a8;
+  background: rgba(243, 232, 255, 0.95);
+}
+
+.announcementCard h3 {
+  margin: 0;
+  color: var(--text-primary, #111827);
+  font-size: 1.2rem;
+}
+
+.announcementCard p {
+  margin: 0;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.65;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.metaGrid span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.metaGrid strong {
+  color: var(--text-primary, #111827);
+  font-size: 0.82rem;
+}
+
+.emptyState {
+  padding: 34px;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 22px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+@media (max-width: 1100px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .announcementGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .pageShell {
+    padding: 16px;
+  }
+
+  .heroCard,
+  .toolbar,
+  .formHeader,
+  .sectionHeader,
+  .cardTop,
+  .cardActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .heroCard {
+    padding: 22px;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .ghostButton,
+  .dangerButton {
+    width: 100%;
+  }
+
+  .searchInput {
+    width: 100%;
+  }
+
+  .statsGrid,
+  .formGrid,
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formActions {
+    flex-direction: column;
+  }
+
+  .contentPanel,
+  .formPanel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+}
+
+:global(.dark) .pageShell,
+:global(body.dark) .pageShell,
+:global([data-theme="dark"]) .pageShell {
+  color: #e5e7eb;
+}
+
+:global(.dark) .heroCard,
+:global(body.dark) .heroCard,
+:global([data-theme="dark"]) .heroCard,
+:global(.dark) .formPanel,
+:global(body.dark) .formPanel,
+:global([data-theme="dark"]) .formPanel,
+:global(.dark) .contentPanel,
+:global(body.dark) .contentPanel,
+:global([data-theme="dark"]) .contentPanel,
+:global(.dark) .statCard,
+:global(body.dark) .statCard,
+:global([data-theme="dark"]) .statCard,
+:global(.dark) .announcementCard,
+:global(body.dark) .announcementCard,
+:global([data-theme="dark"]) .announcementCard {
+  border-color: rgba(148, 163, 184, 0.24);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.9));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+}
+
+:global(.dark) .heroCard h1,
+:global(body.dark) .heroCard h1,
+:global([data-theme="dark"]) .heroCard h1,
+:global(.dark) .formHeader h2,
+:global(body.dark) .formHeader h2,
+:global([data-theme="dark"]) .formHeader h2,
+:global(.dark) .sectionHeader h2,
+:global(body.dark) .sectionHeader h2,
+:global([data-theme="dark"]) .sectionHeader h2,
+:global(.dark) .announcementCard h3,
+:global(body.dark) .announcementCard h3,
+:global([data-theme="dark"]) .announcementCard h3,
+:global(.dark) .statCard strong,
+:global(body.dark) .statCard strong,
+:global([data-theme="dark"]) .statCard strong,
+:global(.dark) .metaGrid strong,
+:global(body.dark) .metaGrid strong,
+:global([data-theme="dark"]) .metaGrid strong {
+  color: #f8fafc;
+}
+
+:global(.dark) .heroCard p,
+:global(body.dark) .heroCard p,
+:global([data-theme="dark"]) .heroCard p,
+:global(.dark) .announcementCard p,
+:global(body.dark) .announcementCard p,
+:global([data-theme="dark"]) .announcementCard p,
+:global(.dark) .statCard span,
+:global(body.dark) .statCard span,
+:global([data-theme="dark"]) .statCard span,
+:global(.dark) .formGrid span,
+:global(body.dark) .formGrid span,
+:global([data-theme="dark"]) .formGrid span,
+:global(.dark) .metaGrid span,
+:global(body.dark) .metaGrid span,
+:global([data-theme="dark"]) .metaGrid span {
+  color: #cbd5e1;
+}
+
+:global(.dark) .searchInput,
+:global(body.dark) .searchInput,
+:global([data-theme="dark"]) .searchInput,
+:global(.dark) .formGrid input,
+:global(body.dark) .formGrid input,
+:global([data-theme="dark"]) .formGrid input,
+:global(.dark) .formGrid textarea,
+:global(body.dark) .formGrid textarea,
+:global([data-theme="dark"]) .formGrid textarea,
+:global(.dark) .formGrid select,
+:global(body.dark) .formGrid select,
+:global([data-theme="dark"]) .formGrid select {
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+:global(.dark) .emptyState,
+:global(body.dark) .emptyState,
+:global([data-theme="dark"]) .emptyState {
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+:global(.dark) .secondaryButton,
+:global(body.dark) .secondaryButton,
+:global([data-theme="dark"]) .secondaryButton,
+:global(.dark) .ghostButton,
+:global(body.dark) .ghostButton,
+:global([data-theme="dark"]) .ghostButton {
+  color: #f8fafc;
+  background: rgba(51, 65, 85, 0.82);
+  border-color: rgba(148, 163, 184, 0.28);
+}

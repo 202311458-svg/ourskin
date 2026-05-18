@@ -6,15 +6,17 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   FaTachometerAlt,
-  FaCalendarAlt,
+  FaCalendarCheck,
   FaRobot,
   FaNotesMedical,
   FaUserClock,
-  FaCog,
+  FaBullhorn,
+  FaUserMd,
   FaSignOutAlt,
   FaMoon,
   FaSun,
   FaBars,
+  FaTimes,
 } from "react-icons/fa";
 
 import styles from "@/app/styles/navbar.module.css";
@@ -36,38 +38,43 @@ export default function DoctorNavbar() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: "/pages/doctor/dashboard",
-      icon: <FaTachometerAlt />,
-    },
-    {
-      name: "Appointments",
-      path: "/pages/doctor/appointments",
-      icon: <FaCalendarAlt />,
-    },
-    {
-      name: "AI Analysis",
-      path: "/pages/doctor/ai-analysis",
-      icon: <FaRobot />,
-    },
-    {
-      name: "Patient Records",
-      path: "/pages/doctor/patient-records",
-      icon: <FaNotesMedical />,
-    },
-    {
-      name: "Follow-Ups",
-      path: "/pages/doctor/follow-ups",
-      icon: <FaUserClock />,
-    },
-    {
-      name: "Profile",
-      path: "/pages/doctor/settings",
-      icon: <FaCog />,
-    },
-  ];
+const navItems = [
+  {
+    name: "Dashboard",
+    path: "/pages/doctor/dashboard",
+    icon: <FaTachometerAlt />,
+  },
+  {
+    name: "Appointments",
+    path: "/pages/doctor/appointments",
+    icon: <FaCalendarCheck />,
+  },
+  {
+    name: "AI Analysis",
+    path: "/pages/doctor/ai-analysis",
+    icon: <FaRobot />,
+  },
+  {
+    name: "Patient Records",
+    path: "/pages/doctor/patient-records",
+    icon: <FaNotesMedical />,
+  },
+  {
+    name: "Follow-Ups",
+    path: "/pages/doctor/follow-ups",
+    icon: <FaUserClock />,
+  },
+  {
+    name: "Announcements",
+    path: "/pages/doctor/announcements",
+    icon: <FaBullhorn />,
+  },
+  {
+    name: "Profile",
+    path: "/pages/doctor/settings",
+    icon: <FaUserMd />,
+  },
+];
 
   useEffect(() => {
     if (collapsed) {
@@ -130,7 +137,7 @@ export default function DoctorNavbar() {
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label="Toggle navigation menu"
         >
-          <FaBars />
+{mobileOpen ? <FaTimes /> : <FaBars />}
         </button>
       </div>
 

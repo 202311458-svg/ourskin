@@ -25,6 +25,7 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 from app.models.audit_log import AuditLog
+from app.models.announcement import Announcement
 
 def get_db():
     db = SessionLocal()

@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   FaTachometerAlt,
-  FaUsers,
-  FaCalendarAlt,
+  FaUsersCog,
+  FaCalendarCheck,
   FaRobot,
   FaUserShield,
   FaClipboardList,
+  FaChartBar,
+  FaBullhorn,
   FaSignOutAlt,
   FaMoon,
   FaSun,
@@ -27,46 +29,50 @@ export default function AdminNavbar() {
 
   const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [, startTransition] = useTransition();
   const { darkMode, toggleDarkMode } = useDarkMode();
 
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: "/pages/admin/dashboard",
-      icon: <FaTachometerAlt />,
-    },
-    {
-      name: "Users",
-      path: "/pages/admin/users",
-      icon: <FaUsers />,
-    },
-    {
-      name: "Appointments",
-      path: "/pages/admin/appointments",
-      icon: <FaCalendarAlt />,
-    },
-    {
-      name: "AI Review Monitor",
-      path: "/pages/admin/ai-logs",
-      icon: <FaRobot />,
-    },
-    {
-      name: "Staff Management",
-      path: "/pages/admin/staff-mgmt",
-      icon: <FaUserShield />,
-    },
-    {
-      name: "Audit Logs",
-      path: "/pages/admin/audit-logs",
-      icon: <FaClipboardList />,
-    },
-    {
-      name: "Reports",
-      path: "/pages/admin/reports",
-      icon: <FaClipboardList />,
-    },
-  ];
+const navItems = [
+  {
+    name: "Dashboard",
+    path: "/pages/admin/dashboard",
+    icon: <FaTachometerAlt />,
+  },
+  {
+    name: "Users",
+    path: "/pages/admin/users",
+    icon: <FaUsersCog />,
+  },
+  {
+    name: "Appointments",
+    path: "/pages/admin/appointments",
+    icon: <FaCalendarCheck />,
+  },
+  {
+    name: "AI Review Monitor",
+    path: "/pages/admin/ai-logs",
+    icon: <FaRobot />,
+  },
+  {
+    name: "Staff Management",
+    path: "/pages/admin/staff-mgmt",
+    icon: <FaUserShield />,
+  },
+  {
+    name: "Audit Logs",
+    path: "/pages/admin/audit-logs",
+    icon: <FaClipboardList />,
+  },
+  {
+    name: "Reports",
+    path: "/pages/admin/reports",
+    icon: <FaChartBar />,
+  },
+  {
+    name: "Announcements",
+    path: "/pages/admin/announcements",
+    icon: <FaBullhorn />,
+  },
+];
 
 useEffect(() => {
   document.body.classList.toggle("navCollapsed", collapsed);

@@ -16,39 +16,13 @@ import {
 } from "react-icons/fa";
 
 import Navbar from "@/app/components/Navbar";
+import PatientAnnouncements from "@/app/components/PatientAnnouncements";
 import styles from "@/app/styles/patient.module.css";
-
-type Announcement = {
-  title: string;
-  label: string;
-  description: string;
-};
 
 type Promo = {
   title: string;
   description: string;
 };
-
-const announcements: Announcement[] = [
-  {
-    title: "Appointment Reminder",
-    label: "Clinic Advisory",
-    description:
-      "Please arrive at least 10 minutes before your confirmed schedule so our team can assist you smoothly.",
-  },
-  {
-    title: "Online Consultation Available",
-    label: "Service Update",
-    description:
-      "Some consultations may be available online depending on the selected service and staff schedule.",
-  },
-  {
-    title: "Medical Records Access",
-    label: "Patient Portal",
-    description:
-      "You can now review your appointment history, diagnosis reports, and doctor notes inside your portal.",
-  },
-];
 
 const promos: Promo[] = [
   {
@@ -139,45 +113,7 @@ export default function PatientHomePage() {
 
           <section className={styles.dashboardGrid}>
             <div className={styles.leftColumn}>
-              <section className={styles.card}>
-                <div className={styles.headerRow}>
-                  <div>
-                    <p className={styles.eyebrow}>Latest Updates</p>
-                    <h2 className={styles.cardTitle}>Announcements</h2>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() => router.push("/pages/patient/dashboard")}
-                  >
-                    View Dashboard
-                  </button>
-                </div>
-
-                <div className={styles.recentAppointmentList}>
-                  {announcements.map((item) => (
-                    <article
-                      key={item.title}
-                      className={styles.recentAppointmentCard}
-                    >
-                      <div className={styles.recentAppointmentTop}>
-                        <div>
-                          <p className={styles.pendingService}>{item.label}</p>
-                          <h3 className={styles.recentAppointmentDoctor}>
-                            {item.title}
-                          </h3>
-                          <p className={styles.recentAppointmentService}>
-                            {item.description}
-                          </p>
-                        </div>
-
-                        <span className={styles.badgeApproved}>New</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
+              <PatientAnnouncements />
 
               <section className={styles.card}>
                 <p className={styles.eyebrow}>Featured Services</p>

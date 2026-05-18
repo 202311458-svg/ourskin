@@ -5,10 +5,12 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   FaTachometerAlt,
-  FaCalendarAlt,
+  FaCalendarWeek,
   FaClipboardList,
+  FaCalendarCheck,
   FaHistory,
-  FaUser,
+  FaUserCircle,
+  FaBullhorn,
   FaSignOutAlt,
   FaMoon,
   FaSun,
@@ -29,38 +31,43 @@ export default function StaffNavbar() {
 
   const { darkMode, toggleDarkMode } = useDarkMode();
 
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: "/pages/staff/dashboard",
-      icon: <FaTachometerAlt />,
-    },
-        {
-      name: "Schedules",
-      path: "/pages/staff/schedules",
-      icon: <FaClipboardList />,
-    },
-    {
-      name: "Appointment Requests",
-      path: "/pages/staff/requests",
-      icon: <FaClipboardList />,
-    },
-    {
-      name: "Appointments",
-      path: "/pages/staff/appointments",
-      icon: <FaCalendarAlt />,
-    },
-    {
-      name: "History",
-      path: "/pages/staff/history",
-      icon: <FaHistory />,
-    },
-    {
-      name: "Profile",
-      path: "/pages/staff/profile",
-      icon: <FaUser />,
-    },
-  ];
+const navItems = [
+  {
+    name: "Dashboard",
+    path: "/pages/staff/dashboard",
+    icon: <FaTachometerAlt />,
+  },
+  {
+    name: "Schedules",
+    path: "/pages/staff/schedules",
+    icon: <FaCalendarWeek />,
+  },
+  {
+    name: "Appointment Requests",
+    path: "/pages/staff/requests",
+    icon: <FaClipboardList />,
+  },
+  {
+    name: "Appointments",
+    path: "/pages/staff/appointments",
+    icon: <FaCalendarCheck />,
+  },
+  {
+    name: "History",
+    path: "/pages/staff/history",
+    icon: <FaHistory />,
+  },
+  {
+    name: "Announcements",
+    path: "/pages/staff/announcements",
+    icon: <FaBullhorn />,
+  },
+  {
+    name: "Profile",
+    path: "/pages/staff/profile",
+    icon: <FaUserCircle />,
+  },
+];
 
   useEffect(() => {
     const updateLayoutState = (value: boolean) => {
