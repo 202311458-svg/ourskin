@@ -2473,3 +2473,258 @@ body.darkMode .doctorSchedulePreviewItem {
     max-width: 100%;
   }
 }
+.homeHero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.55fr);
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 24px;
+  padding: 30px;
+  overflow: hidden;
+  border: 1px solid var(--patient-border);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, var(--patient-primary-soft-strong), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--patient-card) 94%, transparent), var(--patient-bg-soft));
+  box-shadow: var(--patient-shadow);
+}
+
+.homeHero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: linear-gradient(180deg, var(--patient-primary), var(--patient-primary-hover));
+}
+
+.homeHeroContent,
+.homeHeroPanel {
+  position: relative;
+  z-index: 1;
+}
+
+.homeHero .greetingTitle {
+  font-size: clamp(38px, 5vw, 64px);
+  max-width: 760px;
+}
+
+.homeHero .greetingSubtitle {
+  max-width: 760px;
+  font-size: 16px;
+}
+
+.homeHeroPanel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--patient-primary) 24%, var(--patient-border));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--patient-card) 86%, transparent);
+}
+
+.homeHeroIcon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--patient-primary), var(--patient-primary-hover));
+  font-size: 24px;
+  box-shadow: 0 14px 28px rgba(130, 51, 76, 0.22);
+}
+
+.homeHeroPanel p {
+  margin: 0 0 10px;
+  color: var(--patient-heading);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.homeHeroPanel button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--patient-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.homeHeroPanel button:hover {
+  background: var(--patient-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(130, 51, 76, 0.18);
+}
+
+.homeActionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.homeActionCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 132px;
+  padding: 20px;
+  border: 1px solid var(--patient-border);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--patient-card) 94%, transparent);
+  color: var(--patient-text);
+  box-shadow: var(--patient-shadow);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.homeActionCard:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--patient-primary) 38%, var(--patient-border));
+  background: var(--patient-card);
+  box-shadow: var(--patient-shadow-hover);
+}
+
+.homeActionPrimary {
+  border-color: color-mix(in srgb, var(--patient-primary) 38%, var(--patient-border));
+  background:
+    linear-gradient(135deg, var(--patient-primary-soft), transparent),
+    color-mix(in srgb, var(--patient-card) 94%, transparent);
+}
+
+.homeActionIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 17px;
+  color: var(--patient-primary);
+  background: var(--patient-primary-soft);
+  font-size: 20px;
+}
+
+.homeActionText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.homeActionText strong {
+  color: var(--patient-heading);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.homeActionText small {
+  color: var(--patient-muted);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.homeActionArrow {
+  color: var(--patient-muted);
+  font-size: 14px;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
+}
+
+.homeActionCard:hover .homeActionArrow {
+  color: var(--patient-primary);
+  transform: translateX(3px);
+}
+
+.homeAnnouncementsPanel {
+  padding: 26px;
+  border: 1px solid var(--patient-border);
+  border-radius: 30px;
+  background: color-mix(in srgb, var(--patient-card) 92%, transparent);
+  box-shadow: var(--patient-shadow);
+}
+
+.btnBook,
+.primaryButton,
+.secondaryButton {
+  gap: 8px;
+}
+
+@media (max-width: 1180px) {
+  .homeActionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homeHero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .homeHero {
+    padding: 24px;
+    border-radius: 24px;
+  }
+
+  .homeHero .greetingTitle {
+    font-size: 38px;
+  }
+
+  .homeHeroPanel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .homeActionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .homeActionCard {
+    min-height: auto;
+  }
+
+  .homeAnnouncementsPanel {
+    padding: 18px;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .homeHero {
+    padding: 20px;
+  }
+
+  .homeHero .greetingTitle {
+    font-size: 32px;
+  }
+
+  .homeActionCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .homeActionArrow {
+    display: none;
+  }
+}
