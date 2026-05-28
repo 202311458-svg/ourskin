@@ -3,89 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
-import { API_BASE_URL } from "@/lib/api";
+import { AdminAiLog, getAdminAiLogs } from "@/lib/admin-api";
 import styles from "@/app/styles/admin.module.css";
 
-type AiLog = {
-  id: number;
-  appointment_id?: number | null;
-  diagnosis_report_id?: number | null;
-  patient_name?: string | null;
-  patient_email?: string | null;
-  doctor_name?: string | null;
-  condition?: string | null;
-  confidence?: number | null;
-  severity?: string | null;
-  created_at?: string | null;
-  reviewed_at?: string | null;
-  review_status?: string | null;
-};
-
-type ApiErrorResponse = {
-  detail?: string;
-  message?: string;
-};
-
 type SeverityFilter = "all" | "mild" | "moderate" | "severe" | "unspecified";
-type ReviewFilter = "all" | "pending" | "reviewed";
-
-const API_BASE = API_BASE_URL;
-
-const AI_REVIEW_ENDPOINTS = [
-  `${API_BASE}/admin/ai-logs`,
-  `${API_BASE}/admin/ai-logs/`,
-];
-
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
-function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
-  if (data?.detail) return data.detail;
-  if (data?.message) return data.message;
-  return fallback;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function extractLogs(data: unknown): AiLog[] {
-  if (Array.isArray(data)) return data as AiLog[];
-
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-
-    if (Array.isArray(record.logs)) return record.logs as AiLog[];
-    if (Array.isArray(record.ai_logs)) return record.ai_logs as AiLog[];
-    if (Array.isArray(record.results)) return record.results as AiLog[];
-    if (Array.isArray(record.data)) return record.data as AiLog[];
-  }
-
-  return [];
-}
-
-function normalizeAiLog(raw: Partial<AiLog>): AiLog {
-  return {
-    id: Number(raw.id),
-    appointment_id: raw.appointment_id ?? null,
-    diagnosis_report_id: raw.diagnosis_report_id ?? null,
-    patient_name: raw.patient_name || "Unknown Patient",
-    patient_email: raw.patient_email || "",
-    doctor_name: raw.doctor_name || "Not assigned",
-    condition: raw.condition || "No AI result",
-    confidence: raw.confidence ?? null,
-    severity: raw.severity || "Unspecified",
-    created_at: raw.created_at || null,
-    reviewed_at: raw.reviewed_at || null,
-    review_status: raw.review_status || "Pending",
-  };
-}
+type ReviewFilter = "all" | "pending" | "reviewed" | "completed";
 
 function normalizeText(value?: string | null) {
   return (value || "").trim().toLowerCase();
@@ -102,31 +24,17 @@ function capitalizeFirst(value?: string | null) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not available";
+  if (!value) return "N/A";
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return "Not available";
+  if (Number.isNaN(date.getTime())) return "N/A";
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleString([], {
     year: "numeric",
     month: "short",
-    day: "numeric",
-  });
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "Not available";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "Not available";
-
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
+    day: "2-digit",
+    hour: "2-digit",
     minute: "2-digit",
   });
 }
@@ -136,113 +44,88 @@ function formatConfidence(value?: number | null) {
     return "N/A";
   }
 
-  const numericValue = Number(value);
+  if (value <= 1) return `${Math.round(value * 100)}%`;
 
-  if (numericValue <= 1) {
-    return `${Math.round(numericValue * 100)}%`;
-  }
-
-  return `${Math.round(numericValue)}%`;
-}
-
-function getReviewStatus(log: AiLog) {
-  const status = normalizeText(log.review_status);
-
-  if (
-    status === "reviewed" ||
-    status === "completed" ||
-    status === "done" ||
-    Boolean(log.reviewed_at) ||
-    Boolean(log.diagnosis_report_id)
-  ) {
-    return "Reviewed";
-  }
-
-  return "Pending";
+  return `${Math.round(value)}%`;
 }
 
 function getSeverityClass(severity?: string | null) {
-  const value = normalizeText(severity);
+  const cleanSeverity = normalizeText(severity);
 
-  if (value === "severe") return styles.severe;
-  if (value === "moderate") return styles.moderate;
-  if (value === "mild") return styles.mild;
+  if (cleanSeverity === "severe") return styles.cancelled;
+  if (cleanSeverity === "moderate") return styles.pending;
+  if (cleanSeverity === "mild") return styles.approved;
 
   return styles.neutral;
 }
 
-function getReviewClass(status: string) {
-  if (status === "Reviewed") return styles.reviewed;
+function getReviewClass(status?: string | null) {
+  const cleanStatus = normalizeText(status);
+
+  if (cleanStatus === "completed" || cleanStatus === "reviewed") {
+    return styles.approved;
+  }
+
   return styles.pending;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+function normalizeAiLog(raw: Partial<AdminAiLog>): AdminAiLog {
+  return {
+    id: Number(raw.id),
+    user_id: raw.user_id ?? null,
+    appointment_id: raw.appointment_id ?? null,
+    diagnosis_report_id: raw.diagnosis_report_id ?? null,
+
+    patient_name: raw.patient_name || "Unknown Patient",
+    patient_email: raw.patient_email || "No email available",
+    doctor_name: raw.doctor_name || "Not assigned",
+
+    condition: raw.condition || "No AI result",
+    confidence: raw.confidence ?? null,
+    severity: raw.severity || "Unspecified",
+    recommendation: raw.recommendation || "",
+
+    possible_conditions: raw.possible_conditions || "",
+    key_findings: raw.key_findings || "",
+    treatment_suggestions: raw.treatment_suggestions || "",
+    prescription_suggestions: raw.prescription_suggestions || "",
+    follow_up_suggestions: raw.follow_up_suggestions || "",
+    red_flags: raw.red_flags || "",
+
+    doctor_note: raw.doctor_note || "",
+    review_status: raw.review_status || "Pending",
+    reviewed_at: raw.reviewed_at || null,
+
+    final_diagnosis: raw.final_diagnosis || raw.doctor_final_diagnosis || "",
+    doctor_final_diagnosis: raw.doctor_final_diagnosis || raw.final_diagnosis || "",
+    doctor_prescription: raw.doctor_prescription || raw.prescription || "",
+    prescription: raw.prescription || raw.doctor_prescription || "",
+    doctor_notes: raw.doctor_notes || raw.after_appointment_notes || "",
+    after_appointment_notes: raw.after_appointment_notes || raw.doctor_notes || "",
+    follow_up_plan: raw.follow_up_plan || "",
+    next_visit_date: raw.next_visit_date || null,
+
+    created_at: raw.created_at || null,
+  };
 }
 
 export default function AdminAiLogsPage() {
   const router = useRouter();
 
-  const [logs, setLogs] = useState<AiLog[]>([]);
-  const [selectedLog, setSelectedLog] = useState<AiLog | null>(null);
+  const [logs, setLogs] = useState<AdminAiLog[]>([]);
+  const [selectedLog, setSelectedLog] = useState<AdminAiLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
-  const [collapsed, setCollapsed] = useState(false);
 
   const loadLogs = useCallback(async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      router.push("/");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      let lastError = "Unable to load AI review records.";
-
-      for (const endpoint of AI_REVIEW_ENDPOINTS) {
-        const res = await fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await safeJson<unknown>(res);
-
-        if (res.ok) {
-          const normalizedLogs = extractLogs(data)
-            .map(normalizeAiLog)
-            .filter((item) => Number.isFinite(item.id));
-
-          setLogs(normalizedLogs);
-          return;
-        }
-
-        const apiError = getApiErrorMessage(
-          data as ApiErrorResponse | null,
-          lastError
-        );
-
-        lastError = apiError;
-
-        if (res.status === 401 || res.status === 403) {
-          throw new Error(apiError);
-        }
-      }
-
-      throw new Error(lastError);
-    } catch (err) {
-      console.error("AI Review Monitor load failed:", err);
-      setError(getErrorMessage(err, "Unable to load AI review records."));
-      setLogs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
 
@@ -251,320 +134,419 @@ export default function AdminAiLogsPage() {
       return;
     }
 
-    loadLogs();
-  }, [loadLogs, router]);
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await getAdminAiLogs();
+      setLogs(Array.isArray(data) ? data.map(normalizeAiLog) : []);
+    } catch (loadError: unknown) {
+      setError(getErrorMessage(loadError, "Unable to load AI logs."));
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => {
-    const sync = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"));
-    };
-
-    sync();
-    window.addEventListener("navbarToggle", sync);
-
-    return () => window.removeEventListener("navbarToggle", sync);
-  }, []);
+    loadLogs();
+  }, [loadLogs]);
 
   const filteredLogs = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    const keyword = search.toLowerCase().trim();
 
-    return logs
-      .filter((log) => {
-        const severityValue = normalizeText(log.severity) || "unspecified";
-        const reviewStatus = getReviewStatus(log).toLowerCase();
+    return logs.filter((log) => {
+      const severity = normalizeText(log.severity);
+      const reviewStatus = normalizeText(log.review_status);
 
-        const matchesSearch =
-          !keyword ||
-          log.patient_name?.toLowerCase().includes(keyword) ||
-          log.patient_email?.toLowerCase().includes(keyword) ||
-          log.doctor_name?.toLowerCase().includes(keyword) ||
-          log.condition?.toLowerCase().includes(keyword) ||
-          log.severity?.toLowerCase().includes(keyword);
+      const matchesSearch =
+        !keyword ||
+        (log.patient_name || "").toLowerCase().includes(keyword) ||
+        (log.patient_email || "").toLowerCase().includes(keyword) ||
+        (log.doctor_name || "").toLowerCase().includes(keyword) ||
+        (log.condition || "").toLowerCase().includes(keyword) ||
+        (log.doctor_final_diagnosis || "").toLowerCase().includes(keyword) ||
+        String(log.appointment_id || "").includes(keyword);
 
-        const matchesSeverity =
-          severityFilter === "all" || severityValue === severityFilter;
+      const matchesSeverity =
+        severityFilter === "all" || severity === severityFilter;
 
-        const matchesReview =
-          reviewFilter === "all" || reviewStatus === reviewFilter;
+      const matchesReview =
+        reviewFilter === "all" ||
+        (reviewFilter === "pending" &&
+          !["reviewed", "completed"].includes(reviewStatus)) ||
+        (reviewFilter === "reviewed" && reviewStatus === "reviewed") ||
+        (reviewFilter === "completed" && reviewStatus === "completed");
 
-        return matchesSearch && matchesSeverity && matchesReview;
-      })
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-
-        return dateB - dateA;
-      });
+      return matchesSearch && matchesSeverity && matchesReview;
+    });
   }, [logs, search, severityFilter, reviewFilter]);
 
-  const summary = useMemo(() => {
-    const total = logs.length;
-    const reviewed = logs.filter((log) => getReviewStatus(log) === "Reviewed")
-      .length;
-    const pending = total - reviewed;
-    const severe = logs.filter(
-      (log) => normalizeText(log.severity) === "severe"
-    ).length;
-
-    return { total, reviewed, pending, severe };
+  const stats = useMemo(() => {
+    return {
+      total: logs.length,
+      pending: logs.filter((log) => {
+        const status = normalizeText(log.review_status);
+        return !["reviewed", "completed"].includes(status);
+      }).length,
+      reviewed: logs.filter(
+        (log) => normalizeText(log.review_status) === "reviewed"
+      ).length,
+      completed: logs.filter(
+        (log) => normalizeText(log.review_status) === "completed"
+      ).length,
+      severe: logs.filter((log) => normalizeText(log.severity) === "severe")
+        .length,
+    };
   }, [logs]);
 
   return (
-    <>
+    <div className="staffLayout">
       <AdminNavbar />
 
-      <main
-        className={`${styles.page} ${styles.aiLogsPage} ${
-          collapsed ? styles.collapsed : ""
-        }`}
-      >
-        <div className={styles.container}>
-          <div className={styles.headerRow}>
-            <div>
-              <h1 className={styles.title}>AI Review Monitor</h1>
-              <p className={styles.subtitle}>
-                Track AI skin analysis activity and doctor review progress
-                without exposing restricted medical details.
-              </p>
-            </div>
-
-            <button
-              className={styles.refreshButton}
-              onClick={loadLogs}
-              disabled={loading}
-              type="button"
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
+      <main className={`staffContent ${styles.aiLogsPage}`}>
+        <div className={styles.headerRow}>
+          <div>
+            <h1 className={styles.title}>AI Review Monitor</h1>
+            <p className={styles.subtitle}>
+              Monitor AI-assisted skin analysis records, doctor review status,
+              and final diagnosis completion.
+            </p>
           </div>
-
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <span>Total AI Records</span>
-              <strong>{summary.total}</strong>
-            </div>
-
-            <div className={`${styles.statCard} ${styles.greenAccent}`}>
-              <span>Reviewed</span>
-              <strong>{summary.reviewed}</strong>
-            </div>
-
-            <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-              <span>Pending Review</span>
-              <strong>{summary.pending}</strong>
-            </div>
-
-            <div className={`${styles.statCard} ${styles.blueAccent}`}>
-              <span>Severe Cases</span>
-              <strong>{summary.severe}</strong>
-            </div>
-          </div>
-
-          <div className={styles.filtersRow}>
-            <input
-              className={styles.searchInput}
-              type="text"
-              placeholder="Search patient, doctor, condition, or severity"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-
-            <select
-              className={styles.selectInput}
-              value={severityFilter}
-              onChange={(event) =>
-                setSeverityFilter(event.target.value as SeverityFilter)
-              }
-            >
-              <option value="all">All Severity</option>
-              <option value="mild">Mild</option>
-              <option value="moderate">Moderate</option>
-              <option value="severe">Severe</option>
-              <option value="unspecified">Unspecified</option>
-            </select>
-
-            <select
-              className={styles.selectInput}
-              value={reviewFilter}
-              onChange={(event) =>
-                setReviewFilter(event.target.value as ReviewFilter)
-              }
-            >
-              <option value="all">All Review Status</option>
-              <option value="pending">Pending</option>
-              <option value="reviewed">Reviewed</option>
-            </select>
-          </div>
-
-          <section className={styles.aiLogSection}>
-            {loading ? (
-              <div className={styles.message}>Loading AI review records...</div>
-            ) : error ? (
-              <div className={styles.error}>{error}</div>
-            ) : filteredLogs.length === 0 ? (
-              <div className={styles.emptyState}>
-                <h3>No AI review records found</h3>
-                <p>AI-assisted analysis records will appear here once available.</p>
-              </div>
-            ) : (
-              <div className={styles.aiLogList}>
-                {filteredLogs.map((log) => {
-                  const reviewStatus = getReviewStatus(log);
-
-                  return (
-                    <article className={styles.aiLogCard} key={log.id}>
-                      <div className={styles.aiLogCardTop}>
-                        <div className={styles.aiLogPatientBlock}>
-                          <span>Patient</span>
-                          <strong>{log.patient_name || "Unknown Patient"}</strong>
-                          <p>{log.patient_email || "No email available"}</p>
-                        </div>
-
-                        <div className={styles.aiLogMiniBadges}>
-                          <span
-                            className={`${styles.statusBadge} ${getReviewClass(
-                              reviewStatus
-                            )}`}
-                          >
-                            {reviewStatus}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className={styles.aiLogPreviewGrid}>
-                        <div className={styles.aiLogPreviewItem}>
-                          <span>AI Condition</span>
-                          <strong>{log.condition || "No AI result"}</strong>
-                        </div>
-
-                        <div className={styles.aiLogPreviewItem}>
-                          <span>Analysis Date</span>
-                          <strong>{formatDate(log.created_at)}</strong>
-                        </div>
-
-                        <div className={styles.aiLogPreviewItem}>
-                          <span>Assigned Doctor</span>
-                          <strong>{log.doctor_name || "Not assigned"}</strong>
-                        </div>
-                      </div>
-
-                      <div className={styles.aiLogCardFooter}>
-                        <button
-                          type="button"
-                          className={styles.viewBtn}
-                          onClick={() => setSelectedLog(log)}
-                        >
-                          View Summary
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
         </div>
-      </main>
 
-      {selectedLog && (
-        <div
-          className={styles.modalOverlay}
-          role="button"
-          tabIndex={0}
-          onClick={() => setSelectedLog(null)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setSelectedLog(null);
-          }}
-        >
-          <div
-            className={styles.modalCardLarge}
-            role="dialog"
-            aria-modal="true"
-            aria-label="AI review summary"
-            onClick={(event) => event.stopPropagation()}
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard}>
+            <span>Total AI Logs</span>
+            <strong>{stats.total}</strong>
+          </div>
+
+          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
+            <span>Pending Review</span>
+            <strong>{stats.pending}</strong>
+          </div>
+
+          <div className={`${styles.statCard} ${styles.blueAccent}`}>
+            <span>Reviewed</span>
+            <strong>{stats.reviewed}</strong>
+          </div>
+
+          <div className={`${styles.statCard} ${styles.greenAccent}`}>
+            <span>Completed Reports</span>
+            <strong>{stats.completed}</strong>
+          </div>
+
+          <div className={`${styles.statCard} ${styles.pinkAccent}`}>
+            <span>Severe Cases</span>
+            <strong>{stats.severe}</strong>
+          </div>
+        </div>
+
+        <div className={styles.filtersRow}>
+          <input
+            type="text"
+            placeholder="Search by patient, email, doctor, condition, diagnosis, or appointment ID"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className={styles.searchInput}
+          />
+
+          <select
+            value={severityFilter}
+            onChange={(event) =>
+              setSeverityFilter(event.target.value as SeverityFilter)
+            }
+            className={styles.selectInput}
           >
-            <div className={styles.modalHeader}>
-              <div>
-                <h2>AI Review Summary</h2>
-                <p>
-                  Admin monitoring view only. Full doctor diagnosis,
-                  prescriptions, and clinical notes are restricted.
-                </p>
-              </div>
+            <option value="all">All Severity</option>
+            <option value="mild">Mild</option>
+            <option value="moderate">Moderate</option>
+            <option value="severe">Severe</option>
+            <option value="unspecified">Unspecified</option>
+          </select>
 
-              <button
-                type="button"
-                className={styles.topCloseButton}
-                onClick={() => setSelectedLog(null)}
-              >
-                Close
-              </button>
+          <select
+            value={reviewFilter}
+            onChange={(event) =>
+              setReviewFilter(event.target.value as ReviewFilter)
+            }
+            className={styles.selectInput}
+          >
+            <option value="all">All Review Status</option>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        <section className={styles.tableCard}>
+          {loading ? (
+            <p className={styles.message}>Loading AI logs...</p>
+          ) : error ? (
+            <p className={styles.error}>{error}</p>
+          ) : filteredLogs.length === 0 ? (
+            <div className={styles.emptyState}>
+              <h3>No AI logs found</h3>
+              <p>Try adjusting your filters or search keyword.</p>
             </div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Doctor</th>
+                  <th>Condition</th>
+                  <th>Severity</th>
+                  <th>Confidence</th>
+                  <th>Review</th>
+                  <th>Final Diagnosis</th>
+                  <th>Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
 
-            <div className={styles.profileSection}>
-              <div className={styles.profileInitial}>
-                {(selectedLog.patient_name || "P").charAt(0).toUpperCase()}
-              </div>
+              <tbody>
+                {filteredLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>
+                      <strong>{log.patient_name}</strong>
+                      <span>{log.patient_email}</span>
+                    </td>
 
-              <div className={styles.profileInfo}>
-                <h3>{selectedLog.patient_name || "Unknown Patient"}</h3>
-                <p>{selectedLog.patient_email || "No email available"}</p>
-              </div>
-            </div>
+                    <td>{log.doctor_name}</td>
 
-            <div className={styles.profileGrid}>
-              <div>
-                <strong>Assigned Doctor</strong>
-                <p>{selectedLog.doctor_name || "Not assigned"}</p>
-              </div>
+                    <td>{log.condition}</td>
 
-              <div>
-                <strong>Appointment ID</strong>
-                <p>{selectedLog.appointment_id || "N/A"}</p>
-              </div>
+                    <td>
+                      <span
+                        className={`${styles.statusBadge} ${getSeverityClass(
+                          log.severity
+                        )}`}
+                      >
+                        {capitalizeFirst(log.severity)}
+                      </span>
+                    </td>
 
-              <div>
-                <strong>Analysis Date</strong>
-                <p>{formatDateTime(selectedLog.created_at)}</p>
-              </div>
+                    <td>{formatConfidence(log.confidence)}</td>
 
-              <div>
-                <strong>Review Status</strong>
-                <p>{getReviewStatus(selectedLog)}</p>
-              </div>
-            </div>
+                    <td>
+                      <span
+                        className={`${styles.statusBadge} ${getReviewClass(
+                          log.review_status
+                        )}`}
+                      >
+                        {capitalizeFirst(log.review_status)}
+                      </span>
+                    </td>
 
-            <div className={styles.infoBlock}>
-              <h3>AI Screening Result</h3>
+                    <td>
+                      {log.doctor_final_diagnosis ||
+                      log.final_diagnosis ||
+                      log.diagnosis_report_id
+                        ? "Available"
+                        : "Not yet available"}
+                    </td>
 
-              <div className={styles.assessmentGrid}>
-                <div className={styles.detailMiniBlock}>
-                  <strong>Detected Condition</strong>
-                  <p>{selectedLog.condition || "No AI result"}</p>
-                </div>
+                    <td>{formatDate(log.created_at)}</td>
 
-                <div className={styles.detailMiniBlock}>
-                  <strong>Severity</strong>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.secondaryAction}
+                        onClick={() => setSelectedLog(log)}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        {selectedLog && (
+          <div className={styles.modalBackdrop}>
+            <div className={`${styles.modalCard} ${styles.modalLarge}`}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <h2>AI Log Details</h2>
                   <p>
-                    <span
-                      className={`${styles.statusBadge} ${getSeverityClass(
-                        selectedLog.severity
-                      )}`}
-                    >
-                      {capitalizeFirst(selectedLog.severity)}
-                    </span>
+                    Read-only admin view of AI result, clinical decision support,
+                    and doctor completion status.
                   </p>
                 </div>
 
-                <div className={styles.detailMiniBlock}>
-                  <strong>Confidence</strong>
-                  <p>{formatConfidence(selectedLog.confidence)}</p>
-                </div>
+                <button
+                  type="button"
+                  className={styles.modalCloseBtn}
+                  onClick={() => setSelectedLog(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className={styles.modalBody}>
+                <section className={styles.detailSection}>
+                  <h3>Patient and Appointment</h3>
+
+                  <div className={styles.detailGrid}>
+                    <div>
+                      <span>Patient</span>
+                      <strong>{selectedLog.patient_name}</strong>
+                    </div>
+
+                    <div>
+                      <span>Email</span>
+                      <strong>{selectedLog.patient_email}</strong>
+                    </div>
+
+                    <div>
+                      <span>Doctor</span>
+                      <strong>{selectedLog.doctor_name}</strong>
+                    </div>
+
+                    <div>
+                      <span>Appointment ID</span>
+                      <strong>{selectedLog.appointment_id || "N/A"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Diagnosis Report ID</span>
+                      <strong>{selectedLog.diagnosis_report_id || "N/A"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Created</span>
+                      <strong>{formatDate(selectedLog.created_at)}</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section className={styles.detailSection}>
+                  <h3>AI Result</h3>
+
+                  <div className={styles.detailGrid}>
+                    <div>
+                      <span>Condition</span>
+                      <strong>{selectedLog.condition}</strong>
+                    </div>
+
+                    <div>
+                      <span>Confidence</span>
+                      <strong>{formatConfidence(selectedLog.confidence)}</strong>
+                    </div>
+
+                    <div>
+                      <span>Severity</span>
+                      <strong>{capitalizeFirst(selectedLog.severity)}</strong>
+                    </div>
+
+                    <div>
+                      <span>Review Status</span>
+                      <strong>{capitalizeFirst(selectedLog.review_status)}</strong>
+                    </div>
+
+                    <div>
+                      <span>Reviewed At</span>
+                      <strong>{formatDate(selectedLog.reviewed_at)}</strong>
+                    </div>
+                  </div>
+
+                  {selectedLog.recommendation ? (
+                    <p className={styles.compactMeta}>
+                      <strong>Recommendation:</strong>{" "}
+                      {selectedLog.recommendation}
+                    </p>
+                  ) : null}
+                </section>
+
+                <section className={styles.detailSection}>
+                  <h3>AI Decision Support</h3>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Possible Conditions:</strong>{" "}
+                    {selectedLog.possible_conditions || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Key Findings:</strong>{" "}
+                    {selectedLog.key_findings || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Treatment Suggestions:</strong>{" "}
+                    {selectedLog.treatment_suggestions || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Prescription Suggestions:</strong>{" "}
+                    {selectedLog.prescription_suggestions || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Follow-up Suggestions:</strong>{" "}
+                    {selectedLog.follow_up_suggestions || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Red Flags:</strong> {selectedLog.red_flags || "N/A"}
+                  </p>
+                </section>
+
+                <section className={styles.detailSection}>
+                  <h3>Doctor Review and Final Report</h3>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Doctor Note:</strong>{" "}
+                    {selectedLog.doctor_note || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Final Diagnosis:</strong>{" "}
+                    {selectedLog.doctor_final_diagnosis ||
+                      selectedLog.final_diagnosis ||
+                      "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Doctor Prescription:</strong>{" "}
+                    {selectedLog.doctor_prescription ||
+                      selectedLog.prescription ||
+                      "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>After-appointment Notes:</strong>{" "}
+                    {selectedLog.after_appointment_notes ||
+                      selectedLog.doctor_notes ||
+                      "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Follow-up Plan:</strong>{" "}
+                    {selectedLog.follow_up_plan || "N/A"}
+                  </p>
+
+                  <p className={styles.compactMeta}>
+                    <strong>Next Visit Date:</strong>{" "}
+                    {selectedLog.next_visit_date || "N/A"}
+                  </p>
+                </section>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryAction}
+                  onClick={() => setSelectedLog(null)}
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </main>
+    </div>
   );
 }

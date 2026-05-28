@@ -26,6 +26,9 @@ export type Announcement = AnnouncementPayload & {
   id: string;
   created_at: string;
   updated_at?: string | null;
+  created_by?: string | null;
+  created_by_name?: string | null;
+  created_by_role?: string | null;
 };
 
 type ApiErrorResponse = {
@@ -97,31 +100,6 @@ async function requestApi<T>(
   return data as T;
 }
 
-async function requestFromPossiblePaths<T>(
-  paths: string[],
-  options: RequestInit = {}
-): Promise<T> {
-  let lastError: unknown = null;
-
-  for (const path of paths) {
-    try {
-      return await requestApi<T>(path, options);
-    } catch (error) {
-      lastError = error;
-
-      if (error instanceof ApiRequestError) {
-        if (error.status !== 404 && error.status !== 405) {
-          throw error;
-        }
-      }
-    }
-  }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Announcement request failed.");
-}
-
 function normalizeAnnouncement(raw: Record<string, unknown>): Announcement {
   return {
     id: String(raw.id ?? ""),
@@ -133,30 +111,29 @@ function normalizeAnnouncement(raw: Record<string, unknown>): Announcement {
     is_pinned: Boolean(raw.is_pinned),
     starts_at: raw.starts_at ? String(raw.starts_at) : null,
     expires_at: raw.expires_at ? String(raw.expires_at) : null,
-    created_at: raw.created_at ? String(raw.created_at) : new Date().toISOString(),
+    created_at: raw.created_at ? String(raw.created_at) : "",
     updated_at: raw.updated_at ? String(raw.updated_at) : null,
+    created_by: raw.created_by ? String(raw.created_by) : null,
+    created_by_name: raw.created_by_name ? String(raw.created_by_name) : null,
+    created_by_role: raw.created_by_role ? String(raw.created_by_role) : null,
   };
 }
 
-function extractAnnouncements(data: unknown): Announcement[] {
+function normalizeAnnouncements(data: unknown): Announcement[] {
   if (Array.isArray(data)) {
-    return data.map((item) => normalizeAnnouncement(item as Record<string, unknown>));
+    return data.map((item) =>
+      normalizeAnnouncement(item as Record<string, unknown>)
+    );
   }
 
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-
-    const list =
-      record.announcements ||
-      record.items ||
-      record.results ||
-      record.data;
-
-    if (Array.isArray(list)) {
-      return list.map((item) =>
-        normalizeAnnouncement(item as Record<string, unknown>)
-      );
-    }
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { announcements?: unknown[] }).announcements)
+  ) {
+    return (data as { announcements: unknown[] }).announcements.map((item) =>
+      normalizeAnnouncement(item as Record<string, unknown>)
+    );
   }
 
   return [];
@@ -166,83 +143,57 @@ function sortAnnouncements(items: Announcement[]) {
   return [...items].sort((a, b) => {
     if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
 
-    return (
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const bTime = new Date(b.created_at || "").getTime();
+    const aTime = new Date(a.created_at || "").getTime();
+
+    return bTime - aTime;
   });
 }
 
-const MANAGER_ENDPOINTS = [
-  "/announcements/",
-  "/admin/announcements",
-  "/staff/announcements",
-];
-
-const PATIENT_ENDPOINTS = [
-  "/announcements/patient-visible",
-  "/announcements/published",
-  "/patient/announcements",
-];
+const MANAGER_ENDPOINT = "/announcements";
+const PATIENT_VISIBLE_ENDPOINT = "/announcements/patient-visible";
 
 export async function getAnnouncements() {
-  const data = await requestFromPossiblePaths<unknown>(MANAGER_ENDPOINTS);
-
-  return sortAnnouncements(extractAnnouncements(data));
+  const data = await requestApi<unknown>(`${MANAGER_ENDPOINT}/`);
+  return sortAnnouncements(normalizeAnnouncements(data));
 }
 
 export async function getPatientVisibleAnnouncements() {
-  const data = await requestFromPossiblePaths<unknown>(PATIENT_ENDPOINTS);
-
-  return sortAnnouncements(extractAnnouncements(data));
+  const data = await requestApi<unknown>(PATIENT_VISIBLE_ENDPOINT);
+  return sortAnnouncements(normalizeAnnouncements(data));
 }
 
 export async function createAnnouncement(payload: AnnouncementPayload) {
-  const data = await requestFromPossiblePaths<unknown>(MANAGER_ENDPOINTS, {
+  const data = await requestApi<unknown>(`${MANAGER_ENDPOINT}/`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
-  const announcements = extractAnnouncements(data);
-
-  if (announcements.length > 0) return announcements[0];
-
-  if (data && typeof data === "object") {
-    return normalizeAnnouncement(data as Record<string, unknown>);
-  }
-
-  throw new Error("Announcement was created, but the response was invalid.");
+  return normalizeAnnouncement(data as Record<string, unknown>);
 }
 
 export async function updateAnnouncement(
   id: string,
-  payload: AnnouncementPayload
+  payload: Partial<AnnouncementPayload>
 ) {
-  const data = await requestFromPossiblePaths<unknown>(
-    MANAGER_ENDPOINTS.map((path) => `${path}/${id}`),
-    {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    }
-  );
+  const data = await requestApi<unknown>(`${MANAGER_ENDPOINT}/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 
-  const announcements = extractAnnouncements(data);
-
-  if (announcements.length > 0) return announcements[0];
-
-  if (data && typeof data === "object") {
-    return normalizeAnnouncement(data as Record<string, unknown>);
-  }
-
-  throw new Error("Announcement was updated, but the response was invalid.");
+  return normalizeAnnouncement(data as Record<string, unknown>);
 }
 
 export async function archiveAnnouncement(id: string) {
-  const data = await requestFromPossiblePaths<unknown>(
-    MANAGER_ENDPOINTS.map((path) => `${path}/${id}/archive`),
-    {
-      method: "PATCH",
-    }
-  );
+  const data = await requestApi<unknown>(`${MANAGER_ENDPOINT}/${id}/archive`, {
+    method: "PATCH",
+  });
 
-  return data;
+  return normalizeAnnouncement(data as Record<string, unknown>);
+}
+
+export async function deleteAnnouncement(id: string) {
+  return requestApi<{ message: string }>(`${MANAGER_ENDPOINT}/${id}`, {
+    method: "DELETE",
+  });
 }

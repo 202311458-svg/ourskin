@@ -119,8 +119,12 @@ export default function PatientHomePage() {
     const completedOnboarding =
       localStorage.getItem("patientOnboardingCompleted") === "true";
 
+    let onboardingTimer: number | undefined;
+
     if (!completedOnboarding) {
-      setShowOnboarding(true);
+      onboardingTimer = window.setTimeout(() => {
+        setShowOnboarding(true);
+      }, 0);
     }
 
     const handleNavbarToggle = (event: Event) => {
@@ -131,6 +135,10 @@ export default function PatientHomePage() {
     window.addEventListener("navbarToggle", handleNavbarToggle);
 
     return () => {
+      if (onboardingTimer !== undefined) {
+        window.clearTimeout(onboardingTimer);
+      }
+
       window.removeEventListener("navbarToggle", handleNavbarToggle);
     };
   }, [router]);
@@ -140,11 +148,12 @@ export default function PatientHomePage() {
       <Navbar />
 
       <main
-        className={`${styles.pageWrapper} ${navCollapsed ? styles.navCollapsed : ""
-          }`}
+        className={`${styles.pageWrapper} ${
+          navCollapsed ? styles.navCollapsed : ""
+        }`}
       >
         <div className={styles.contentWrapper}>
-          <section className={styles.homeHero}>
+          <section id="patient-tour-home" className={styles.homeHero}>
             <div className={styles.homeHeroContent}>
               <p className={styles.eyebrow}>Patient Home</p>
               <h1 className={styles.greetingTitle}>Welcome to OurSkin</h1>
@@ -152,6 +161,7 @@ export default function PatientHomePage() {
                 View clinic announcements, manage appointments, and access your
                 patient records from one clean workspace.
               </p>
+
               <button
                 type="button"
                 className={styles.secondaryButton}
@@ -165,8 +175,10 @@ export default function PatientHomePage() {
               <span className={styles.homeHeroIcon}>
                 <FaCalendarAlt />
               </span>
+
               <div>
                 <p>Need a visit?</p>
+
                 <button
                   id="patient-tour-book-now"
                   type="button"
@@ -184,7 +196,9 @@ export default function PatientHomePage() {
                 key={action.title}
                 id={action.targetId}
                 type="button"
-                className={`${styles.homeActionCard} ${action.primary ? styles.homeActionPrimary : ""}`}
+                className={`${styles.homeActionCard} ${
+                  action.primary ? styles.homeActionPrimary : ""
+                }`}
                 onClick={() => router.push(action.href)}
               >
                 <span className={styles.homeActionIcon}>{action.icon}</span>

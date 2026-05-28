@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   FaTachometerAlt,
@@ -23,24 +23,27 @@ import {
 import styles from "@/app/styles/navbar.module.css";
 import { sidebarState } from "@/app/state/sidebarState";
 
-export default function AdminNavbar() {
-  const router = useRouter();
-  const path = usePathname();
+type AdminNavItem = {
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+};
 
-  const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { darkMode, toggleDarkMode } = useDarkMode();
-
-const navItems = [
+const navItems: AdminNavItem[] = [
   {
     name: "Dashboard",
     path: "/pages/admin/dashboard",
     icon: <FaTachometerAlt />,
   },
   {
-    name: "Users",
+    name: "Patients & Users",
     path: "/pages/admin/users",
     icon: <FaUsersCog />,
+  },
+  {
+    name: "Schedules",
+    path: "/pages/admin/schedules",
+    icon: <FaCalendarCheck />,
   },
   {
     name: "Appointments",
@@ -74,26 +77,34 @@ const navItems = [
   },
 ];
 
-useEffect(() => {
-  document.body.classList.toggle("navCollapsed", collapsed);
+export default function AdminNavbar() {
+  const router = useRouter();
+  const pathname = usePathname();
 
-  return () => {
-    document.body.classList.remove("navCollapsed");
-  };
-}, [collapsed]);
+  const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { darkMode, toggleDarkMode } = useDarkMode();
 
-useEffect(() => {
-  const unsub = sidebarState.subscribe((value) => {
-    setCollapsed(value);
-    document.body.classList.toggle("navCollapsed", value);
-  });
+  useEffect(() => {
+    document.body.classList.toggle("navCollapsed", collapsed);
 
-  document.body.classList.toggle("navCollapsed", sidebarState.collapsed);
+    return () => {
+      document.body.classList.remove("navCollapsed");
+    };
+  }, [collapsed]);
 
-  return () => {
-    unsub();
-  };
-}, []);
+  useEffect(() => {
+    const unsubscribe = sidebarState.subscribe((value) => {
+      setCollapsed(value);
+      document.body.classList.toggle("navCollapsed", value);
+    });
+
+    document.body.classList.toggle("navCollapsed", sidebarState.collapsed);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const toggleCollapse = () => {
     sidebarState.toggle();
@@ -108,6 +119,16 @@ useEffect(() => {
   const goToPage = (targetPath: string) => {
     router.push(targetPath);
     setMobileOpen(false);
+  };
+
+  const isActiveRoute = (targetPath: string) => {
+    if (!pathname) return false;
+
+    if (targetPath === "/pages/admin/dashboard") {
+      return pathname === targetPath;
+    }
+
+    return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
   };
 
   return (
@@ -139,7 +160,7 @@ useEffect(() => {
               type="button"
               key={item.path}
               className={`${styles.navItem} ${
-                path === item.path ? styles.active : ""
+                isActiveRoute(item.path) ? styles.active : ""
               }`}
               onClick={() => goToPage(item.path)}
             >

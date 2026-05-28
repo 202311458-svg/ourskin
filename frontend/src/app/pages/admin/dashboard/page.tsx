@@ -4,49 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
-import { API_BASE_URL } from "@/lib/api";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
+import {
+  AdminDashboardStats,
+  AdminFollowUp,
+  getAdminDashboard,
+  getAdminFollowUps,
+  updateAdminFollowUp,
+} from "@/lib/admin-api";
 import styles from "@/app/styles/admin.module.css";
 
-type DashboardStats = {
-  total_users: number;
-  total_patients: number;
-  total_staff: number;
-  total_doctors: number;
-  total_appointments: number;
-  pending_appointments: number;
-  approved_appointments: number;
-  total_ai_logs: number;
-};
-
-type DashboardApiResponse = Partial<DashboardStats> & {
-  detail?: string;
-  message?: string;
-};
-
-type FollowUp = {
-  id: number;
-  patient_id?: number | null;
-  patient_name?: string | null;
-  patient_email?: string | null;
-  doctor_id?: number | null;
-  doctor_name?: string | null;
-  appointment_id?: number | null;
-  appointment_services?: string | null;
-  appointment_date?: string | null;
-  appointment_time?: string | null;
-  follow_up_date: string;
-  status?: string | null;
-};
-
-type ApiErrorResponse = {
-  detail?: string;
-  message?: string;
-};
-
-const API_BASE = API_BASE_URL;
-
-const EMPTY_STATS: DashboardStats = {
+const EMPTY_STATS: AdminDashboardStats = {
   total_users: 0,
   total_patients: 0,
   total_staff: 0,
@@ -56,25 +24,6 @@ const EMPTY_STATS: DashboardStats = {
   approved_appointments: 0,
   total_ai_logs: 0,
 };
-
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
-  if (data?.detail) return data.detail;
-  if (data?.message) return data.message;
-  return fallback;
-}
 
 function getPercent(value: number, total: number) {
   if (!total || total <= 0) return 0;
@@ -93,49 +42,9 @@ function normalizeStatus(status?: string | null) {
 
   if (cleanStatus === "scheduled") return "Scheduled";
   if (cleanStatus === "completed") return "Completed";
-  if (cleanStatus === "pending") return "Pending";
-  if (cleanStatus === "approved") return "Approved";
-  if (cleanStatus === "cancelled") return "Cancelled";
-  if (cleanStatus === "canceled") return "Cancelled";
-  if (cleanStatus === "declined") return "Declined";
+  if (cleanStatus === "cancelled" || cleanStatus === "canceled") return "Cancelled";
 
   return status?.trim() || "Unknown";
-}
-
-function getFollowUpsArray(data: unknown): FollowUp[] {
-  if (Array.isArray(data)) return data as FollowUp[];
-
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { follow_ups?: unknown }).follow_ups)
-  ) {
-    return (data as { follow_ups: FollowUp[] }).follow_ups;
-  }
-
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { followUps?: unknown }).followUps)
-  ) {
-    return (data as { followUps: FollowUp[] }).followUps;
-  }
-
-  return [];
-}
-
-function uniqueFollowUpsById(followUps: FollowUp[]) {
-  return Array.from(
-    new Map(
-      followUps.map((item) => [
-        item.id,
-        {
-          ...item,
-          status: normalizeStatus(item.status),
-        },
-      ])
-    ).values()
-  );
 }
 
 function formatDate(value?: string | null) {
@@ -155,9 +64,9 @@ function formatDate(value?: string | null) {
 function formatTime(value?: string | null) {
   if (!value) return "";
 
-  const parts = value.split(":");
-  const hour = Number(parts[0]);
-  const minute = Number(parts[1]);
+  const [hourText, minuteText] = value.split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
 
   if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
 
@@ -171,18 +80,19 @@ function formatTime(value?: string | null) {
   });
 }
 
-function getFollowUpTiming(item: FollowUp) {
+function getFollowUpTiming(item: AdminFollowUp) {
   const today = getTodayInputDate();
   const status = (item.status || "").toLowerCase();
 
   if (status === "completed") return "Completed";
+  if (status === "cancelled" || status === "canceled") return "Cancelled";
   if (item.follow_up_date < today) return "Overdue";
   if (item.follow_up_date === today) return "Due Today";
 
   return "Upcoming";
 }
 
-function getFollowUpBadgeClass(item: FollowUp) {
+function getFollowUpBadgeClass(item: AdminFollowUp) {
   const timing = getFollowUpTiming(item);
 
   if (timing === "Completed") return styles.followUpBadgeCompleted;
@@ -192,43 +102,42 @@ function getFollowUpBadgeClass(item: FollowUp) {
   return styles.followUpBadgeUpcoming;
 }
 
-function canCompleteFollowUp(item: FollowUp) {
+function canCompleteFollowUp(item: AdminFollowUp) {
   const today = getTodayInputDate();
   const status = (item.status || "").toLowerCase();
 
   return status !== "completed" && item.follow_up_date <= today;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+function uniqueFollowUpsById(followUps: AdminFollowUp[]) {
+  return Array.from(
+    new Map(
+      followUps.map((item) => [
+        item.id,
+        {
+          ...item,
+          status: normalizeStatus(item.status),
+        },
+      ])
+    ).values()
+  );
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
 
-  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
-  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
+  const [followUps, setFollowUps] = useState<AdminFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(
     null
   );
-
-  const fetchFollowUps = async (token: string) => {
-    const res = await fetch(`${API_BASE}/doctor/follow-ups`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await safeJson<unknown>(res);
-
-    if (!res.ok) {
-      console.error("/doctor/follow-ups request failed:", {
-        status: res.status,
-        data,
-      });
-      return [];
-    }
-
-    return uniqueFollowUpsById(getFollowUpsArray(data));
-  };
 
   const loadDashboard = useCallback(
     async (showLoader = true) => {
@@ -244,28 +153,17 @@ export default function AdminDashboardPage() {
         if (showLoader) setLoading(true);
         setError("");
 
-        const [statsRes, followUpData] = await Promise.all([
-          fetch(`${API_BASE}/admin/dashboard`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetchFollowUps(token),
+        const [dashboardData, followUpData] = await Promise.all([
+          getAdminDashboard(),
+          getAdminFollowUps(),
         ]);
-
-        const data = await safeJson<DashboardApiResponse>(statsRes);
-
-        if (!statsRes.ok) {
-          throw new Error(
-            getApiErrorMessage(data, "Unable to load dashboard data")
-          );
-        }
 
         setStats({
           ...EMPTY_STATS,
-          ...(data || {}),
+          ...(dashboardData || {}),
         });
-        setFollowUps(uniqueFollowUpsById(followUpData));
+
+        setFollowUps(uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : []));
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load dashboard."));
       } finally {
@@ -287,23 +185,16 @@ export default function AdminDashboardPage() {
 
   const dashboardInsights = useMemo(() => {
     const internalUsers = stats.total_staff + stats.total_doctors;
-    const appointmentApprovalRate = getPercent(
-      stats.approved_appointments,
-      stats.total_appointments
-    );
-    const pendingRate = getPercent(
-      stats.pending_appointments,
-      stats.total_appointments
-    );
-    const patientShare = getPercent(stats.total_patients, stats.total_users);
-    const internalShare = getPercent(internalUsers, stats.total_users);
 
     return {
       internalUsers,
-      appointmentApprovalRate,
-      pendingRate,
-      patientShare,
-      internalShare,
+      appointmentApprovalRate: getPercent(
+        stats.approved_appointments,
+        stats.total_appointments
+      ),
+      pendingRate: getPercent(stats.pending_appointments, stats.total_appointments),
+      patientShare: getPercent(stats.total_patients, stats.total_users),
+      internalShare: getPercent(internalUsers, stats.total_users),
     };
   }, [stats]);
 
@@ -341,19 +232,19 @@ export default function AdminDashboardPage() {
     {
       label: "Total Users",
       value: stats.total_users,
-      helper: "All registered accounts",
+      helper: "All registered platform accounts",
       className: styles.pinkAccent,
     },
     {
       label: "Patients",
       value: stats.total_patients,
-      helper: `${dashboardInsights.patientShare}% of total users`,
+      helper: `${dashboardInsights.patientShare}% of all users`,
       className: styles.greenAccent,
     },
     {
       label: "Doctors",
       value: stats.total_doctors,
-      helper: "Active clinical users",
+      helper: "Clinical users in the system",
       className: styles.blueAccent,
     },
     {
@@ -366,7 +257,7 @@ export default function AdminDashboardPage() {
 
   const operationalCards = [
     {
-      label: "Total Appointments",
+      label: "Appointments",
       value: stats.total_appointments,
       helper: "All appointment records",
       className: styles.pinkAccent,
@@ -374,14 +265,8 @@ export default function AdminDashboardPage() {
     {
       label: "Pending Requests",
       value: stats.pending_appointments,
-      helper:
-        stats.pending_appointments > 0
-          ? "Needs admin review"
-          : "No pending requests",
-      className:
-        stats.pending_appointments > 0
-          ? styles.orangeAccent
-          : styles.greenAccent,
+      helper: `${dashboardInsights.pendingRate}% still need action`,
+      className: stats.pending_appointments > 0 ? styles.orangeAccent : styles.greenAccent,
     },
     {
       label: "Approved",
@@ -390,24 +275,20 @@ export default function AdminDashboardPage() {
       className: styles.greenAccent,
     },
     {
-      label: "Follow-ups Due",
+      label: "AI Logs",
+      value: stats.total_ai_logs,
+      helper: "AI-assisted skin analysis records",
+      className: styles.blueAccent,
+    },
+    {
+      label: "Due Follow-ups",
       value: dueFollowUps.length,
-      helper:
-        dueFollowUps.length > 0
-          ? "Ready for completion review"
-          : "No due follow-ups",
+      helper: dueFollowUps.length > 0 ? "Needs admin monitoring" : "No due follow-ups",
       className: dueFollowUps.length > 0 ? styles.orangeAccent : styles.blueAccent,
     },
   ];
 
   async function markFollowUpCompleted(followUpId: number) {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      router.push("/");
-      return;
-    }
-
     const selectedFollowUp = followUps.find((item) => item.id === followUpId);
 
     if (!selectedFollowUp) {
@@ -423,26 +304,9 @@ export default function AdminDashboardPage() {
     try {
       setUpdatingFollowUpId(followUpId);
 
-      const res = await fetch(`${API_BASE}/doctor/follow-ups/${followUpId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: "Completed" }),
+      const data = await updateAdminFollowUp(followUpId, {
+        status: "Completed",
       });
-
-      const data = await safeJson<
-        {
-          follow_up?: FollowUp;
-        } & ApiErrorResponse
-      >(res);
-
-      if (!res.ok) {
-        throw new Error(
-          getApiErrorMessage(data, "Unable to complete follow-up schedule.")
-        );
-      }
 
       setFollowUps((prev) =>
         uniqueFollowUpsById(
@@ -483,17 +347,11 @@ export default function AdminDashboardPage() {
             </p>
 
             <div className={styles.heroActions}>
-              <Link
-                href="/pages/admin/appointments"
-                className={styles.primaryAction}
-              >
+              <Link href="/pages/admin/appointments" className={styles.primaryAction}>
                 Review Appointments
               </Link>
 
-              <Link
-                href="/pages/admin/audit-logs"
-                className={styles.secondaryAction}
-              >
+              <Link href="/pages/admin/audit-logs" className={styles.secondaryAction}>
                 View Audit Logs
               </Link>
             </div>
@@ -584,7 +442,7 @@ export default function AdminDashboardPage() {
 
                           {(item.appointment_date || item.appointment_time) && (
                             <small>
-                              Related Visit: {" "}
+                              Related Visit:{" "}
                               {item.appointment_date
                                 ? formatDate(item.appointment_date)
                                 : "No date"}{" "}
@@ -643,8 +501,8 @@ export default function AdminDashboardPage() {
                   <p>
                     {dashboardInsights.pendingRate}% of appointment records are
                     pending, while {dashboardInsights.internalShare}% of users
-                    are internal clinic users. Completed follow-ups: {" "}
-                    {completedFollowUps.length}. Active follow-ups: {" "}
+                    are internal clinic users. Completed follow-ups:{" "}
+                    {completedFollowUps.length}. Active follow-ups:{" "}
                     {activeFollowUps.length}.
                   </p>
                 </div>

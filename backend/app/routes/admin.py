@@ -58,6 +58,20 @@ def require_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+def format_time(value):
+    if value is None:
+        return None
+
+    return value.strftime("%H:%M")
+
+
+def format_date(value):
+    if value is None:
+        return None
+
+    return value.isoformat()
+
+
 def serialize_staff(user: User):
     return {
         "id": user.id,
@@ -70,7 +84,92 @@ def serialize_staff(user: User):
         "phone": user.contact,
         "contact": user.contact,
         "profile_image": user.profile_image,
-        "created_at": user.created_at,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+def serialize_admin_user(user: User):
+    return {
+        "id": user.id,
+        "name": user.name,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "date_of_birth": user.date_of_birth.isoformat() if user.date_of_birth else None,
+        "is_minor": user.is_minor,
+        "address": user.address,
+
+        "email": user.email,
+        "contact": user.contact,
+        "role": user.role,
+        "is_verified": user.is_verified,
+        "status": user.status or "Active",
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+
+        "guardian_first_name": user.guardian_first_name,
+        "guardian_last_name": user.guardian_last_name,
+        "guardian_relationship": user.guardian_relationship,
+        "guardian_contact": user.guardian_contact,
+        "guardian_email": user.guardian_email,
+        "guardian_consent": user.guardian_consent,
+
+        "department": user.department,
+        "profile_image": user.profile_image,
+        "specialty": user.specialty,
+        "availability": user.availability,
+        "bio": user.bio,
+    }
+
+
+def serialize_admin_appointment(appointment: AppointmentModel, db: Session):
+    patient = None
+
+    if appointment.patient_id:
+        patient = db.query(User).filter(User.id == appointment.patient_id).first()
+
+    return {
+        "id": appointment.id,
+        "patient_id": appointment.patient_id,
+        "doctor_id": appointment.doctor_id,
+        "schedule_id": appointment.schedule_id,
+        "service_id": appointment.service_id,
+
+        "patient_name": appointment.patient_name,
+        "patient_email": appointment.patient_email,
+        "patient_contact": appointment.patient_contact,
+        "patient_address": appointment.patient_address,
+        "patient_age": appointment.patient_age,
+        "patient_age_label": appointment.patient_age_label,
+
+        "is_minor": patient.is_minor if patient else False,
+        "guardian_first_name": patient.guardian_first_name if patient else None,
+        "guardian_last_name": patient.guardian_last_name if patient else None,
+        "guardian_relationship": patient.guardian_relationship if patient else None,
+        "guardian_contact": patient.guardian_contact if patient else None,
+        "guardian_email": patient.guardian_email if patient else None,
+        "guardian_consent": patient.guardian_consent if patient else False,
+
+        "doctor_name": appointment.doctor_name or "To be assigned by staff",
+
+        "date": format_date(appointment.date),
+        "time": format_time(appointment.time),
+        "end_time": format_time(appointment.end_time),
+        "services": appointment.services,
+
+        "appointment_type": appointment.appointment_type,
+        "consultation_mode": appointment.consultation_mode,
+        "concern": appointment.concern,
+        "is_initial_evaluation_request": appointment.is_initial_evaluation_request,
+
+        "status": appointment.status,
+        "cancel_reason": appointment.cancel_reason,
+
+        "patient_instruction": appointment.patient_instruction,
+        "approval_email_sent": appointment.approval_email_sent,
+        "approval_email_sent_at": (
+            appointment.approval_email_sent_at.isoformat()
+            if appointment.approval_email_sent_at
+            else None
+        ),
     }
 
 
@@ -134,20 +233,7 @@ def get_users(
     current_user: User = Depends(require_admin),
 ):
     users = db.query(User).order_by(User.created_at.desc()).all()
-
-    return [
-        {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "contact": user.contact,
-            "role": user.role,
-            "is_verified": user.is_verified,
-            "status": user.status or "Active",
-            "created_at": user.created_at,
-        }
-        for user in users
-    ]
+    return [serialize_admin_user(user) for user in users]
 
 
 @router.get("/appointments")
@@ -157,24 +243,11 @@ def get_appointments(
 ):
     appointments = (
         db.query(AppointmentModel)
-        .order_by(AppointmentModel.date.desc())
+        .order_by(AppointmentModel.id.desc())
         .all()
     )
 
-    return [
-        {
-            "id": appointment.id,
-            "patient_name": appointment.patient_name,
-            "patient_email": appointment.patient_email,
-            "doctor_name": appointment.doctor_name,
-            "date": str(appointment.date),
-            "time": str(appointment.time),
-            "services": appointment.services,
-            "status": appointment.status,
-            "cancel_reason": appointment.cancel_reason,
-        }
-        for appointment in appointments
-    ]
+    return [serialize_admin_appointment(appointment, db) for appointment in appointments]
 
 
 @router.put("/appointments/{id}/status")
@@ -184,6 +257,15 @@ def update_appointment_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
+    """
+    Kept for backward compatibility.
+
+    New admin frontend should use:
+    PUT /appointments/{id}/status
+
+    That shared endpoint supports patient instructions, approval email sending,
+    No-Show, initial-evaluation approval validation, and role-based transitions.
+    """
     appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
 
     if not appointment:
@@ -217,6 +299,7 @@ def update_appointment_status(
 
     return {
         "message": "Appointment status updated successfully",
+        "appointment": serialize_admin_appointment(appointment, db),
         "id": appointment.id,
         "status": appointment.status,
         "cancel_reason": appointment.cancel_reason,
@@ -278,7 +361,6 @@ def get_ai_logs(
             report_map[report.appointment_id] = report
 
     allowed_severities = ["mild", "moderate", "severe"]
-
     results = []
 
     for log in logs:
@@ -395,9 +477,6 @@ def get_admin_reports(
     ai_records = db.query(SkinAnalysis).all()
     diagnosis_reports = db.query(DiagnosisReport).all()
 
-    # -------------------------------------------------
-    # Monthly Appointment Summary
-    # -------------------------------------------------
     monthly_data = defaultdict(
         lambda: {
             "total": 0,
@@ -461,9 +540,6 @@ def get_admin_reports(
     for item in monthly_appointments:
         item.pop("_sort_key", None)
 
-    # -------------------------------------------------
-    # AI Skin Condition Summary
-    # -------------------------------------------------
     condition_groups = defaultdict(
         lambda: {
             "cases": 0,
@@ -515,9 +591,6 @@ def get_admin_reports(
 
     ai_condition_summary.sort(key=lambda item: item["cases"], reverse=True)
 
-    # -------------------------------------------------
-    # User Growth / User Summary
-    # -------------------------------------------------
     user_groups = defaultdict(
         lambda: {
             "total": 0,
@@ -561,9 +634,6 @@ def get_admin_reports(
 
     user_growth.sort(key=lambda item: item["role"])
 
-    # -------------------------------------------------
-    # Completed vs Cancelled Appointments
-    # -------------------------------------------------
     completed_count = 0
     cancelled_count = 0
 
@@ -576,7 +646,6 @@ def get_admin_reports(
             cancelled_count += 1
 
     completed_cancelled_total = completed_count + cancelled_count
-
     completion_rate = 0
     cancellation_rate = 0
 
@@ -592,9 +661,6 @@ def get_admin_reports(
         "cancellation_rate": cancellation_rate,
     }
 
-    # -------------------------------------------------
-    # Doctor Activity
-    # -------------------------------------------------
     doctor_activity_map = {}
 
     doctors = [
@@ -616,7 +682,6 @@ def get_admin_reports(
 
     for appointment in appointments:
         appointments_by_id[appointment.id] = appointment
-
         doctor_name = appointment.doctor_name or "Unassigned"
 
         if doctor_name not in doctor_activity_map:
@@ -660,7 +725,6 @@ def get_admin_reports(
 
         review_status = (getattr(record, "review_status", "") or "").strip().lower()
         reviewed_at = getattr(record, "reviewed_at", None)
-
         has_diagnosis_report = record.appointment_id in report_appointment_ids
 
         is_reviewed = (
@@ -675,7 +739,6 @@ def get_admin_reports(
             doctor_activity_map[doctor_name]["pending_ai_reviews"] += 1
 
     doctor_activity = list(doctor_activity_map.values())
-
     doctor_activity.sort(
         key=lambda item: item["assigned_appointments"],
         reverse=True,
@@ -833,7 +896,6 @@ def create_staff_from_user(
         )
 
     previous_role = user.role
-
     user.role = role
     user.status = "Active"
 
@@ -864,10 +926,6 @@ def update_staff(
         raise HTTPException(status_code=404, detail="Staff not found")
 
     old_name = user.name
-    old_role = user.role
-    old_department = user.department
-    old_contact = user.contact
-
     new_name = payload.full_name or payload.name
     new_contact = payload.phone or payload.contact
 
