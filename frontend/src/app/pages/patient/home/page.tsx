@@ -13,6 +13,7 @@ import {
 
 import Navbar from "@/app/components/Navbar";
 import PatientAnnouncements from "@/app/components/PatientAnnouncements";
+import PatientOnboarding from "@/app/components/PatientOnboarding";
 import styles from "@/app/styles/patient.module.css";
 
 type HomeAction = {
@@ -21,11 +22,58 @@ type HomeAction = {
   href: string;
   icon: React.ReactNode;
   primary?: boolean;
+  targetId?: string;
+};
+
+type OnboardingStep = {
+  title: string;
+  description: string;
+  targetId?: string;
 };
 
 export default function PatientHomePage() {
   const router = useRouter();
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const onboardingSteps: OnboardingStep[] = [
+    {
+      title: "Welcome to your homepage",
+      description:
+        "This is your patient homepage. From here you can access announcements, book visits, and jump straight into your clinic tools.",
+      targetId: "patient-tour-home",
+    },
+    {
+      title: "This is your dashboard",
+      description:
+        "Use the Dashboard button to see upcoming appointments, follow-ups, and quick clinic updates.",
+      targetId: "patient-tour-dashboard",
+    },
+    {
+      title: "Quick booking",
+      description:
+        "Click Book Appointment in the sidebar to request a new visit with your preferred service.",
+      targetId: "patient-tour-book",
+    },
+    {
+      title: "Appointment history",
+      description:
+        "Use the Appointment History button to review past visits, approvals, and visit status.",
+      targetId: "patient-tour-history",
+    },
+    {
+      title: "Medical records",
+      description:
+        "Open Medical Records to review doctor notes, completed reports, and follow-up details.",
+      targetId: "patient-tour-records",
+    },
+    {
+      title: "Your profile",
+      description:
+        "Keep your profile information updated so the clinic has your latest contact and skin details.",
+      targetId: "patient-tour-profile",
+    },
+  ];
 
   const actions: HomeAction[] = [
     {
@@ -34,24 +82,28 @@ export default function PatientHomePage() {
       href: "/pages/patient/book",
       icon: <FaPlusCircle />,
       primary: true,
+      targetId: "patient-tour-book-appointment",
     },
     {
       title: "Appointment History",
       description: "Review your previous and upcoming appointment records.",
       href: "/pages/patient/history",
       icon: <FaHistory />,
+      targetId: "patient-tour-appointment-history",
     },
     {
       title: "Medical Records",
       description: "Access doctor-reviewed records after completed visits.",
       href: "/pages/patient/records",
       icon: <FaFileMedical />,
+      targetId: "patient-tour-medical-records",
     },
     {
       title: "Profile",
       description: "Keep your contact and patient information updated.",
       href: "/pages/patient/profile",
       icon: <FaUserCircle />,
+      targetId: "patient-tour-profile",
     },
   ];
 
@@ -62,6 +114,13 @@ export default function PatientHomePage() {
     if (!token || role?.toLowerCase() !== "patient") {
       router.replace("/");
       return;
+    }
+
+    const completedOnboarding =
+      localStorage.getItem("patientOnboardingCompleted") === "true";
+
+    if (!completedOnboarding) {
+      setShowOnboarding(true);
     }
 
     const handleNavbarToggle = (event: Event) => {
@@ -81,9 +140,8 @@ export default function PatientHomePage() {
       <Navbar />
 
       <main
-        className={`${styles.pageWrapper} ${
-          navCollapsed ? styles.navCollapsed : ""
-        }`}
+        className={`${styles.pageWrapper} ${navCollapsed ? styles.navCollapsed : ""
+          }`}
       >
         <div className={styles.contentWrapper}>
           <section className={styles.homeHero}>
@@ -94,6 +152,13 @@ export default function PatientHomePage() {
                 View clinic announcements, manage appointments, and access your
                 patient records from one clean workspace.
               </p>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setShowOnboarding(true)}
+              >
+                Show patient tutorial
+              </button>
             </div>
 
             <div className={styles.homeHeroPanel}>
@@ -103,6 +168,7 @@ export default function PatientHomePage() {
               <div>
                 <p>Need a visit?</p>
                 <button
+                  id="patient-tour-book-now"
                   type="button"
                   onClick={() => router.push("/pages/patient/book")}
                 >
@@ -116,10 +182,9 @@ export default function PatientHomePage() {
             {actions.map((action) => (
               <button
                 key={action.title}
+                id={action.targetId}
                 type="button"
-                className={`${styles.homeActionCard} ${
-                  action.primary ? styles.homeActionPrimary : ""
-                }`}
+                className={`${styles.homeActionCard} ${action.primary ? styles.homeActionPrimary : ""}`}
                 onClick={() => router.push(action.href)}
               >
                 <span className={styles.homeActionIcon}>{action.icon}</span>
@@ -139,6 +204,12 @@ export default function PatientHomePage() {
           </section>
         </div>
       </main>
+
+      <PatientOnboarding
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        steps={onboardingSteps}
+      />
     </>
   );
 }

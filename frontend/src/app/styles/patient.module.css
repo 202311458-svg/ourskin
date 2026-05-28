@@ -26,7 +26,11 @@
   margin-left: 220px;
   padding: 34px 42px 60px;
   background:
-    radial-gradient(circle at top left, rgba(130, 51, 76, 0.1), transparent 32%),
+    radial-gradient(
+      circle at top left,
+      rgba(130, 51, 76, 0.1),
+      transparent 32%
+    ),
     linear-gradient(135deg, #fff8fb 0%, var(--patient-bg) 45%, #f3edf0 100%);
   color: var(--patient-text);
   box-sizing: border-box;
@@ -57,7 +61,11 @@
   --patient-shadow-hover: 0 24px 60px rgba(0, 0, 0, 0.48);
 
   background:
-    radial-gradient(circle at top left, rgba(244, 114, 182, 0.12), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(244, 114, 182, 0.12),
+      transparent 34%
+    ),
     linear-gradient(135deg, #0f1117 0%, var(--patient-bg) 48%, #12151f 100%);
   color: var(--patient-text);
 }
@@ -186,7 +194,6 @@
   line-height: 1.65;
 }
 
-
 .btnBook,
 .primaryButton,
 .secondaryButton,
@@ -242,7 +249,8 @@
 }
 
 .secondaryButton {
-  border: 1px solid color-mix(in srgb, var(--patient-primary) 34%, var(--patient-border));
+  border: 1px solid
+    color-mix(in srgb, var(--patient-primary) 34%, var(--patient-border));
   background: var(--patient-card);
   color: var(--patient-primary);
 }
@@ -250,6 +258,153 @@
 .secondaryButton:hover {
   background: var(--patient-primary-soft);
   transform: translateY(-1px);
+}
+
+.onboardingOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(247, 243, 245, 0.72);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.onboardingCard {
+  position: fixed;
+  z-index: 63;
+  width: min(360px, calc(100% - 48px));
+  background: var(--patient-card);
+  border: 1px solid var(--patient-border);
+  box-shadow: var(--patient-shadow);
+  border-radius: 22px;
+  padding: 24px;
+  pointer-events: auto;
+  transition:
+    transform 0.25s ease,
+    left 0.25s ease,
+    top 0.25s ease;
+}
+
+.onboardingHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.onboardingClose {
+  border: none;
+  background: transparent;
+  color: var(--patient-muted);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.onboardingDescription {
+  margin: 0 0 24px;
+  color: var(--patient-text);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.onboardingProgress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.onboardingDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--patient-border);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.onboardingDotActive {
+  background: var(--patient-primary);
+  transform: scale(1.2);
+}
+
+.onboardingHighlight {
+  position: absolute;
+  z-index: 2147483648;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 0 10px rgba(255, 255, 255, 0.15),
+    0 0 0 24px rgba(130, 51, 76, 0.12),
+    0 0 28px rgba(130, 51, 76, 0.18),
+    0 20px 70px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  animation: onboardingPulse 1.6s ease-in-out infinite;
+}
+
+:global(body.patientOnboardingActive) #patient-navbar {
+  z-index: 100 !important;
+}
+
+.onboardingTooltip {
+  position: absolute;
+  z-index: 20001;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--patient-card);
+  border: 1px solid var(--patient-border);
+  box-shadow: 0 12px 34px rgba(15, 17, 23, 0.12);
+  color: var(--patient-heading);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.onboardingTooltipLabel {
+  margin: 0;
+  color: var(--patient-muted);
+}
+
+.onboardingTooltipArrow {
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--patient-card);
+}
+
+@keyframes onboardingPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(130, 51, 76, 0.14),
+      0 0 30px rgba(130, 51, 76, 0.24);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(130, 51, 76, 0.06),
+      0 0 36px rgba(130, 51, 76, 0.28);
+  }
+}
+
+.onboardingActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.onboardingActionGroup {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .inlineLink {
@@ -262,6 +417,22 @@
   text-decoration: underline;
 }
 
+.onboardingPrimary {
+  background: var(--patient-primary, #82334c);
+  color: #ffffff;
+  box-shadow: 0 10px 28px rgba(130, 51, 76, 0.22);
+  border: none;
+  /* Improve contrast and legibility across themes */
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+}
+
+.onboardingPrimary:hover {
+  background: rgba(110, 35, 60, 0.98);
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(130, 51, 76, 0.3);
+  transform: translateY(-1px);
+}
 
 .statusBadge,
 .pendingBadge,
@@ -389,7 +560,11 @@
   padding: 22px;
   border-radius: 22px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--patient-primary) 96%, #ffffff), #9f4668),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--patient-primary) 96%, #ffffff),
+      #9f4668
+    ),
     var(--patient-primary);
   color: #ffffff;
   overflow: hidden;
@@ -570,7 +745,6 @@
   color: #fca5a5;
 }
 
-
 .bookPage {
   display: flex;
   flex-direction: column;
@@ -692,7 +866,11 @@
 }
 
 .dayCell:hover {
-  border-color: color-mix(in srgb, var(--patient-primary) 46%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 46%,
+    var(--patient-border)
+  );
   background: var(--patient-primary-soft);
   transform: translateY(-1px);
 }
@@ -749,7 +927,11 @@
 
 .timeSlot:hover,
 .serviceCard:hover {
-  border-color: color-mix(in srgb, var(--patient-primary) 46%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 46%,
+    var(--patient-border)
+  );
   background: var(--patient-primary-soft);
   transform: translateY(-1px);
 }
@@ -850,7 +1032,9 @@
   padding: 24px;
   border: 1px solid var(--patient-border);
   border-radius: var(--patient-radius-lg);
-  background: linear-gradient(180deg, var(--patient-primary-soft), transparent), var(--patient-bg-soft);
+  background:
+    linear-gradient(180deg, var(--patient-primary-soft), transparent),
+    var(--patient-bg-soft);
 }
 
 .doctorSidebar h4 {
@@ -951,7 +1135,11 @@
 }
 
 .historyContainer .card:hover {
-  border-color: color-mix(in srgb, var(--patient-primary) 28%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 28%,
+    var(--patient-border)
+  );
   box-shadow: var(--patient-shadow-hover);
   transform: translateY(-2px);
 }
@@ -1051,7 +1239,11 @@
 
 .recordFieldHighlight {
   background: var(--patient-primary-soft);
-  border-color: color-mix(in srgb, var(--patient-primary) 34%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 34%,
+    var(--patient-border)
+  );
 }
 
 .recordValue {
@@ -1068,12 +1260,12 @@
   font-weight: 850;
 }
 
-
 .followUpPanel,
 .filterPanel {
   margin-bottom: 22px;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--patient-primary) 28%, var(--patient-border));
+  border: 1px solid
+    color-mix(in srgb, var(--patient-primary) 28%, var(--patient-border));
   border-radius: 20px;
   background:
     linear-gradient(135deg, var(--patient-primary-soft), transparent),
@@ -1108,7 +1300,11 @@
 }
 
 .filterButton:hover {
-  border-color: color-mix(in srgb, var(--patient-primary) 45%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 45%,
+    var(--patient-border)
+  );
   background: var(--patient-primary-soft);
   color: var(--patient-primary);
   transform: translateY(-1px);
@@ -1124,7 +1320,6 @@
   background: var(--patient-primary-hover);
   color: #ffffff;
 }
-
 
 @media (max-width: 1180px) {
   .dashboardGrid,
@@ -1268,7 +1463,6 @@
     height: 140px;
   }
 }
-
 
 /* Patient Medical Records Table */
 /* ================================
@@ -1450,7 +1644,11 @@
   overflow-x: hidden;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at top left, rgba(130, 51, 76, 0.1), transparent 32%),
+    radial-gradient(
+      circle at top left,
+      rgba(130, 51, 76, 0.1),
+      transparent 32%
+    ),
     linear-gradient(135deg, #fff8fb 0%, var(--booking-bg) 45%, #f3edf0 100%);
   color: var(--booking-text);
   transition:
@@ -1474,7 +1672,11 @@
   --booking-shadow: var(--shadow-soft, 0 18px 45px rgba(0, 0, 0, 0.35));
 
   background:
-    radial-gradient(circle at top left, rgba(244, 114, 182, 0.12), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(244, 114, 182, 0.12),
+      transparent 34%
+    ),
     linear-gradient(135deg, #0f1117 0%, var(--booking-bg) 48%, #12151f 100%);
   color: var(--booking-text);
 }
@@ -1542,8 +1744,14 @@
 }
 
 .bookingStepActive {
-  border-color: color-mix(in srgb, var(--booking-primary) 46%, var(--booking-border));
-  background: linear-gradient(135deg, var(--booking-primary-soft), transparent), var(--booking-card);
+  border-color: color-mix(
+    in srgb,
+    var(--booking-primary) 46%,
+    var(--booking-border)
+  );
+  background:
+    linear-gradient(135deg, var(--booking-primary-soft), transparent),
+    var(--booking-card);
   color: var(--booking-heading);
 }
 
@@ -1680,7 +1888,11 @@
 .doctorCard:hover,
 .scheduleOption:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--booking-primary) 46%, var(--booking-border));
+  border-color: color-mix(
+    in srgb,
+    var(--booking-primary) 46%,
+    var(--booking-border)
+  );
   background: var(--booking-primary-soft);
 }
 
@@ -1856,7 +2068,8 @@
 }
 
 .secondaryBtn {
-  border: 1px solid color-mix(in srgb, var(--booking-primary) 34%, var(--booking-border));
+  border: 1px solid
+    color-mix(in srgb, var(--booking-primary) 34%, var(--booking-border));
   background: var(--booking-card);
   color: var(--booking-primary);
 }
@@ -1993,7 +2206,6 @@
   display: block;
   margin-bottom: 0.35rem;
 }
-
 
 .doctorCardHeader {
   display: flex;
@@ -2139,8 +2351,6 @@ body.darkMode .doctorSchedulePreviewItem {
   }
 }
 
-
-
 .doctorGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2158,7 +2368,10 @@ body.darkMode .doctorSchedulePreviewItem {
   box-shadow: 0 16px 40px rgba(17, 24, 39, 0.06);
   cursor: pointer;
   text-align: left;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease,
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
     background 0.2s ease;
 }
 
@@ -2169,7 +2382,11 @@ body.darkMode .doctorSchedulePreviewItem {
 }
 
 .doctorCardActive {
-  background: linear-gradient(135deg, rgba(130, 51, 76, 0.12), rgba(130, 51, 76, 0.04));
+  background: linear-gradient(
+    135deg,
+    rgba(130, 51, 76, 0.12),
+    rgba(130, 51, 76, 0.04)
+  );
   border-color: rgba(130, 51, 76, 0.64);
   box-shadow: 0 18px 48px rgba(130, 51, 76, 0.18);
 }
@@ -2314,7 +2531,11 @@ body.darkMode .doctorSchedulePreviewItem {
 }
 
 :global(body.darkMode) .doctorCardActive {
-  background: linear-gradient(135deg, rgba(130, 51, 76, 0.42), rgba(21, 25, 34, 0.98));
+  background: linear-gradient(
+    135deg,
+    rgba(130, 51, 76, 0.42),
+    rgba(21, 25, 34, 0.98)
+  );
   border-color: rgba(244, 114, 182, 0.5);
 }
 
@@ -2395,7 +2616,6 @@ body.darkMode .doctorSchedulePreviewItem {
     justify-self: start;
   }
 }
-
 
 .doctorGrid {
   grid-template-columns: minmax(0, 1fr) !important;
@@ -2485,8 +2705,16 @@ body.darkMode .doctorSchedulePreviewItem {
   border: 1px solid var(--patient-border);
   border-radius: 30px;
   background:
-    radial-gradient(circle at top right, var(--patient-primary-soft-strong), transparent 34%),
-    linear-gradient(135deg, color-mix(in srgb, var(--patient-card) 94%, transparent), var(--patient-bg-soft));
+    radial-gradient(
+      circle at top right,
+      var(--patient-primary-soft-strong),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--patient-card) 94%, transparent),
+      var(--patient-bg-soft)
+    );
   box-shadow: var(--patient-shadow);
 }
 
@@ -2495,7 +2723,11 @@ body.darkMode .doctorSchedulePreviewItem {
   position: absolute;
   inset: 0 auto 0 0;
   width: 7px;
-  background: linear-gradient(180deg, var(--patient-primary), var(--patient-primary-hover));
+  background: linear-gradient(
+    180deg,
+    var(--patient-primary),
+    var(--patient-primary-hover)
+  );
 }
 
 .homeHeroContent,
@@ -2519,7 +2751,8 @@ body.darkMode .doctorSchedulePreviewItem {
   align-items: center;
   gap: 16px;
   padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--patient-primary) 24%, var(--patient-border));
+  border: 1px solid
+    color-mix(in srgb, var(--patient-primary) 24%, var(--patient-border));
   border-radius: 24px;
   background: color-mix(in srgb, var(--patient-card) 86%, transparent);
 }
@@ -2532,7 +2765,11 @@ body.darkMode .doctorSchedulePreviewItem {
   flex-shrink: 0;
   border-radius: 20px;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--patient-primary), var(--patient-primary-hover));
+  background: linear-gradient(
+    135deg,
+    var(--patient-primary),
+    var(--patient-primary-hover)
+  );
   font-size: 24px;
   box-shadow: 0 14px 28px rgba(130, 51, 76, 0.22);
 }
@@ -2601,13 +2838,21 @@ body.darkMode .doctorSchedulePreviewItem {
 
 .homeActionCard:hover {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--patient-primary) 38%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 38%,
+    var(--patient-border)
+  );
   background: var(--patient-card);
   box-shadow: var(--patient-shadow-hover);
 }
 
 .homeActionPrimary {
-  border-color: color-mix(in srgb, var(--patient-primary) 38%, var(--patient-border));
+  border-color: color-mix(
+    in srgb,
+    var(--patient-primary) 38%,
+    var(--patient-border)
+  );
   background:
     linear-gradient(135deg, var(--patient-primary-soft), transparent),
     color-mix(in srgb, var(--patient-card) 94%, transparent);

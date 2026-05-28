@@ -35,31 +35,37 @@ export default function Navbar() {
       name: "OurSkin",
       path: "/pages/patient/home",
       icon: <FaClinicMedical />,
+      targetId: "patient-tour-home",
     },
     {
       name: "Dashboard",
       path: "/pages/patient/dashboard",
       icon: <FaTachometerAlt />,
+      targetId: "patient-tour-dashboard",
     },
     {
       name: "Book Appointment",
       path: "/pages/patient/book",
       icon: <FaCalendarPlus />,
+      targetId: "patient-tour-book",
     },
     {
       name: "Appointment History",
       path: "/pages/patient/history",
       icon: <FaHistory />,
+      targetId: "patient-tour-history",
     },
     {
       name: "Medical Records",
       path: "/pages/patient/records",
       icon: <FaFileMedicalAlt />,
+      targetId: "patient-tour-records",
     },
     {
       name: "Profile",
       path: "/pages/patient/profile",
       icon: <FaUserCircle />,
+      targetId: "patient-tour-profile",
     },
   ];
 
@@ -117,7 +123,7 @@ export default function Navbar() {
   };
 
   return (
-    <aside className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
+    <aside id="patient-navbar" className={`${styles.navbar} ${collapsed ? styles.collapsed : ""}`}>
       <div className={styles.logoSection}>
         <Image
           src={collapsed ? "/os-logo-col.png" : "/os-logo.png"}
@@ -144,9 +150,9 @@ export default function Navbar() {
             <button
               type="button"
               key={item.path}
-              className={`${styles.navItem} ${
-                isActive(item.path) ? styles.active : ""
-              }`}
+              id={item.targetId}
+              className={`${styles.navItem} ${isActive(item.path) ? styles.active : ""
+                }`}
               onClick={() => goToPage(item.path)}
             >
               <span className={styles.icon}>{item.icon}</span>
