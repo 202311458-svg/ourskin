@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -172,22 +172,46 @@ def serialize_admin_appointment(appointment: AppointmentModel, db: Session):
         ),
     }
 
+def validate_pagination(page: int, page_size: int):
+    if page < 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Page must be 1 or higher.",
+        )
+
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Page size must be between 1 and 100.",
+        )
 
 def save_audit_log(
     db: Session,
     action: str,
     description: str,
     current_user: User,
+    target_type: Optional[str] = None,
+    target_record_id: Optional[int | str] = None,
     target_id: Optional[int] = None,
+    before_data: Optional[dict] = None,
+    after_data: Optional[dict] = None,
+    metadata_json: Optional[dict] = None,
 ):
     return log_action(
         db=db,
         action=action,
         description=description,
         actor_id=current_user.id,
-        target_id=target_id,
+        actor_role=current_user.role,
         performed_by=current_user.name or current_user.email or f"User #{current_user.id}",
+        target_type=target_type,
+        target_record_id=target_record_id,
+        target_id=target_id,
+        before_data=before_data,
+        after_data=after_data,
+        metadata_json=metadata_json,
     )
+
 
 
 @router.get("/dashboard")
@@ -229,25 +253,68 @@ def dashboard_summary(
 
 @router.get("/users")
 def get_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    users = db.query(User).order_by(User.created_at.desc()).all()
-    return [serialize_admin_user(user) for user in users]
+    validate_pagination(page, page_size)
+
+    query = db.query(User).order_by(User.created_at.desc())
+
+    total = query.count()
+
+    users = (
+        query
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": [serialize_admin_user(user) for user in users],
+    }
+    
 
 
 @router.get("/appointments")
 def get_appointments(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
+    validate_pagination(page, page_size)
+
+    query = db.query(AppointmentModel)
+
+    if status and status != "All":
+        query = query.filter(AppointmentModel.status == status)
+
+    query = query.order_by(AppointmentModel.id.desc())
+
+    total = query.count()
+
     appointments = (
-        db.query(AppointmentModel)
-        .order_by(AppointmentModel.id.desc())
+        query
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
 
-    return [serialize_admin_appointment(appointment, db) for appointment in appointments]
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": [
+            serialize_admin_appointment(appointment, db)
+            for appointment in appointments
+        ],
+    }
 
 
 @router.put("/appointments/{id}/status")
@@ -279,6 +346,9 @@ def update_appointment_status(
     if payload.status in ["Declined", "Cancelled"] and not payload.cancel_reason:
         raise HTTPException(status_code=400, detail="Reason is required")
 
+    old_status = appointment.status
+    old_cancel_reason = appointment.cancel_reason
+
     appointment.status = payload.status
 
     if payload.status in ["Declined", "Cancelled"]:
@@ -292,9 +362,18 @@ def update_appointment_status(
     save_audit_log(
         db=db,
         action="UPDATE_APPOINTMENT_STATUS",
-        description=f"Updated appointment #{appointment.id} status to {appointment.status}",
+        description=f"Updated appointment #{appointment.id} status from {old_status} to {appointment.status}",
         current_user=current_user,
-        target_id=appointment.id,
+        target_type="appointment",
+        target_record_id=appointment.id,
+        before_data={
+            "status": old_status,
+            "cancel_reason": old_cancel_reason,
+        },
+        after_data={
+            "status": appointment.status,
+            "cancel_reason": appointment.cancel_reason,
+        },
     )
 
     return {
@@ -308,10 +387,23 @@ def update_appointment_status(
 
 @router.get("/ai-logs")
 def get_ai_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    logs = db.query(SkinAnalysis).order_by(SkinAnalysis.created_at.desc()).all()
+    validate_pagination(page, page_size)
+
+    base_query = db.query(SkinAnalysis).order_by(SkinAnalysis.created_at.desc())
+
+    total = base_query.count()
+
+    logs = (
+        base_query
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
     appointment_ids = [
         log.appointment_id for log in logs if log.appointment_id is not None
@@ -412,8 +504,10 @@ def get_ai_logs(
         review_status = "Pending"
 
         if report:
-            review_status = "Completed"
-        elif log.review_status == "Reviewed" or log.reviewed_at:
+            review_status = "Doctor Approved"
+        elif log.review_status:
+            review_status = log.review_status
+        elif log.reviewed_at:
             review_status = "Reviewed"
 
         results.append(
@@ -446,6 +540,13 @@ def get_ai_logs(
                     if log.reviewed_at
                     else None
                 ),
+                "reviewed_by_doctor_id": getattr(log, "reviewed_by_doctor_id", None),
+                "doctor_signed_off_at": (
+                    log.doctor_signed_off_at.isoformat()
+                    if getattr(log, "doctor_signed_off_at", None)
+                    else None
+                ),
+                "is_patient_visible": getattr(log, "is_patient_visible", False),
 
                 "final_diagnosis": final_diagnosis,
                 "doctor_final_diagnosis": final_diagnosis,
@@ -464,7 +565,12 @@ def get_ai_logs(
             }
         )
 
-    return results
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": results,
+    }
 
 
 @router.get("/reports")
@@ -1034,37 +1140,82 @@ def update_staff_status(
 
 @router.get("/audit-logs")
 def get_audit_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).all()
+    validate_pagination(page, page_size)
 
-    user_ids = set()
+    query = db.query(AuditLog).order_by(AuditLog.created_at.desc())
 
-    for log in logs:
-        if log.actor_id:
-            user_ids.add(log.actor_id)
+    total = query.count()
 
-        if log.target_id:
-            user_ids.add(log.target_id)
+    logs = (
+        query
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
-    users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
+    actor_ids = {
+        log.actor_id
+        for log in logs
+        if log.actor_id is not None
+    }
+
+    legacy_target_user_ids = {
+        log.target_id
+        for log in logs
+        if log.target_id is not None
+    }
+
+    user_ids = actor_ids.union(legacy_target_user_ids)
+
+    users = (
+        db.query(User)
+        .filter(User.id.in_(user_ids))
+        .all()
+        if user_ids
+        else []
+    )
+
     user_map = {user.id: user for user in users}
 
-    return [
-        {
-            "id": log.id,
-            "action": log.action,
-            "description": log.description,
-            "actor_id": log.actor_id,
-            "actor_name": user_map[log.actor_id].name
-            if log.actor_id in user_map
-            else None,
-            "target_id": log.target_id,
-            "target_name": user_map[log.target_id].name
-            if log.target_id in user_map
-            else None,
-            "created_at": log.created_at.isoformat() if log.created_at else None,
-        }
-        for log in logs
-    ]
+    items = []
+
+    for log in logs:
+        actor = user_map.get(log.actor_id)
+        legacy_target_user = user_map.get(log.target_id)
+
+        items.append(
+            {
+                "id": log.id,
+                "action": log.action,
+                "description": log.description,
+                "performed_by": log.performed_by,
+
+                "actor_id": log.actor_id,
+                "actor_name": actor.name if actor else None,
+                "actor_role": log.actor_role,
+
+                "target_id": log.target_id,
+                "target_name": legacy_target_user.name if legacy_target_user else None,
+
+                "target_type": log.target_type,
+                "target_record_id": log.target_record_id,
+
+                "before_data": log.before_data,
+                "after_data": log.after_data,
+                "metadata_json": log.metadata_json,
+
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+            }
+        )
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": items,
+    }

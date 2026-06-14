@@ -122,22 +122,34 @@ def serialize_analysis(analysis: SkinAnalysis) -> dict:
         "id": analysis.id,
         "appointment_id": analysis.appointment_id,
         "uploaded_by_id": analysis.uploaded_by_id,
-        "image_path": create_signed_image_url(analysis.image_path), 
+        "image_path": create_signed_image_url(analysis.image_path),
+
         "condition": analysis.condition,
         "confidence": analysis.confidence,
         "severity": analysis.severity,
         "recommendation": analysis.recommendation,
         "doctor_note": analysis.doctor_note,
+
         "review_status": analysis.review_status,
         "reviewed_at": analysis.reviewed_at.isoformat()
         if analysis.reviewed_at
         else None,
+
+        "reviewed_by_doctor_id": getattr(analysis, "reviewed_by_doctor_id", None),
+        "doctor_signed_off_at": (
+            analysis.doctor_signed_off_at.isoformat()
+            if getattr(analysis, "doctor_signed_off_at", None)
+            else None
+        ),
+        "is_patient_visible": getattr(analysis, "is_patient_visible", False),
+
         "possible_conditions": analysis.possible_conditions,
         "key_findings": analysis.key_findings,
         "treatment_suggestions": analysis.treatment_suggestions,
         "prescription_suggestions": analysis.prescription_suggestions,
         "follow_up_suggestions": analysis.follow_up_suggestions,
         "red_flags": analysis.red_flags,
+
         "created_at": analysis.created_at.isoformat()
         if analysis.created_at
         else None,
@@ -195,8 +207,6 @@ async def analyze_skin_image(
 
     temp_file_path = save_temp_image(file_bytes, extension)
 
-    temp_file_path = save_temp_image(file_bytes, extension)
-
     try:
         from app.ml.predict_skin import predict_skin_condition
 
@@ -219,12 +229,19 @@ async def analyze_skin_image(
             uploaded_by_id=user.id,
             appointment_id=appointment_id,
             image_path=storage_path,
+
             condition=ai_support["condition"],
             confidence=raw_result.get("confidence", 0),
             severity=ai_support["severity"],
             recommendation=ai_support["recommendation"],
             doctor_note=doctor_note,
+
             review_status="Pending Review",
+            reviewed_at=None,
+            reviewed_by_doctor_id=None,
+            doctor_signed_off_at=None,
+            is_patient_visible=False,
+
             possible_conditions=ai_support["possible_conditions"],
             key_findings=ai_support["key_findings"],
             treatment_suggestions=ai_support["treatment_suggestions"],
@@ -288,6 +305,18 @@ def review_analysis(
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
 
+    appointment = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.id == analysis.appointment_id)
+        .first()
+    )
+
+    if appointment and appointment.doctor_id and appointment.doctor_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only review AI analyses for appointments assigned to you.",
+        )
+
     editable_fields = [
         "doctor_note",
         "possible_conditions",
@@ -314,6 +343,18 @@ def review_analysis(
             if body["review_status"] == "Reviewed"
             else None
         )
+
+        analysis.reviewed_by_doctor_id = (
+            user.id
+            if body["review_status"] == "Reviewed"
+            else None
+        )
+
+        # Important:
+        # Normal review does not make AI output patient-visible.
+        # Only diagnosis report completion should do that.
+        analysis.doctor_signed_off_at = None
+        analysis.is_patient_visible = False
 
     db.commit()
     db.refresh(analysis)

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.sql import func
+
 from app.db import Base
 
 
@@ -8,12 +9,12 @@ class SkinAnalysis(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # legacy field, keep for compatibility
+    # Legacy field, keep for compatibility.
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=False, index=True)
 
-    # new field for uploader tracking
+    # New field for uploader tracking.
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     image_path = Column(String)
@@ -27,7 +28,16 @@ class SkinAnalysis(Base):
     review_status = Column(String, default="Pending Review", nullable=False)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # new AI decision-support fields
+    # Doctor approval controls.
+    reviewed_by_doctor_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    doctor_signed_off_at = Column(DateTime(timezone=True), nullable=True)
+    is_patient_visible = Column(Boolean, default=False, nullable=False)
+
+    # AI decision-support fields.
     possible_conditions = Column(Text, nullable=True)
     key_findings = Column(Text, nullable=True)
     treatment_suggestions = Column(Text, nullable=True)

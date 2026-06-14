@@ -4,15 +4,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from app.db import get_db
 from app.models.announcement import Announcement
+from app.models.user import User
+from app.core.security import get_current_user
 from app.schemas.announcement import (
     AnnouncementCreate,
     AnnouncementUpdate,
     AnnouncementResponse,
 )
+
 
 router = APIRouter(prefix="/announcements", tags=["Announcements"])
 
@@ -30,25 +33,66 @@ VALID_PRIORITIES = {"Normal", "Important", "Urgent"}
 VALID_STATUSES = {"Draft", "Published", "Archived"}
 
 
+def require_staff_or_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role not in ["staff", "admin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Staff or admin access only.",
+        )
+
+    return current_user
+
+
 def validate_announcement_fields(category: str, priority: str, status: str):
     if category not in VALID_CATEGORIES:
-        raise HTTPException(status_code=400, detail="Invalid announcement category.")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid announcement category.",
+        )
 
     if priority not in VALID_PRIORITIES:
-        raise HTTPException(status_code=400, detail="Invalid announcement priority.")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid announcement priority.",
+        )
 
     if status not in VALID_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid announcement status.")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid announcement status.",
+        )
+
+
+def validate_announcement_dates(starts_at, expires_at):
+    if starts_at and expires_at and expires_at <= starts_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Expiry date must be later than the start date.",
+        )
+
+
+def clean_string(value):
+    if isinstance(value, str):
+        return value.strip()
+
+    return value
 
 
 @router.get("/", response_model=List[AnnouncementResponse])
 def get_announcements(
     status: str | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
     query = db.query(Announcement)
 
     if status:
+        if status not in VALID_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid announcement status.",
+            )
+
         query = query.filter(Announcement.status == status)
 
     announcements = (
@@ -96,23 +140,37 @@ def get_patient_visible_announcements(db: Session = Depends(get_db)):
 def create_announcement(
     payload: AnnouncementCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
+    title = payload.title.strip()
+    message = payload.message.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=400,
+            detail="Announcement title is required.",
+        )
+
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="Announcement message is required.",
+        )
+
     validate_announcement_fields(
         payload.category,
         payload.priority,
         payload.status,
     )
 
-    if payload.starts_at and payload.expires_at:
-        if payload.expires_at <= payload.starts_at:
-            raise HTTPException(
-                status_code=400,
-                detail="Expiry date must be later than the start date.",
-            )
+    validate_announcement_dates(
+        payload.starts_at,
+        payload.expires_at,
+    )
 
     announcement = Announcement(
-        title=payload.title.strip(),
-        message=payload.message.strip(),
+        title=title,
+        message=message,
         category=payload.category,
         priority=payload.priority,
         status=payload.status,
@@ -120,9 +178,11 @@ def create_announcement(
         starts_at=payload.starts_at,
         expires_at=payload.expires_at,
 
+        # Keep this as None for now because Announcement.created_by is UUID,
+        # while User.id is Integer in your current database.
         created_by=None,
-        created_by_name="Clinic Team",
-        created_by_role="Staff",
+        created_by_name=current_user.name or current_user.email,
+        created_by_role=current_user.role,
     )
 
     db.add(announcement)
@@ -136,6 +196,7 @@ def create_announcement(
 def get_announcement(
     announcement_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
     announcement = (
         db.query(Announcement)
@@ -144,7 +205,10 @@ def get_announcement(
     )
 
     if not announcement:
-        raise HTTPException(status_code=404, detail="Announcement not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Announcement not found.",
+        )
 
     return announcement
 
@@ -154,6 +218,7 @@ def update_announcement(
     announcement_id: UUID,
     payload: AnnouncementUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
     announcement = (
         db.query(Announcement)
@@ -162,7 +227,10 @@ def update_announcement(
     )
 
     if not announcement:
-        raise HTTPException(status_code=404, detail="Announcement not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Announcement not found.",
+        )
 
     update_data = payload.model_dump(exclude_unset=True)
 
@@ -175,15 +243,16 @@ def update_announcement(
     starts_at = update_data.get("starts_at", announcement.starts_at)
     expires_at = update_data.get("expires_at", announcement.expires_at)
 
-    if starts_at and expires_at and expires_at <= starts_at:
-        raise HTTPException(
-            status_code=400,
-            detail="Expiry date must be later than the start date.",
-        )
+    validate_announcement_dates(starts_at, expires_at)
 
     for key, value in update_data.items():
-        if isinstance(value, str):
-            value = value.strip()
+        value = clean_string(value)
+
+        if key in ["title", "message"] and not value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Announcement {key} cannot be empty.",
+            )
 
         setattr(announcement, key, value)
 
@@ -197,6 +266,7 @@ def update_announcement(
 def archive_announcement(
     announcement_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
     announcement = (
         db.query(Announcement)
@@ -205,7 +275,10 @@ def archive_announcement(
     )
 
     if not announcement:
-        raise HTTPException(status_code=404, detail="Announcement not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Announcement not found.",
+        )
 
     announcement.status = "Archived"
 
@@ -219,6 +292,7 @@ def archive_announcement(
 def delete_announcement(
     announcement_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
 ):
     announcement = (
         db.query(Announcement)
@@ -227,9 +301,14 @@ def delete_announcement(
     )
 
     if not announcement:
-        raise HTTPException(status_code=404, detail="Announcement not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Announcement not found.",
+        )
 
     db.delete(announcement)
     db.commit()
 
-    return {"message": "Announcement deleted successfully."}
+    return {
+        "message": "Announcement deleted successfully.",
+    }

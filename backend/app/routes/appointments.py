@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import and_, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -283,6 +283,19 @@ def create_appointment_log(
     db.refresh(log)
 
     return log
+
+
+def commit_or_raise_slot_conflict(db: Session):
+    try:
+        db.commit()
+
+    except IntegrityError as error:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=409,
+            detail="This doctor already has an active appointment during this time slot.",
+        ) from error
 
 
 def validate_status_transition(role: str, current_status: str, new_status: str):
@@ -586,7 +599,7 @@ def create_appointment(
         )
 
         db.add(appointment)
-        db.commit()
+        commit_or_raise_slot_conflict(db)
         db.refresh(appointment)
 
         create_appointment_log(
@@ -1045,66 +1058,49 @@ def get_confirmed_appointments(db: Session = Depends(get_db)):
 
 
 @router.get("/history-with-analysis")
-def get_patient_history(email: str, db: Session = Depends(get_db)):
+def get_patient_history_with_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "patient":
+        raise HTTPException(
+            status_code=403,
+            detail="Patient access only",
+        )
+
     appointments = (
         db.query(AppointmentModel)
-        .filter(AppointmentModel.patient_email == email)
+        .filter(AppointmentModel.patient_id == current_user.id)
         .order_by(AppointmentModel.id.asc())
         .all()
     )
 
     results = []
 
-    for appt in appointments:
-        analyses = (
-            db.query(SkinAnalysis)
-            .filter(SkinAnalysis.appointment_id == appt.id)
-            .order_by(SkinAnalysis.created_at.desc())
-            .all()
-        )
-
-        results.append({
-            "appointment": serialize_appointment(appt, db),
-            "analyses": analyses,
-        })
-
-    return results
-
-
-@router.get("/history")
-def get_appointment_history(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if current_user.role not in ["staff", "admin", "doctor"]:
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    appointments = (
-        db.query(AppointmentModel)
-        .filter(AppointmentModel.status.in_(["Completed", "Cancelled", "Declined", "No-Show"]))
-        .order_by(AppointmentModel.id.desc())
-        .all()
-    )
-
-    results = []
-
     for appointment in appointments:
-        latest_log = (
-            db.query(AppointmentLog)
-            .filter(
-                AppointmentLog.appointment_id == appointment.id,
-                AppointmentLog.action == appointment.status,
-            )
-            .order_by(AppointmentLog.created_at.desc())
+        report = (
+            db.query(DiagnosisReport)
+            .filter(DiagnosisReport.appointment_id == appointment.id)
+            .order_by(DiagnosisReport.created_at.desc())
             .first()
         )
 
-        item = serialize_appointment(appointment, db)
+        item = {
+            "appointment": serialize_appointment(appointment, db),
+            "diagnosis_report": None,
+        }
 
-        item.update({
-            "last_action_by_name": latest_log.performed_by_name if latest_log else None,
-            "last_action_by_role": latest_log.performed_by_role if latest_log else None,
-        })
+        if report:
+            item["diagnosis_report"] = {
+                "id": report.id,
+                "appointment_id": report.appointment_id,
+                "doctor_final_diagnosis": report.doctor_final_diagnosis,
+                "doctor_prescription": report.doctor_prescription,
+                "after_appointment_notes": report.after_appointment_notes,
+                "follow_up_plan": report.follow_up_plan,
+                "next_visit_date": str(report.next_visit_date) if report.next_visit_date else None,
+                "created_at": report.created_at.isoformat() if report.created_at else None,
+            }
 
         results.append(item)
 
@@ -1505,7 +1501,7 @@ def assign_schedule_to_initial_evaluation_request(
 
     appointment.is_initial_evaluation_request = True
 
-    db.commit()
+    commit_or_raise_slot_conflict(db)
     db.refresh(appointment)
 
     create_appointment_log(

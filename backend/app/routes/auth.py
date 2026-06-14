@@ -21,6 +21,7 @@ from app.core.security import (
     verify_password,
     create_access_token,
     get_current_user,
+    hash_token,
 )
 from app.core.email import send_verification_email, send_password_reset_email
 
@@ -297,6 +298,12 @@ def login(
             detail="Invalid credentials.",
         )
 
+    if db_user.status != "Active":
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is inactive. Please contact the administrator.",
+        )
+
     if not db_user.is_verified:
         raise HTTPException(
             status_code=403,
@@ -309,6 +316,7 @@ def login(
         "access_token": token,
         "token_type": "bearer",
         "role": db_user.role,
+        "status": db_user.status,
     }
 
 
@@ -381,7 +389,7 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
         token = secrets.token_urlsafe(32)
 
-        user.reset_token = token
+        user.reset_token = hash_token(token)
         user.reset_token_expires = now + timedelta(hours=1)
         user.reset_requested_at = now
 
@@ -405,7 +413,9 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.reset_token == data.token).first()
+    token_hash = hash_token(data.token)
+
+    user = db.query(User).filter(User.reset_token == token_hash).first()
 
     if not user:
         raise HTTPException(
@@ -427,6 +437,7 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     if datetime.now(timezone.utc) > token_expiry:
         user.reset_token = None
         user.reset_token_expires = None
+        user.reset_requested_at = None
 
         db.commit()
 

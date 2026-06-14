@@ -75,14 +75,25 @@ def serialize_analysis(analysis: SkinAnalysis):
         "severity": analysis.severity,
         "recommendation": analysis.recommendation,
         "doctor_note": analysis.doctor_note,
+
         "review_status": analysis.review_status,
         "reviewed_at": analysis.reviewed_at.isoformat() if analysis.reviewed_at else None,
+
+        "reviewed_by_doctor_id": getattr(analysis, "reviewed_by_doctor_id", None),
+        "doctor_signed_off_at": (
+            analysis.doctor_signed_off_at.isoformat()
+            if getattr(analysis, "doctor_signed_off_at", None)
+            else None
+        ),
+        "is_patient_visible": getattr(analysis, "is_patient_visible", False),
+
         "possible_conditions": analysis.possible_conditions,
         "key_findings": analysis.key_findings,
         "treatment_suggestions": analysis.treatment_suggestions,
         "prescription_suggestions": analysis.prescription_suggestions,
         "follow_up_suggestions": analysis.follow_up_suggestions,
         "red_flags": analysis.red_flags,
+
         "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
     }
 
@@ -366,14 +377,16 @@ def complete_appointment_with_report(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    # Recommended: only the assigned doctor should complete this appointment.
-    # if appointment.doctor_id and appointment.doctor_id != current_user.id:
-    #     raise HTTPException(status_code=403, detail="You can only complete appointments assigned to you")
+    if appointment.doctor_id and appointment.doctor_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only complete appointments assigned to you",
+        )
 
     if appointment.status != "Approved":
         raise HTTPException(
             status_code=400,
-            detail="Only approved appointments can be completed with a diagnosis report"
+            detail="Only approved appointments can be completed with a diagnosis report",
         )
 
     existing_report = (
@@ -385,7 +398,7 @@ def complete_appointment_with_report(
     if existing_report:
         raise HTTPException(
             status_code=400,
-            detail="Diagnosis report already exists for this appointment"
+            detail="Diagnosis report already exists for this appointment",
         )
 
     selected_analysis = None
@@ -398,12 +411,15 @@ def complete_appointment_with_report(
         )
 
         if not selected_analysis:
-            raise HTTPException(status_code=404, detail="Selected skin analysis not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Selected skin analysis not found",
+            )
 
         if selected_analysis.appointment_id != appointment.id:
             raise HTTPException(
                 status_code=400,
-                detail="Selected skin analysis does not belong to this appointment"
+                detail="Selected skin analysis does not belong to this appointment",
             )
     else:
         selected_analysis = (
@@ -431,8 +447,35 @@ def complete_appointment_with_report(
     appointment.cancel_reason = None
 
     if selected_analysis:
-        selected_analysis.review_status = "Reviewed"
+        selected_analysis.review_status = "Doctor Approved"
         selected_analysis.reviewed_at = datetime.utcnow()
+        selected_analysis.reviewed_by_doctor_id = current_user.id
+        selected_analysis.doctor_signed_off_at = datetime.utcnow()
+        selected_analysis.is_patient_visible = True
+
+    create_appointment_log(
+        db=db,
+        appointment_id=appointment.id,
+        action="Completed",
+        performed_by_id=current_user.id,
+        performed_by_name=current_user.name,
+        performed_by_role=current_user.role,
+        reason="Completed with diagnosis report",
+    )
+
+    db.commit()
+    db.refresh(appointment)
+    db.refresh(report)
+
+    if selected_analysis:
+        db.refresh(selected_analysis)
+
+    return {
+        "message": "Appointment completed with diagnosis report successfully",
+        "appointment": serialize_appointment(appointment),
+        "report": serialize_diagnosis_report(report),
+        "linked_analysis": serialize_analysis(selected_analysis) if selected_analysis else None,
+    }
 
     create_appointment_log(
         db=db,
