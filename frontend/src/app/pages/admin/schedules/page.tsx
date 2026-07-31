@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import PortalShell from "@/app/components/PortalShell";
 import {
   AdminDoctor,
   AdminService,
@@ -475,6 +476,7 @@ export default function AdminSchedulesPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
+      <PortalShell role="admin">
       <main className={`staffContent ${styles.schedulesPage}`}>
         <div className={styles.headerRow}>
           <div>
@@ -1048,6 +1050,7 @@ export default function AdminSchedulesPage() {
           </div>
         )}
       </main>
+      </PortalShell>
     </div>
   );
 }

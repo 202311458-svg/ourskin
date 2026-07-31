@@ -4,6 +4,7 @@ import { API_BASE_URL } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
+import styles from "@/app/components/AuthModal.module.css"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -216,11 +217,11 @@ export default function AuthModal({
   if (!isOpen) return null
 
   return (
-    <div className="modal">
-      <div className="modalCard">
+    <div className={styles.modal}>
+      <div className={styles.modalCard}>
         <h2>{isForgot ? "Forgot Password" : "Login"}</h2>
 
-        <p className="authHelperText">
+        <p className={styles.authHelperText}>
           {isForgot
             ? "Enter your email and we’ll send you a reset link."
             : "Please log in to continue your booking."}
@@ -238,7 +239,7 @@ export default function AuthModal({
           }}
         >
           <input
-            className="authInput"
+            className={styles.authInput}
             type="email"
             placeholder="Email"
             value={email}
@@ -246,9 +247,9 @@ export default function AuthModal({
           />
 
           {!isForgot && (
-            <div className="inputWrapper">
+            <div className={styles.inputWrapper}>
               <input
-                className="authInput"
+                className={styles.authInput}
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={password}
@@ -256,7 +257,7 @@ export default function AuthModal({
               />
 
               <span
-                className="eyeIcon"
+                className={styles.eyeIcon}
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -265,10 +266,10 @@ export default function AuthModal({
           )}
 
           {!isForgot && (
-            <div className="forgotRow">
+            <div className={styles.forgotRow}>
               <button
                 type="button"
-                className="forgotLink"
+                className={styles.forgotLink}
                 onClick={() => {
                   setIsForgot(true)
                   setPassword("")
@@ -281,7 +282,7 @@ export default function AuthModal({
           )}
 
           <button
-            className="submitBtn"
+            className={styles.submitBtn}
             type="submit"
             disabled={loading || (isForgot && forgotCooldown > 0)}
           >
@@ -298,18 +299,18 @@ export default function AuthModal({
         </form>
 
         {!isForgot ? (
-          <p className="switch">
-            Don&apos;t have an account?
-            <span className="switchAction" onClick={goToRegister}>
+          <p className={styles.switch}>
+            Don't have an account?
+            <span className={styles.switchAction} onClick={goToRegister}>
               {" "}
               Register
             </span>
           </p>
         ) : (
-          <p className="switch">
+          <p className={styles.switch}>
             Remember your password?
             <span
-              className="switchAction"
+              className={styles.switchAction}
               onClick={() => {
                 setIsForgot(false)
                 setPassword("")
@@ -322,10 +323,10 @@ export default function AuthModal({
           </p>
         )}
 
-        <div className="authCloseRow">
+        <div className={styles.authCloseRow}>
           <button
             type="button"
-            className="authCloseBtn"
+            className={styles.authCloseBtn}
             onClick={() => {
               resetFields()
               onClose()

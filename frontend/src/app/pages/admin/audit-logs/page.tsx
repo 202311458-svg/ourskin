@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import PortalShell from "@/app/components/PortalShell";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/admin.module.css";
 
@@ -232,6 +233,7 @@ export default function AuditLogsPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
+      <PortalShell role="admin">
       <main className={`staffContent ${styles.auditLogsPage}`}>
         <div className={styles.headerRow}>
           <div>
@@ -368,6 +370,7 @@ export default function AuditLogsPage() {
           )}
         </section>
       </main>
+      </PortalShell>
     </div>
   );
 }

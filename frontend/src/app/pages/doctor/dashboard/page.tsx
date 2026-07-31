@@ -483,7 +483,7 @@ export default function DoctorDashboardPage() {
               </p>
             </div>
 
-            <div className={styles.list} style={{ marginTop: 16 }}>
+            <div className={`${styles.list} ${styles.listSpaced}`}>
               {followUpPreview.length === 0 ? (
                 <div className={styles.emptyState}>
                   No scheduled follow-ups right now.

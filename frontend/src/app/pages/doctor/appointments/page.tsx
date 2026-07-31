@@ -319,66 +319,24 @@ export default function DoctorAppointmentsPage() {
           </div>
         </div>
 
-        <section
-          className={styles.sectionCard}
-          style={{
-            marginBottom: 20,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-            gap: 14,
-          }}
-        >
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: 18,
-              background: "rgba(236, 72, 153, 0.12)",
-              border: "1px solid rgba(236, 72, 153, 0.22)",
-            }}
-          >
+        <section className={`${styles.sectionCard} ${styles.statsGrid}`}>
+          <div className={`${styles.statCard} ${styles.statCardPink}`}>
             <p className={styles.listSecondary}>Total Appointments</p>
-            <h2 style={{ margin: "6px 0 0", fontSize: 30 }}>
-              {appointments.length}
-            </h2>
+            <h2>{appointments.length}</h2>
           </div>
 
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: 18,
-              background: "rgba(34, 197, 94, 0.12)",
-              border: "1px solid rgba(34, 197, 94, 0.22)",
-            }}
-          >
+          <div className={`${styles.statCard} ${styles.statCardGreen}`}>
             <p className={styles.listSecondary}>Ready to Complete</p>
-            <h2 style={{ margin: "6px 0 0", fontSize: 30 }}>
-              {approvedReadyCount}
-            </h2>
+            <h2>{approvedReadyCount}</h2>
           </div>
 
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: 18,
-              background: "rgba(59, 130, 246, 0.12)",
-              border: "1px solid rgba(59, 130, 246, 0.22)",
-            }}
-          >
+          <div className={`${styles.statCard} ${styles.statCardBlue}`}>
             <p className={styles.listSecondary}>Approved, Not Yet Due</p>
-            <h2 style={{ margin: "6px 0 0", fontSize: 30 }}>
-              {approvedFutureCount}
-            </h2>
+            <h2>{approvedFutureCount}</h2>
           </div>
         </section>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            marginBottom: 20,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className={styles.filtersRow}>
           <button
             type="button"
             onClick={() => setActiveView("list")}

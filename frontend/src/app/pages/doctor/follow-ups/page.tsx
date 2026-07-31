@@ -283,69 +283,25 @@ export default function DoctorFollowUpsPage() {
           </button>
         </div>
 
-        <section
-          className={styles.sectionCard}
-          style={{
-            marginBottom: 24,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              padding: "18px",
-              borderRadius: 18,
-              background: "rgba(236, 72, 153, 0.12)",
-              border: "1px solid rgba(236, 72, 153, 0.22)",
-            }}
-          >
+        <section className={`${styles.sectionCard} ${styles.statsGrid}`}>
+          <div className={`${styles.statCard} ${styles.statCardPink}`}>
             <p className={styles.listSecondary}>Total Follow-Ups</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 30 }}>
-              {sortedItems.length}
-            </h2>
+            <h2>{sortedItems.length}</h2>
           </div>
 
-          <div
-            style={{
-              padding: "18px",
-              borderRadius: 18,
-              background: "rgba(251, 191, 36, 0.12)",
-              border: "1px solid rgba(251, 191, 36, 0.22)",
-            }}
-          >
+          <div className={`${styles.statCard} ${styles.statCardYellow}`}>
             <p className={styles.listSecondary}>Due / Overdue</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 30 }}>
-              {dueItems.length}
-            </h2>
+            <h2>{dueItems.length}</h2>
           </div>
 
-          <div
-            style={{
-              padding: "18px",
-              borderRadius: 18,
-              background: "rgba(59, 130, 246, 0.12)",
-              border: "1px solid rgba(59, 130, 246, 0.22)",
-            }}
-          >
+          <div className={`${styles.statCard} ${styles.statCardBlue}`}>
             <p className={styles.listSecondary}>Upcoming</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 30 }}>
-              {upcomingItems.length}
-            </h2>
+            <h2>{upcomingItems.length}</h2>
           </div>
 
-          <div
-            style={{
-              padding: "18px",
-              borderRadius: 18,
-              background: "rgba(34, 197, 94, 0.12)",
-              border: "1px solid rgba(34, 197, 94, 0.22)",
-            }}
-          >
+          <div className={`${styles.statCard} ${styles.statCardGreen}`}>
             <p className={styles.listSecondary}>Completed</p>
-            <h2 style={{ margin: "8px 0 0", fontSize: 30 }}>
-              {completedItems.length}
-            </h2>
+            <h2>{completedItems.length}</h2>
           </div>
         </section>
 

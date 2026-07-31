@@ -1,3 +1,12 @@
+.pageFallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #fff7fa;
+  color: #82334c;
+  font-weight: 700;
+}
+
 .pageShell {
   min-height: 100vh;
   padding: 36px 38px 60px 298px;

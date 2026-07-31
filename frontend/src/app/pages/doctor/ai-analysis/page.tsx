@@ -1824,26 +1824,15 @@ function DoctorAiAnalysisContent() {
 
             <label
               htmlFor="scheduleFollowUp"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "16px",
-                width: "100%",
-                padding: "14px 16px",
-                border: "1px solid rgba(236, 72, 153, 0.35)",
-                borderRadius: "14px",
-                background: scheduleFollowUp
-                  ? "rgba(236, 72, 153, 0.12)"
-                  : "rgba(255, 255, 255, 0.03)",
-                cursor: "pointer",
-              }}
+              className={`${styles.followUpCheckboxRow} ${
+                scheduleFollowUp ? styles.followUpCheckboxRowActive : ""
+              }`}
             >
               <div>
-                <strong style={{ display: "block", marginBottom: "4px" }}>
+                <strong className={styles.followUpCheckboxText}>
                   Schedule a follow-up for this patient
                 </strong>
-                <span style={{ color: "#aeb6c7", fontSize: "0.9rem" }}>
+                <span className={styles.followUpCheckboxHint}>
                   Adds this patient to the Follow-Ups page and doctor dashboard.
                 </span>
               </div>
@@ -1852,13 +1841,7 @@ function DoctorAiAnalysisContent() {
                 id="scheduleFollowUp"
                 type="checkbox"
                 checked={scheduleFollowUp}
-                style={{
-                  width: "20px",
-                  height: "20px",
-                  flex: "0 0 auto",
-                  accentColor: "#ec4899",
-                  cursor: "pointer",
-                }}
+                className={styles.followUpCheckbox}
                 onChange={(e) => {
                   setScheduleFollowUp(e.target.checked);
 
@@ -2790,15 +2773,8 @@ export default function DoctorAiAnalysisPage() {
   return (
     <Suspense
       fallback={
-        <main
-          style={{
-            minHeight: "100vh",
-            display: "grid",
-            placeItems: "center",
-            background: "#fff7fa",
-            color: "#82334c",
-            fontWeight: 700,
-          }}
+      <main
+          className={styles.pageFallback}
         >
           Loading AI analysis...
         </main>

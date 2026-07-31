@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import PortalShell from "@/app/components/PortalShell";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/admin.module.css";
 
@@ -426,6 +427,7 @@ export default function StaffManagementPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
+      <PortalShell role="admin">
       <main className={`staffContent ${styles.staffMgmtPage}`}>
         <div className={styles.headerRow}>
           <div>
@@ -856,6 +858,7 @@ export default function StaffManagementPage() {
           </div>
         )}
       </main>
+      </PortalShell>
     </div>
   );
 }

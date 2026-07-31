@@ -12,6 +12,7 @@ import {
   getAdminFollowUps,
   updateAdminFollowUp,
 } from "@/lib/admin-api";
+import PortalShell from "@/app/components/PortalShell";
 import styles from "@/app/styles/admin.module.css";
 
 const EMPTY_STATS: AdminDashboardStats = {
@@ -335,7 +336,8 @@ export default function AdminDashboardPage() {
     <div className="staffLayout">
       <AdminNavbar />
 
-      <main className={`staffContent ${styles.dashboardPage}`}>
+      <PortalShell role="admin">
+      <main className={styles.dashboardPage}>
         <section className={styles.heroSection}>
           <div className={styles.heroContent}>
             <p className={styles.eyebrow}>Admin Control Center</p>
@@ -511,6 +513,7 @@ export default function AdminDashboardPage() {
           </>
         )}
       </main>
+      </PortalShell>
     </div>
   );
 }

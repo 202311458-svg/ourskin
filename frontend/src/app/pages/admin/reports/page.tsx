@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNavbar from "@/app/components/AdminNavbar";
+import PortalShell from "@/app/components/PortalShell";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/admin.module.css";
 
@@ -124,7 +125,6 @@ export default function AdminReportsPage() {
   const [reports, setReports] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [collapsed, setCollapsed] = useState(false);
 
   const loadReports = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -177,17 +177,6 @@ export default function AdminReportsPage() {
     loadReports();
   }, [loadReports, router]);
 
-  useEffect(() => {
-    const sync = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"));
-    };
-
-    sync();
-    window.addEventListener("navbarToggle", sync);
-
-    return () => window.removeEventListener("navbarToggle", sync);
-  }, []);
-
   const overview = useMemo(() => {
     if (!reports) {
       return {
@@ -219,14 +208,11 @@ export default function AdminReportsPage() {
   }, [reports]);
 
   return (
-    <>
+    <div className="staffLayout">
       <AdminNavbar />
 
-      <main
-        className={`${styles.page} ${styles.reportsPage} ${
-          collapsed ? styles.collapsed : ""
-        }`}
-      >
+      <PortalShell role="admin">
+      <main className={`staffContent ${styles.reportsPage}`}>
         <div className={styles.container}>
           <div className={styles.headerRow}>
             <div>
@@ -475,6 +461,7 @@ export default function AdminReportsPage() {
           )}
         </div>
       </main>
-    </>
+      </PortalShell>
+    </div>
   );
 }
