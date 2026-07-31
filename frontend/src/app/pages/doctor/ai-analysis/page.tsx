@@ -3,7 +3,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
-import styles from "@/app/styles/ai.module.css";
+import coreStyles from "@/app/styles/ai-core.module.css";
+import resultStyles from "@/app/styles/ai-result.module.css";
+import assessmentStyles from "@/app/styles/ai-assessment.module.css";
+import historyStyles from "@/app/styles/ai-history.module.css";
 import { API_BASE_URL } from "@/lib/api";
 import {
   analyzeAppointmentSkin,
@@ -527,17 +530,17 @@ const getStatusBadgeClass = (status: string | undefined) => {
   switch ((status || "").trim()) {
     case "Reviewed":
     case "Completed":
-      return `${styles.statusBadge} ${styles.badgeCompleted}`;
+      return `${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`;
     case "Approved":
-      return `${styles.statusBadge} ${styles.badgeApproved}`;
+      return `${coreStyles.statusBadge} ${coreStyles.badgeApproved}`;
     case "Pending Review":
     case "Pending":
-      return `${styles.statusBadge} ${styles.badgePending}`;
+      return `${coreStyles.statusBadge} ${coreStyles.badgePending}`;
     case "Declined":
     case "Cancelled":
-      return `${styles.statusBadge} ${styles.badgeUrgent}`;
+      return `${coreStyles.statusBadge} ${coreStyles.badgeUrgent}`;
     default:
-      return `${styles.statusBadge} ${styles.badgePending}`;
+      return `${coreStyles.statusBadge} ${coreStyles.badgePending}`;
   }
 };
 
@@ -1254,7 +1257,7 @@ function DoctorAiAnalysisContent() {
     return (
       <button
         type="button"
-        className={styles.aiSuggestionButton}
+        className={assessmentStyles.aiSuggestionButton}
         onClick={() => applyAiSuggestionForField(field)}
         disabled={!suggestion.trim()}
       >
@@ -1364,7 +1367,7 @@ function DoctorAiAnalysisContent() {
     if (!latestVisit) {
       return {
         label: "No Visits",
-        badgeClass: `${styles.statusBadge} ${styles.badgePending}`,
+        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
         latestVisitText: "No visit yet",
       };
     }
@@ -1372,7 +1375,7 @@ function DoctorAiAnalysisContent() {
     if (latestVisit.status === "Completed") {
       return {
         label: "Completed",
-        badgeClass: `${styles.statusBadge} ${styles.badgeCompleted}`,
+        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`,
         latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
       };
     }
@@ -1383,8 +1386,8 @@ function DoctorAiAnalysisContent() {
       return {
         label: isAvailable ? "Ready for Review" : "Scheduled",
         badgeClass: isAvailable
-          ? `${styles.statusBadge} ${styles.badgeApproved}`
-          : `${styles.statusBadge} ${styles.badgePending}`,
+          ? `${coreStyles.statusBadge} ${coreStyles.badgeApproved}`
+          : `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
         latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
       };
     }
@@ -1392,7 +1395,7 @@ function DoctorAiAnalysisContent() {
     if (latestVisit.status === "Pending") {
       return {
         label: "Pending Approval",
-        badgeClass: `${styles.statusBadge} ${styles.badgePending}`,
+        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
         latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
       };
     }
@@ -1406,12 +1409,12 @@ function DoctorAiAnalysisContent() {
 
   const renderAiReadOnlyResult = () => {
     if (loadingAnalyses) {
-      return <div className={styles.emptyState}>Loading AI results...</div>;
+      return <div className={coreStyles.emptyState}>Loading AI results...</div>;
     }
 
     if (!latestAnalysis) {
       return (
-        <div className={styles.emptyState}>
+        <div className={coreStyles.emptyState}>
           No AI result yet. Upload a skin image to generate the first analysis.
         </div>
       );
@@ -1434,60 +1437,60 @@ function DoctorAiAnalysisContent() {
     );
 
     return (
-      <div className={styles.aiResultCard}>
-        <div className={styles.aiResultHeader}>
+      <div className={resultStyles.aiResultCard}>
+        <div className={resultStyles.aiResultHeader}>
           <div>
-            <p className={styles.eyebrow}>AI Generated Result</p>
-            <h3 className={styles.resultTitle}>
+            <p className={coreStyles.eyebrow}>AI Generated Result</p>
+            <h3 className={resultStyles.resultTitle}>
               {latestAnalysis.condition || "Unknown condition"}
             </h3>
-            <p className={styles.resultMeta}>
+            <p className={resultStyles.resultMeta}>
               Generated {formatDateTime(latestAnalysis.created_at)}
             </p>
           </div>
 
-          <div className={styles.resultBadgeStack}>
-            <span className={styles.aiOnlyBadge}>Read-only AI output</span>
-            <span className={styles.confidenceBadge}>
+          <div className={resultStyles.resultBadgeStack}>
+            <span className={resultStyles.aiOnlyBadge}>Read-only AI output</span>
+            <span className={resultStyles.confidenceBadge}>
               Confidence:{" "}
               {confidenceValue !== null ? `${confidenceValue}%` : "—"}
             </span>
           </div>
         </div>
 
-        <div className={styles.aiResultGrid}>
-          <div className={styles.imagePanel}>
+        <div className={resultStyles.aiResultGrid}>
+          <div className={resultStyles.imagePanel}>
             {latestImageUrl ? (
               <img
                 src={latestImageUrl}
                 alt="AI skin analysis result"
-                className={styles.analysisImage}
+                className={resultStyles.analysisImage}
               />
             ) : (
-              <div className={styles.imagePlaceholder}>
+              <div className={resultStyles.imagePlaceholder}>
                 No image available. Check if the backend returned image_url.
               </div>
             )}
           </div>
 
-          <div className={styles.aiSummaryGrid}>
-            <div className={styles.summaryCard}>
-              <span className={styles.infoLabel}>Possible Condition</span>
+          <div className={resultStyles.aiSummaryGrid}>
+            <div className={resultStyles.summaryCard}>
+              <span className={coreStyles.infoLabel}>Possible Condition</span>
               <strong>{latestAnalysis.possible_conditions || "—"}</strong>
             </div>
 
-            <div className={styles.summaryCard}>
-              <span className={styles.infoLabel}>AI Severity</span>
+            <div className={resultStyles.summaryCard}>
+              <span className={coreStyles.infoLabel}>AI Severity</span>
               <strong>{latestAnalysis.severity || "—"}</strong>
             </div>
 
-            <div className={styles.summaryCardWide}>
-              <span className={styles.infoLabel}>Key Findings</span>
+            <div className={resultStyles.summaryCardWide}>
+              <span className={coreStyles.infoLabel}>Key Findings</span>
               <p>{latestAnalysis.key_findings || "No findings available."}</p>
             </div>
 
-            <div className={styles.summaryCardWide}>
-              <span className={styles.infoLabel}>AI Recommendation</span>
+            <div className={resultStyles.summaryCardWide}>
+              <span className={coreStyles.infoLabel}>AI Recommendation</span>
               <p>
                 {latestAnalysis.recommendation ||
                   "Further clinical review is recommended."}
@@ -1496,32 +1499,32 @@ function DoctorAiAnalysisContent() {
           </div>
         </div>
 
-        <div className={styles.detailSectionGrid}>
-          <section className={styles.detailBlock}>
-            <div className={styles.blockHeader}>
+        <div className={resultStyles.detailSectionGrid}>
+          <section className={resultStyles.detailBlock}>
+            <div className={resultStyles.blockHeader}>
               <h4>Prescription Suggestions</h4>
               <p>Medication, usage, and reason are separated for review.</p>
             </div>
 
             {prescriptionItems.length === 0 ? (
-              <div className={styles.emptyStateSmall}>
+              <div className={coreStyles.emptyStateSmall}>
                 No prescription suggestions available.
               </div>
             ) : (
-              <div className={styles.medicationStack}>
+              <div className={resultStyles.medicationStack}>
                 {prescriptionItems.map((item, index) => (
                   <div
                     key={`${item.medication}-${index}`}
-                    className={styles.medicationCard}
+                    className={resultStyles.medicationCard}
                   >
                     <strong>{item.medication}</strong>
 
-                    <div className={styles.medicationRow}>
+                    <div className={resultStyles.medicationRow}>
                       <span>Usage</span>
                       <p>{item.usage || "—"}</p>
                     </div>
 
-                    <div className={styles.medicationRow}>
+                    <div className={resultStyles.medicationRow}>
                       <span>Reason</span>
                       <p>{item.reason || "—"}</p>
                     </div>
@@ -1531,20 +1534,20 @@ function DoctorAiAnalysisContent() {
             )}
           </section>
 
-          <section className={styles.detailBlock}>
-            <div className={styles.blockHeader}>
+          <section className={resultStyles.detailBlock}>
+            <div className={resultStyles.blockHeader}>
               <h4>Follow-up Suggestions</h4>
               <p>For doctor review before including in the final report.</p>
             </div>
 
             {followUpItems.length === 0 ? (
-              <div className={styles.emptyStateSmall}>
+              <div className={coreStyles.emptyStateSmall}>
                 No follow-up suggestions available.
               </div>
             ) : (
-              <div className={styles.softList}>
+              <div className={resultStyles.softList}>
                 {followUpItems.map((item, index) => (
-                  <div key={`${item}-${index}`} className={styles.softListItem}>
+                  <div key={`${item}-${index}`} className={resultStyles.softListItem}>
                     {item}
                   </div>
                 ))}
@@ -1552,18 +1555,18 @@ function DoctorAiAnalysisContent() {
             )}
           </section>
 
-          <section className={`${styles.detailBlock} ${styles.warningBlock}`}>
-            <div className={styles.blockHeader}>
+          <section className={`${resultStyles.detailBlock} ${resultStyles.warningBlock}`}>
+            <div className={resultStyles.blockHeader}>
               <h4>Red Flags</h4>
               <p>Items that need extra attention during clinical review.</p>
             </div>
 
             {redFlagItems.length === 0 ? (
-              <div className={styles.emptyStateSmall}>No red flags noted.</div>
+              <div className={coreStyles.emptyStateSmall}>No red flags noted.</div>
             ) : (
-              <div className={styles.warningList}>
+              <div className={resultStyles.warningList}>
                 {redFlagItems.map((item, index) => (
-                  <div key={`${item}-${index}`} className={styles.warningItem}>
+                  <div key={`${item}-${index}`} className={resultStyles.warningItem}>
                     {item}
                   </div>
                 ))}
@@ -1583,10 +1586,10 @@ function DoctorAiAnalysisContent() {
     const prescriptionSuggestionItems = getPrescriptionSuggestionItems();
 
     return (
-      <section className={styles.workflowCard}>
-        <div className={styles.cardHeader}>
+      <section className={coreStyles.workflowCard}>
+        <div className={coreStyles.cardHeader}>
           <div>
-            <p className={styles.eyebrow}>Doctor Assessment</p>
+            <p className={coreStyles.eyebrow}>Doctor Assessment</p>
             <h2>Complete Doctor Assessment</h2>
             <p>
               Complete the official doctor record. AI suggestions are shown only
@@ -1595,8 +1598,8 @@ function DoctorAiAnalysisContent() {
           </div>
         </div>
 
-        <div className={styles.aiReferencePanel}>
-          <div className={styles.aiReferenceHeader}>
+        <div className={assessmentStyles.aiReferencePanel}>
+          <div className={assessmentStyles.aiReferenceHeader}>
             <div>
               <span>AI Reference Summary</span>
               <p>
@@ -1606,8 +1609,8 @@ function DoctorAiAnalysisContent() {
             </div>
           </div>
 
-          <div className={styles.aiReferenceGrid}>
-            <div className={styles.aiReferenceCard}>
+          <div className={assessmentStyles.aiReferenceGrid}>
+            <div className={assessmentStyles.aiReferenceCard}>
               <span>Possible Condition</span>
               <strong>
                 {latestAnalysis.condition ||
@@ -1616,12 +1619,12 @@ function DoctorAiAnalysisContent() {
               </strong>
             </div>
 
-            <div className={styles.aiReferenceCard}>
+            <div className={assessmentStyles.aiReferenceCard}>
               <span>AI Severity</span>
               <strong>{latestAnalysis.severity || "—"}</strong>
             </div>
 
-            <div className={styles.aiReferenceCardWide}>
+            <div className={assessmentStyles.aiReferenceCardWide}>
               <span>Key Findings</span>
               <p>
                 {latestAnalysis.key_findings ||
@@ -1629,7 +1632,7 @@ function DoctorAiAnalysisContent() {
               </p>
             </div>
 
-            <div className={styles.aiReferenceCardWide}>
+            <div className={assessmentStyles.aiReferenceCardWide}>
               <span>AI Recommendation</span>
               <p>
                 {latestAnalysis.recommendation ||
@@ -1639,9 +1642,9 @@ function DoctorAiAnalysisContent() {
           </div>
         </div>
 
-        <div className={styles.assessmentForm}>
-          <div className={styles.formGroupFull}>
-            <div className={styles.fieldHeader}>
+        <div className={assessmentStyles.assessmentForm}>
+          <div className={assessmentStyles.formGroupFull}>
+            <div className={assessmentStyles.fieldHeader}>
               <label htmlFor="finalDiagnosis">Doctor Final Diagnosis</label>
               {renderUseAiSuggestionButton("finalDiagnosis", "Use AI Diagnosis")}
             </div>
@@ -1656,8 +1659,8 @@ function DoctorAiAnalysisContent() {
             />
           </div>
 
-          <div className={styles.prescriptionBox}>
-            <div className={styles.prescriptionHeader}>
+          <div className={assessmentStyles.prescriptionBox}>
+            <div className={assessmentStyles.prescriptionHeader}>
               <div>
                 <h3>Doctor Prescription</h3>
                 <p>
@@ -1668,7 +1671,7 @@ function DoctorAiAnalysisContent() {
 
               <button
                 type="button"
-                className={styles.aiSuggestionButton}
+                className={assessmentStyles.aiSuggestionButton}
                 onClick={applyFullPrescriptionSuggestion}
                 disabled={prescriptionSuggestionItems.length === 0}
               >
@@ -1677,14 +1680,14 @@ function DoctorAiAnalysisContent() {
             </div>
 
             {prescriptionSuggestionItems.length > 0 && (
-              <div className={styles.prescriptionSuggestionPanel}>
+              <div className={assessmentStyles.prescriptionSuggestionPanel}>
                 <span>AI Prescription Suggestions</span>
 
-                <div className={styles.prescriptionSuggestionGrid}>
+                <div className={assessmentStyles.prescriptionSuggestionGrid}>
                   {prescriptionSuggestionItems.map((item, index) => (
                     <div
                       key={`${item.medication}-${index}`}
-                      className={styles.prescriptionSuggestionCard}
+                      className={assessmentStyles.prescriptionSuggestionCard}
                     >
                       <strong>{item.medication}</strong>
 
@@ -1703,22 +1706,22 @@ function DoctorAiAnalysisContent() {
               </div>
             )}
 
-            <div className={styles.prescriptionEditorList}>
+            <div className={assessmentStyles.prescriptionEditorList}>
               {assessmentForm.prescriptionItems.map((item, index) => (
-                <div key={index} className={styles.prescriptionEditorCard}>
-                  <div className={styles.prescriptionEditorHeader}>
+                <div key={index} className={assessmentStyles.prescriptionEditorCard}>
+                  <div className={assessmentStyles.prescriptionEditorHeader}>
                     <h4>Prescription Item {index + 1}</h4>
 
                     <button
                       type="button"
-                      className={styles.removePrescriptionButton}
+                      className={assessmentStyles.removePrescriptionButton}
                       onClick={() => removePrescriptionItem(index)}
                     >
                       Remove
                     </button>
                   </div>
 
-                  <div className={styles.formGroupFull}>
+                  <div className={assessmentStyles.formGroupFull}>
                     <label htmlFor={`medication-${index}`}>Medication</label>
                     <input
                       id={`medication-${index}`}
@@ -1734,7 +1737,7 @@ function DoctorAiAnalysisContent() {
                     />
                   </div>
 
-                  <div className={styles.formGroupFull}>
+                  <div className={assessmentStyles.formGroupFull}>
                     <label htmlFor={`usage-${index}`}>Usage</label>
                     <textarea
                       id={`usage-${index}`}
@@ -1746,7 +1749,7 @@ function DoctorAiAnalysisContent() {
                     />
                   </div>
 
-                  <div className={styles.formGroupFull}>
+                  <div className={assessmentStyles.formGroupFull}>
                     <label htmlFor={`reason-${index}`}>Reason</label>
                     <textarea
                       id={`reason-${index}`}
@@ -1763,14 +1766,14 @@ function DoctorAiAnalysisContent() {
 
             <button
               type="button"
-              className={styles.secondaryButton}
+              className={coreStyles.secondaryButton}
               onClick={addPrescriptionItem}
             >
               Add Another Prescription
             </button>
           </div>
 
-          <div className={styles.formGroupFull}>
+          <div className={assessmentStyles.formGroupFull}>
             <label htmlFor="doctorNotes">Doctor Notes</label>
 
             <textarea
@@ -1782,14 +1785,14 @@ function DoctorAiAnalysisContent() {
               placeholder="Example: Moderate acne with visible inflammation on affected areas"
             />
 
-            <small className={styles.formHint}>
+            <small className={assessmentStyles.formHint}>
               Enter the doctor’s own clinical notes. AI findings should only be
               used as reference.
             </small>
           </div>
 
-          <div className={styles.formGroupFull}>
-            <div className={styles.fieldHeader}>
+          <div className={assessmentStyles.formGroupFull}>
+            <div className={assessmentStyles.fieldHeader}>
               <label htmlFor="followUpPlan">Follow-up Plan</label>
               {renderUseAiSuggestionButton("followUpPlan", "Use AI Follow-up")}
             </div>
@@ -1805,14 +1808,9 @@ function DoctorAiAnalysisContent() {
           </div>
 
           <div
-            className={styles.prescriptionBox}
-            style={{
-              gap: "18px",
-              padding: "20px",
-              borderRadius: "18px",
-            }}
+            className={`${assessmentStyles.prescriptionBox} ${assessmentStyles.optionalFollowUpBox}`}
           >
-            <div className={styles.prescriptionHeader}>
+            <div className={assessmentStyles.prescriptionHeader}>
               <div>
                 <h3>Optional Follow-Up Schedule</h3>
                 <p>
@@ -1824,15 +1822,15 @@ function DoctorAiAnalysisContent() {
 
             <label
               htmlFor="scheduleFollowUp"
-              className={`${styles.followUpCheckboxRow} ${
-                scheduleFollowUp ? styles.followUpCheckboxRowActive : ""
+              className={`${assessmentStyles.followUpCheckboxRow} ${
+                scheduleFollowUp ? assessmentStyles.followUpCheckboxRowActive : ""
               }`}
             >
               <div>
-                <strong className={styles.followUpCheckboxText}>
+                <strong className={assessmentStyles.followUpCheckboxText}>
                   Schedule a follow-up for this patient
                 </strong>
-                <span className={styles.followUpCheckboxHint}>
+                <span className={assessmentStyles.followUpCheckboxHint}>
                   Adds this patient to the Follow-Ups page and doctor dashboard.
                 </span>
               </div>
@@ -1841,7 +1839,7 @@ function DoctorAiAnalysisContent() {
                 id="scheduleFollowUp"
                 type="checkbox"
                 checked={scheduleFollowUp}
-                className={styles.followUpCheckbox}
+                className={assessmentStyles.followUpCheckbox}
                 onChange={(e) => {
                   setScheduleFollowUp(e.target.checked);
 
@@ -1854,14 +1852,9 @@ function DoctorAiAnalysisContent() {
 
             {scheduleFollowUp && (
               <div
-                className={styles.prescriptionEditorCard}
-                style={{
-                  display: "grid",
-                  gap: "16px",
-                  marginTop: "4px",
-                }}
+                className={`${assessmentStyles.prescriptionEditorCard} ${assessmentStyles.followUpEditorGrid}`}
               >
-                <div className={styles.formGroupFull}>
+                <div className={assessmentStyles.formGroupFull}>
                   <label htmlFor="followUpDate">Follow-Up Date</label>
                   <input
                     id="followUpDate"
@@ -1872,12 +1865,12 @@ function DoctorAiAnalysisContent() {
                       updateOptionalFollowUpField("followUpDate", e.target.value)
                     }
                   />
-                  <small className={styles.formHint}>
+                  <small className={assessmentStyles.formHint}>
                     Past dates are disabled. Choose today or a future date.
                   </small>
                 </div>
 
-                <div className={styles.formGroupFull}>
+                <div className={assessmentStyles.formGroupFull}>
                   <label htmlFor="followUpReason">Reason</label>
                   <input
                     id="followUpReason"
@@ -1889,7 +1882,7 @@ function DoctorAiAnalysisContent() {
                   />
                 </div>
 
-                <div className={styles.formGroupFull}>
+                <div className={assessmentStyles.formGroupFull}>
                   <label htmlFor="followUpNotes">Notes</label>
                   <textarea
                     id="followUpNotes"
@@ -1904,10 +1897,10 @@ function DoctorAiAnalysisContent() {
             )}
           </div>
 
-          <div className={styles.formActions}>
+          <div className={assessmentStyles.formActions}>
             <button
               type="button"
-              className={styles.primaryButton}
+              className={coreStyles.primaryButton}
               onClick={handleSaveDoctorAssessment}
               disabled={savingAssessment || isCompletedTarget}
             >
@@ -1924,19 +1917,19 @@ function DoctorAiAnalysisContent() {
   const renderScanStage = () => {
     if (loadingPatientHistory && isCompletedTarget) {
       return (
-        <section className={styles.workflowCard}>
-          <div className={styles.emptyState}>Checking completed case...</div>
+        <section className={coreStyles.workflowCard}>
+          <div className={coreStyles.emptyState}>Checking completed case...</div>
         </section>
       );
     }
 
     if (selectedVisitReport || isCompletedTarget) {
       return (
-        <div className={styles.scanStack}>
-          <section className={styles.workflowCard}>
-            <div className={styles.cardHeader}>
+        <div className={coreStyles.scanStack}>
+          <section className={coreStyles.workflowCard}>
+            <div className={coreStyles.cardHeader}>
               <div>
-                <p className={styles.eyebrow}>Completed Case</p>
+                <p className={coreStyles.eyebrow}>Completed Case</p>
                 <h2>This Consultation Is Already Completed</h2>
                 <p>
                   The AI analysis and doctor assessment for this consultation
@@ -1947,7 +1940,7 @@ function DoctorAiAnalysisContent() {
 
               <button
                 type="button"
-                className={styles.secondaryButton}
+                className={coreStyles.secondaryButton}
                 onClick={() => setActiveStage("history")}
               >
                 View in History
@@ -1959,12 +1952,12 @@ function DoctorAiAnalysisContent() {
     }
 
     return (
-      <div className={styles.scanStack}>
-        <div className={styles.scanUploadCenter}>
-          <section className={styles.workflowCard}>
-            <div className={styles.cardHeader}>
+      <div className={coreStyles.scanStack}>
+        <div className={coreStyles.scanUploadCenter}>
+          <section className={coreStyles.workflowCard}>
+            <div className={coreStyles.cardHeader}>
               <div>
-                <p className={styles.eyebrow}>Step 1</p>
+                <p className={coreStyles.eyebrow}>Step 1</p>
                 <h2>Upload Skin Image</h2>
                 <p>
                   Upload the patient image for the selected approved visit. The
@@ -1974,17 +1967,17 @@ function DoctorAiAnalysisContent() {
             </div>
 
             {!targetAppointment ? (
-              <div className={styles.emptyState}>
+              <div className={coreStyles.emptyState}>
                 No consultation is available for this patient yet.
               </div>
             ) : !aiAvailableForTarget || !isApprovedTarget ? (
-              <div className={styles.emptyState}>
+              <div className={coreStyles.emptyState}>
                 <strong>AI Skin Analysis Unavailable</strong>
                 <p>{aiUnavailableMessage}</p>
               </div>
             ) : (
               <>
-                <label className={styles.dropZone} htmlFor="skin_file">
+                <label className={coreStyles.dropZone} htmlFor="skin_file">
                   <input
                     id="skin_file"
                     type="file"
@@ -1995,7 +1988,7 @@ function DoctorAiAnalysisContent() {
                     }}
                   />
 
-                  <span className={styles.dropIcon}>＋</span>
+                  <span className={coreStyles.dropIcon}>＋</span>
                   <strong>
                     {selectedFile
                       ? selectedFile.name
@@ -2005,7 +1998,7 @@ function DoctorAiAnalysisContent() {
                 </label>
 
                 <button
-                  className={styles.primaryButton}
+                  className={coreStyles.primaryButton}
                   onClick={handleUploadAnalysis}
                   disabled={
                     uploading ||
@@ -2021,10 +2014,10 @@ function DoctorAiAnalysisContent() {
           </section>
         </div>
 
-        <section className={styles.workflowCard}>
-          <div className={styles.cardHeader}>
+        <section className={coreStyles.workflowCard}>
+          <div className={coreStyles.cardHeader}>
             <div>
-              <p className={styles.eyebrow}>Pending Case</p>
+              <p className={coreStyles.eyebrow}>Pending Case</p>
               <h2>Latest AI Result</h2>
               <p>
                 This AI-generated result stays here until the doctor completes
@@ -2044,14 +2037,14 @@ function DoctorAiAnalysisContent() {
   const renderReportsStage = () => {
     if (loadingPatientHistory) {
       return (
-        <div className={styles.emptyState}>Loading completed reports...</div>
+        <div className={coreStyles.emptyState}>Loading completed reports...</div>
       );
     }
 
     if (sortedCompletedReports.length === 0) {
       return (
-        <section className={styles.workflowCard}>
-          <div className={styles.emptyState}>
+        <section className={coreStyles.workflowCard}>
+          <div className={coreStyles.emptyState}>
             No completed reports found for this patient yet.
           </div>
         </section>
@@ -2059,16 +2052,16 @@ function DoctorAiAnalysisContent() {
     }
 
     return (
-      <section className={styles.workflowCard}>
-        <div className={styles.cardHeader}>
+      <section className={coreStyles.workflowCard}>
+        <div className={coreStyles.cardHeader}>
           <div>
-            <p className={styles.eyebrow}>Patient Record</p>
+            <p className={coreStyles.eyebrow}>Patient Record</p>
             <h2>All Completed Reports</h2>
             <p>Review the patient’s completed diagnosis history.</p>
           </div>
         </div>
 
-        <div className={styles.reportGrid}>
+        <div className={historyStyles.reportGrid}>
           {sortedCompletedReports.map((item) => {
             const report = item.report;
 
@@ -2077,8 +2070,8 @@ function DoctorAiAnalysisContent() {
             );
 
             return (
-              <article key={report.id} className={styles.historyCard}>
-                <div className={styles.historyHeader}>
+              <article key={report.id} className={historyStyles.historyCard}>
+                <div className={historyStyles.historyHeader}>
                   <div>
                     <strong>
                       {item.appointment?.date || "Unknown date"} •{" "}
@@ -2088,39 +2081,39 @@ function DoctorAiAnalysisContent() {
                   </div>
 
                   <span
-                    className={`${styles.statusBadge} ${styles.badgeCompleted}`}
+                    className={`${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`}
                   >
                     Completed
                   </span>
                 </div>
 
-                <div className={styles.historyBody}>
+                <div className={historyStyles.historyBody}>
                   <p>
                     <b>Diagnosis:</b> {report.doctor_final_diagnosis || "—"}
                   </p>
 
-                  <div className={styles.historyPrescriptionBox}>
+                  <div className={historyStyles.historyPrescriptionBox}>
                     <h4>Prescription</h4>
 
                     {prescriptionItems.length === 0 ? (
-                      <div className={styles.emptyStateSmall}>
+                      <div className={coreStyles.emptyStateSmall}>
                         No prescription saved for this report.
                       </div>
                     ) : (
-                      <div className={styles.medicationStack}>
+                      <div className={resultStyles.medicationStack}>
                         {prescriptionItems.map((prescription, index) => (
                           <div
                             key={`${prescription.medication}-${index}`}
-                            className={styles.medicationCard}
+                            className={resultStyles.medicationCard}
                           >
                             <strong>{prescription.medication}</strong>
 
-                            <div className={styles.medicationRow}>
+                            <div className={resultStyles.medicationRow}>
                               <span>Usage</span>
                               <p>{prescription.usage || "—"}</p>
                             </div>
 
-                            <div className={styles.medicationRow}>
+                            <div className={resultStyles.medicationRow}>
                               <span>Reason</span>
                               <p>{prescription.reason || "—"}</p>
                             </div>
@@ -2175,16 +2168,16 @@ function DoctorAiAnalysisContent() {
 const renderHistoryStage = () => {
   if (loadingPatientHistory || loadingVisitRecords) {
     return (
-      <section className={styles.workflowCard}>
-        <div className={styles.emptyState}>Loading medical history...</div>
+      <section className={coreStyles.workflowCard}>
+        <div className={coreStyles.emptyState}>Loading medical history...</div>
       </section>
     );
   }
 
   if (sortedPatientVisitHistory.length === 0) {
     return (
-      <section className={styles.workflowCard}>
-        <div className={styles.emptyState}>
+      <section className={coreStyles.workflowCard}>
+        <div className={coreStyles.emptyState}>
           No completed medical history or AI analysis history yet.
         </div>
       </section>
@@ -2192,10 +2185,10 @@ const renderHistoryStage = () => {
   }
 
   return (
-    <section className={styles.workflowCard}>
-      <div className={styles.cardHeader}>
+    <section className={coreStyles.workflowCard}>
+      <div className={coreStyles.cardHeader}>
         <div>
-          <p className={styles.eyebrow}>Medical History</p>
+          <p className={coreStyles.eyebrow}>Medical History</p>
           <h2>All Patient Doctor Records</h2>
           <p>
             Doctor diagnosis, prescriptions, notes, and follow-up plans are
@@ -2205,7 +2198,7 @@ const renderHistoryStage = () => {
         </div>
       </div>
 
-      <div className={styles.medicalHistoryList}>
+      <div className={historyStyles.medicalHistoryList}>
         {sortedPatientVisitHistory.map((item) => {
           const linkedAnalysis = item.linkedAnalysis;
           const report = item.report;
@@ -2223,10 +2216,10 @@ const renderHistoryStage = () => {
           } • ${item.appointment.services || "Consultation"}`;
 
           return (
-            <article key={recordKey} className={styles.medicalHistoryCard}>
-              <div className={styles.medicalHistoryTop}>
+            <article key={recordKey} className={historyStyles.medicalHistoryCard}>
+              <div className={historyStyles.medicalHistoryTop}>
                 <div>
-                  <p className={styles.historyDate}>
+                  <p className={historyStyles.historyDate}>
                     {item.appointment.date || "Unknown date"}
                   </p>
 
@@ -2235,12 +2228,12 @@ const renderHistoryStage = () => {
                   <span>Status: {item.appointment.status || "—"}</span>
                 </div>
 
-                <div className={styles.resultBadgeStack}>
+                <div className={resultStyles.resultBadgeStack}>
                   <span
                     className={
                       report
-                        ? styles.reportSavedBadge
-                        : styles.aiResultOnlyBadge
+                        ? historyStyles.reportSavedBadge
+                        : resultStyles.aiResultOnlyBadge
                     }
                   >
                     {report ? "Doctor Report Saved" : "AI Result Only"}
@@ -2249,7 +2242,7 @@ const renderHistoryStage = () => {
                   {linkedAnalysis && (
                     <button
                       type="button"
-                      className={styles.secondaryButton}
+                      className={coreStyles.secondaryButton}
                       onClick={() =>
                         openAiResultModal(appointmentTitle, linkedAnalysis)
                       }
@@ -2261,36 +2254,36 @@ const renderHistoryStage = () => {
               </div>
 
               {report ? (
-                <div className={styles.medicalHistoryDetails}>
-                  <div className={styles.historyInfoGrid}>
-                    <div className={styles.historyInfoBox}>
+                <div className={historyStyles.medicalHistoryDetails}>
+                  <div className={historyStyles.historyInfoGrid}>
+                    <div className={historyStyles.historyInfoBox}>
                       <span>Doctor Final Diagnosis</span>
                       <strong>{report.doctor_final_diagnosis || "—"}</strong>
                     </div>
                   </div>
 
-                  <div className={styles.historyPrescriptionBox}>
+                  <div className={historyStyles.historyPrescriptionBox}>
                     <h4>Doctor Prescription</h4>
 
                     {prescriptionItems.length === 0 ? (
-                      <div className={styles.emptyStateSmall}>
+                      <div className={coreStyles.emptyStateSmall}>
                         No doctor prescription was saved for this visit.
                       </div>
                     ) : (
-                      <div className={styles.medicationStack}>
+                      <div className={resultStyles.medicationStack}>
                         {prescriptionItems.map((prescription, index) => (
                           <div
                             key={`${prescription.medication}-${index}`}
-                            className={styles.medicationCard}
+                            className={resultStyles.medicationCard}
                           >
                             <strong>{prescription.medication}</strong>
 
-                            <div className={styles.medicationRow}>
+                            <div className={resultStyles.medicationRow}>
                               <span>Usage</span>
                               <p>{prescription.usage || "—"}</p>
                             </div>
 
-                            <div className={styles.medicationRow}>
+                            <div className={resultStyles.medicationRow}>
                               <span>Reason</span>
                               <p>{prescription.reason || "—"}</p>
                             </div>
@@ -2300,25 +2293,25 @@ const renderHistoryStage = () => {
                     )}
                   </div>
 
-                  <div className={styles.historyFollowUpBox}>
+                  <div className={historyStyles.historyFollowUpBox}>
                     <span>Doctor Notes</span>
                     <p>{getDoctorOnlyNote(report.after_appointment_notes)}</p>
                   </div>
 
-                  <div className={styles.historyFollowUpBox}>
+                  <div className={historyStyles.historyFollowUpBox}>
                     <span>Follow-up Plan</span>
                     <p>{report.follow_up_plan || "—"}</p>
                   </div>
 
                   {report.next_visit_date && (
-                    <div className={styles.historyFollowUpBox}>
+                    <div className={historyStyles.historyFollowUpBox}>
                       <span>Next Visit Date</span>
                       <p>{report.next_visit_date}</p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className={styles.warningBlock}>
+                <div className={resultStyles.warningBlock}>
                   <strong>No doctor final report saved yet.</strong>
                   <p>
                     This visit has an AI analysis result, but the doctor has not
@@ -2344,7 +2337,7 @@ const renderHistoryStage = () => {
 ) => {
   if (!linkedAnalysis) {
     return (
-      <div className={styles.emptyStateSmall}>
+      <div className={coreStyles.emptyStateSmall}>
         No linked AI result was saved for this visit.
       </div>
     );
@@ -2367,29 +2360,29 @@ const renderHistoryStage = () => {
   );
 
   return (
-    <div className={styles.aiModalContent}>
-      <div className={styles.aiModalResultGrid}>
+    <div className={resultStyles.aiModalContent}>
+      <div className={resultStyles.aiModalResultGrid}>
         {modalImageUrl ? (
-          <div className={styles.aiModalImagePanel}>
+          <div className={resultStyles.aiModalImagePanel}>
             <img
               src={modalImageUrl}
               alt="AI skin analysis"
-              className={styles.aiModalImage}
+              className={resultStyles.aiModalImage}
             />
           </div>
         ) : (
-          <div className={styles.aiModalImageUnavailable}>
+          <div className={resultStyles.aiModalImageUnavailable}>
             Image is unavailable. Check if the backend returned image_url.
           </div>
         )}
 
-        <div className={styles.aiModalSummaryGrid}>
-          <div className={styles.aiModalInfoCard}>
+        <div className={resultStyles.aiModalSummaryGrid}>
+          <div className={resultStyles.aiModalInfoCard}>
             <span>AI Condition</span>
             <strong>{linkedAnalysis.condition || "—"}</strong>
           </div>
 
-          <div className={styles.aiModalInfoCard}>
+          <div className={resultStyles.aiModalInfoCard}>
             <span>Confidence</span>
             <strong>
               {confidenceValue !== null
@@ -2398,27 +2391,27 @@ const renderHistoryStage = () => {
             </strong>
           </div>
 
-          <div className={styles.aiModalInfoCard}>
+          <div className={resultStyles.aiModalInfoCard}>
             <span>AI Severity</span>
             <strong>{linkedAnalysis.severity || "—"}</strong>
           </div>
 
-          <div className={styles.aiModalInfoCard}>
+          <div className={resultStyles.aiModalInfoCard}>
             <span>Generated</span>
             <strong>{formatDateTime(linkedAnalysis.created_at)}</strong>
           </div>
 
-          <div className={styles.aiModalInfoCardWide}>
+          <div className={resultStyles.aiModalInfoCardWide}>
             <span>Possible Conditions</span>
             <p>{linkedAnalysis.possible_conditions || "—"}</p>
           </div>
 
-          <div className={styles.aiModalInfoCardWide}>
+          <div className={resultStyles.aiModalInfoCardWide}>
             <span>Key Findings</span>
             <p>{linkedAnalysis.key_findings || "—"}</p>
           </div>
 
-          <div className={styles.aiModalInfoCardWide}>
+          <div className={resultStyles.aiModalInfoCardWide}>
             <span>AI Recommendation</span>
             <p>
               {linkedAnalysis.recommendation ||
@@ -2428,19 +2421,19 @@ const renderHistoryStage = () => {
         </div>
       </div>
 
-      <section className={styles.aiModalSection}>
+      <section className={resultStyles.aiModalSection}>
         <h4>AI Prescription Suggestions</h4>
 
         {prescriptionItems.length === 0 ? (
-          <div className={styles.emptyStateSmall}>
+          <div className={coreStyles.emptyStateSmall}>
             No AI prescription suggestions saved.
           </div>
         ) : (
-          <div className={styles.aiModalPrescriptionGrid}>
+          <div className={resultStyles.aiModalPrescriptionGrid}>
             {prescriptionItems.map((item, index) => (
               <div
                 key={`${item.medication}-${index}`}
-                className={styles.aiModalPrescriptionCard}
+                className={resultStyles.aiModalPrescriptionCard}
               >
                 <strong>{item.medication}</strong>
 
@@ -2459,18 +2452,18 @@ const renderHistoryStage = () => {
         )}
       </section>
 
-      <div className={styles.aiModalBottomGrid}>
-        <section className={styles.aiModalSection}>
+      <div className={resultStyles.aiModalBottomGrid}>
+        <section className={resultStyles.aiModalSection}>
           <h4>AI Follow-up Suggestions</h4>
 
           {followUpItems.length === 0 ? (
             <p>—</p>
           ) : (
-            <div className={styles.aiModalSoftList}>
+            <div className={resultStyles.aiModalSoftList}>
               {followUpItems.map((item, index) => (
                 <div
                   key={`${item}-${index}`}
-                  className={styles.aiModalSoftListItem}
+                  className={resultStyles.aiModalSoftListItem}
                 >
                   {item}
                 </div>
@@ -2479,17 +2472,17 @@ const renderHistoryStage = () => {
           )}
         </section>
 
-        <section className={`${styles.aiModalSection} ${styles.aiModalWarning}`}>
+        <section className={`${resultStyles.aiModalSection} ${resultStyles.aiModalWarning}`}>
           <h4>AI Red Flags</h4>
 
           {redFlagItems.length === 0 ? (
             <p>—</p>
           ) : (
-            <div className={styles.aiModalWarningList}>
+            <div className={resultStyles.aiModalWarningList}>
               {redFlagItems.map((item, index) => (
                 <div
                   key={`${item}-${index}`}
-                  className={styles.aiModalWarningItem}
+                  className={resultStyles.aiModalWarningItem}
                 >
                   {item}
                 </div>
@@ -2506,8 +2499,8 @@ const renderHistoryStage = () => {
     <>
       <DoctorNavbar />
 
-      <main className={styles.pageShell}>
-        <section className={styles.pageHeader}>
+      <main className={coreStyles.pageShell}>
+        <section className={coreStyles.pageHeader}>
           <div>
             <h1>AI Skin Analysis</h1>
             <p>
@@ -2518,15 +2511,15 @@ const renderHistoryStage = () => {
         </section>
 
         {loading ? (
-          <section className={styles.workflowCard}>
-            <div className={styles.emptyState}>
+          <section className={coreStyles.workflowCard}>
+            <div className={coreStyles.emptyState}>
               Loading AI analysis workspace...
             </div>
           </section>
         ) : !selectedPatient ? (
-          <section className={styles.patientPickerShell}>
-            <div className={styles.patientPickerCard}>
-              <div className={styles.patientPickerHeader}>
+          <section className={coreStyles.patientPickerShell}>
+            <div className={coreStyles.patientPickerCard}>
+              <div className={coreStyles.patientPickerHeader}>
                 <div>
                   <h2>Patients</h2>
                   <p>
@@ -2536,7 +2529,7 @@ const renderHistoryStage = () => {
                 </div>
               </div>
 
-              <div className={styles.searchBox}>
+              <div className={coreStyles.searchBox}>
                 <label htmlFor="patient_search">Search Patient</label>
                 <input
                   id="patient_search"
@@ -2547,9 +2540,9 @@ const renderHistoryStage = () => {
                 />
               </div>
 
-              <div className={styles.patientListPicker}>
+              <div className={coreStyles.patientListPicker}>
                 {filteredPatients.length === 0 ? (
-                  <div className={styles.emptyStateSmall}>
+                  <div className={coreStyles.emptyStateSmall}>
                     No patient matched your search.
                   </div>
                 ) : (
@@ -2560,10 +2553,10 @@ const renderHistoryStage = () => {
                       <button
                         key={item.patient.id}
                         type="button"
-                        className={styles.patientItem}
+                        className={coreStyles.patientItem}
                         onClick={() => selectPatient(item.patient.id)}
                       >
-                        <div className={styles.patientItemTop}>
+                        <div className={coreStyles.patientItemTop}>
                           <div>
                             <strong>
                               {item.patient.name || "Unnamed patient"}
@@ -2577,7 +2570,7 @@ const renderHistoryStage = () => {
                           <span className={meta.badgeClass}>{meta.label}</span>
                         </div>
 
-                        <div className={styles.patientItemFooter}>
+                        <div className={coreStyles.patientItemFooter}>
                           <span>{meta.latestVisitText}</span>
                           <span>
                             {item.total_reports} report
@@ -2592,10 +2585,10 @@ const renderHistoryStage = () => {
             </div>
           </section>
         ) : (
-          <section className={styles.selectedPatientShell}>
-            <section className={styles.patientSummaryCard}>
-              <div className={styles.patientIdentity}>
-                <div className={styles.avatarCircle}>
+          <section className={coreStyles.selectedPatientShell}>
+            <section className={coreStyles.patientSummaryCard}>
+              <div className={coreStyles.patientIdentity}>
+                <div className={coreStyles.avatarCircle}>
                   {(selectedPatient.patient.name || "P")
                     .slice(0, 1)
                     .toUpperCase()}
@@ -2607,10 +2600,10 @@ const renderHistoryStage = () => {
                 </div>
               </div>
 
-              <div className={styles.patientHeaderActions}>
+              <div className={coreStyles.patientHeaderActions}>
                 <button
                   type="button"
-                  className={styles.secondaryButton}
+                  className={coreStyles.secondaryButton}
                   onClick={changePatient}
                 >
                   Change Patient
@@ -2618,21 +2611,21 @@ const renderHistoryStage = () => {
 
                 <button
                   type="button"
-                  className={styles.secondaryButton}
+                  className={coreStyles.secondaryButton}
                   onClick={openPatientRecord}
                 >
                   Open Patient Record
                 </button>
               </div>
 
-              <div className={styles.summaryMetrics}>
+              <div className={coreStyles.summaryMetrics}>
                 <div>
-                  <span className={styles.infoLabel}>Reports</span>
+                  <span className={coreStyles.infoLabel}>Reports</span>
                   <strong>{selectedPatient.total_reports}</strong>
                 </div>
 
                 <div>
-                  <span className={styles.infoLabel}>Latest Diagnosis</span>
+                  <span className={coreStyles.infoLabel}>Latest Diagnosis</span>
                   <strong>
                     {selectedPatient.latest_report?.doctor_final_diagnosis ||
                       "—"}
@@ -2640,7 +2633,7 @@ const renderHistoryStage = () => {
                 </div>
 
                 <div>
-                  <span className={styles.infoLabel}>Latest Visit</span>
+                  <span className={coreStyles.infoLabel}>Latest Visit</span>
                   <strong>
                     {selectedPatientAllVisits[0]
                       ? `${selectedPatientAllVisits[0].date} • ${selectedPatientAllVisits[0].services}`
@@ -2649,7 +2642,7 @@ const renderHistoryStage = () => {
                 </div>
 
                 <div>
-                  <span className={styles.infoLabel}>Selected Visit</span>
+                  <span className={coreStyles.infoLabel}>Selected Visit</span>
                   <strong>
                     {targetAppointment
                       ? `${targetAppointment.date} • ${targetAppointment.services}`
@@ -2658,7 +2651,7 @@ const renderHistoryStage = () => {
                 </div>
               </div>
 
-              <div className={styles.visitSelector}>
+              <div className={coreStyles.visitSelector}>
                 <label htmlFor="appointment_selector">Visit to Review</label>
                 <select
                   id="appointment_selector"
@@ -2676,11 +2669,11 @@ const renderHistoryStage = () => {
               </div>
             </section>
 
-            <section className={styles.stepperCard}>
+            <section className={coreStyles.stepperCard}>
               <button
                 type="button"
-                className={`${styles.stepButton} ${
-                  activeStage === "scan" ? styles.stepButtonActive : ""
+                className={`${coreStyles.stepButton} ${
+                  activeStage === "scan" ? coreStyles.stepButtonActive : ""
                 }`}
                 onClick={() => setActiveStage("scan")}
               >
@@ -2690,8 +2683,8 @@ const renderHistoryStage = () => {
 
               <button
                 type="button"
-                className={`${styles.stepButton} ${
-                  activeStage === "reports" ? styles.stepButtonActive : ""
+                className={`${coreStyles.stepButton} ${
+                  activeStage === "reports" ? coreStyles.stepButtonActive : ""
                 }`}
                 onClick={() => setActiveStage("reports")}
               >
@@ -2701,8 +2694,8 @@ const renderHistoryStage = () => {
 
               <button
                 type="button"
-                className={`${styles.stepButton} ${
-                  activeStage === "history" ? styles.stepButtonActive : ""
+                className={`${coreStyles.stepButton} ${
+                  activeStage === "history" ? coreStyles.stepButtonActive : ""
                 }`}
                 onClick={() => setActiveStage("history")}
               >
@@ -2712,7 +2705,7 @@ const renderHistoryStage = () => {
             </section>
 
             {isCompletedTarget && (
-              <div className={styles.readOnlyBanner}>
+              <div className={coreStyles.readOnlyBanner}>
                 This selected visit is completed. You may review the AI result
                 and final doctor report in read-only mode.
               </div>
@@ -2731,15 +2724,15 @@ const renderHistoryStage = () => {
     aria-modal="true"
     aria-label="AI skin analysis result"
     onClick={closeAiResultModal}
-    className={styles.aiModalOverlay}
+    className={resultStyles.aiModalOverlay}
   >
     <section
       onClick={(event) => event.stopPropagation()}
-      className={styles.aiModalShell}
+      className={resultStyles.aiModalShell}
     >
-      <div className={styles.aiModalHeader}>
+      <div className={resultStyles.aiModalHeader}>
         <div>
-          <p className={styles.eyebrow}>Supporting AI Result</p>
+          <p className={coreStyles.eyebrow}>Supporting AI Result</p>
           <h2>{selectedAiModal.title}</h2>
           <p>
             This AI result is for reference only. The doctor’s final diagnosis
@@ -2749,14 +2742,14 @@ const renderHistoryStage = () => {
 
         <button
           type="button"
-          className={styles.aiModalCloseButton}
+          className={resultStyles.aiModalCloseButton}
           onClick={closeAiResultModal}
         >
           Close
         </button>
       </div>
 
-      <div className={styles.aiModalBody}>
+      <div className={resultStyles.aiModalBody}>
         {renderAiResultPanel(
           selectedAiModal.analysis,
           normalizeConfidence(selectedAiModal.analysis.confidence)
@@ -2774,7 +2767,7 @@ export default function DoctorAiAnalysisPage() {
     <Suspense
       fallback={
       <main
-          className={styles.pageFallback}
+          className={coreStyles.pageFallback}
         >
           Loading AI analysis...
         </main>

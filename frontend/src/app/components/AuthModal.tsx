@@ -300,7 +300,7 @@ export default function AuthModal({
 
         {!isForgot ? (
           <p className={styles.switch}>
-            Don't have an account?
+            Don&apos;t have an account?
             <span className={styles.switchAction} onClick={goToRegister}>
               {" "}
               Register

@@ -1,0 +1,825 @@
+.pageFallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #fff7fa;
+  color: #82334c;
+  font-weight: 700;
+}
+
+.pageShell {
+  min-height: 100vh;
+  padding: 36px 38px 60px 298px;
+  background: #f7f5f6;
+  color: #171316;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #121014;
+}
+
+.pageHeader p {
+  max-width: 780px;
+  margin: 8px 0 0;
+  color: #625a61;
+  font-size: 15px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #93365a;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.patientPickerShell {
+  display: grid;
+  place-items: start center;
+  width: 100%;
+}
+
+.patientPickerCard {
+  width: min(980px, 100%);
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #eee5e9;
+  border-radius: 28px;
+  box-shadow: 0 18px 45px rgba(76, 38, 54, 0.08);
+}
+
+.patientPickerHeader {
+  margin-bottom: 22px;
+}
+
+.patientPickerHeader h2 {
+  margin: 0;
+  color: #181216;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.patientPickerHeader p {
+  margin: 8px 0 0;
+  color: #716870;
+  font-size: 14px;
+}
+
+.patientListPicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.patientItem {
+  width: 100%;
+  border: 1px solid #eee3e8;
+  border-radius: 20px;
+  background: #fffafb;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.patientItem:hover {
+  transform: translateY(-2px);
+  border-color: #c98aa1;
+  box-shadow: 0 14px 30px rgba(89, 37, 56, 0.1);
+}
+
+.patientItemTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.patientItemTop strong {
+  display: block;
+  color: #181216;
+  font-size: 15px;
+}
+
+.patientItemTop span {
+  display: block;
+  margin-top: 4px;
+  color: #716870;
+  font-size: 13px;
+}
+
+.patientItemFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+  color: #716870;
+  font-size: 12px;
+}
+
+.selectedPatientShell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  min-width: 0;
+}
+
+.patientSummaryCard,
+.workflowCard,
+.stepperCard {
+  background: #ffffff;
+  border: 1px solid #eee5e9;
+  border-radius: 28px;
+  box-shadow: 0 18px 45px rgba(76, 38, 54, 0.08);
+}
+
+.patientSummaryCard {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 22px;
+  padding: 24px;
+}
+
+.patientIdentity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.patientIdentity h2,
+.workflowCard h2,
+.cardHeader h2 {
+  margin: 0;
+  color: #181216;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.patientIdentity p,
+.cardHeader p {
+  margin: 6px 0 0;
+  color: #716870;
+  font-size: 14px;
+}
+
+.avatarCircle {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #93365a, #c46b8c);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.patientHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.summaryMetrics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summaryMetrics div {
+  padding: 16px;
+  border: 1px solid #eee5e9;
+  border-radius: 20px;
+  background: #fbf9fa;
+}
+
+.summaryMetrics strong {
+  display: block;
+  margin-top: 8px;
+  color: #171316;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.infoLabel {
+  display: block;
+  color: #7d6d76;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.visitSelector {
+  grid-column: 1 / -1;
+}
+
+.searchBox,
+.visitSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.searchBox label,
+.visitSelector label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #221920;
+}
+
+.searchBox input,
+.visitSelector select {
+  width: 100%;
+  border: 1px solid #e6dce1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #171316;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchBox input,
+.visitSelector select {
+  min-height: 48px;
+  padding: 0 15px;
+}
+
+.searchBox input:focus,
+.visitSelector select:focus {
+  border-color: #93365a;
+  box-shadow: 0 0 0 4px rgba(147, 54, 90, 0.12);
+}
+
+.stepperCard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #625a61;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.stepButton span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f0e5ea;
+  color: #93365a;
+  font-size: 12px;
+}
+
+.stepButton:hover {
+  background: #faf1f4;
+  color: #93365a;
+}
+
+.stepButtonActive {
+  background: #93365a;
+  color: #ffffff;
+}
+
+.stepButtonActive span {
+  background: #ffffff;
+  color: #93365a;
+}
+
+.workflowCard {
+  padding: 24px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.primaryButton {
+  width: fit-content;
+  margin-top: 18px;
+  border: 1px solid #93365a;
+  background: #93365a;
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(147, 54, 90, 0.22);
+}
+
+.secondaryButton {
+  border: 1px solid #d9bcc8;
+  background: #ffffff;
+  color: #93365a;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+.scanStack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+}
+
+.scanUploadCenter {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.scanUploadCenter .workflowCard {
+  width: min(720px, 100%);
+}
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-height: 230px;
+  padding: 30px;
+  border: 2px dashed #d9bcc8;
+  border-radius: 26px;
+  background: #fff8fa;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.dropZone:hover {
+  transform: translateY(-2px);
+  border-color: #93365a;
+  background: #fff2f6;
+}
+
+.dropZone input {
+  display: none;
+}
+
+.dropIcon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 20px;
+  background: #93365a;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dropZone strong {
+  color: #171316;
+  font-size: 16px;
+}
+
+.dropZone small {
+  color: #716870;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.statusBadge {
+  background: #f0e5ea;
+  color: #7d3b56;
+}
+
+.badgeApproved {
+  background: #eaf8ef;
+  color: #247a4a;
+}
+
+.badgeCompleted {
+  background: #eaf0ff;
+  color: #315bbd;
+}
+
+.badgePending {
+  background: #fff6df;
+  color: #9a6a00;
+}
+
+.badgeUrgent {
+  background: #ffe8e8;
+  color: #b42318;
+}
+
+.emptyState,
+.emptyStateSmall,
+.readOnlyBanner {
+  border-radius: 20px;
+  background: #fbf9fa;
+  color: #716870;
+  text-align: center;
+}
+
+.emptyState {
+  padding: 34px 20px;
+  font-weight: 800;
+}
+
+.emptyStateSmall {
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.readOnlyBanner {
+  padding: 16px 18px;
+  border: 1px solid #eadce2;
+  color: #7d3b56;
+  font-weight: 800;
+  text-align: left;
+}
+
+@media (max-width: 1180px) {
+  .pageShell {
+    padding-left: 270px;
+  }
+
+  .scanUploadCenter .workflowCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .pageShell {
+    padding: 28px 20px 60px 280px;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 112px;
+  }
+
+  .patientSummaryCard,
+.summaryMetrics,
+.stepperCard,
+.patientListPicker {
+    grid-template-columns: 1fr;
+  }
+
+  .stepButton {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  .patientHeaderActions {
+    justify-content: flex-start;
+  }
+}
+
+:global(body.darkMode) .pageShell {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .pageHeader h1,
+:global(body.darkMode) .patientPickerHeader h2,
+:global(body.darkMode) .patientItemTop strong,
+:global(body.darkMode) .patientIdentity h2,
+:global(body.darkMode) .workflowCard h2,
+:global(body.darkMode) .cardHeader h2,
+:global(body.darkMode) .summaryMetrics strong {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .pageHeader p,
+:global(body.darkMode) .patientPickerHeader p,
+:global(body.darkMode) .patientItemTop span,
+:global(body.darkMode) .patientItemFooter,
+:global(body.darkMode) .patientIdentity p,
+:global(body.darkMode) .cardHeader p,
+:global(body.darkMode) .infoLabel,
+:global(body.darkMode) .dropZone small {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .patientPickerCard,
+:global(body.darkMode) .patientSummaryCard,
+:global(body.darkMode) .workflowCard,
+:global(body.darkMode) .stepperCard,
+:global(body.darkMode) .summaryMetrics div,
+:global(body.darkMode) .emptyState,
+:global(body.darkMode) .emptyStateSmall,
+:global(body.darkMode) .readOnlyBanner {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+:global(body.darkMode) .patientItem {
+  background: var(--bg-soft);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .patientItem:hover {
+  background: rgba(244, 114, 182, 0.1);
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+:global(body.darkMode) .searchBox label,
+:global(body.darkMode) .visitSelector label {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .searchBox input,
+:global(body.darkMode) .visitSelector select {
+  background: var(--input-bg);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .searchBox input::placeholder {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .stepButton {
+  color: var(--text-muted);
+}
+
+:global(body.darkMode) .stepButton span {
+  background: var(--bg-soft);
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .stepButton:hover {
+  background: rgba(244, 114, 182, 0.1);
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .stepButtonActive {
+  background: var(--primary-color);
+  color: #ffffff;
+}
+
+:global(body.darkMode) .stepButtonActive span {
+  background: #ffffff;
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .dropZone {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .dropZone:hover {
+  background: rgba(244, 114, 182, 0.1);
+  border-color: var(--primary-color);
+}
+
+:global(body.darkMode) .dropZone strong {
+  color: var(--text-heading);
+}
+
+:global(body.darkMode) .secondaryButton {
+  background: var(--bg-soft);
+  color: var(--primary-color);
+  border-color: var(--border-color);
+}
+
+:global(body.darkMode) .secondaryButton:hover {
+  background: rgba(244, 114, 182, 0.12);
+}
+
+:global(body.darkMode) .primaryButton {
+  background: var(--primary-color);
+  color: #ffffff;
+  border-color: var(--primary-color);
+}
+
+:global(body.darkMode) .statusBadge {
+  background: rgba(244, 114, 182, 0.14);
+  color: var(--primary-color);
+}
+
+:global(body.darkMode) .badgeApproved {
+  background: rgba(16, 185, 129, 0.14);
+  color: #86efac;
+}
+
+:global(body.darkMode) .badgeCompleted {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+}
+
+:global(body.darkMode) .badgePending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+}
+
+:global(body.darkMode) .badgeUrgent {
+  background: rgba(248, 113, 113, 0.14);
+  color: #fca5a5;
+}
+
+.pageShell {
+  padding: 36px 38px 60px 280px;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+:global(body.navCollapsed) .pageShell {
+  padding-left: 124px;
+}
+
+.patientPickerCard,
+.patientSummaryCard,
+.workflowCard,
+.stepperCard {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1180px) {
+  .pageShell {
+    padding: 30px 24px 50px 280px;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 124px;
+  }
+
+  .scanUploadCenter .workflowCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .pageShell {
+    padding: 28px 20px 50px 280px;
+  }
+
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 124px;
+  }
+
+  .patientSummaryCard,
+.summaryMetrics,
+.stepperCard,
+.patientListPicker {
+    grid-template-columns: 1fr;
+  }
+
+  .stepButton {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  .patientHeaderActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 700px) {
+  .pageShell,
+:global(body.navCollapsed) .pageShell {
+    padding: 92px 16px 34px;
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pageHeader h1 {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .pageHeader p {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .patientPickerCard,
+.patientSummaryCard,
+.workflowCard,
+.stepperCard {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .patientSummaryCard,
+.patientListPicker,
+.summaryMetrics,
+.stepperCard {
+    grid-template-columns: 1fr;
+  }
+
+  .patientHeaderActions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryButton,
+.secondaryButton {
+    width: 100%;
+  }
+
+  .stepperCard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stepButton {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageShell,
+:global(body.navCollapsed) .pageShell {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .pageHeader h1,
+.patientPickerHeader h2 {
+    font-size: 23px;
+  }
+
+  .patientIdentity h2,
+.workflowCard h2,
+.cardHeader h2 {
+    font-size: 20px;
+  }
+}

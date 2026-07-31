@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
-import styles from "@/app/styles/doctor.module.css";
+import sharedStyles from "@/app/styles/doctor-shared.module.css";
+import followUpStyles from "@/app/styles/doctor-follow-ups.module.css";
 import {
   getDoctorFollowUps,
   updateDoctorFollowUp,
@@ -77,35 +78,19 @@ const canCompleteFollowUp = (item: DisplayFollowUp) => {
   return status !== "completed" && item.follow_up_date <= today;
 };
 
-const getTimingStyle = (timing: string) => {
+const getTimingClass = (timing: string) => {
   switch (timing) {
     case "Completed":
-      return {
-        background: "rgba(34, 197, 94, 0.12)",
-        color: "#22c55e",
-        border: "1px solid rgba(34, 197, 94, 0.28)",
-      };
+      return followUpStyles.followUpTimingCompleted;
 
     case "Overdue":
-      return {
-        background: "rgba(248, 113, 113, 0.12)",
-        color: "#f87171",
-        border: "1px solid rgba(248, 113, 113, 0.28)",
-      };
+      return followUpStyles.followUpTimingOverdue;
 
     case "Due Today":
-      return {
-        background: "rgba(251, 191, 36, 0.14)",
-        color: "#fbbf24",
-        border: "1px solid rgba(251, 191, 36, 0.28)",
-      };
+      return followUpStyles.followUpTimingDue;
 
     default:
-      return {
-        background: "rgba(236, 72, 153, 0.12)",
-        color: "#f472b6",
-        border: "1px solid rgba(236, 72, 153, 0.28)",
-      };
+      return followUpStyles.followUpTimingUpcoming;
   }
 };
 
@@ -265,71 +250,58 @@ export default function DoctorFollowUpsPage() {
     <>
       <DoctorNavbar />
 
-      <main className={styles.pageWrapper}>
-        <div className={styles.headerSection}>
+      <main className={sharedStyles.pageWrapper}>
+        <div className={sharedStyles.headerSection}>
           <div>
-            <h1 className={styles.pageTitle}>Follow-Ups</h1>
-            <p className={styles.pageSubtitle}>
+            <h1 className={sharedStyles.pageTitle}>Follow-Ups</h1>
+            <p className={sharedStyles.pageSubtitle}>
               View follow-up schedules created from completed diagnosis reports.
             </p>
           </div>
 
           <button
             type="button"
-            className={styles.secondaryButton}
+            className={sharedStyles.secondaryButton}
             onClick={() => router.push("/pages/doctor/ai-analysis")}
           >
             Go to AI Analysis
           </button>
         </div>
 
-        <section className={`${styles.sectionCard} ${styles.statsGrid}`}>
-          <div className={`${styles.statCard} ${styles.statCardPink}`}>
-            <p className={styles.listSecondary}>Total Follow-Ups</p>
+        <section className={`${sharedStyles.sectionCard} ${sharedStyles.statsGrid}`}>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardPink}`}>
+            <p className={sharedStyles.listSecondary}>Total Follow-Ups</p>
             <h2>{sortedItems.length}</h2>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardYellow}`}>
-            <p className={styles.listSecondary}>Due / Overdue</p>
+          <div className={`${sharedStyles.statCard} ${followUpStyles.statCardYellow}`}>
+            <p className={sharedStyles.listSecondary}>Due / Overdue</p>
             <h2>{dueItems.length}</h2>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardBlue}`}>
-            <p className={styles.listSecondary}>Upcoming</p>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardBlue}`}>
+            <p className={sharedStyles.listSecondary}>Upcoming</p>
             <h2>{upcomingItems.length}</h2>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardGreen}`}>
-            <p className={styles.listSecondary}>Completed</p>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardGreen}`}>
+            <p className={sharedStyles.listSecondary}>Completed</p>
             <h2>{completedItems.length}</h2>
           </div>
         </section>
 
-        <section className={styles.sectionCard}>
-          <div
-            className={styles.sectionHeader}
-            style={{
-              alignItems: "center",
-              gap: 16,
-            }}
-          >
+        <section className={sharedStyles.sectionCard}>
+          <div className={`${sharedStyles.sectionHeader} ${followUpStyles.sectionHeaderCentered}`}>
             <div>
-              <h2 className={styles.sectionTitle}>Follow-Up Schedule</h2>
-              <p className={styles.pageSubtitle} style={{ marginTop: 4 }}>
+              <h2 className={sharedStyles.sectionTitle}>Follow-Up Schedule</h2>
+              <p className={`${sharedStyles.pageSubtitle} ${sharedStyles.pageSubtitleSpaced}`}>
                 These records are created from the optional follow-up section in
                 the doctor assessment workflow.
               </p>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginBottom: 20,
-            }}
-          >
+          <div className={followUpStyles.followUpFilters}>
             {filterButtons.map((button) => {
               const active = activeFilter === button.value;
 
@@ -338,19 +310,9 @@ export default function DoctorFollowUpsPage() {
                   key={button.value}
                   type="button"
                   onClick={() => setActiveFilter(button.value)}
-                  style={{
-                    border: active
-                      ? "1px solid rgba(236, 72, 153, 0.65)"
-                      : "1px solid rgba(148, 163, 184, 0.22)",
-                    background: active
-                      ? "rgba(236, 72, 153, 0.18)"
-                      : "rgba(255, 255, 255, 0.04)",
-                    color: active ? "#f472b6" : "inherit",
-                    borderRadius: 999,
-                    padding: "10px 14px",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
+                  className={`${followUpStyles.followUpFilterButton} ${
+                    active ? followUpStyles.followUpFilterButtonActive : ""
+                  }`}
                 >
                   {button.label} ({button.count})
                 </button>
@@ -359,107 +321,45 @@ export default function DoctorFollowUpsPage() {
           </div>
 
           {loading ? (
-            <div className={styles.emptyState}>Loading follow-up schedule...</div>
+            <div className={sharedStyles.emptyState}>Loading follow-up schedule...</div>
           ) : filteredItems.length === 0 ? (
-            <div
-              className={styles.emptyState}
-              style={{
-                padding: 32,
-                borderRadius: 18,
-                border: "1px dashed rgba(148, 163, 184, 0.35)",
-              }}
-            >
+            <div className={`${sharedStyles.emptyState} ${followUpStyles.followUpEmptyState}`}>
               <strong>No follow-ups to show.</strong>
-              <p style={{ marginTop: 8 }}>
+              <p className={followUpStyles.followUpEmptyText}>
                 Follow-ups will appear here when a doctor schedules one while
                 saving a diagnosis report.
               </p>
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                gap: 16,
-              }}
-            >
+            <div className={followUpStyles.followUpCards}>
               {filteredItems.map((item) => {
                 const timing = getFollowUpTiming(item);
-                const timingStyle = getTimingStyle(timing);
+                const timingClass = getTimingClass(timing);
                 const isCompleted =
                   (item.status || "").toLowerCase() === "completed";
                 const isCompletable = canCompleteFollowUp(item);
 
                 return (
-                  <article
-                    key={item.id}
-                    style={{
-                      border: "1px solid rgba(148, 163, 184, 0.22)",
-                      borderRadius: 20,
-                      padding: 20,
-                      background:
-                        "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
-                      boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 12,
-                      }}
-                    >
+                  <article key={item.id} className={followUpStyles.followUpCard}>
+                    <div className={followUpStyles.followUpCardHeader}>
                       <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 13,
-                            fontWeight: 800,
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            color: "#f472b6",
-                          }}
-                        >
+                        <p className={followUpStyles.followUpEyebrow}>
                           Follow-Up Date
                         </p>
 
-                        <h3
-                          style={{
-                            margin: "6px 0 0",
-                            fontSize: 22,
-                            lineHeight: 1.25,
-                          }}
-                        >
+                        <h3 className={followUpStyles.followUpDate}>
                           {formatReadableDate(item.follow_up_date)}
                         </h3>
                       </div>
 
-                      <span
-                        style={{
-                          ...timingStyle,
-                          borderRadius: 999,
-                          padding: "8px 12px",
-                          fontSize: 12,
-                          fontWeight: 900,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <span className={`${followUpStyles.followUpTimingBadge} ${timingClass}`}>
                         {timing}
                       </span>
                     </div>
 
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: 10,
-                      }}
-                    >
+                    <div className={followUpStyles.followUpDetails}>
                       <div>
-                        <p className={styles.listSecondary}>Patient</p>
+                        <p className={sharedStyles.listSecondary}>Patient</p>
                         <strong>
                           {item.patient_name ||
                             (item.patient_id
@@ -468,21 +368,21 @@ export default function DoctorFollowUpsPage() {
                         </strong>
 
                         {item.patient_email && (
-                          <p className={styles.listSecondary}>
+                          <p className={sharedStyles.listSecondary}>
                             {item.patient_email}
                           </p>
                         )}
                       </div>
 
                       <div>
-                        <p className={styles.listSecondary}>Related Visit</p>
+                        <p className={sharedStyles.listSecondary}>Related Visit</p>
                         <strong>
                           {item.appointment_services ||
                             `Appointment #${item.appointment_id}`}
                         </strong>
 
                         {(item.appointment_date || item.appointment_time) && (
-                          <p className={styles.listSecondary}>
+                          <p className={sharedStyles.listSecondary}>
                             {item.appointment_date
                               ? formatReadableDate(item.appointment_date)
                               : "No date"}{" "}
@@ -494,31 +394,22 @@ export default function DoctorFollowUpsPage() {
                       </div>
 
                       <div>
-                        <p className={styles.listSecondary}>Reason</p>
+                        <p className={sharedStyles.listSecondary}>Reason</p>
                         <strong>
                           {item.reason || "Follow-up consultation"}
                         </strong>
                       </div>
 
                       <div>
-                        <p className={styles.listSecondary}>Notes</p>
-                        <p style={{ margin: 0 }}>
+                        <p className={sharedStyles.listSecondary}>Notes</p>
+                        <p className={followUpStyles.followUpNotes}>
                           {item.notes || "No additional notes provided."}
                         </p>
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                        paddingTop: 12,
-                        borderTop: "1px solid rgba(148, 163, 184, 0.18)",
-                      }}
-                    >
-                      <span className={styles.listSecondary}>
+                    <div className={followUpStyles.followUpCardFooter}>
+                      <span className={sharedStyles.listSecondary}>
                         Doctor: {item.doctor_name || "Assigned doctor"}
                       </span>
 
@@ -526,7 +417,7 @@ export default function DoctorFollowUpsPage() {
                         (isCompletable ? (
                           <button
                             type="button"
-                            className={styles.actionButton}
+                            className={sharedStyles.actionButton}
                             onClick={() => handleMarkDone(item.id)}
                             disabled={updatingId === item.id}
                           >
@@ -535,18 +426,7 @@ export default function DoctorFollowUpsPage() {
                               : "Mark Completed"}
                           </button>
                         ) : (
-                          <span
-                            style={{
-                              padding: "9px 12px",
-                              borderRadius: 999,
-                              fontSize: 12,
-                              fontWeight: 800,
-                              color: "#94a3b8",
-                              border: "1px solid rgba(148, 163, 184, 0.25)",
-                              background: "rgba(148, 163, 184, 0.08)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <span className={sharedStyles.availabilityBadge}>
                             Available on {formatReadableDate(item.follow_up_date)}
                           </span>
                         ))}

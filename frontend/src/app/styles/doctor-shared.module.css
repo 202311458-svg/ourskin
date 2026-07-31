@@ -1,0 +1,350 @@
+.pageWrapper {
+  --primary-color: #82334c;
+  --primary-hover: #a04861;
+
+  --bg-light: #f7f7f9;
+  --card-light: #ffffff;
+  --text-dark: #1f1f1f;
+  --text-secondary: #666666;
+  --border-light: #e6e6e6;
+
+  --bg-dark: #1e1e1e;
+  --card-dark: #2a2a2a;
+  --text-light: #f5f5f5;
+  --text-muted-dark: #b5b5b5;
+  --border-dark: #3b3b3b;
+
+  --success-bg: #e9f8ef;
+  --success-text: #1f7a43;
+
+  --warning-bg: #fff6e5;
+  --warning-text: #b7791f;
+
+  --danger-bg: #fdeaea;
+  --danger-text: #b42318;
+
+  --info-bg: #eef4ff;
+  --info-text: #3457d5;
+
+--navbar-width: 280px;
+--navbar-collapsed-width: 112px;
+
+  margin-left: var(--navbar-width);
+  width: calc(100% - var(--navbar-width));
+  min-height: 100vh;
+  padding: 30px 32px;
+  background: var(--bg-light);
+  color: var(--text-dark);
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+:global(body.navCollapsed) .pageWrapper {
+  margin-left: var(--navbar-collapsed-width);
+  width: calc(100% - var(--navbar-collapsed-width));
+}
+
+:global(body.darkMode) .pageWrapper {
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.headerSection {
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.pageSubtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+:global(body.darkMode) .pageSubtitle {
+  color: var(--text-muted-dark);
+}
+
+.sectionCard {
+  background: var(--card-light);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+:global(body.darkMode) .sectionCard {
+  background: var(--card-dark);
+  border: 1px solid var(--border-dark);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.statsGrid {
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.statCard {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+}
+
+.statCard h2 {
+  margin: 6px 0 0;
+  font-size: 30px;
+}
+
+.statCardPink {
+  background: rgba(236, 72, 153, 0.12);
+  border-color: rgba(236, 72, 153, 0.22);
+}
+
+.statCardGreen {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.statCardBlue {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+.pageSubtitleSpaced {
+  margin-top: 4px;
+}
+
+.availabilityBadge {
+  padding: 9px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.08);
+  white-space: nowrap;
+}
+
+.listSecondary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  word-break: break-word;
+}
+
+:global(body.darkMode) .listSecondary {
+  color: var(--text-muted-dark);
+}
+
+.statusBadge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badgeApproved {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badgePending {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badgeCompleted {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.badgeUrgent {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.actionButton,
+.secondaryButton {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.actionButton {
+  background: var(--primary-color);
+  color: white;
+}
+
+.actionButton:hover {
+  background: var(--primary-hover);
+}
+
+.secondaryButton {
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.secondaryButton:hover {
+  background: rgba(130, 51, 76, 0.08);
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.emptyState {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+}
+
+:global(body.darkMode) .emptyState {
+  color: var(--text-muted-dark);
+  border: 1px dashed var(--border-dark);
+}
+
+:global(body.darkMode) .pageWrapper {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .sectionCard {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+.followUpSummaryCard {
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(130, 51, 76, 0.03);
+}
+
+.followUpSummaryCard .secondaryButton {
+  margin-top: 14px;
+}
+
+:global(body.darkMode) .followUpSummaryCard {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+:global(body.darkMode) .badgeUrgent {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  font-weight: 800;
+}
+
+.pageWrapper {
+  margin-left: 280px;
+  width: calc(100% - 280px);
+  max-width: calc(100% - 280px);
+  overflow-x: hidden;
+}
+
+:global(body.navCollapsed) .pageWrapper {
+  margin-left: 112px;
+  width: calc(100% - 112px);
+  max-width: calc(100% - 112px);
+}
+
+@media (max-width: 1024px) {
+  .pageWrapper {
+    margin-left: 280px;
+    width: calc(100% - 280px);
+    max-width: calc(100% - 280px);
+    padding: 24px 20px;
+  }
+
+  :global(body.navCollapsed) .pageWrapper {
+    margin-left: 112px;
+    width: calc(100% - 112px);
+    max-width: calc(100% - 112px);
+  }
+}
+
+@media (max-width: 700px) {
+  .pageWrapper,
+:global(body.navCollapsed) .pageWrapper {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 92px 16px 32px;
+  }
+
+  .pageTitle {
+    font-size: 25px;
+    line-height: 1.2;
+  }
+
+  .pageSubtitle {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sectionCard,
+.followUpSummaryCard,
+.emptyState {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .actionButton,
+.secondaryButton {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageWrapper,
+:global(body.navCollapsed) .pageWrapper {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

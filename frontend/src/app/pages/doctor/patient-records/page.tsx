@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  type CSSProperties,
   Suspense,
   useCallback,
   useEffect,
@@ -11,7 +10,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/doctor.module.css";
+import sharedStyles from "@/app/styles/doctor-shared.module.css";
+import recordStyles from "@/app/styles/doctor-patient-records.module.css";
 import {
   getDoctorPatientRecords,
   type PatientRecord,
@@ -42,42 +42,6 @@ type SelectedAiModal = {
   patientName: string;
   appointment: PatientRecord["appointment"];
   analysis: AnalysisRecord;
-};
-
-const MAROON = "#8a3456";
-const MAROON_DARK = "#6f2642";
-const BORDER = "#eadde4";
-const MUTED = "#7b6b75";
-const SOFT_BG = "#fbf8fa";
-
-const pageCardStyle: CSSProperties = {
-  border: `1px solid ${BORDER}`,
-  borderRadius: 24,
-  background: "#ffffff",
-  boxShadow: "0 12px 30px rgba(87, 47, 68, 0.06)",
-};
-
-const softPanelStyle: CSSProperties = {
-  border: `1px solid ${BORDER}`,
-  borderRadius: 18,
-  background: SOFT_BG,
-  padding: 18,
-};
-
-const labelStyle: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  color: MUTED,
-};
-
-const valueStyle: CSSProperties = {
-  marginTop: 8,
-  fontSize: 16,
-  lineHeight: 1.6,
-  color: "#1f1f1f",
-  whiteSpace: "pre-line",
 };
 
 function isObject(value: unknown): value is UnknownRecord {
@@ -274,15 +238,11 @@ async function getDiagnosisReportForAppointment(
   }
 }
 
-function getStatusStyle(status: string): CSSProperties {
+function getStatusBadgeClass(status: string) {
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus === "completed") {
-    return {
-      background: "#ecfdf3",
-      color: "#027a48",
-      border: "1px solid #abefc6",
-    };
+    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusCompleted}`;
   }
 
   if (
@@ -290,26 +250,14 @@ function getStatusStyle(status: string): CSSProperties {
     normalizedStatus === "cancelled" ||
     normalizedStatus === "canceled"
   ) {
-    return {
-      background: "#fff1f3",
-      color: "#c01048",
-      border: "1px solid #fecdd6",
-    };
+    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusDeclined}`;
   }
 
   if (normalizedStatus === "approved") {
-    return {
-      background: "#eff8ff",
-      color: "#175cd3",
-      border: "1px solid #b2ddff",
-    };
+    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusApproved}`;
   }
 
-  return {
-    background: "#fffaeb",
-    color: "#b54708",
-    border: "1px solid #fedf89",
-  };
+  return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusPending}`;
 }
 
 function getDoctorReportSources(
@@ -1294,136 +1242,77 @@ function DoctorPatientRecordsContent() {
     <>
       <DoctorNavbar />
 
-      <main className={styles.pageWrapper}>
-        <div className={styles.headerSection}>
-          <h1 className={styles.pageTitle}>Patient Records</h1>
-          <p className={styles.pageSubtitle}>
+      <main className={sharedStyles.pageWrapper}>
+        <div className={sharedStyles.headerSection}>
+          <h1 className={sharedStyles.pageTitle}>Patient Records</h1>
+          <p className={sharedStyles.pageSubtitle}>
             Select a patient first to view official doctor records and supporting
             AI results.
           </p>
         </div>
 
         {!selectedPatient ? (
-          <section className={styles.sectionCard} style={pageCardStyle}>
-            <div className={styles.sectionHeader}>
+          <section className={`${sharedStyles.sectionCard} ${recordStyles.recordCard}`}>
+            <div className={sharedStyles.sectionHeader}>
               <div>
-                <h2 className={styles.sectionTitle}>Choose a Patient</h2>
-                <p className={styles.listSecondary}>
+                <h2 className={sharedStyles.sectionTitle}>Choose a Patient</h2>
+                <p className={sharedStyles.listSecondary}>
                   Search and select a patient to open their consultation history.
                 </p>
               </div>
             </div>
 
-            <div style={{ marginTop: 18 }}>
+            <div className={recordStyles.patientSearchField}>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search patient name, service, doctor, date, or status..."
-                style={{
-                  width: "100%",
-                  border: `1px solid ${BORDER}`,
-                  borderRadius: 999,
-                  padding: "15px 18px",
-                  fontSize: 15,
-                  outline: "none",
-                  background: "#ffffff",
-                }}
+                className={recordStyles.patientSearchInput}
               />
             </div>
 
-            <div style={{ marginTop: 20 }}>
+            <div className={recordStyles.patientResults}>
               {loading ? (
-                <div className={styles.emptyState}>
+                <div className={sharedStyles.emptyState}>
                   Loading patient records...
                 </div>
               ) : filteredPatients.length === 0 ? (
-                <div className={styles.emptyState}>
+                <div className={sharedStyles.emptyState}>
                   No patient records matched your search.
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                    gap: 14,
-                  }}
-                >
+                <div className={recordStyles.patientGrid}>
                   {filteredPatients.map((patient) => (
                     <button
                       key={patient.id}
                       type="button"
                       onClick={() => setSelectedPatientId(patient.id)}
-                      style={{
-                        textAlign: "left",
-                        border: `1px solid ${BORDER}`,
-                        borderRadius: 20,
-                        padding: 18,
-                        background: "#ffffff",
-                        cursor: "pointer",
-                        boxShadow: "0 8px 20px rgba(87, 47, 68, 0.05)",
-                      }}
+                      className={recordStyles.patientCard}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 14,
-                          alignItems: "flex-start",
-                        }}
-                      >
+                      <div className={recordStyles.patientCardHeader}>
                         <div>
-                          <div
-                            style={{
-                              color: "#1f1f1f",
-                              fontSize: 17,
-                              fontWeight: 800,
-                            }}
-                          >
+                          <div className={recordStyles.patientCardName}>
                             {patient.patientName}
                           </div>
 
-                          <div
-                            style={{
-                              marginTop: 8,
-                              color: MUTED,
-                              fontSize: 14,
-                              lineHeight: 1.5,
-                            }}
-                          >
+                          <div className={recordStyles.patientCardLatestVisit}>
                             Latest visit: {patient.latestVisitDate} •{" "}
                             {patient.latestVisitTime}
                           </div>
                         </div>
 
-                        <span
-                          style={{
-                            border: `1px solid ${BORDER}`,
-                            borderRadius: 999,
-                            color: MAROON,
-                            background: "#fff7fa",
-                            padding: "7px 11px",
-                            fontSize: 12,
-                            fontWeight: 800,
-                          }}
-                        >
+                        <span className={recordStyles.patientCardActionBadge}>
                           View
                         </span>
                       </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          marginTop: 16,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span style={{ color: MUTED, fontSize: 13 }}>
+                      <div className={recordStyles.patientCardStats}>
+                        <span className={recordStyles.patientCardStat}>
                           Visits: {patient.totalVisits}
                         </span>
 
-                        <span style={{ color: MUTED, fontSize: 13 }}>
+                        <span className={recordStyles.patientCardStat}>
                           Completed: {patient.completedVisits}
                         </span>
                       </div>
@@ -1434,35 +1323,14 @@ function DoctorPatientRecordsContent() {
             </div>
           </section>
         ) : (
-          <section className={styles.sectionCard} style={pageCardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-              }}
-            >
+          <section className={`${sharedStyles.sectionCard} ${recordStyles.recordCard}`}>
+            <div className={recordStyles.selectedPatientHeader}>
               <div>
-                <div style={labelStyle}>Selected Patient</div>
-                <h2
-                  style={{
-                    margin: "8px 0 0",
-                    color: "#1f1f1f",
-                    fontSize: 28,
-                    lineHeight: 1.2,
-                  }}
-                >
+                <div className={recordStyles.recordLabel}>Selected Patient</div>
+                <h2 className={recordStyles.selectedPatientName}>
                   {selectedPatient.patientName}
                 </h2>
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: MUTED,
-                    fontSize: 15,
-                  }}
-                >
+                <p className={recordStyles.selectedPatientSummary}>
                   Showing {selectedPatient.totalVisits} consultation record
                   {selectedPatient.totalVisits > 1 ? "s" : ""}.
                 </p>
@@ -1471,21 +1339,13 @@ function DoctorPatientRecordsContent() {
               <button
                 type="button"
                 onClick={handleBackToPatientList}
-                style={{
-                  border: `1px solid ${BORDER}`,
-                  borderRadius: 999,
-                  background: "#ffffff",
-                  color: MAROON,
-                  fontWeight: 800,
-                  padding: "12px 18px",
-                  cursor: "pointer",
-                }}
+                className={recordStyles.patientListBackButton}
               >
                 Back to Patient List
               </button>
             </div>
 
-            <div style={{ marginTop: 24, display: "grid", gap: 18 }}>
+            <div className={recordStyles.patientVisitList}>
               {selectedPatient.records.map((record) => {
                 const appointment = record.appointment;
                 const appointmentId = String(appointment.id);
@@ -1501,78 +1361,28 @@ function DoctorPatientRecordsContent() {
                 const doctorNotes = getDoctorNotes(record, diagnosisReport);
 
                 return (
-                  <article
-                    key={appointment.id}
-                    style={{
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 24,
-                      background: "#ffffff",
-                      overflow: "hidden",
-                    }}
-                  >
+                  <article key={appointment.id} className={recordStyles.patientVisitCard}>
                     <div
-                      style={{
-                        padding: "20px 22px",
-                        borderBottom: completed
-                          ? `1px solid ${BORDER}`
-                          : "none",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 16,
-                        alignItems: "flex-start",
-                        flexWrap: "wrap",
-                      }}
+                      className={`${recordStyles.patientVisitHeader} ${
+                        completed ? recordStyles.patientVisitHeaderBordered : ""
+                      }`}
                     >
                       <div>
-                        <h3
-                          style={{
-                            margin: 0,
-                            color: "#1f1f1f",
-                            fontSize: 19,
-                            fontWeight: 800,
-                          }}
-                        >
+                        <h3 className={recordStyles.patientVisitTitle}>
                           {appointment.services || "Consultation"}
                         </h3>
 
-                        <p
-                          style={{
-                            margin: "8px 0 0",
-                            color: MUTED,
-                            fontSize: 15,
-                          }}
-                        >
+                        <p className={recordStyles.patientVisitMeta}>
                           {appointment.date} • {appointment.time}
                         </p>
 
-                        <p
-                          style={{
-                            margin: "8px 0 0",
-                            color: MUTED,
-                            fontSize: 15,
-                          }}
-                        >
+                        <p className={recordStyles.patientVisitMeta}>
                           Assigned Doctor: {appointment.doctor_name || "N/A"}
                         </p>
                       </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span
-                          style={{
-                            ...getStatusStyle(status),
-                            borderRadius: 999,
-                            padding: "8px 13px",
-                            fontSize: 13,
-                            fontWeight: 800,
-                          }}
-                        >
+                      <div className={recordStyles.patientVisitActions}>
+                        <span className={getStatusBadgeClass(status)}>
                           {status}
                         </span>
 
@@ -1586,15 +1396,7 @@ function DoctorPatientRecordsContent() {
                                 analysis,
                               })
                             }
-                            style={{
-                              border: `1px solid ${BORDER}`,
-                              borderRadius: 999,
-                              background: "#ffffff",
-                              color: MAROON_DARK,
-                              fontWeight: 800,
-                              padding: "11px 16px",
-                              cursor: "pointer",
-                            }}
+                            className={recordStyles.patientVisitAiButton}
                           >
                             View AI Result
                           </button>
@@ -1603,98 +1405,49 @@ function DoctorPatientRecordsContent() {
                     </div>
 
                     {basicOnly || !completed ? null : (
-                      <div style={{ padding: 22, display: "grid", gap: 16 }}>
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>Doctor Final Diagnosis</div>
-                          <div
-                            style={{
-                              ...valueStyle,
-                              fontWeight: 800,
-                            }}
-                          >
+                      <div className={recordStyles.patientVisitBody}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>Doctor Final Diagnosis</div>
+                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
                             {getDoctorDiagnosis(record, diagnosisReport)}
                           </div>
                         </div>
 
-                        <div
-                          style={{
-                            border: `1px solid ${BORDER}`,
-                            borderRadius: 22,
-                            padding: 18,
-                            background: "#ffffff",
-                          }}
-                        >
-                          <h3
-                            style={{
-                              margin: "0 0 14px",
-                              fontSize: 19,
-                              color: "#1f1f1f",
-                            }}
-                          >
+                        <div className={recordStyles.recordSection}>
+                          <h3 className={recordStyles.recordSectionTitle}>
                             Doctor Prescription
                           </h3>
 
                           {prescriptionItems.length === 0 ? (
-                            <div style={softPanelStyle}>
-                              <div style={valueStyle}>
+                            <div className={recordStyles.softPanel}>
+                              <div className={recordStyles.recordValue}>
                                 No prescription saved yet.
                               </div>
                             </div>
                           ) : (
-                            <div style={{ display: "grid", gap: 14 }}>
+                            <div className={recordStyles.prescriptionList}>
                               {prescriptionItems.map((item, index) => (
                                 <div
                                   key={`${item.medication}-${index}`}
-                                  style={{
-                                    border: `1px solid ${BORDER}`,
-                                    borderRadius: 18,
-                                    padding: 16,
-                                    background: SOFT_BG,
-                                  }}
+                                  className={recordStyles.prescriptionCard}
                                 >
-                                  <div
-                                    style={{
-                                      color: "#1f1f1f",
-                                      fontSize: 17,
-                                      fontWeight: 800,
-                                      marginBottom: 12,
-                                    }}
-                                  >
+                                  <div className={recordStyles.prescriptionMedication}>
                                     {item.medication}
                                   </div>
 
-                                  <div
-                                    style={{
-                                      display: "grid",
-                                      gap: 0,
-                                      borderTop: `1px solid ${BORDER}`,
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "110px 1fr",
-                                        gap: 12,
-                                        padding: "12px 0",
-                                        borderBottom: `1px solid ${BORDER}`,
-                                      }}
-                                    >
-                                      <div style={labelStyle}>Usage</div>
-                                      <div style={{ fontSize: 16 }}>
+                                  <div className={recordStyles.prescriptionDetails}>
+                                    <div className={recordStyles.prescriptionRow}>
+                                      <div className={recordStyles.recordLabel}>Usage</div>
+                                      <div className={recordStyles.prescriptionText}>
                                         {item.usage}
                                       </div>
                                     </div>
 
                                     <div
-                                      style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "110px 1fr",
-                                        gap: 12,
-                                        padding: "12px 0 0",
-                                      }}
+                                      className={`${recordStyles.prescriptionRow} ${recordStyles.prescriptionRowLast}`}
                                     >
-                                      <div style={labelStyle}>Reason</div>
-                                      <div style={{ fontSize: 16 }}>
+                                      <div className={recordStyles.recordLabel}>Reason</div>
+                                      <div className={recordStyles.prescriptionText}>
                                         {item.reason}
                                       </div>
                                     </div>
@@ -1706,15 +1459,15 @@ function DoctorPatientRecordsContent() {
                         </div>
 
                         {doctorNotes && (
-                          <div style={softPanelStyle}>
-                            <div style={labelStyle}>Doctor Notes</div>
-                            <div style={valueStyle}>{doctorNotes}</div>
+                          <div className={recordStyles.softPanel}>
+                            <div className={recordStyles.recordLabel}>Doctor Notes</div>
+                            <div className={recordStyles.recordValue}>{doctorNotes}</div>
                           </div>
                         )}
 
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>Follow-up Plan</div>
-                          <div style={valueStyle}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>Follow-up Plan</div>
+                          <div className={recordStyles.recordValue}>
                             {getDoctorFollowUp(record, diagnosisReport)}
                           </div>
                         </div>
@@ -1733,64 +1486,24 @@ function DoctorPatientRecordsContent() {
           role="dialog"
           aria-modal="true"
           onClick={() => setSelectedAiModal(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "rgba(36, 42, 55, 0.68)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className={recordStyles.recordModalOverlay}
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            style={{
-              width: "min(1120px, 100%)",
-              maxHeight: "88vh",
-              overflow: "hidden",
-              background: "#ffffff",
-              borderRadius: 24,
-              boxShadow: "0 30px 90px rgba(15, 23, 42, 0.35)",
-              display: "flex",
-              flexDirection: "column",
-            }}
+            className={recordStyles.recordModalShell}
           >
-            <div
-              style={{
-                padding: "24px 28px 20px",
-                borderBottom: `1px solid ${BORDER}`,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 18,
-                alignItems: "flex-start",
-              }}
-            >
+            <div className={recordStyles.recordModalHeader}>
               <div>
-                <div style={{ ...labelStyle, color: MAROON }}>
+                <div className={`${recordStyles.recordLabel} ${recordStyles.recordLabelAccent}`}>
                   Supporting AI Result
                 </div>
 
-                <h2
-                  style={{
-                    margin: "8px 0 0",
-                    fontSize: 26,
-                    color: "#111111",
-                    lineHeight: 1.2,
-                  }}
-                >
+                <h2 className={recordStyles.recordModalTitle}>
                   {selectedAiModal.appointment.date} •{" "}
                   {selectedAiModal.appointment.services || "Consultation"}
                 </h2>
 
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: "#667085",
-                    fontSize: 15,
-                  }}
-                >
+                <p className={recordStyles.recordModalSubtitle}>
                   This AI result is for reference only. The doctor&apos;s final
                   diagnosis and prescription remain the official clinical
                   record.
@@ -1800,21 +1513,13 @@ function DoctorPatientRecordsContent() {
               <button
                 type="button"
                 onClick={() => setSelectedAiModal(null)}
-                style={{
-                  border: `1px solid ${BORDER}`,
-                  borderRadius: 18,
-                  background: "#ffffff",
-                  color: MAROON_DARK,
-                  padding: "14px 22px",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
+                className={recordStyles.recordModalClose}
               >
                 Close
               </button>
             </div>
 
-            <div style={{ overflowY: "auto", padding: 28 }}>
+            <div className={recordStyles.recordModalBody}>
               {(() => {
                 const analysis = selectedAiModal.analysis;
 
@@ -1869,81 +1574,47 @@ function DoctorPatientRecordsContent() {
                 );
 
                 return (
-                  <div style={{ display: "grid", gap: 22 }}>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(280px, 1fr))",
-                        gap: 22,
-                        alignItems: "start",
-                      }}
-                    >
+                  <div className={recordStyles.recordModalContent}>
+                    <div className={recordStyles.recordModalResultGrid}>
                       <div>
                         {analysisImage ? (
                           <img
                             src={analysisImage}
                             alt="Patient skin analysis"
-                            style={{
-                              width: "100%",
-                              height: 230,
-                              objectFit: "cover",
-                              borderRadius: 18,
-                              border: `1px solid ${BORDER}`,
-                              background: SOFT_BG,
-                            }}
+                            className={recordStyles.recordModalImage}
                           />
                         ) : (
-                          <div
-                            style={{
-                              height: 230,
-                              borderRadius: 18,
-                              border: `1px solid ${BORDER}`,
-                              background: SOFT_BG,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: MUTED,
-                              fontWeight: 700,
-                            }}
-                          >
+                          <div className={recordStyles.recordModalImagePlaceholder}>
                             No image attached
                           </div>
                         )}
                       </div>
 
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(220px, 1fr))",
-                          gap: 14,
-                        }}
-                      >
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>AI Condition</div>
-                          <div style={{ ...valueStyle, fontWeight: 800 }}>
+                      <div className={recordStyles.recordModalSummaryGrid}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>AI Condition</div>
+                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
                             {analysis.condition || "N/A"}
                           </div>
                         </div>
 
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>Confidence</div>
-                          <div style={{ ...valueStyle, fontWeight: 800 }}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>Confidence</div>
+                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
                             {formatConfidence(analysis.confidence)}
                           </div>
                         </div>
 
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>AI Severity</div>
-                          <div style={{ ...valueStyle, fontWeight: 800 }}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>AI Severity</div>
+                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
                             {analysis.severity || "N/A"}
                           </div>
                         </div>
 
-                        <div style={softPanelStyle}>
-                          <div style={labelStyle}>Generated</div>
-                          <div style={{ ...valueStyle, fontWeight: 800 }}>
+                        <div className={recordStyles.softPanel}>
+                          <div className={recordStyles.recordLabel}>Generated</div>
+                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
                             {formatGeneratedDate(
                               readAny(analysis, [
                                 "created_at",
@@ -1955,122 +1626,67 @@ function DoctorPatientRecordsContent() {
                           </div>
                         </div>
 
-                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
-                          <div style={labelStyle}>Possible Conditions</div>
-                          <div style={valueStyle}>{possibleConditions}</div>
+                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
+                          <div className={recordStyles.recordLabel}>Possible Conditions</div>
+                          <div className={recordStyles.recordValue}>{possibleConditions}</div>
                         </div>
 
-                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
-                          <div style={labelStyle}>Key Findings</div>
-                          <div style={valueStyle}>{keyFindings}</div>
+                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
+                          <div className={recordStyles.recordLabel}>Key Findings</div>
+                          <div className={recordStyles.recordValue}>{keyFindings}</div>
                         </div>
 
-                        <div style={{ ...softPanelStyle, gridColumn: "1 / -1" }}>
-                          <div style={labelStyle}>AI Recommendation</div>
-                          <div style={valueStyle}>{recommendation}</div>
+                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
+                          <div className={recordStyles.recordLabel}>AI Recommendation</div>
+                          <div className={recordStyles.recordValue}>{recommendation}</div>
                         </div>
                       </div>
                     </div>
 
                     {showTreatmentSuggestions && (
-                      <div style={softPanelStyle}>
-                        <h3
-                          style={{
-                            margin: "0 0 14px",
-                            color: "#1f1f1f",
-                            fontSize: 19,
-                          }}
-                        >
+                      <div className={recordStyles.softPanel}>
+                        <h3 className={recordStyles.recordSectionTitle}>
                           AI Treatment Suggestions
                         </h3>
-                        <div style={valueStyle}>{treatmentSuggestionsRaw}</div>
+                        <div className={recordStyles.recordValue}>{treatmentSuggestionsRaw}</div>
                       </div>
                     )}
 
-                    <div
-                      style={{
-                        border: `1px solid ${BORDER}`,
-                        borderRadius: 22,
-                        padding: 18,
-                        background: "#ffffff",
-                      }}
-                    >
-                      <h3
-                        style={{
-                          margin: "0 0 14px",
-                          color: "#1f1f1f",
-                          fontSize: 19,
-                        }}
-                      >
+                    <div className={recordStyles.recordSection}>
+                      <h3 className={recordStyles.recordSectionTitle}>
                         AI Prescription Suggestions
                       </h3>
 
                       {aiPrescriptionItems.length === 0 ? (
-                        <div style={valueStyle}>
+                        <div className={recordStyles.recordValue}>
                           No AI prescription suggestions available.
                         </div>
                       ) : (
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                              "repeat(auto-fit, minmax(260px, 1fr))",
-                            gap: 14,
-                          }}
-                        >
+                        <div className={recordStyles.recordModalPrescriptionGrid}>
                           {aiPrescriptionItems.map((item, index) => (
                             <div
                               key={`${item.medication}-${index}`}
-                              style={{
-                                border: `1px solid ${BORDER}`,
-                                borderRadius: 18,
-                                padding: 16,
-                                background: SOFT_BG,
-                              }}
+                              className={recordStyles.prescriptionCard}
                             >
                               <div
-                                style={{
-                                  color: MAROON_DARK,
-                                  fontSize: 17,
-                                  fontWeight: 800,
-                                  marginBottom: 12,
-                                }}
+                                className={`${recordStyles.prescriptionMedication} ${recordStyles.prescriptionMedicationAccent}`}
                               >
                                 {item.medication}
                               </div>
 
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gap: 0,
-                                  borderTop: `1px solid ${BORDER}`,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "90px 1fr",
-                                    gap: 12,
-                                    padding: "12px 0",
-                                    borderBottom: `1px solid ${BORDER}`,
-                                  }}
-                                >
-                                  <div style={labelStyle}>Usage</div>
-                                  <div style={{ fontSize: 16, lineHeight: 1.5 }}>
+                              <div className={recordStyles.prescriptionDetails}>
+                                <div className={recordStyles.prescriptionRowCompact}>
+                                  <div className={recordStyles.recordLabel}>Usage</div>
+                                  <div className={`${recordStyles.prescriptionText} ${recordStyles.prescriptionTextComfortable}`}>
                                     {item.usage}
                                   </div>
                                 </div>
 
                                 <div
-                                  style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "90px 1fr",
-                                    gap: 12,
-                                    padding: "12px 0 0",
-                                  }}
+                                  className={`${recordStyles.prescriptionRowCompact} ${recordStyles.prescriptionRowLast}`}
                                 >
-                                  <div style={labelStyle}>Reason</div>
-                                  <div style={{ fontSize: 16, lineHeight: 1.5 }}>
+                                  <div className={recordStyles.recordLabel}>Reason</div>
+                                  <div className={`${recordStyles.prescriptionText} ${recordStyles.prescriptionTextComfortable}`}>
                                     {item.reason}
                                   </div>
                                 </div>
@@ -2081,14 +1697,14 @@ function DoctorPatientRecordsContent() {
                       )}
                     </div>
 
-                    <div style={softPanelStyle}>
-                      <div style={labelStyle}>AI Follow-up Suggestions</div>
-                      <div style={valueStyle}>{followUpSuggestions}</div>
+                    <div className={recordStyles.softPanel}>
+                      <div className={recordStyles.recordLabel}>AI Follow-up Suggestions</div>
+                      <div className={recordStyles.recordValue}>{followUpSuggestions}</div>
                     </div>
 
-                    <div style={softPanelStyle}>
-                      <div style={labelStyle}>AI Red Flags</div>
-                      <div style={valueStyle}>{redFlags}</div>
+                    <div className={recordStyles.softPanel}>
+                      <div className={recordStyles.recordLabel}>AI Red Flags</div>
+                      <div className={recordStyles.recordValue}>{redFlags}</div>
                     </div>
                   </div>
                 );
@@ -2105,16 +1721,7 @@ export default function DoctorPatientRecordsPage() {
   return (
     <Suspense
       fallback={
-        <main
-          style={{
-            minHeight: "100vh",
-            display: "grid",
-            placeItems: "center",
-            background: "#fff7fa",
-            color: "#82334c",
-            fontWeight: 700,
-          }}
-        >
+        <main className={recordStyles.pageFallback}>
           Loading patient records...
         </main>
       }

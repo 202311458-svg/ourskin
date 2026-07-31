@@ -1,0 +1,145 @@
+.statCardYellow {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.22);
+}
+
+.sectionHeaderCentered {
+  align-items: center;
+  gap: 16px;
+}
+
+.followUpFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.followUpFilterButton {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.followUpFilterButtonActive {
+  border-color: rgba(236, 72, 153, 0.65);
+  background: rgba(236, 72, 153, 0.18);
+  color: #f472b6;
+}
+
+.followUpEmptyState {
+  padding: 32px;
+  border-radius: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+}
+
+.followUpEmptyText {
+  margin-top: 8px;
+}
+
+.followUpCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.followUpCard {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  padding: 20px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.025)
+  );
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.followUpCardHeader,
+.followUpCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.followUpEyebrow {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f472b6;
+}
+
+.followUpDate {
+  margin: 6px 0 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.followUpTimingBadge {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.followUpTimingCompleted {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.followUpTimingOverdue {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+
+.followUpTimingDue {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+}
+
+.followUpTimingUpcoming {
+  background: rgba(236, 72, 153, 0.12);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.28);
+}
+
+.followUpDetails {
+  display: grid;
+  gap: 10px;
+}
+
+.followUpNotes {
+  margin: 0;
+}
+
+.followUpCardFooter {
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+:global(body.darkMode) .followUpCard {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+}
+
+@media (max-width: 700px) {
+  .followUpCardHeader,
+.followUpCardFooter {
+    flex-direction: column;
+  }
+}

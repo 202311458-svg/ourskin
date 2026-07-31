@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DoctorNavbar from "@/app/components/DoctorNavbar";
 import Calendar from "@/app/components/Calendar";
-import styles from "@/app/styles/doctor.module.css";
+import sharedStyles from "@/app/styles/doctor-shared.module.css";
+import appointmentStyles from "@/app/styles/doctor-appointments.module.css";
 import {
   cancelDoctorAppointment,
   getAppointmentById,
@@ -164,16 +165,16 @@ export default function DoctorAppointmentsPage() {
   const getStatusBadgeClass = (status?: string | null) => {
     switch (normalizeStatus(status)) {
       case "Approved":
-        return `${styles.statusBadge} ${styles.badgeApproved}`;
+        return `${sharedStyles.statusBadge} ${sharedStyles.badgeApproved}`;
       case "Pending":
-        return `${styles.statusBadge} ${styles.badgePending}`;
+        return `${sharedStyles.statusBadge} ${sharedStyles.badgePending}`;
       case "Completed":
-        return `${styles.statusBadge} ${styles.badgeCompleted}`;
+        return `${sharedStyles.statusBadge} ${sharedStyles.badgeCompleted}`;
       case "Declined":
       case "Cancelled":
-        return `${styles.statusBadge} ${styles.badgeUrgent}`;
+        return `${sharedStyles.statusBadge} ${sharedStyles.badgeUrgent}`;
       default:
-        return `${styles.statusBadge} ${styles.badgePending}`;
+        return `${sharedStyles.statusBadge} ${sharedStyles.badgePending}`;
     }
   };
 
@@ -308,40 +309,40 @@ export default function DoctorAppointmentsPage() {
     <>
       <DoctorNavbar />
 
-      <main className={styles.pageWrapper}>
-        <div className={styles.headerSection}>
+      <main className={sharedStyles.pageWrapper}>
+        <div className={sharedStyles.headerSection}>
           <div>
-            <h1 className={styles.pageTitle}>Appointments</h1>
-            <p className={styles.pageSubtitle}>
+            <h1 className={sharedStyles.pageTitle}>Appointments</h1>
+            <p className={sharedStyles.pageSubtitle}>
               Review appointment details and continue clinical work from the
               patient record or AI analysis workspace.
             </p>
           </div>
         </div>
 
-        <section className={`${styles.sectionCard} ${styles.statsGrid}`}>
-          <div className={`${styles.statCard} ${styles.statCardPink}`}>
-            <p className={styles.listSecondary}>Total Appointments</p>
+        <section className={`${sharedStyles.sectionCard} ${sharedStyles.statsGrid}`}>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardPink}`}>
+            <p className={sharedStyles.listSecondary}>Total Appointments</p>
             <h2>{appointments.length}</h2>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardGreen}`}>
-            <p className={styles.listSecondary}>Ready to Complete</p>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardGreen}`}>
+            <p className={sharedStyles.listSecondary}>Ready to Complete</p>
             <h2>{approvedReadyCount}</h2>
           </div>
 
-          <div className={`${styles.statCard} ${styles.statCardBlue}`}>
-            <p className={styles.listSecondary}>Approved, Not Yet Due</p>
+          <div className={`${sharedStyles.statCard} ${sharedStyles.statCardBlue}`}>
+            <p className={sharedStyles.listSecondary}>Approved, Not Yet Due</p>
             <h2>{approvedFutureCount}</h2>
           </div>
         </section>
 
-        <div className={styles.filtersRow}>
+        <div className={appointmentStyles.filtersRow}>
           <button
             type="button"
             onClick={() => setActiveView("list")}
-            className={`${styles.filterChip} ${
-              activeView === "list" ? styles.activeChip : ""
+            className={`${appointmentStyles.filterChip} ${
+              activeView === "list" ? appointmentStyles.activeChip : ""
             }`}
           >
             Appointment List
@@ -350,8 +351,8 @@ export default function DoctorAppointmentsPage() {
           <button
             type="button"
             onClick={() => setActiveView("calendar")}
-            className={`${styles.filterChip} ${
-              activeView === "calendar" ? styles.activeChip : ""
+            className={`${appointmentStyles.filterChip} ${
+              activeView === "calendar" ? appointmentStyles.activeChip : ""
             }`}
           >
             Calendar View
@@ -360,25 +361,25 @@ export default function DoctorAppointmentsPage() {
 
         {activeView === "list" && (
           <section
-            className={`${styles.sectionCard} ${styles.appointmentListSection}`}
+            className={`${sharedStyles.sectionCard} ${appointmentStyles.appointmentListSection}`}
           >
-            <div className={styles.sectionHeader}>
+            <div className={sharedStyles.sectionHeader}>
               <div>
-                <h2 className={styles.sectionTitle}>Appointment List</h2>
-                <p className={styles.pageSubtitle} style={{ marginTop: 4 }}>
+                <h2 className={sharedStyles.sectionTitle}>Appointment List</h2>
+                <p className={`${sharedStyles.pageSubtitle} ${sharedStyles.pageSubtitleSpaced}`}>
                   The Complete action opens the AI Analysis workspace only when
                   the approved appointment has already started.
                 </p>
               </div>
             </div>
 
-            <div className={styles.filterRowInside}>
+            <div className={appointmentStyles.filterRowInside}>
               {filters.map((filter) => (
                 <button
                   key={filter}
                   type="button"
-                  className={`${styles.filterChip} ${
-                    activeFilter === filter ? styles.activeChip : ""
+                  className={`${appointmentStyles.filterChip} ${
+                    activeFilter === filter ? appointmentStyles.activeChip : ""
                   }`}
                   onClick={() => setActiveFilter(filter)}
                 >
@@ -388,11 +389,11 @@ export default function DoctorAppointmentsPage() {
             </div>
 
             {loading ? (
-              <div className={styles.emptyState}>Loading appointments...</div>
+              <div className={sharedStyles.emptyState}>Loading appointments...</div>
             ) : sortedAppointments.length === 0 ? (
-              <div className={styles.emptyState}>No appointments found.</div>
+              <div className={sharedStyles.emptyState}>No appointments found.</div>
             ) : (
-              <div className={styles.doctorAppointmentsList}>
+              <div className={appointmentStyles.doctorAppointmentsList}>
                 {sortedAppointments.map((appt) => {
                   const apptStatus = normalizeStatus(appt.status);
                   const isApproved = apptStatus === "Approved";
@@ -401,8 +402,8 @@ export default function DoctorAppointmentsPage() {
                     isApproved && !hasAppointmentDateTimePassed(appt);
 
                   return (
-                    <article key={appt.id} className={styles.doctorAppointmentCard}>
-                      <div className={styles.doctorAppointmentTop}>
+                    <article key={appt.id} className={appointmentStyles.doctorAppointmentCard}>
+                      <div className={appointmentStyles.doctorAppointmentTop}>
                         <div>
                           <h3>{appt.patient_name || "Unknown Patient"}</h3>
                           <p>{appt.patient_email || "No email provided"}</p>
@@ -413,30 +414,30 @@ export default function DoctorAppointmentsPage() {
                         </span>
                       </div>
 
-                      <div className={styles.doctorAppointmentDetails}>
-                        <div className={styles.doctorAppointmentInfoBox}>
+                      <div className={appointmentStyles.doctorAppointmentDetails}>
+                        <div className={appointmentStyles.doctorAppointmentInfoBox}>
                           <span>Date</span>
                           <strong>{formatDate(appt.date)}</strong>
                         </div>
 
-                        <div className={styles.doctorAppointmentInfoBox}>
+                        <div className={appointmentStyles.doctorAppointmentInfoBox}>
                           <span>Time</span>
                           <strong>{formatTime(appt.time)}</strong>
                         </div>
 
-                        <div className={styles.doctorAppointmentInfoBox}>
+                        <div className={appointmentStyles.doctorAppointmentInfoBox}>
                           <span>Service</span>
                           <strong>{appt.services || "No service listed"}</strong>
                         </div>
 
-                        <div className={styles.doctorAppointmentInfoBox}>
+                        <div className={appointmentStyles.doctorAppointmentInfoBox}>
                           <span>Doctor</span>
                           <strong>{appt.doctor_name || "Not assigned"}</strong>
                         </div>
 
                         {isFutureApproved && (
                           <div
-                            className={`${styles.doctorAppointmentInfoBox} ${styles.fullWidth}`}
+                            className={`${appointmentStyles.doctorAppointmentInfoBox} ${sharedStyles.fullWidth}`}
                           >
                             <span>Completion Availability</span>
                             <strong>
@@ -449,7 +450,7 @@ export default function DoctorAppointmentsPage() {
                           appt.status === "Cancelled" ||
                           appt.status === "Declined") && (
                           <div
-                            className={`${styles.doctorAppointmentInfoBox} ${styles.fullWidth}`}
+                            className={`${appointmentStyles.doctorAppointmentInfoBox} ${sharedStyles.fullWidth}`}
                           >
                             <span>Reason / Notes</span>
                             <strong>
@@ -459,10 +460,10 @@ export default function DoctorAppointmentsPage() {
                         )}
                       </div>
 
-                      <div className={styles.doctorAppointmentFooter}>
+                      <div className={appointmentStyles.doctorAppointmentFooter}>
                         <button
                           type="button"
-                          className={styles.secondaryButton}
+                          className={sharedStyles.secondaryButton}
                           onClick={() => openDetails(appt.id)}
                         >
                           View
@@ -471,7 +472,7 @@ export default function DoctorAppointmentsPage() {
                         {readyToComplete && (
                           <button
                             type="button"
-                            className={styles.actionButton}
+                            className={sharedStyles.actionButton}
                             onClick={() => openAiAnalysisWorkspace(appt)}
                           >
                             Complete
@@ -479,18 +480,7 @@ export default function DoctorAppointmentsPage() {
                         )}
 
                         {isFutureApproved && (
-                          <span
-                            style={{
-                              padding: "9px 12px",
-                              borderRadius: 999,
-                              fontSize: 12,
-                              fontWeight: 800,
-                              color: "#94a3b8",
-                              border: "1px solid rgba(148, 163, 184, 0.25)",
-                              background: "rgba(148, 163, 184, 0.08)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <span className={sharedStyles.availabilityBadge}>
                             Complete later
                           </span>
                         )}
@@ -498,7 +488,7 @@ export default function DoctorAppointmentsPage() {
                         {isApproved && (
                           <button
                             type="button"
-                            className={styles.dangerButton}
+                            className={appointmentStyles.dangerButton}
                             onClick={() => handleCancel(appt.id)}
                           >
                             Cancel
@@ -523,12 +513,12 @@ export default function DoctorAppointmentsPage() {
         )}
 
         {detailsOpen && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalPanel}>
-              <div className={styles.modalHeader}>
+          <div className={appointmentStyles.modalOverlay}>
+            <div className={appointmentStyles.modalPanel}>
+              <div className={appointmentStyles.modalHeader}>
                 <div>
-                  <h3 className={styles.modalTitle}>Appointment Details</h3>
-                  <p className={styles.modalSubtitle}>
+                  <h3 className={appointmentStyles.modalTitle}>Appointment Details</h3>
+                  <p className={appointmentStyles.modalSubtitle}>
                     View the selected appointment information and open the
                     patient medical records when clinical history is needed.
                   </p>
@@ -536,33 +526,24 @@ export default function DoctorAppointmentsPage() {
 
                 <button
                   type="button"
-                  className={styles.secondaryButton}
+                  className={sharedStyles.secondaryButton}
                   onClick={closeDetails}
                 >
                   Close
                 </button>
               </div>
 
-              <div className={styles.modalContent}>
+              <div className={appointmentStyles.modalContent}>
                 {detailsLoading || !selectedAppointment ? (
-                  <div className={styles.emptyState}>Loading details...</div>
+                  <div className={sharedStyles.emptyState}>Loading details...</div>
                 ) : (
-                  <section className={styles.modalSection}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 16,
-                        alignItems: "flex-start",
-                        marginBottom: 16,
-                        flexWrap: "wrap",
-                      }}
-                    >
+                  <section className={appointmentStyles.modalSection}>
+                    <div className={appointmentStyles.modalSummaryHeader}>
                       <div>
-                        <h4 className={styles.modalSectionTitle}>
+                        <h4 className={appointmentStyles.modalSectionTitle}>
                           Appointment Summary
                         </h4>
-                        <p className={styles.pageSubtitle} style={{ marginTop: 4 }}>
+                        <p className={`${sharedStyles.pageSubtitle} ${sharedStyles.pageSubtitleSpaced}`}>
                           This view only shows appointment details. Use Medical
                           Records to review clinical history.
                         </p>
@@ -573,57 +554,57 @@ export default function DoctorAppointmentsPage() {
                       </span>
                     </div>
 
-                    <div className={styles.modalGrid}>
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Appointment ID</p>
-                        <p className={styles.infoValue}>#{selectedAppointment.id}</p>
+                    <div className={appointmentStyles.modalGrid}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Appointment ID</p>
+                        <p className={appointmentStyles.infoValue}>#{selectedAppointment.id}</p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Patient</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Patient</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedAppointment.patient_name || "N/A"}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Email</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Email</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedAppointment.patient_email || "N/A"}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Doctor</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Doctor</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedAppointment.doctor_name || "N/A"}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Date</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Date</p>
+                        <p className={appointmentStyles.infoValue}>
                           {formatDate(selectedAppointment.date)}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Time</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Time</p>
+                        <p className={appointmentStyles.infoValue}>
                           {formatTime(selectedAppointment.time)}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Service</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Service</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedAppointment.services || "Consultation"}
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Completion Availability</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Completion Availability</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedCanComplete
                             ? "Available now"
                             : selectedAppointment.status === "Approved"
@@ -634,9 +615,9 @@ export default function DoctorAppointmentsPage() {
                         </p>
                       </div>
 
-                      <div className={styles.infoCard}>
-                        <p className={styles.infoLabel}>Follow-Up Date</p>
-                        <p className={styles.infoValue}>
+                      <div className={appointmentStyles.infoCard}>
+                        <p className={appointmentStyles.infoLabel}>Follow-Up Date</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedFollowUpDate
                             ? formatDate(selectedFollowUpDate)
                             : "No follow-up date recorded"}
@@ -645,21 +626,18 @@ export default function DoctorAppointmentsPage() {
                     </div>
 
                     {selectedAppointment.cancel_reason && (
-                      <div className={styles.notePanel} style={{ marginTop: 16 }}>
-                        <p className={styles.infoLabel}>Cancellation Reason</p>
-                        <p className={styles.infoValue}>
+                      <div className={`${appointmentStyles.notePanel} ${appointmentStyles.notePanelSpaced}`}>
+                        <p className={appointmentStyles.infoLabel}>Cancellation Reason</p>
+                        <p className={appointmentStyles.infoValue}>
                           {selectedAppointment.cancel_reason}
                         </p>
                       </div>
                     )}
 
-                    <div
-                      className={styles.buttonRow}
-                      style={{ marginTop: 22, justifyContent: "flex-end" }}
-                    >
+                    <div className={`${appointmentStyles.buttonRow} ${appointmentStyles.modalActionRow}`}>
                       <button
                         type="button"
-                        className={styles.secondaryButton}
+                        className={sharedStyles.secondaryButton}
                         onClick={() => openPatientMedicalRecords(selectedAppointment)}
                       >
                         Open Patient Medical Records
@@ -668,7 +646,7 @@ export default function DoctorAppointmentsPage() {
                       {selectedCanComplete && (
                         <button
                           type="button"
-                          className={styles.actionButton}
+                          className={sharedStyles.actionButton}
                           onClick={() => openAiAnalysisWorkspace(selectedAppointment)}
                         >
                           Continue in AI Analysis
