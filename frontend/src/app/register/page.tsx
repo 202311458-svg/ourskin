@@ -6,7 +6,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaCalendarAlt, FaEye, FaEyeSlash, FaMoon, FaSun } from "react-icons/fa"
-import styles from "@/app/styles/landing.module.css"
+import landingStyles from "@/app/styles/landing.module.css"
+import policyStyles from "@/app/styles/Policy.module.css"
+import registerStyles from "@/app/styles/RegisterForm.module.css"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -390,29 +392,29 @@ export default function RegisterPage() {
 
   return (
     <main
-      className={`${styles.osLanding} ${
-        darkMode ? styles.osDark : ""
-      } ${styles.registerLandingPage}`}
+      className={`${landingStyles.osLanding} ${
+        darkMode ? landingStyles.osDark : ""
+      } ${registerStyles.registerLandingPage}`}
     >
-      <div className={`${styles.osBgGlow} ${styles.osBgGlowOne}`} />
-      <div className={`${styles.osBgGlow} ${styles.osBgGlowTwo}`} />
+      <div className={`${landingStyles.osBgGlow} ${landingStyles.osBgGlowOne}`} />
+      <div className={`${landingStyles.osBgGlow} ${landingStyles.osBgGlowTwo}`} />
 
-      <nav className={styles.osNav}>
-        <Link href="/" className={styles.osLogoWrap} aria-label="OurSkin Home">
+      <nav className={landingStyles.osNav}>
+        <Link href="/" className={landingStyles.osLogoWrap} aria-label="OurSkin Home">
           <Image src="/navlogo.png" alt="OurSkin" width={190} height={69} priority />
         </Link>
 
-        <div className={styles.osNavLinks}>
+        <div className={landingStyles.osNavLinks}>
           <Link href="/#services">Services</Link>
           <Link href="/#about">About</Link>
           <Link href="/#doctors">Doctors</Link>
           <Link href="/#contact">Contact</Link>
         </div>
 
-        <div className={styles.osNavActions}>
+        <div className={landingStyles.osNavActions}>
           <button
             type="button"
-            className={styles.osThemeBtn}
+            className={landingStyles.osThemeBtn}
             onClick={toggleDarkMode}
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -422,7 +424,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
-            className={styles.osLoginBtn}
+            className={landingStyles.osLoginBtn}
             onClick={() => router.push("/")}
           >
             Login
@@ -430,9 +432,9 @@ export default function RegisterPage() {
         </div>
       </nav>
 
-      <section className={styles.registerHero}>
-        <div className={styles.registerIntro}>
-          <p className={styles.registerEyebrow}>OurSkin Patient Registration</p>
+      <section className={registerStyles.registerHero}>
+        <div className={registerStyles.registerIntro}>
+          <p className={registerStyles.registerEyebrow}>OurSkin Patient Registration</p>
 
           <h1>
             Create your
@@ -446,7 +448,7 @@ export default function RegisterPage() {
             parent or legal guardian must manage the account.
           </p>
 
-          <div className={styles.registerHighlights}>
+          <div className={registerStyles.registerHighlights}>
             <div>
               <h3>3mo+</h3>
               <p>Patients accepted</p>
@@ -464,21 +466,21 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <section className={styles.registerPanel}>
-          <div className={styles.registerPanelHeader}>
+        <section className={registerStyles.registerPanel}>
+          <div className={registerStyles.registerPanelHeader}>
             <h2>Create an Account</h2>
             <p></p>
           </div>
 
           <form
-            className={styles.registerForm}
+            className={registerStyles.registerForm}
             onSubmit={(e) => {
               e.preventDefault()
               register()
             }}
           >
-            <div className={styles.registerGrid}>
-              <div className={styles.registerField}>
+            <div className={registerStyles.registerGrid}>
+              <div className={registerStyles.registerField}>
                 <label>First Name</label>
                 <input
                   value={firstName}
@@ -487,7 +489,7 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <div className={styles.registerField}>
+              <div className={registerStyles.registerField}>
                 <label>Last Name</label>
                 <input
                   value={lastName}
@@ -497,15 +499,15 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className={styles.registerField}>
+            <div className={registerStyles.registerField}>
               <label>Date of Birth</label>
 
-              <div className={styles.dobCard}>
-                <div className={styles.dobIcon}>
+              <div className={registerStyles.dobCard}>
+                <div className={registerStyles.dobIcon}>
                   <FaCalendarAlt />
                 </div>
 
-                <div className={styles.dobGrid}>
+                <div className={registerStyles.dobGrid}>
                   <select
                     value={dobMonth}
                     onChange={(e) => setDobMonth(e.target.value)}
@@ -545,25 +547,25 @@ export default function RegisterPage() {
               </div>
 
               {dateOfBirth && (
-                <p className={styles.dobPreview}>
+                <p className={registerStyles.dobPreview}>
                   Selected date: <strong>{dateOfBirth}</strong> · {getAgeLabel()}
                 </p>
               )}
 
               {isBelowMinimumAge && (
-                <p className={styles.registerError}>
+                <p className={registerStyles.registerError}>
                   Patient must be at least 3 months old to register.
                 </p>
               )}
 
               {dateOfBirth && isMinor && (
-                <p className={styles.registerInfo}>
+                <p className={registerStyles.registerInfo}>
                   This patient is below 18 years old. Guardian details are required.
                 </p>
               )}
             </div>
 
-            <div className={styles.registerField}>
+            <div className={registerStyles.registerField}>
               <label>Complete Address</label>
               <input
                 value={address}
@@ -574,8 +576,8 @@ export default function RegisterPage() {
 
             {dateOfBirth && isMinor ? (
               <>
-                <div className={styles.registerGrid}>
-                  <div className={styles.registerField}>
+                <div className={registerStyles.registerGrid}>
+                  <div className={registerStyles.registerField}>
                     <label>Guardian First Name</label>
                     <input
                       value={guardianFirstName}
@@ -584,7 +586,7 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <div className={styles.registerField}>
+                  <div className={registerStyles.registerField}>
                     <label>Guardian Last Name</label>
                     <input
                       value={guardianLastName}
@@ -594,7 +596,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className={styles.registerField}>
+                <div className={registerStyles.registerField}>
                   <label>Relationship to Patient</label>
                   <input
                     value={guardianRelationship}
@@ -603,8 +605,8 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className={styles.registerGrid}>
-                  <div className={styles.registerField}>
+                <div className={registerStyles.registerGrid}>
+                  <div className={registerStyles.registerField}>
                     <label>Guardian Contact Number</label>
                     <input
                       value={guardianContact}
@@ -613,7 +615,7 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <div className={styles.registerField}>
+                  <div className={registerStyles.registerField}>
                     <label>Guardian Email</label>
                     <input
                       type="email"
@@ -624,7 +626,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <label className={styles.registerCheckbox}>
+                <label className={registerStyles.registerCheckbox}>
                   <input
                     type="checkbox"
                     checked={guardianConsent}
@@ -639,8 +641,8 @@ export default function RegisterPage() {
               </>
             ) : (
               <>
-                <div className={styles.registerGrid}>
-                  <div className={styles.registerField}>
+                <div className={registerStyles.registerGrid}>
+                  <div className={registerStyles.registerField}>
                     <label>Contact Number</label>
                     <input
                       value={contact}
@@ -649,7 +651,7 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <div className={styles.registerField}>
+                  <div className={registerStyles.registerField}>
                     <label>Email</label>
                     <input
                       type="email"
@@ -662,9 +664,9 @@ export default function RegisterPage() {
               </>
             )}
 
-            <div className={styles.registerField}>
+            <div className={registerStyles.registerField}>
               <label>Password</label>
-              <div className={styles.registerPasswordWrap}>
+              <div className={registerStyles.registerPasswordWrap}>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -681,8 +683,8 @@ export default function RegisterPage() {
               <p
                 className={
                   passwordTouched && password.length > 0 && isPasswordStrong
-                    ? styles.registerValid
-                    : styles.registerHelper
+                    ? registerStyles.registerValid
+                    : registerStyles.registerHelper
                 }
               >
                 Use at least 8 characters with 1 uppercase letter, 1 number, and 1
@@ -690,9 +692,9 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <div className={styles.registerField}>
+            <div className={registerStyles.registerField}>
               <label>Confirm Password</label>
-              <div className={styles.registerPasswordWrap}>
+              <div className={registerStyles.registerPasswordWrap}>
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
@@ -712,13 +714,13 @@ export default function RegisterPage() {
               {confirmPasswordTouched &&
                 confirmPassword.length > 0 &&
                 !passwordsMatch && (
-                  <p className={styles.registerError}>
+                  <p className={registerStyles.registerError}>
                     Confirm password does not match.
                   </p>
                 )}
             </div>
 
-            <label className={styles.registerCheckbox}>
+            <label className={registerStyles.registerCheckbox}>
               <input
                 type="checkbox"
                 checked={acceptedTerms}
@@ -729,7 +731,7 @@ export default function RegisterPage() {
                 I agree to the{" "}
                 <button
                   type="button"
-                  className={styles.registerPolicyBtn}
+                  className={policyStyles.registerPolicyBtn}
                   onClick={() => setOpenPolicy("terms")}
                 >
                   Terms and Conditions
@@ -737,7 +739,7 @@ export default function RegisterPage() {
                 and{" "}
                 <button
                   type="button"
-                  className={styles.registerPolicyBtn}
+                  className={policyStyles.registerPolicyBtn}
                   onClick={() => setOpenPolicy("privacy")}
                 >
                   Privacy Policy
@@ -747,14 +749,14 @@ export default function RegisterPage() {
             </label>
 
             <button
-              className={styles.registerSubmit}
+              className={registerStyles.registerSubmit}
               type="submit"
               disabled={isSubmitDisabled}
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
 
-            <p className={styles.registerLoginText}>
+            <p className={registerStyles.registerLoginText}>
               Already have an account? <Link href="/">Go back to Login</Link>
             </p>
           </form>
@@ -763,14 +765,14 @@ export default function RegisterPage() {
 
       {openPolicy && (
         <div
-          className={styles.registerPolicyOverlay}
+          className={policyStyles.registerPolicyOverlay}
           onClick={() => setOpenPolicy(null)}
         >
           <div
-            className={styles.registerPolicyModal}
+            className={policyStyles.registerPolicyModal}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={styles.registerPolicyHeader}>
+            <div className={policyStyles.registerPolicyHeader}>
               <h2>
                 {openPolicy === "terms"
                   ? "Terms and Conditions"
@@ -782,7 +784,7 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <div className={styles.registerPolicyBody}>
+            <div className={policyStyles.registerPolicyBody}>
               {openPolicy === "terms" ? (
                 <>
                   <p>
@@ -839,7 +841,7 @@ export default function RegisterPage() {
 
             <button
               type="button"
-              className={styles.registerPolicyClose}
+              className={policyStyles.registerPolicyClose}
               onClick={() => setOpenPolicy(null)}
             >
               Got it
