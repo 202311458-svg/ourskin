@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.usersPage} ${styles.visualPageFix}`}>
+      <main className={`${styles.usersPage} ${styles.visualPageFix}`}>
         <div className={styles.headerRow}>
           <div>
             <p className={styles.eyebrow}>Admin Directory</p>

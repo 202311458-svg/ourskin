@@ -290,7 +290,7 @@ export default function AdminAiLogsPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.aiLogsPage} ${styles.visualPageFix}`}>
+      <main className={`${styles.aiLogsPage} ${styles.visualPageFix}`}>
         <div className={styles.headerRow}>
           <div>
             <p className={styles.eyebrow}>Clinical Monitoring</p>

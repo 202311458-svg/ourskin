@@ -823,3 +823,44 @@
     font-size: 20px;
   }
 }
+
+/* PortalShell owns horizontal navigation clearance. */
+.pageShell,
+:global(body.navCollapsed) .pageShell {
+  padding-left: 38px;
+}
+
+@media (max-width: 1180px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 980px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-top: 92px;
+  }
+}
+
+@media (max-width: 700px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-left: 14px;
+  }
+}

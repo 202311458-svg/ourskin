@@ -1110,6 +1110,13 @@
   }
 }
 
+/* PortalShell owns all sidebar offsets. */
+.pageShell,
+:global(body.navCollapsed) .pageShell {
+  margin-left: 0;
+  width: 100%;
+}
+
 :global(body.darkMode) .heroPanel,
 :global(body.darkMode) .calendarShell,
 :global(body.darkMode) .workflowShell,
@@ -1307,6 +1314,13 @@
 :global(body.darkMode) .clockIcon {
   background: rgba(45, 212, 191, 0.14);
   color: #5eead4;
+}
+
+@media (max-width: 900px) {
+  .pageShell,
+  :global(body.navCollapsed) .pageShell {
+    padding-top: 92px;
+  }
 }
 
 .timePanels .timeField {

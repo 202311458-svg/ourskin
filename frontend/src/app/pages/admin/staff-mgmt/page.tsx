@@ -428,7 +428,7 @@ export default function StaffManagementPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.staffMgmtPage}`}>
+      <main className={styles.staffMgmtPage}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Staff Management</h1>

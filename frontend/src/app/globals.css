@@ -27,15 +27,9 @@
   /* ---- Shadows ---- */
   --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.05);
 
-  /* ---- Sidebar variables ---- */
-  --admin-sidebar-width: 240px;
-  --admin-sidebar-collapsed-width: 90px;
-  --staff-sidebar-width: 240px;
-  --staff-sidebar-collapsed-width: 90px;
-  --patient-sidebar-width: 220px;
-  --patient-sidebar-collapsed-width: 80px;
-  --doctor-sidebar-width: 280px;
-  --doctor-sidebar-collapsed-width: 112px;
+  /* ---- Shared portal sidebar geometry ---- */
+  --portal-sidebar-width: 240px;
+  --portal-sidebar-collapsed-width: 90px;
 
   /* ---- Legacy aliases (migration compatibility) ---- */
   --navbar-width: 220px;
@@ -109,7 +103,6 @@ html {
 body {
   min-width: 320px;
   margin: 0;
-  font-family: "Poppins", sans-serif;
   background: var(--bg-main);
   color: var(--text-main);
   overflow-x: hidden;
@@ -166,171 +159,12 @@ button:disabled {
   }
 }
 
-/* ============================================================
-   PAGE LAYOUT
-   ============================================================ */
 
-.pageWrapper {
-  margin-left: var(--navbar-width, 220px);
-  padding: 30px;
-  min-height: 100vh;
-  background: var(--main-bg);
-  color: var(--text-dark);
-  transition:
-    margin-left 0.35s ease,
-    background 0.35s ease,
-    color 0.35s ease;
-}
-
-body.navCollapsed .pageWrapper {
-  margin-left: var(--navbar-collapsed-width, 70px);
-}
-
-/* RESPONSIVE*/
-@media (max-width: 768px) {
-  .pageWrapper {
-    margin-top: 80px;
-    margin-left: 0;
-    padding: 20px;
-  }
-}
-
-/* ============================================================
-   PROFILE / STAFF
-   ============================================================ */
-
-.profileCard {
-  background: var(--card-bg);
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  max-width: 500px;
-}
-
-.formInput {
-  width: 100%;
-  padding: 12px;
-  margin-top: 12px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  font-family: "Poppins", sans-serif;
-  font-size: 14px;
-}
-
-.passwordSection {
-  border-top: 1px solid #eee;
-  margin-top: 20px;
-  padding-top: 20px;
-}
-
-.staffLayout {
-  display: flex;
-  min-height: 100vh;
-  background: var(--main-bg);
-}
-
-.staffContent {
-  flex: 1;
-  padding: 30px 40px;
-  margin-left: var(--navbar-width, 220px);
-  transition: margin-left 0.3s ease;
-}
-
-body.navCollapsed .staffContent {
-  margin-left: var(--navbar-collapsed-width, 80px);
-}
-
-/* ============================================================
-   OURSKIN RESPONSIVE STABILITY PATCH
-   ============================================================ */
-
-@media (max-width: 1024px) {
-  body:not(.navCollapsed) .mainContent,
-  body.navCollapsed .mainContent,
-  body:not(.navCollapsed) .staffContent,
-  body.navCollapsed .staffContent {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-
-  .staffContent,
-  .mainContent {
-    padding: 88px 20px 32px !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .pageWrapper {
-    margin-left: 0 !important;
-    width: 100% !important;
-    padding: 88px 20px 32px !important;
-  }
-}
-
+/* Prevent mobile browsers from zooming focused form controls. */
 @media (max-width: 640px) {
   input,
   select,
   textarea {
     font-size: 16px !important;
-  }
-
-  .pageWrapper,
-  .staffContent,
-  .mainContent {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-}
-
-/* ============================================================
-   GLOBAL PORTAL LAYOUT FIX
-   ============================================================ */
-
-/* Only apply this to pages using the actual global pageWrapper class */
-@media (min-width: 901px) {
-  body:not(.navCollapsed) > .pageWrapper,
-  body:not(.navCollapsed) .mainContent,
-  body:not(.navCollapsed) .staffContent {
-    margin-left: 240px !important;
-    width: calc(100% - 240px) !important;
-    max-width: calc(100% - 240px) !important;
-    box-sizing: border-box !important;
-  }
-
-  body.navCollapsed > .pageWrapper,
-  body.navCollapsed .mainContent,
-  body.navCollapsed .staffContent {
-    margin-left: 90px !important;
-    width: calc(100% - 90px) !important;
-    max-width: calc(100% - 90px) !important;
-    box-sizing: border-box !important;
-  }
-}
-
-@media (max-width: 900px) {
-  body:not(.navCollapsed) > .pageWrapper,
-  body.navCollapsed > .pageWrapper,
-  .mainContent,
-  .staffContent {
-    margin-left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 92px 16px 28px !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-  }
-
-  body {
-    overflow-x: hidden !important;
-  }
-}
-
-@media (max-width: 520px) {
-  body:not(.navCollapsed) > .pageWrapper,
-  body.navCollapsed > .pageWrapper,
-  .mainContent,
-  .staffContent {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
   }
 }

@@ -477,7 +477,7 @@ export default function AdminSchedulesPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.schedulesPage}`}>
+      <main className={styles.schedulesPage}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Schedules</h1>

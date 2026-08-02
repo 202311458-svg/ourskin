@@ -1,9 +1,15 @@
 .staffPage {
   width: 100%;
   min-height: 100vh;
-  padding: 0;
+  padding: 30px 40px;
   background: transparent;
   color: #1f2937;
+}
+
+@media (max-width: 1024px) {
+  .staffPage {
+    padding: 88px 20px 32px;
+  }
 }
 
 .dashboardHeader {

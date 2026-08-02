@@ -1,4 +1,4 @@
-:root {
+.page {
   --profile-accent: #6f2940;
 
   --profile-bg: #ffffff;
@@ -12,7 +12,7 @@
   --doctor-nav-collapsed-width: 100px;
 }
 
-body.darkMode {
+:global(body.darkMode) .page {
   --profile-bg: #0e0e12;
   --profile-text: #f5f5f5;
   --profile-card: #17171d;
@@ -459,6 +459,11 @@ body.darkMode {
 }
 
 @media (max-width: 900px) {
+  .page,
+  .collapsed {
+    padding-top: 92px;
+  }
+
   .detailsGrid {
     grid-template-columns: 1fr;
   }
@@ -467,4 +472,12 @@ body.darkMode {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* PortalShell owns all sidebar offsets. */
+.page,
+.collapsed {
+  margin-left: 0;
+  width: 100%;
+  max-width: 100%;
 }

@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import styles from "@/app/components/PortalShell.module.css";
 
 type PortalRole = "admin" | "staff" | "patient" | "doctor";
@@ -12,34 +9,18 @@ type PortalShellProps = {
 };
 
 /**
- * PortalShell provides the correct sidebar offset for every portal role.
+ * PortalShell provides the shared sidebar offset for every portal role.
  *
- * It reads the `navCollapsed` class from <body> and applies the appropriate
- * margin-left and width based on the role's sidebar dimensions.
- *
- * On mobile (≤ 900px) the sidebar offset is removed and top padding is added
- * to account for the collapsed mobile navbar.
+ * CSS follows the `navCollapsed` class on <body> and removes the offset at the
+ * same 900px breakpoint where the shared sidebar becomes a top navigation bar.
  */
-export default function PortalShell({ role, children, className = "" }: PortalShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const checkNav = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"));
-    };
-
-    checkNav();
-
-    const observer = new MutationObserver(checkNav);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const roleClass = styles[role] || styles.admin;
-
+export default function PortalShell({
+  role,
+  children,
+  className = "",
+}: PortalShellProps) {
   return (
-    <div className={`${styles.shell} ${roleClass} ${collapsed ? styles.collapsed : ""} ${className}`}>
+    <div data-portal-role={role} className={`${styles.shell} ${className}`}>
       {children}
     </div>
   );

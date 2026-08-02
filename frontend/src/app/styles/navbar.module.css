@@ -1,11 +1,8 @@
 .navbar {
-  --admin-navbar-width: 240px;
-  --admin-navbar-collapsed-width: 90px;
-
   position: fixed;
   top: 0;
   left: 0;
-  width: var(--admin-navbar-width);
+  width: var(--portal-sidebar-width);
   height: 100dvh;
   background: var(--navbar-bg);
   color: #ffffff;
@@ -22,7 +19,7 @@
 }
 
 .collapsed {
-  width: var(--admin-navbar-collapsed-width);
+  width: var(--portal-sidebar-collapsed-width);
   padding: 22px 10px 18px;
 }
 

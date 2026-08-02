@@ -64,11 +64,26 @@
 .aiLogsPage,
 .auditLogsPage,
 .reportsPage,
+.schedulesPage,
 .staffMgmtPage,
 .usersPage {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  padding: 30px 40px;
+}
+
+@media (max-width: 1024px) {
+  .dashboardPage,
+  .appointmentsPage,
+  .aiLogsPage,
+  .auditLogsPage,
+  .reportsPage,
+  .schedulesPage,
+  .staffMgmtPage,
+  .usersPage {
+    padding: 88px 20px 32px;
+  }
 }
 
 :global(.staffContent).dashboardPage,
@@ -4233,4 +4248,14 @@ button:disabled,
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+/* PortalShell is the sole owner of admin sidebar geometry. */
+.page,
+.collapsed,
+:global(body.navCollapsed) .page,
+:global(body:not(.navCollapsed)) .page {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }

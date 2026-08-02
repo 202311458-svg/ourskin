@@ -303,6 +303,13 @@
   }
 }
 
+@media (max-width: 900px) {
+  .pageWrapper,
+  :global(body.navCollapsed) .pageWrapper {
+    padding-top: 92px;
+  }
+}
+
 @media (max-width: 700px) {
   .pageWrapper,
 :global(body.navCollapsed) .pageWrapper {
@@ -347,4 +354,12 @@
     padding-left: 14px;
     padding-right: 14px;
   }
+}
+
+/* PortalShell owns all sidebar offsets. */
+.pageWrapper,
+:global(body.navCollapsed) .pageWrapper {
+  margin-left: 0;
+  width: 100%;
+  max-width: 100%;
 }

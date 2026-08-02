@@ -17,7 +17,6 @@
 /* Updates container */
 .updatesContainer {
   width: 100%;
-  font-family: "Poppins", sans-serif;
   box-sizing: border-box;
 }
 
@@ -95,12 +94,15 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
-/* Mobile */
-@media (max-width: 768px) {
+/* Clear the fixed top navbar across its full responsive range. */
+@media (max-width: 900px) {
   .contentArea {
-    margin-left: 1px;
     margin-top: 80px;
   }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
   .recentGrid {
     grid-template-columns: 1fr;
   }
@@ -110,4 +112,10 @@
   .featuredSection {
     grid-template-columns: 1fr;
   }
+}
+
+/* PortalShell owns all sidebar offsets. */
+.contentArea,
+.contentArea.collapsed {
+  margin-left: 0;
 }

@@ -28,7 +28,6 @@
     ),
     var(--os-bg);
   color: var(--os-text);
-  font-family: "Poppins", sans-serif;
 }
 
 .osLanding.osDark {

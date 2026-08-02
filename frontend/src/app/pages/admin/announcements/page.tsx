@@ -11,7 +11,7 @@ export default function AdminAnnouncementsPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.pageWrapper}`}>
+      <main className={styles.pageWrapper}>
         <AnnouncementManager roleLabel="Admin" />
       </main>
       </PortalShell>

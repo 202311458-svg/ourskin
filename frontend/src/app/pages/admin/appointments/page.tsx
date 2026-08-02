@@ -740,7 +740,7 @@ useEffect(() => {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.appointmentsPage}`}>
+      <main className={styles.appointmentsPage}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Appointments</h1>

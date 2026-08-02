@@ -234,7 +234,7 @@ export default function AuditLogsPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.auditLogsPage}`}>
+      <main className={styles.auditLogsPage}>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Audit Logs</h1>

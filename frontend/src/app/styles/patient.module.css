@@ -2973,3 +2973,21 @@ body.darkMode .doctorSchedulePreviewItem {
     display: none;
   }
 }
+
+/* PortalShell owns all sidebar offsets. */
+.patientPage,
+.pageWrapper,
+.pageWrapper.navCollapsed,
+.historyContainer,
+.historyContainer.navCollapsed,
+.bookPage,
+.bookPageCollapsed,
+.bookingPage,
+:global(body.navCollapsed) .bookingPage {
+  margin-left: 0;
+}
+
+.bookingPage,
+:global(body.navCollapsed) .bookingPage {
+  width: 100%;
+}

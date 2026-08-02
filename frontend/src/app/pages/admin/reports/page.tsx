@@ -212,7 +212,7 @@ export default function AdminReportsPage() {
       <AdminNavbar />
 
       <PortalShell role="admin">
-      <main className={`staffContent ${styles.reportsPage}`}>
+      <main className={styles.reportsPage}>
         <div className={styles.container}>
           <div className={styles.headerRow}>
             <div>

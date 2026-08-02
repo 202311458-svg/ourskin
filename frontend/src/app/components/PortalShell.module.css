@@ -1,6 +1,6 @@
 /* ============================================================
    PortalShell
-   Provides role-specific sidebar offset for content areas.
+   Provides the shared portal sidebar offset for content areas.
    ============================================================ */
 
 .shell {
@@ -20,30 +20,6 @@
   margin-left: var(--portal-sidebar-collapsed-width);
   width: calc(100% - var(--portal-sidebar-collapsed-width));
 }
-
-/* ---- Role-specific sidebar widths ---- */
-
-.admin {
-  --portal-sidebar-width: var(--admin-sidebar-width, 240px);
-  --portal-sidebar-collapsed-width: var(--admin-sidebar-collapsed-width, 90px);
-}
-
-.staff {
-  --portal-sidebar-width: var(--staff-sidebar-width, 240px);
-  --portal-sidebar-collapsed-width: var(--staff-sidebar-collapsed-width, 90px);
-}
-
-.patient {
-  --portal-sidebar-width: var(--patient-sidebar-width, 220px);
-  --portal-sidebar-collapsed-width: var(--patient-sidebar-collapsed-width, 80px);
-}
-
-.doctor {
-  --portal-sidebar-width: var(--doctor-sidebar-width, 280px);
-  --portal-sidebar-collapsed-width: var(--doctor-sidebar-collapsed-width, 112px);
-}
-
-/* ---- Mobile: remove sidebar offset ---- */
 
 @media (max-width: 900px) {
   .shell,
