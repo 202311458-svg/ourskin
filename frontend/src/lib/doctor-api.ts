@@ -1,5 +1,45 @@
 import { apiFetch, API_BASE_URL, getAuthHeaders } from "./api";
 
+const MAX_AI_IMAGE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_AI_IMAGE_TYPES = new Map([
+  ["image/jpeg", ".jpg"],
+  ["image/png", ".png"],
+  ["image/webp", ".webp"],
+]);
+const ALLOWED_AI_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+
+function getFileExtension(filename: string) {
+  const dotIndex = filename.lastIndexOf(".");
+  return dotIndex >= 0 ? filename.slice(dotIndex).toLowerCase() : "";
+}
+
+export function validateAiImageFile(file: File) {
+  if (!file || file.size <= 0) {
+    throw new Error("Please select a non-empty JPG, PNG, or WEBP image.");
+  }
+
+  if (file.size > MAX_AI_IMAGE_BYTES) {
+    throw new Error("Image must be 8 MB or smaller.");
+  }
+
+  const contentType = (file.type || "").toLowerCase();
+  const expectedExtension = ALLOWED_AI_IMAGE_TYPES.get(contentType);
+
+  if (!expectedExtension) {
+    throw new Error("Only JPG, PNG, and WEBP images are supported.");
+  }
+
+  const suppliedExtension = getFileExtension(file.name || "");
+  if (!ALLOWED_AI_IMAGE_EXTENSIONS.has(suppliedExtension)) {
+    throw new Error("Image filename must end in .jpg, .jpeg, .png, or .webp.");
+  }
+
+  const normalizedExtension = suppliedExtension === ".jpeg" ? ".jpg" : suppliedExtension;
+  if (normalizedExtension !== expectedExtension) {
+    throw new Error("Image filename does not match its browser-reported file type.");
+  }
+}
+
 export type Appointment = {
   id: number;
   patient_id?: number | null;
@@ -190,6 +230,8 @@ export async function analyzeAppointmentSkin(
   file: File,
   doctorNote?: string
 ) {
+  validateAiImageFile(file);
+
   const formData = new FormData();
   formData.append("file", file);
 
@@ -209,9 +251,9 @@ export async function analyzeAppointmentSkin(
       const data = await res.json();
       message = data.detail || data.message || message;
     } catch {
-      //
+      // Keep the safe fallback message when the response is not JSON.
     }
-    throw new Error(message);
+    throw new Error(typeof message === "string" ? message : "Failed to analyze skin image");
   }
 
   return res.json();
@@ -290,7 +332,6 @@ export async function getDoctorPatientHistory(patientId: number) {
     `/doctor/patients/${patientId}/history`
   );
 }
-
 
 export async function getDoctorAiCases(reviewStatus?: string) {
   const query =
