@@ -7,6 +7,7 @@ from app.models.skin_analysis import SkinAnalysis
 from app.models.appointment import AppointmentModel
 from app.models.user import User
 from app.core.security import get_current_user
+from app.core.authorization import get_doctor_appointment_or_404
 from app.core.storage import (
     get_safe_extension,
     save_temp_image,
@@ -164,11 +165,14 @@ async def analyze_skin_image(
     db: Session = Depends(get_db),
     user: User = Depends(require_staff_or_doctor),
 ):
-    appointment = (
-        db.query(AppointmentModel)
-        .filter(AppointmentModel.id == appointment_id)
-        .first()
-    )
+    if user.role == "doctor":
+        appointment = get_doctor_appointment_or_404(db, appointment_id, user.id)
+    else:
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == appointment_id)
+            .first()
+        )
 
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -270,11 +274,14 @@ def get_analysis_by_appointment(
     db: Session = Depends(get_db),
     user: User = Depends(require_staff_or_doctor),
 ):
-    appointment = (
-        db.query(AppointmentModel)
-        .filter(AppointmentModel.id == appointment_id)
-        .first()
-    )
+    if user.role == "doctor":
+        appointment = get_doctor_appointment_or_404(db, appointment_id, user.id)
+    else:
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == appointment_id)
+            .first()
+        )
 
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -298,24 +305,16 @@ def review_analysis(
 ):
     analysis = (
         db.query(SkinAnalysis)
-        .filter(SkinAnalysis.id == analysis_id)
+        .join(AppointmentModel, SkinAnalysis.appointment_id == AppointmentModel.id)
+        .filter(
+            SkinAnalysis.id == analysis_id,
+            AppointmentModel.doctor_id == user.id,
+        )
         .first()
     )
 
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
-
-    appointment = (
-        db.query(AppointmentModel)
-        .filter(AppointmentModel.id == analysis.appointment_id)
-        .first()
-    )
-
-    if appointment and appointment.doctor_id and appointment.doctor_id != user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="You can only review AI analyses for appointments assigned to you.",
-        )
 
     editable_fields = [
         "doctor_note",

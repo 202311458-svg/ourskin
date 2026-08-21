@@ -8,6 +8,10 @@ from app.models.appointment import AppointmentModel
 from app.models.skin_analysis import SkinAnalysis
 from app.models.follow_up import FollowUp
 from app.core.security import get_current_user
+from app.core.authorization import (
+    doctor_appointments_query,
+    get_doctor_appointment_or_404,
+)
 from app.schemas.user import DoctorProfileUpdate
 from app.schemas.follow_up import FollowUpCreate, FollowUpUpdate
 from app.schemas.appointment import AppointmentStatusUpdate
@@ -222,7 +226,7 @@ def doctor_dashboard(
     today = date.today()
 
     todays_appointments = (
-        db.query(AppointmentModel)
+        doctor_appointments_query(db, current_user.id)
         .filter(AppointmentModel.date == today)
         .order_by(AppointmentModel.time.asc())
         .all()
@@ -231,7 +235,10 @@ def doctor_dashboard(
     pending_ai = (
         db.query(SkinAnalysis)
         .join(AppointmentModel, SkinAnalysis.appointment_id == AppointmentModel.id)
-        .filter(SkinAnalysis.review_status == "Pending Review")
+        .filter(
+            AppointmentModel.doctor_id == current_user.id,
+            SkinAnalysis.review_status == "Pending Review",
+        )
         .order_by(SkinAnalysis.created_at.desc())
         .all()
     )
@@ -267,7 +274,7 @@ def doctor_dashboard(
     scheduled_follow_ups = follow_up_base_query.count()
 
     completed_today = (
-        db.query(AppointmentModel)
+        doctor_appointments_query(db, current_user.id)
         .filter(AppointmentModel.date == today)
         .filter(AppointmentModel.status == "Completed")
         .count()
@@ -275,14 +282,18 @@ def doctor_dashboard(
 
     urgent_cases = (
         db.query(SkinAnalysis)
-        .filter(SkinAnalysis.severity.in_(["High", "Severe"]))
+        .join(AppointmentModel, SkinAnalysis.appointment_id == AppointmentModel.id)
+        .filter(
+            AppointmentModel.doctor_id == current_user.id,
+            SkinAnalysis.severity.in_(["High", "Severe"]),
+        )
         .order_by(SkinAnalysis.created_at.desc())
         .limit(5)
         .all()
     )
 
     recent_records = (
-        db.query(AppointmentModel)
+        doctor_appointments_query(db, current_user.id)
         .order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc())
         .limit(5)
         .all()
@@ -317,7 +328,7 @@ def get_doctor_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    query = db.query(AppointmentModel)
+    query = doctor_appointments_query(db, current_user.id)
 
     if status and status != "All":
         query = query.filter(AppointmentModel.status == status)
@@ -341,10 +352,9 @@ def update_doctor_appointment_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+    appointment = get_doctor_appointment_or_404(
+        db, appointment_id, current_user.id
+    )
 
     allowed_statuses = ["Pending", "Approved", "Declined"]
     if payload.status not in allowed_statuses:
@@ -372,16 +382,9 @@ def complete_appointment_with_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    if appointment.doctor_id and appointment.doctor_id != current_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="You can only complete appointments assigned to you",
-        )
+    appointment = get_doctor_appointment_or_404(
+        db, appointment_id, current_user.id
+    )
 
     if appointment.status != "Approved":
         raise HTTPException(
@@ -477,27 +480,6 @@ def complete_appointment_with_report(
         "linked_analysis": serialize_analysis(selected_analysis) if selected_analysis else None,
     }
 
-    create_appointment_log(
-        db=db,
-        appointment_id=appointment.id,
-        action="Completed",
-        performed_by_id=current_user.id,
-        performed_by_name=current_user.name,
-        performed_by_role=current_user.role,
-        reason="Completed with diagnosis report",
-    )
-
-    db.commit()
-    db.refresh(appointment)
-    db.refresh(report)
-
-    return {
-        "message": "Appointment completed with diagnosis report successfully",
-        "appointment": serialize_appointment(appointment),
-        "report": serialize_diagnosis_report(report),
-        "linked_analysis": serialize_analysis(selected_analysis) if selected_analysis else None,
-    }
-
 
 @router.get("/appointments/{appointment_id}/diagnosis-report")
 def get_diagnosis_report_by_appointment(
@@ -505,18 +487,16 @@ def get_diagnosis_report_by_appointment(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = (
-        db.query(AppointmentModel)
-        .filter(AppointmentModel.id == appointment_id)
-        .first()
+    appointment = get_doctor_appointment_or_404(
+        db, appointment_id, current_user.id
     )
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
 
     report = (
         db.query(DiagnosisReport)
-        .filter(DiagnosisReport.appointment_id == appointment_id)
+        .filter(
+            DiagnosisReport.appointment_id == appointment_id,
+            DiagnosisReport.doctor_id == current_user.id,
+        )
         .order_by(DiagnosisReport.created_at.desc())
         .first()
     )
@@ -562,7 +542,14 @@ def get_doctor_patients(
 ):
     reports = (
         db.query(DiagnosisReport)
-        .filter(DiagnosisReport.doctor_id == current_user.id)
+        .join(
+            AppointmentModel,
+            DiagnosisReport.appointment_id == AppointmentModel.id,
+        )
+        .filter(
+            DiagnosisReport.doctor_id == current_user.id,
+            AppointmentModel.doctor_id == current_user.id,
+        )
         .order_by(DiagnosisReport.created_at.desc())
         .all()
     )
@@ -575,7 +562,11 @@ def get_doctor_patients(
 
         if report.patient_id not in patient_map:
             patient = db.query(User).filter(User.id == report.patient_id).first()
-            appointment = db.query(AppointmentModel).filter(AppointmentModel.id == report.appointment_id).first()
+            appointment = (
+                doctor_appointments_query(db, current_user.id)
+                .filter(AppointmentModel.id == report.appointment_id)
+                .first()
+            )
 
             patient_map[report.patient_id] = {
                 "patient": serialize_patient_basic(patient) if patient else {
@@ -600,20 +591,41 @@ def get_patient_history_for_doctor(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    patient = db.query(User).filter(User.id == patient_id).first()
+    care_relationship = (
+        doctor_appointments_query(db, current_user.id)
+        .filter(AppointmentModel.patient_id == patient_id)
+        .first()
+    )
+
+    if not care_relationship:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    patient = (
+        db.query(User)
+        .filter(User.id == patient_id, User.role == "patient")
+        .first()
+    )
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
     reports = (
         db.query(DiagnosisReport)
-        .filter(DiagnosisReport.patient_id == patient_id)
+        .join(
+            AppointmentModel,
+            DiagnosisReport.appointment_id == AppointmentModel.id,
+        )
+        .filter(
+            DiagnosisReport.patient_id == patient_id,
+            DiagnosisReport.doctor_id == current_user.id,
+            AppointmentModel.doctor_id == current_user.id,
+        )
         .order_by(DiagnosisReport.created_at.desc())
         .all()
     )
 
     appointments = (
-        db.query(AppointmentModel)
+        doctor_appointments_query(db, current_user.id)
         .filter(AppointmentModel.patient_id == patient_id)
         .order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc())
         .all()
@@ -678,10 +690,9 @@ def get_patient_history_from_appointment(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+    appointment = get_doctor_appointment_or_404(
+        db, appointment_id, current_user.id
+    )
 
     if not appointment.patient_id:
         raise HTTPException(
@@ -700,7 +711,15 @@ def get_patient_history_from_appointment(
 
     reports = (
         db.query(DiagnosisReport)
-        .filter(DiagnosisReport.patient_id == appointment.patient_id)
+        .join(
+            AppointmentModel,
+            DiagnosisReport.appointment_id == AppointmentModel.id,
+        )
+        .filter(
+            DiagnosisReport.patient_id == appointment.patient_id,
+            DiagnosisReport.doctor_id == current_user.id,
+            AppointmentModel.doctor_id == current_user.id,
+        )
         .order_by(DiagnosisReport.created_at.desc())
         .all()
     )
@@ -709,7 +728,7 @@ def get_patient_history_from_appointment(
 
     for report in reports:
         related_appointment = (
-            db.query(AppointmentModel)
+            doctor_appointments_query(db, current_user.id)
             .filter(AppointmentModel.id == report.appointment_id)
             .first()
         )
@@ -751,7 +770,11 @@ def get_doctor_ai_cases(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    query = db.query(SkinAnalysis)
+    query = (
+        db.query(SkinAnalysis)
+        .join(AppointmentModel, SkinAnalysis.appointment_id == AppointmentModel.id)
+        .filter(AppointmentModel.doctor_id == current_user.id)
+    )
 
     if review_status:
         query = query.filter(SkinAnalysis.review_status == review_status)
@@ -766,7 +789,7 @@ def get_doctor_patient_records(
     current_user: User = Depends(require_doctor),
 ):
     appointments = (
-        db.query(AppointmentModel)
+        doctor_appointments_query(db, current_user.id)
         .order_by(AppointmentModel.date.desc(), AppointmentModel.time.desc())
         .all()
     )
@@ -814,10 +837,9 @@ def create_follow_up(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == payload.appointment_id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+    appointment = get_doctor_appointment_or_404(
+        db, payload.appointment_id, current_user.id
+    )
 
     if payload.follow_up_date < date.today():
         raise HTTPException(
@@ -863,21 +885,13 @@ def update_follow_up(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_doctor_staff_admin),
 ):
-    follow_up = (
-        db.query(FollowUp)
-        .filter(FollowUp.id == follow_up_id)
-        .first()
-    )
+    query = db.query(FollowUp).filter(FollowUp.id == follow_up_id)
+    if current_user.role == "doctor":
+        query = query.filter(FollowUp.doctor_id == current_user.id)
+    follow_up = query.first()
 
     if not follow_up:
         raise HTTPException(status_code=404, detail="Follow-up not found")
-
-    if current_user.role == "doctor":
-        if follow_up.doctor_id and follow_up.doctor_id != current_user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="You can only update your own follow-ups"
-            )
 
     data = payload.model_dump(exclude_unset=True)
 
