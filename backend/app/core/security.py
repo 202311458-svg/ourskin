@@ -48,7 +48,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode.update(
         {
             "exp": expire,
-            "iat": now,
+            # Store a numeric timestamp with sub-second precision so a token
+            # issued immediately after a password change is distinguishable
+            # from a token created immediately before it.
+            "iat": now.timestamp(),
             "iss": settings.jwt_issuer,
             "aud": settings.jwt_audience,
             "jti": secrets.token_urlsafe(24),
