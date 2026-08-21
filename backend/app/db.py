@@ -1,20 +1,13 @@
-import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# local db for offline-first
-#DATABASE_URL = "sqlite:///./clinic.db"
-
-# for supabase
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
+from app.core.config import settings
 
 
-print("DATABASE_URL loaded:", bool(DATABASE_URL))
-
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -26,6 +19,7 @@ Base = declarative_base()
 
 from app.models.audit_log import AuditLog
 from app.models.announcement import Announcement
+from app.models.notification import Notification
 
 def get_db():
     db = SessionLocal()
