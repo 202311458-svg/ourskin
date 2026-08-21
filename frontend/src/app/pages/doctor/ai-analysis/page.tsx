@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DoctorNavbar from "@/app/components/DoctorNavbar";
 import coreStyles from "@/app/styles/ai-core.module.css";
 import resultStyles from "@/app/styles/ai-result.module.css";
 import assessmentStyles from "@/app/styles/ai-assessment.module.css";
@@ -2497,8 +2496,6 @@ const renderHistoryStage = () => {
 
   return (
     <>
-      <DoctorNavbar />
-
       <main className={coreStyles.pageShell}>
         <section className={coreStyles.pageHeader}>
           <div>

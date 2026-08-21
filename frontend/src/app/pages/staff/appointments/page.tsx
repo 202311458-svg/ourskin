@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import StaffNavbar from "@/app/components/StaffNavbar"
 import { API_BASE_URL } from "@/lib/api"
 import { printHtmlDocument } from "@/lib/printExport"
-import styles from "@/app/styles/staff.module.css"
+import PageShell from "@/app/components/portal/ui/PageShell"
+import PageHeader from "@/app/components/portal/ui/PageHeader"
+import styles from "./page.module.css";
 
 type Appointment = {
   id: number
@@ -729,34 +730,27 @@ export default function StaffAppointments() {
   const filters: ViewFilter[] = ["All", "Today", "Upcoming", "Past"]
 
   return (
-    <div className="staffLayout">
-      <StaffNavbar />
+    <PageShell className={styles.staffPage}>
+      <PageHeader
+        eyebrow="Approved Flow"
+        title="Confirmed Appointments"
+        description="Monitor approved bookings, active follow-up schedules, and the clinic's upcoming patient flow."
+        primaryAction={
+          <div className={styles.headerActions}>
+            <button
+              className={styles.secondaryBtn}
+              onClick={handlePrintApprovedAppointments}
+              disabled={loading || approvedAppointments.length === 0}
+            >
+              Export
+            </button>
 
-      <main className="staffContent">
-        <div className={styles.staffPage}>
-          <section className={styles.dashboardHeader}>
-            <div>
-              <span className={styles.eyebrow}>Approved Flow</span>
-              <h1>Confirmed Appointments</h1>
-              <p className={styles.pageSubtext}>
-                Monitor approved bookings, active follow-up schedules, and the clinic&apos;s upcoming patient flow.
-              </p>
-            </div>
-
-            <div className={styles.headerActions}>
-              <button
-                className={styles.secondaryBtn}
-                onClick={handlePrintApprovedAppointments}
-                disabled={loading || approvedAppointments.length === 0}
-              >
-                Export
-              </button>
-
-              <button className={styles.secondaryBtn} onClick={loadAppointments}>
-                Refresh
-              </button>
-            </div>
-          </section>
+            <button className={styles.secondaryBtn} onClick={loadAppointments}>
+              Refresh
+            </button>
+          </div>
+        }
+      />
 
           <section className={styles.statsGrid}>
             <div className={styles.statCard}>
@@ -929,8 +923,6 @@ export default function StaffAppointments() {
               </div>
             </aside>
           </section>
-        </div>
-      </main>
 
       {detailsOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
@@ -1076,6 +1068,6 @@ export default function StaffAppointments() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

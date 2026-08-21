@@ -1,0 +1,178 @@
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --color-brand-50: #fff7f5;
+  --color-brand-100: #ffe7ed;
+  --color-brand-500: #8a334f;
+  --color-brand-600: #7a2d46;
+  --color-brand-700: #66243a;
+
+  /* Semantic colour */
+  --color-page: #fffaf8;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #fff4f6;
+  --color-surface-raised: #fffdfb;
+  --color-sidebar: #2b1623;
+  --color-sidebar-hover: #3d2332;
+  --color-sidebar-active: #fff1f5;
+  --color-text: #2f2428;
+  --color-text-strong: #22161d;
+  --color-text-secondary: #6d6266;
+  --color-text-muted: #8d7981;
+  --color-text-inverse: #ffffff;
+  --color-border: #ecdfe4;
+  --color-border-strong: #d8bfc6;
+  --color-input: #fffdfb;
+  --color-hover: #fff1f5;
+  --color-selected: #fde8ee;
+  --color-focus: #8a334f;
+  --color-disabled: #f7ecef;
+  --color-disabled-text: #9d8890;
+
+  --color-success: #2f694f;
+  --color-success-bg: #eaf6ee;
+  --color-warning: #a1692b;
+  --color-warning-bg: #fcf0e4;
+  --color-danger: #a14646;
+  --color-danger-bg: #fceaea;
+  --color-info: #6b5a79;
+  --color-info-bg: #f1ebf8;
+  --color-neutral-bg: #f8edf2;
+
+  /* Typography */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.0625rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: clamp(1.5rem, 2vw, 1.875rem);
+  --line-height-tight: 1.25;
+  --line-height-base: 1.55;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Shape and elevation */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-pill: 999px;
+  --shadow-sm: 0 8px 24px rgba(138, 51, 79, 0.07);
+  --shadow-md: 0 16px 38px rgba(138, 51, 79, 0.12);
+  --shadow-dialog: 0 24px 70px rgba(86, 35, 52, 0.16);
+
+  /* Layout and controls */
+  --control-height-sm: 2rem;
+  --control-height: 2.5rem;
+  --control-height-lg: 2.875rem;
+  --content-max: 1440px;
+  --content-reading: 760px;
+  --portal-sidebar-width: 248px;
+  --portal-sidebar-collapsed-width: 76px;
+  --portal-mobile-header-height: 64px;
+  /* Portal layout tokens */
+  --portal-header-height: 78px;
+  --content-padding-x: clamp(var(--space-6), 3vw, var(--space-10));
+  --content-padding-y: clamp(var(--space-6), 3vw, var(--space-8));
+  --section-gap: var(--space-6);
+  /* Navigation (theme-invariant brand chrome) */
+  --nav-bg: var(--color-sidebar);
+  --nav-hover: var(--color-sidebar-hover);
+  --nav-active-bg: var(--color-sidebar-active);
+  --nav-text: var(--color-text-inverse);
+  --nav-active-text: var(--color-text-inverse);
+  --nav-border: rgba(138, 51, 79, 0.18);
+
+  --portal-bg: var(--color-page);
+  --portal-surface: var(--color-surface);
+  --portal-surface-muted: var(--color-surface-subtle);
+  --portal-surface-elevated: var(--color-surface-raised);
+  --portal-header-bg: var(--nav-bg);
+  --portal-header-border: var(--nav-border);
+  --portal-header-text: var(--nav-text);
+  --portal-header-shadow: 0 18px 36px rgba(138, 51, 79, 0.08);
+
+  --brand-primary: var(--color-brand-600);
+  --brand-primary-hover: var(--color-brand-700);
+  --brand-accent: #0f766e;
+  --brand-soft: var(--color-brand-100);
+  --brand-deep: var(--color-brand-700);
+
+  --text-primary: var(--color-text-strong);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+
+  --sidebar-bg: var(--nav-bg);
+  --sidebar-text: var(--nav-text);
+  --sidebar-active-bg: var(--nav-active-bg);
+  --sidebar-active-text: var(--nav-active-text);
+
+  --surface-border: var(--color-border);
+  --surface-border-strong: var(--color-border-strong);
+  --surface-shadow: var(--shadow-sm);
+  --surface-shadow-strong: var(--shadow-dialog);
+  --table-row-height: 3.25rem;
+  --z-sidebar: 40;
+  --z-overlay: 50;
+  --z-dialog: 60;
+}
+
+html[data-theme="dark"],
+body.darkMode {
+  color-scheme: dark;
+  --color-page: #130d11;
+  --color-surface: #1c1318;
+  --color-surface-subtle: #241a20;
+  --color-surface-raised: #2a1d25;
+  --color-sidebar: #140d14;
+  --color-sidebar-hover: #2c1d26;
+  --color-sidebar-active: #fff1f5;
+  --color-text: #f7eaf0;
+  --color-text-strong: #fff6fb;
+  --color-text-secondary: #d9c3cc;
+  --color-text-muted: #b297a1;
+  --color-border: #3c2a35;
+  --color-border-strong: #5b3b4d;
+  --color-input: #241a20;
+  --color-hover: #2a2026;
+  --color-selected: #34212c;
+  --color-focus: #f5a0c4;
+  --color-disabled: #2c2328;
+  --color-disabled-text: #8c7a83;
+  --color-success: #8cc9a2;
+  --color-success-bg: #1a3228;
+  --color-warning: #e8c16f;
+  --color-warning-bg: #372b16;
+  --color-danger: #ef9f9f;
+  --color-danger-bg: #372222;
+  --color-info: #c6b0d8;
+  --color-info-bg: #2b2234;
+  --color-neutral-bg: #2c2328;
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.34);
+  --shadow-dialog: 0 28px 70px rgba(0, 0, 0, 0.5);
+  /* Ensure navigation chrome stays consistent in dark mode too */
+  --nav-bg: #2b1623;
+  --nav-hover: #3d2332;
+  --nav-active-bg: #fff1f5;
+  --nav-text: #ffffff;
+  --nav-active-text: #1f121d;
+  --nav-border: rgba(138, 51, 79, 0.18);
+  --portal-header-bg: var(--nav-bg);
+  --portal-header-border: var(--nav-border);
+  --portal-header-text: var(--nav-text);
+  --portal-header-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
+}

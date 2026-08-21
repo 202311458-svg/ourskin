@@ -2,7 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import styles from "@/app/styles/patient.module.css";
+import styles from "./PatientOnboarding.module.css";
 
 type Step = {
   title: string;

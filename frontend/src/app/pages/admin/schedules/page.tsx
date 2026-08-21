@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminNavbar from "@/app/components/AdminNavbar";
 import PortalShell from "@/app/components/PortalShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 import {
   AdminDoctor,
   AdminService,
@@ -20,7 +20,7 @@ import {
   updateAdminClinicUnavailableDate,
   updateAdminDoctorSchedule,
 } from "@/lib/admin-api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
 
 type ScheduleForm = {
   id: number | null;
@@ -474,37 +474,31 @@ export default function AdminSchedulesPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={styles.schedulesPage}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Schedules</h1>
-            <p className={styles.subtitle}>
-              Manage doctor schedules, consultation modes, service coverage, and
-              clinic unavailable dates.
-            </p>
-          </div>
+        <PageHeader
+          title="Schedules"
+          description="Manage doctor schedules, consultation modes, service coverage, and clinic unavailable dates."
+          primaryAction={
+            <>
+              <button
+                type="button"
+                className={styles.secondaryAction}
+                onClick={openCreateClosureModal}
+              >
+                + Unavailable Date
+              </button>
 
-          <div className={styles.actionButtons}>
-            <button
-              type="button"
-              className={styles.secondaryAction}
-              onClick={openCreateClosureModal}
-            >
-              + Unavailable Date
-            </button>
-
-            <button
-              type="button"
-              className={styles.addButton}
-              onClick={openCreateScheduleModal}
-            >
-              + Doctor Schedule
-            </button>
-          </div>
-        </div>
+              <button
+                type="button"
+                className={styles.addButton}
+                onClick={openCreateScheduleModal}
+              >
+                + New Schedule
+              </button>
+            </>
+          }
+        />
 
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>

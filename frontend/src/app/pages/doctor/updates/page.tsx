@@ -1,6 +1,5 @@
 "use client";
 
-import Navbar from "@/app/components/Navbar";
 import styles from "./updates.module.css";
 import { useEffect, useState } from "react";
 
@@ -27,8 +26,6 @@ export default function UpdatesPage() {
 
   return (
     <div className={styles.pageWrapper}>
-      <Navbar />
-
       <main className={`${styles.contentArea} ${collapsed ? styles.collapsed : ""}`}>
         <div className={styles.updatesContainer}>
           {/* Header */}

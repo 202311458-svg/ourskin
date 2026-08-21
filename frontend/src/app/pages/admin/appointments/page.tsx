@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminNavbar from "@/app/components/AdminNavbar";
+import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
 import {
@@ -19,7 +19,8 @@ import {
   updateAdminFollowUp,
   updateAppointmentStatus as saveAppointmentStatus,
 } from "@/lib/admin-api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 
 type ModalAction = "decline" | "cancel" | "no-show";
 type ManualConsultationMode = "In-Person" | "Online Consultation";
@@ -221,6 +222,9 @@ export default function AdminAppointmentsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
 
   const [selectedAppointment, setSelectedAppointment] =
     useState<AdminAppointment | null>(null);
@@ -263,13 +267,14 @@ export default function AdminAppointmentsPage() {
         setError("");
 
         const [appointmentData, followUpData] = await Promise.all([
-          getAdminAppointments(),
+          getAdminAppointments(page, pageSize),
           getAdminFollowUps(),
         ]);
 
         setAppointments(
-          uniqueAppointmentsById(Array.isArray(appointmentData) ? appointmentData : [])
+          uniqueAppointmentsById(appointmentData.items)
         );
+        setTotal(appointmentData.total);
         setFollowUps(uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : []));
       } catch (loadError: unknown) {
         setError(
@@ -283,7 +288,7 @@ export default function AdminAppointmentsPage() {
         if (showLoader) setLoading(false);
       }
     },
-    [router]
+    [router, page, pageSize]
   );
 
   useEffect(() => {
@@ -737,19 +742,13 @@ useEffect(() => {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={styles.appointmentsPage}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Appointments</h1>
-            <p className={styles.subtitle}>
-              Manage patient requests, initial evaluations, approvals,
-              cancellations, no-shows, follow-ups, and appointment history.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Admin Portal"
+          title="Appointments"
+          description="Manage patient requests, initial evaluations, approvals, cancellations, no-shows, follow-ups, and appointment history."
+        />
 
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
@@ -1058,6 +1057,16 @@ useEffect(() => {
             })}
           </section>
         )}
+        <PaginationControls
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
 
         {detailsAppointment && (
           <div className={styles.modalBackdrop}>

@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import StaffNavbar from "@/app/components/StaffNavbar";
 import { API_BASE_URL, getAuth } from "@/lib/api";
 import { printHtmlDocument } from "@/lib/printExport";
-import staffStyles from "@/app/styles/staff.module.css";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import staffStyles from "./page.module.css";
 import styles from "./schedules.module.css";
 
 type Doctor = {
@@ -1272,9 +1272,7 @@ export default function StaffSchedulesPage() {
 
   return (
     <>
-      <StaffNavbar />
-
-      <main className={`${staffStyles.staffPage} ${styles.pageShell}`}>
+      <PageShell className={`${staffStyles.staffPage} ${styles.pageShell}`}>
         <section className={styles.heroPanel}>
           <div>
             <span className={styles.eyebrow}>Staff Scheduling</span>
@@ -1948,7 +1946,7 @@ export default function StaffSchedulesPage() {
             </form>
           </div>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }

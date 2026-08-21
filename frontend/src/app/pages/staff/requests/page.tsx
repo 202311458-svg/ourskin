@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import StaffNavbar from "@/app/components/StaffNavbar"
 import { API_BASE_URL } from "@/lib/api"
-import styles from "@/app/styles/staff.module.css"
+import PageShell from "@/app/components/portal/ui/PageShell"
+import styles from "./page.module.css";
 
 type Appointment = {
   id: number
@@ -407,6 +407,26 @@ export default function AppointmentRequests() {
     setApprovalOpen(true)
   }
 
+  const loadAppointmentDetail = async (appointment: Appointment) => {
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+      router.push("/")
+      return null
+    }
+
+    const res = await fetch(`${API_BASE_URL}/appointments/${appointment.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await readJsonSafely(res)
+
+    if (!res.ok || !data || typeof data !== "object") {
+      throw new Error(getErrorMessage(data, "Unable to load appointment details."))
+    }
+
+    return data as Appointment
+  }
+
   const closeApprovalModal = () => {
     if (approvalSubmitting) return
 
@@ -540,22 +560,32 @@ export default function AppointmentRequests() {
   }
 
   const openScheduleModal = async (appointment: Appointment) => {
-    setScheduleTarget(appointment)
-    setScheduleOpen(true)
     setScheduleError("")
     setAssignableDoctors([])
-    setManualEvaluationForm({
-      doctor_id: appointment.doctor_id ? String(appointment.doctor_id) : "",
-      schedule_date: appointment.date || getTodayInputDate(),
-      start_time: toTimeInputValue(appointment.time, "13:00"),
-      end_time: toTimeInputValue(appointment.end_time, "14:00"),
-      consultation_mode:
-        appointment.consultation_mode === "Online Consultation"
-          ? "Online Consultation"
-          : "In-Person",
-    })
 
-    await loadAssignableDoctors(appointment)
+    try {
+      const detail = await loadAppointmentDetail(appointment)
+      if (!detail) return
+
+      setScheduleTarget(detail)
+      setScheduleOpen(true)
+      setManualEvaluationForm({
+        doctor_id: detail.doctor_id ? String(detail.doctor_id) : "",
+        schedule_date: detail.date || getTodayInputDate(),
+        start_time: toTimeInputValue(detail.time, "13:00"),
+        end_time: toTimeInputValue(detail.end_time, "14:00"),
+        consultation_mode:
+          detail.consultation_mode === "Online Consultation"
+            ? "Online Consultation"
+            : "In-Person",
+      })
+
+      await loadAssignableDoctors(detail)
+    } catch (err) {
+      setScheduleError(
+        err instanceof Error ? err.message : "Unable to load appointment details."
+      )
+    }
   }
 
   const closeScheduleModal = () => {
@@ -628,7 +658,12 @@ export default function AppointmentRequests() {
     }
 
     if (status === "Approved") {
-      openApprovalModal(target)
+      try {
+        const detail = await loadAppointmentDetail(target)
+        if (detail) openApprovalModal(detail)
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Unable to load appointment details.")
+      }
       return
     }
 
@@ -892,12 +927,8 @@ export default function AppointmentRequests() {
   }
 
   return (
-    <div className="staffLayout">
-      <StaffNavbar />
-
-      <div className="staffContent">
-        <div className={styles.staffPage}>
-          <div className={styles.dashboardHeader}>
+    <PageShell className={styles.staffPage}>
+      <div className={styles.dashboardHeader}>
             <div>
               <h1>Appointment Requests</h1>
               <p className={styles.pageSubtext}>
@@ -1023,8 +1054,6 @@ export default function AppointmentRequests() {
               })
             )}
           </div>
-        </div>
-      </div>
 
       {scheduleOpen && scheduleTarget && (
         <div className={styles.modalOverlay} onClick={closeScheduleModal}>
@@ -1753,6 +1782,6 @@ export default function AppointmentRequests() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

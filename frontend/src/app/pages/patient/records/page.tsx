@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/patient.module.css";
+import styles from "./page.module.css";
+import PageShell from "@/app/components/portal/ui/PageShell"
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 
 interface PatientRecord {
   id: number;
@@ -256,35 +257,18 @@ export default function PatientMedicalRecords() {
   }, [fetchRecords]);
 
   return (
-    <div className={navCollapsed ? "nav-collapsed" : "nav-active"}>
-      <Navbar />
-
-      <main
-        className={`${styles.historyContainer} ${
-          navCollapsed ? styles.navCollapsed : ""
-        }`}
-      >
-        <section className={styles.contentWrapper}>
-          <div className={styles.headerRow}>
-            <div>
-              <p className={styles.eyebrow}>Patient Portal</p>
-
-              <h1 className={styles.h1}>My Medical Records</h1>
-
-              <p className={styles.subtitle}>
-                View your completed consultation records, including your
-                doctor’s final diagnosis, prescription, notes, and follow-up
-                plan.
-              </p>
-            </div>
-
-            <Link
-              href="/pages/patient/history"
-              className={styles.secondaryButton}
-            >
-              Back to Appointments
-            </Link>
-          </div>
+    <PageShell
+      className={`${styles.historyContainer} ${
+        navCollapsed ? styles.navCollapsed : ""
+      }`}
+    >
+      <section className={styles.contentWrapper}>
+        <PageHeader
+            eyebrow="Patient Portal"
+            title="My Medical Records"
+            description="View your completed consultation records, including your doctor’s final diagnosis, prescription, notes, and follow-up plan."
+            primaryAction={<Link href="/pages/patient/history" className={styles.secondaryButton}>Back to Appointments</Link>}
+          />
 
           <div className={styles.summaryGrid}>
             <div className={styles.summaryCard}>
@@ -398,8 +382,7 @@ export default function PatientMedicalRecords() {
             </div>
           )}
         </section>
-      </main>
-    </div>
+      </PageShell>
   );
 }
 

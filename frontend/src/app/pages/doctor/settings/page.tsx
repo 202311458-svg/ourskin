@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import DoctorNavbar from "@/app/components/DoctorNavbar"
 import { API_BASE_URL } from "@/lib/api";       
 import styles from "@/app/styles/profile.module.css"
 import { getDoctorSettings, type DoctorSettings } from "@/lib/doctor-api"
@@ -133,8 +132,6 @@ const handleChangePassword = async () => {
 
   return (
     <>
-      <DoctorNavbar />
-
       <main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
         <div className={styles.container}>
           <div className={styles.header}>

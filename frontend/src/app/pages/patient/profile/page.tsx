@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
 import styles from "@/app/styles/profile.module.css";
 
@@ -276,8 +275,6 @@ export default function ProfilePage() {
 
   return (
     <>
-      <Navbar />
-
       <main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
         <div className={styles.container}>
           <div className={styles.header}>

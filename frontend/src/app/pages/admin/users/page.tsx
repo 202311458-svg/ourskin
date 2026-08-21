@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   FaEnvelope,
   FaIdBadge,
-  FaPhoneAlt,
   FaShieldAlt,
   FaTimes,
   FaUser,
@@ -13,10 +12,11 @@ import {
   FaUsers,
 } from "react-icons/fa";
 
-import AdminNavbar from "@/app/components/AdminNavbar";
+import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 import { AdminUser, getAdminUsers } from "@/lib/admin-api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
 
 type RoleFilter = "all" | "patient" | "doctor" | "staff" | "admin";
 type VerificationFilter = "all" | "verified" | "unverified";
@@ -155,6 +155,9 @@ export default function AdminUsersPage() {
     useState<VerificationFilter>("all");
   const [patientTypeFilter, setPatientTypeFilter] =
     useState<PatientTypeFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -170,8 +173,9 @@ export default function AdminUsersPage() {
         setLoading(true);
         setError("");
 
-        const data = await getAdminUsers();
-        setUsers(Array.isArray(data) ? data : []);
+        const data = await getAdminUsers(page, pageSize);
+        setUsers(data.items);
+        setTotal(data.total);
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load user records."));
       } finally {
@@ -180,7 +184,7 @@ export default function AdminUsersPage() {
     }
 
     loadUsers();
-  }, [router]);
+  }, [router, page, pageSize]);
 
   const filteredUsers = useMemo(() => {
     const keyword = search.toLowerCase().trim();
@@ -244,20 +248,13 @@ export default function AdminUsersPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={`${styles.usersPage} ${styles.visualPageFix}`}>
-        <div className={styles.headerRow}>
-          <div>
-            <p className={styles.eyebrow}>Admin Directory</p>
-            <h1 className={styles.title}>Patients & Users</h1>
-            <p className={styles.subtitle}>
-              Monitor registered patients, guardian records, verification status,
-              and internal clinic accounts in one organised view.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Admin Directory"
+          title="Patients & Users"
+          description="Monitor registered patients, guardian records, verification status, and internal clinic accounts in one organised view."
+        />
 
         <div className={styles.statsGrid}>
           <div className={`${styles.statCard} ${styles.pinkAccent}`}>
@@ -465,6 +462,16 @@ export default function AdminUsersPage() {
             </div>
           )}
         </section>
+        <PaginationControls
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
       </main>
       </PortalShell>
 

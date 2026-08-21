@@ -224,6 +224,10 @@
   margin: 0;
 }
 
+.registerPanel > :global(div[aria-busy]) {
+  margin-bottom: 20px;
+}
+
 .registerForm {
   display: flex;
   flex-direction: column;

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminNavbar from "@/app/components/AdminNavbar";
 import PortalShell from "@/app/components/PortalShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
 
 type MonthlyAppointmentSummary = {
   month: string;
@@ -209,29 +209,23 @@ export default function AdminReportsPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={styles.reportsPage}>
         <div className={styles.container}>
-          <div className={styles.headerRow}>
-            <div>
-              <h1 className={styles.title}>Reports</h1>
-              <p className={styles.subtitle}>
-                Review appointment trends, AI screening activity, user growth,
-                and doctor workload without exposing restricted medical details.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className={styles.refreshButton}
-              onClick={loadReports}
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-          </div>
+          <PageHeader
+            title="Reports"
+            description="Review appointment trends, AI screening activity, user growth, and doctor workload without exposing restricted medical details."
+            primaryAction={
+              <button
+                type="button"
+                className={styles.refreshButton}
+                onClick={loadReports}
+                disabled={loading}
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+            }
+          />
 
           {loading ? (
             <div className={styles.message}>Loading reports...</div>

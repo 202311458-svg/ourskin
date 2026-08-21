@@ -1,0 +1,19 @@
+.pageShell {
+  width: min(100%, var(--content-max));
+  margin: 0 auto;
+  padding: var(--content-padding-y) var(--content-padding-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  min-width: 0;
+}
+
+.pageShell :global(*) {
+  box-sizing: border-box;
+}
+
+@media (max-width: 920px) {
+  .pageShell {
+    padding: var(--space-5) var(--space-4);
+  }
+}

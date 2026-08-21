@@ -1,0 +1,402 @@
+.frame {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(138, 51, 79, 0.14), transparent 24%),
+    radial-gradient(circle at 86% 12%, rgba(245, 160, 196, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(138, 51, 79, 0.05) 0%, transparent 35%);
+  color: var(--color-text);
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: var(--z-sidebar);
+  display: flex;
+  width: var(--portal-sidebar-width);
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--nav-border);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  transition: width 180ms ease, transform 180ms ease;
+}
+
+.brand {
+  display: flex;
+  min-height: var(--portal-header-height);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--nav-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.brandButton,
+.mobileButton,
+.headerButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.brandButton {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.brandCopy {
+  min-width: 0;
+}
+
+.brandIntro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brandBadge {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 6px;
+}
+
+.brandBadge img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.brandName,
+.brandRole {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandName {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.brandRole {
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: var(--font-size-xs);
+}
+
+.navigation {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4) var(--space-3);
+  scrollbar-width: thin;
+}
+
+.group + .group {
+  margin-top: var(--space-4);
+}
+
+.groupLabel {
+  display: block;
+  margin: 0 var(--space-3) var(--space-2);
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.69rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.navList {
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.navLink {
+  position: relative;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.navLink:hover {
+  background: rgba(138, 51, 79, 0.18);
+  color: var(--color-text-inverse);
+}
+
+.navLinkActive {
+  background: linear-gradient(90deg, rgba(138, 51, 79, 0.32), rgba(255, 255, 255, 0.14));
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.navIcon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  font-size: 16px;
+}
+
+.navLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarFooter {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footerButton {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.footerButton:hover {
+  background: rgba(138, 51, 79, 0.16);
+  color: var(--color-text-inverse);
+}
+
+.main {
+  min-height: 100dvh;
+  margin-left: var(--portal-sidebar-width);
+  min-width: 0;
+  transition: margin-left 180ms ease;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: var(--portal-header-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--content-padding-x);
+  border-bottom: 1px solid var(--portal-header-border);
+  background: var(--portal-header-bg);
+  color: var(--portal-header-text);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--portal-header-shadow);
+}
+
+:global(body.darkMode) .header {
+  background: var(--portal-header-bg);
+}
+
+.headerContext {
+  min-width: 0;
+}
+
+.headerRole {
+  display: block;
+  color: var(--brand-deep);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.headerRoute {
+  display: block;
+  overflow: hidden;
+  color: var(--portal-header-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.headerButton,
+.mobileButton {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--portal-header-text);
+  font-size: 18px;
+}
+
+.headerButton:hover,
+.mobileButton:hover {
+  background: rgba(138, 51, 79, 0.12);
+  color: var(--brand-primary-hover);
+}
+
+.mobileButton {
+  display: none;
+}
+
+.content {
+  min-width: 0;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--content-padding-y) var(--content-padding-x);
+}
+
+.skipLink {
+  position: fixed;
+  z-index: 100;
+  top: var(--space-2);
+  left: var(--space-2);
+  transform: translateY(-160%);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.skipLink:focus {
+  transform: none;
+}
+
+.overlay {
+  display: none;
+}
+
+:global(body.navCollapsed) .sidebar {
+  width: var(--portal-sidebar-collapsed-width);
+}
+
+:global(body.navCollapsed) .main {
+  margin-left: var(--portal-sidebar-collapsed-width);
+}
+
+:global(body.navCollapsed) .brand {
+  justify-content: center;
+  padding-inline: var(--space-3);
+}
+
+:global(body.navCollapsed) .brandCopy,
+:global(body.navCollapsed) .groupLabel,
+:global(body.navCollapsed) .navLabel,
+:global(body.navCollapsed) .footerButton span:last-child {
+  display: none;
+}
+
+:global(body.navCollapsed) .navLink,
+:global(body.navCollapsed) .footerButton {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+@media (max-width: 900px) {
+  .sidebar,
+  :global(body.navCollapsed) .sidebar {
+    width: min(88vw, 320px);
+    transform: translateX(-102%);
+    box-shadow: var(--shadow-dialog);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .main,
+  :global(body.navCollapsed) .main {
+    margin-left: 0;
+    padding-top: var(--portal-mobile-header-height);
+  }
+
+  .header {
+    position: fixed;
+    inset: 0 0 auto 0;
+    min-height: var(--portal-mobile-header-height);
+    padding-inline: var(--space-4);
+  }
+
+  .mobileButton {
+    display: grid;
+  }
+
+  .headerContext {
+    flex: 1;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    display: block;
+    border: 0;
+    background: rgba(9, 13, 17, 0.54);
+    cursor: pointer;
+  }
+
+  .brandCopy,
+  .groupLabel,
+  .navLabel,
+  .footerButton span:last-child,
+  :global(body.navCollapsed) .brandCopy,
+  :global(body.navCollapsed) .groupLabel,
+  :global(body.navCollapsed) .navLabel,
+  :global(body.navCollapsed) .footerButton span:last-child {
+    display: block;
+  }
+
+  .navLink,
+  .footerButton,
+  :global(body.navCollapsed) .navLink,
+  :global(body.navCollapsed) .footerButton {
+    justify-content: flex-start;
+    padding-inline: var(--space-3);
+  }
+}
+
+@media (max-width: 520px) {
+  .headerRole {
+    display: none;
+  }
+
+  .header {
+    gap: var(--space-2);
+  }
+}

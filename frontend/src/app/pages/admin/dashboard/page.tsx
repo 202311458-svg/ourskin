@@ -3,17 +3,44 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import AdminNavbar from "@/app/components/AdminNavbar";
-import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
-import {
-  AdminDashboardStats,
-  AdminFollowUp,
-  getAdminDashboard,
-  getAdminFollowUps,
-  updateAdminFollowUp,
-} from "@/lib/admin-api";
-import PortalShell from "@/app/components/PortalShell";
-import styles from "@/app/styles/admin.module.css";
+import { API_BASE_URL } from "@/lib/api";
+import PageShell from "@/app/components/portal/ui/PageShell"
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import Section from "@/app/components/portal/ui/Section";
+import StatCard from "@/app/components/portal/ui/StatCard";
+import StatusBadge from "@/app/components/portal/ui/StatusBadge";
+import EmptyState from "@/app/components/portal/ui/EmptyState";
+import styles from "./page.module.css";
+
+type AdminDashboardStats = {
+  total_users: number;
+  total_patients: number;
+  total_staff: number;
+  total_doctors: number;
+  total_appointments: number;
+  pending_appointments: number;
+  approved_appointments: number;
+  total_ai_logs: number;
+};
+
+type AdminFollowUp = {
+  id: number;
+  appointment_id: number;
+  appointment_services?: string | null;
+  appointment_date?: string | null;
+  appointment_time?: string | null;
+  appointment_status?: string | null;
+  patient_id: number;
+  patient_name?: string | null;
+  patient_email?: string | null;
+  doctor_id: number;
+  doctor_name?: string | null;
+  follow_up_date: string;
+  reason: string;
+  notes?: string | null;
+  status: string;
+  created_at?: string | null;
+};
 
 const EMPTY_STATS: AdminDashboardStats = {
   total_users: 0,
@@ -136,9 +163,7 @@ export default function AdminDashboardPage() {
   const [followUps, setFollowUps] = useState<AdminFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(
-    null
-  );
+  const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(null);
 
   const loadDashboard = useCallback(
     async (showLoader = true) => {
@@ -155,8 +180,12 @@ export default function AdminDashboardPage() {
         setError("");
 
         const [dashboardData, followUpData] = await Promise.all([
-          getAdminDashboard(),
-          getAdminFollowUps(),
+          fetch(`${API_BASE_URL}/admin/dashboard`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((res) => res.json()),
+          fetch(`${API_BASE_URL}/staff/follow-ups`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((res) => res.json()),
         ]);
 
         setStats({
@@ -164,7 +193,9 @@ export default function AdminDashboardPage() {
           ...(dashboardData || {}),
         });
 
-        setFollowUps(uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : []));
+        setFollowUps(
+          uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : [])
+        );
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load dashboard."));
       } finally {
@@ -178,11 +209,15 @@ export default function AdminDashboardPage() {
     loadDashboard();
   }, [loadDashboard]);
 
-  useAutoRefresh(() => loadDashboard(false), {
-    enabled: true,
-    intervalMs: 10000,
-    pause: loading || updatingFollowUpId !== null,
-  });
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      if (updatingFollowUpId !== null) return;
+      loadDashboard(false);
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadDashboard, updatingFollowUpId]);
 
   const dashboardInsights = useMemo(() => {
     const internalUsers = stats.total_staff + stats.total_doctors;
@@ -223,72 +258,6 @@ export default function AdminDashboardPage() {
     });
   }, [sortedFollowUps]);
 
-  const completedFollowUps = useMemo(() => {
-    return sortedFollowUps.filter(
-      (item) => (item.status || "").toLowerCase() === "completed"
-    );
-  }, [sortedFollowUps]);
-
-  const primaryCards = [
-    {
-      label: "Total Users",
-      value: stats.total_users,
-      helper: "All registered platform accounts",
-      className: styles.pinkAccent,
-    },
-    {
-      label: "Patients",
-      value: stats.total_patients,
-      helper: `${dashboardInsights.patientShare}% of all users`,
-      className: styles.greenAccent,
-    },
-    {
-      label: "Doctors",
-      value: stats.total_doctors,
-      helper: "Clinical users in the system",
-      className: styles.blueAccent,
-    },
-    {
-      label: "Staff",
-      value: stats.total_staff,
-      helper: "Internal support users",
-      className: styles.orangeAccent,
-    },
-  ];
-
-  const operationalCards = [
-    {
-      label: "Appointments",
-      value: stats.total_appointments,
-      helper: "All appointment records",
-      className: styles.pinkAccent,
-    },
-    {
-      label: "Pending Requests",
-      value: stats.pending_appointments,
-      helper: `${dashboardInsights.pendingRate}% still need action`,
-      className: stats.pending_appointments > 0 ? styles.orangeAccent : styles.greenAccent,
-    },
-    {
-      label: "Approved",
-      value: stats.approved_appointments,
-      helper: `${dashboardInsights.appointmentApprovalRate}% approval share`,
-      className: styles.greenAccent,
-    },
-    {
-      label: "AI Logs",
-      value: stats.total_ai_logs,
-      helper: "AI-assisted skin analysis records",
-      className: styles.blueAccent,
-    },
-    {
-      label: "Due Follow-ups",
-      value: dueFollowUps.length,
-      helper: dueFollowUps.length > 0 ? "Needs admin monitoring" : "No due follow-ups",
-      className: dueFollowUps.length > 0 ? styles.orangeAccent : styles.blueAccent,
-    },
-  ];
-
   async function markFollowUpCompleted(followUpId: number) {
     const selectedFollowUp = followUps.find((item) => item.id === followUpId);
 
@@ -305,15 +274,26 @@ export default function AdminDashboardPage() {
     try {
       setUpdatingFollowUpId(followUpId);
 
-      const data = await updateAdminFollowUp(followUpId, {
-        status: "Completed",
+      const res = await fetch(`${API_BASE_URL}/staff/follow-ups/${followUpId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ status: "Completed" }),
       });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result?.detail || "Unable to mark this follow-up as completed.");
+      }
 
       setFollowUps((prev) =>
         uniqueFollowUpsById(
           prev.map((item) =>
             item.id === followUpId
-              ? { ...item, ...(data?.follow_up || {}), status: "Completed" }
+              ? { ...item, ...(result?.follow_up || {}), status: "Completed" }
               : item
           )
         )
@@ -333,187 +313,121 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="staffLayout">
-      <AdminNavbar />
+    <PageShell className={styles.page}>
+      <PageHeader
+        eyebrow="Operations overview"
+        title="Administration"
+        description="Monitor the people, appointments, and follow-up activity that keeps the clinic running smoothly."
+      />
 
-      <PortalShell role="admin">
-      <main className={styles.dashboardPage}>
-        <section className={styles.heroSection}>
-          <div className={styles.heroContent}>
-            <p className={styles.eyebrow}>Admin Control Center</p>
-            <h1>Welcome back, Admin!</h1>
-            <p>
-              Monitor OurSkin users, appointments, staff activity, AI-assisted
-              dermatology records, and follow-up schedules in one clean
-              workspace.
-            </p>
-
-            <div className={styles.heroActions}>
-              <Link href="/pages/admin/appointments" className={styles.primaryAction}>
-                Review Appointments
-              </Link>
-
-              <Link href="/pages/admin/audit-logs" className={styles.secondaryAction}>
-                View Audit Logs
-              </Link>
-            </div>
+      {loading ? (
+        <EmptyState title="Loading dashboard..." />
+      ) : error ? (
+        <EmptyState title={error} />
+      ) : (
+        <>
+          <div className={styles.stats}>
+            <StatCard label="Registered users" value={stats.total_users} hint="All accounts in the system" tone="default" />
+            <StatCard label="Patients" value={stats.total_patients} hint={`${dashboardInsights.patientShare}% of all users`} tone="success" />
+            <StatCard label="Doctors" value={stats.total_doctors} hint="Clinical users" tone="info" />
+            <StatCard label="Staff" value={stats.total_staff} hint="Operational users" tone="warning" />
           </div>
 
-          <div className={styles.heroPanel}>
-            <span>Active Follow-ups</span>
-            <strong>{activeFollowUps.length}</strong>
-            <p>Scheduled follow-ups that still need monitoring.</p>
+          <div className={styles.stats}>
+            <StatCard label="Appointments" value={stats.total_appointments} hint="All appointment records" tone="default" />
+            <StatCard label="Pending requests" value={stats.pending_appointments} hint={`${dashboardInsights.pendingRate}% still need action`} tone={stats.pending_appointments > 0 ? "warning" : "success"} />
+            <StatCard label="Approved" value={stats.approved_appointments} hint={`${dashboardInsights.appointmentApprovalRate}% approval share`} tone="success" />
+            <StatCard label="AI logs" value={stats.total_ai_logs} hint="AI-assisted reviews" tone="info" />
           </div>
-        </section>
 
-        {loading ? (
-          <div className={styles.stateCard}>
-            <p className={styles.message}>Loading dashboard...</p>
-          </div>
-        ) : error ? (
-          <div className={styles.stateCard}>
-            <p className={styles.error}>{error}</p>
-          </div>
-        ) : (
-          <>
-            <section className={styles.statsGrid}>
-              {primaryCards.map((card) => (
-                <div
-                  key={card.label}
-                  className={`${styles.statCard} ${card.className}`}
-                >
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                  <p>{card.helper}</p>
-                </div>
-              ))}
-            </section>
+          <Section
+            title="Follow-up activity"
+            description="The follow-up schedules created by doctors and the status they are currently in."
+            action={
+              <span className={styles.followUpCount}>{sortedFollowUps.length} total</span>
+            }
+          >
+            {sortedFollowUps.length === 0 ? (
+              <EmptyState title="No follow-up schedules found." />
+            ) : (
+              <div className={styles.followUpList}>
+                {sortedFollowUps.slice(0, 5).map((item) => {
+                  const timing = getFollowUpTiming(item);
+                  const isCompleted =
+                    (item.status || "").toLowerCase() === "completed";
+                  const canComplete = canCompleteFollowUp(item);
+                  const isUpdating = updatingFollowUpId === item.id;
 
-            <section className={styles.statsGrid}>
-              {operationalCards.map((card) => (
-                <div
-                  key={card.label}
-                  className={`${styles.statCard} ${card.className}`}
-                >
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                  <p>{card.helper}</p>
-                </div>
-              ))}
-            </section>
+                  return (
+                    <div key={item.id} className={styles.followUpRow}>
+                      <div className={styles.followUpMain}>
+                        <strong>
+                          {item.patient_name ||
+                            (item.patient_id
+                              ? `Patient #${item.patient_id}`
+                              : "Patient details unavailable")}
+                        </strong>
 
-            <section className={styles.followUpPanel}>
-              <div className={styles.followUpHeader}>
-                <div>
-                  <h2>Follow-up Schedule</h2>
-                  <p>Admin view of doctor-created follow-up schedules.</p>
-                </div>
+                        <span>
+                          {formatDate(item.follow_up_date)}
+                          {item.doctor_name ? ` • ${item.doctor_name}` : ""}
+                        </span>
 
-                <span className={styles.followUpCount}>
-                  {sortedFollowUps.length} total
-                </span>
-              </div>
-
-              {sortedFollowUps.length === 0 ? (
-                <div className={styles.followUpEmpty}>
-                  No follow-up schedules found.
-                </div>
-              ) : (
-                <div className={styles.followUpList}>
-                  {sortedFollowUps.slice(0, 5).map((item) => {
-                    const timing = getFollowUpTiming(item);
-                    const isCompleted =
-                      (item.status || "").toLowerCase() === "completed";
-                    const canComplete = canCompleteFollowUp(item);
-                    const isUpdating = updatingFollowUpId === item.id;
-
-                    return (
-                      <div key={item.id} className={styles.followUpRow}>
-                        <div className={styles.followUpMain}>
-                          <strong>
-                            {item.patient_name ||
-                              (item.patient_id
-                                ? `Patient #${item.patient_id}`
-                                : "Patient details unavailable")}
-                          </strong>
-
-                          <span>
-                            {formatDate(item.follow_up_date)}
-                            {item.doctor_name ? ` • ${item.doctor_name}` : ""}
-                          </span>
-
-                          {(item.appointment_date || item.appointment_time) && (
-                            <small>
-                              Related Visit:{" "}
-                              {item.appointment_date
-                                ? formatDate(item.appointment_date)
-                                : "No date"}{" "}
-                              {item.appointment_time
-                                ? `at ${formatTime(item.appointment_time)}`
-                                : ""}
-                            </small>
-                          )}
-                        </div>
-
-                        <div className={styles.followUpActions}>
-                          <span
-                            className={`${styles.followUpBadge} ${getFollowUpBadgeClass(
-                              item
-                            )}`}
-                          >
-                            {timing}
-                          </span>
-
-                          {!isCompleted && (
-                            <button
-                              type="button"
-                              className={
-                                canComplete
-                                  ? styles.followUpCompleteBtn
-                                  : styles.followUpDisabledBtn
-                              }
-                              onClick={() => markFollowUpCompleted(item.id)}
-                              disabled={!canComplete || isUpdating}
-                            >
-                              {isUpdating
-                                ? "Completing..."
-                                : canComplete
-                                ? "Mark Completed"
-                                : "Not Due Yet"}
-                            </button>
-                          )}
-                        </div>
+                        {(item.appointment_date || item.appointment_time) && (
+                          <small>
+                            Related Visit:{" "}
+                            {item.appointment_date
+                              ? formatDate(item.appointment_date)
+                              : "No date"}{" "}
+                            {item.appointment_time
+                              ? `at ${formatTime(item.appointment_time)}`
+                              : ""}
+                          </small>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
 
-              {sortedFollowUps.length > 5 && (
-                <div className={styles.followUpFooter}>
-                  <Link href="/pages/admin/appointments">View all follow-ups</Link>
-                </div>
-              )}
-            </section>
+                      <div className={styles.followUpActions}>
+                        <span
+                          className={`${styles.followUpBadge} ${getFollowUpBadgeClass(
+                            item
+                          )}`}
+                        >
+                          {timing}
+                        </span>
 
-            <section className={styles.panelCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <h2>Operational Snapshot</h2>
-                  <p>
-                    {dashboardInsights.pendingRate}% of appointment records are
-                    pending, while {dashboardInsights.internalShare}% of users
-                    are internal clinic users. Completed follow-ups:{" "}
-                    {completedFollowUps.length}. Active follow-ups:{" "}
-                    {activeFollowUps.length}.
-                  </p>
-                </div>
+                        {!isCompleted && (
+                          <button
+                            type="button"
+                            className={
+                              canComplete
+                                ? styles.followUpCompleteBtn
+                                : styles.followUpDisabledBtn
+                            }
+                            onClick={() => markFollowUpCompleted(item.id)}
+                            disabled={!canComplete || isUpdating}
+                          >
+                            {isUpdating
+                              ? "Completing..."
+                              : canComplete
+                              ? "Mark Completed"
+                              : "Not Due Yet"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </section>
-          </>
-        )}
-      </main>
-      </PortalShell>
-    </div>
+            )}
+
+            {sortedFollowUps.length > 5 && (
+              <div className={styles.followUpFooter}>
+                <Link href="/pages/admin/appointments">View all follow-ups</Link>
+              </div>
+            )}
+          </Section>
+        </>
+      )}
+    </PageShell>
   );
 }

@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import AdminNavbar from "@/app/components/AdminNavbar";
 import PortalShell from "@/app/components/PortalShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
 
 type StaffUser = {
   id: number;
@@ -425,29 +425,24 @@ export default function StaffManagementPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={styles.staffMgmtPage}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Staff Management</h1>
-            <p className={styles.subtitle}>
-              Manage internal users, roles, and account access.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => {
-              setSelectedUser(null);
-              setShowAddModal(true);
-            }}
-          >
-            + Add Staff
-          </button>
-        </div>
+        <PageHeader
+          title="Staff Management"
+          description="Manage internal users, roles, and account access."
+          primaryAction={
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => {
+                setSelectedUser(null);
+                setShowAddModal(true);
+              }}
+            >
+              + Add Staff
+            </button>
+          }
+        />
 
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>

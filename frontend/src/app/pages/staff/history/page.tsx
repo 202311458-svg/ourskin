@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import StaffNavbar from "@/app/components/StaffNavbar"
 import { API_BASE_URL } from "@/lib/api"
-import styles from "@/app/styles/staff.module.css"
+import PageShell from "@/app/components/portal/ui/PageShell"
+import styles from "./page.module.css";
 
 type Appointment = {
   id: number
@@ -110,18 +110,26 @@ const readJsonSafely = async (res: Response) => {
   }
 }
 
-const getAppointmentsArray = (data: unknown): Appointment[] => {
-  if (Array.isArray(data)) return data as Appointment[]
+type PaginatedAppointments = {
+  total: number
+  page: number
+  page_size: number
+  items: Appointment[]
+}
 
+const parsePaginatedAppointments = (data: unknown): PaginatedAppointments => {
   if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { appointments?: unknown }).appointments)
+    !data ||
+    typeof data !== "object" ||
+    !Array.isArray((data as PaginatedAppointments).items) ||
+    typeof (data as PaginatedAppointments).total !== "number" ||
+    typeof (data as PaginatedAppointments).page !== "number" ||
+    typeof (data as PaginatedAppointments).page_size !== "number"
   ) {
-    return (data as { appointments: Appointment[] }).appointments
+    throw new Error("Invalid appointment history response")
   }
 
-  return []
+  return data as PaginatedAppointments
 }
 
 const formatDate = (dateString?: string | null) => {
@@ -235,34 +243,6 @@ const getDateTimeValue = (appt: Appointment) => {
   return Number.isNaN(value) ? 0 : value
 }
 
-const fetchAppointmentList = async (endpoint: string, token: string) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-
-    const data = await readJsonSafely(res)
-
-    if (!res.ok) {
-      console.error(`${endpoint} request failed:`, {
-        status: res.status,
-        statusText: res.statusText,
-        body: data,
-      })
-
-      return []
-    }
-
-    return getAppointmentsArray(data).map((appt) => ({
-      ...appt,
-      status: normalizeStatus(appt.status),
-    }))
-  } catch (err) {
-    console.error(`${endpoint} load failed:`, err)
-    return []
-  }
-}
-
 export default function StaffHistoryPage() {
   const router = useRouter()
 
@@ -290,31 +270,15 @@ export default function StaffHistoryPage() {
     setError("")
 
     try {
-      const [historyList, pendingList, approvedList] = await Promise.all([
-        fetchAppointmentList("/appointments/history", token),
-        fetchAppointmentList("/appointments/requests", token),
-        fetchAppointmentList("/appointments/confirmed", token),
-      ])
-
-      const mergedAppointments = [
-        ...historyList,
-        ...pendingList,
-        ...approvedList,
-      ]
-
-      const uniqueAppointments = Array.from(
-        new Map(
-          mergedAppointments.map((appt) => [
-            appt.id,
-            {
-              ...appt,
-              status: normalizeStatus(appt.status),
-            },
-          ])
-        ).values()
+      const res = await fetch(`${API_BASE_URL}/appointments/history?page_size=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await readJsonSafely(res)
+      if (!res.ok) throw new Error("Unable to load appointment records")
+      const history = parsePaginatedAppointments(data)
+      setAppointments(
+        history.items.map((appt) => ({ ...appt, status: normalizeStatus(appt.status) }))
       )
-
-      setAppointments(uniqueAppointments)
     } catch (err) {
       console.error("Appointment records load failed:", err)
       setError("Unable to load appointment records.")
@@ -430,12 +394,8 @@ export default function StaffHistoryPage() {
   }
 
   return (
-    <div className="staffLayout">
-      <StaffNavbar />
-
-      <main className="staffContent">
-        <div className={styles.staffPage}>
-          <section className={styles.dashboardHeader}>
+    <PageShell className={styles.staffPage}>
+      <section className={styles.dashboardHeader}>
             <div>
               <span className={styles.eyebrow}>Audit-Friendly View</span>
               <h1>Appointment History</h1>
@@ -562,8 +522,6 @@ export default function StaffHistoryPage() {
               })
             )}
           </section>
-        </div>
-      </main>
 
       {detailsOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
@@ -707,6 +665,6 @@ export default function StaffHistoryPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

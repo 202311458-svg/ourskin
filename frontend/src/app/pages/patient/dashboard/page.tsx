@@ -1,18 +1,15 @@
 "use client";
 
-import Navbar from "@/app/components/Navbar";
-import { API_BASE_URL } from "@/lib/api";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  FaCalendarAlt,
-  FaCheckCircle,
-  FaClock,
-  FaNotesMedical,
-} from "react-icons/fa";
-import styles from "@/app/styles/patient.module.css";
+import { useRouter } from "next/navigation";
+import { API_BASE_URL } from "@/lib/api";
+import PageShell from "@/app/components/portal/ui/PageShell"
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import Section from "@/app/components/portal/ui/Section";
+import StatCard from "@/app/components/portal/ui/StatCard";
+import StatusBadge from "@/app/components/portal/ui/StatusBadge";
+import EmptyState from "@/app/components/portal/ui/EmptyState";
+import styles from "./page.module.css";
 
 type Appointment = {
   id: number;
@@ -32,8 +29,6 @@ type Appointment = {
   patient_instruction?: string | null;
   approval_email_sent?: boolean | null;
   approval_email_sent_at?: string | null;
-
-  // Follow-up / diagnosis report fields that may come from /appointments/my
   next_visit_date?: string | null;
   follow_up_date?: string | null;
   followup_date?: string | null;
@@ -59,46 +54,6 @@ type FollowUpDisplay = {
   plan: string;
 };
 
-const doctorImages: Record<string, string> = {
-  "Reena Tagle, MD, DPDS": "/reena.png",
-  "Gelaine Pangilinan, MD, MBA": "/gelaine.png",
-  "Hans Alitin, MD, DPDS": "/hans.png",
-  "Raisa Rosete, MD, MBA, DPDS": "/raisa.png",
-  "Cecilia Roxas-Rosete, MD, FPDS": "/cecilia.png",
-};
-
-const getAppointmentsArray = (data: unknown): Appointment[] => {
-  if (Array.isArray(data)) return data as Appointment[];
-
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { appointments?: unknown }).appointments)
-  ) {
-    return (data as { appointments: Appointment[] }).appointments;
-  }
-
-  return [];
-};
-
-const uniqueAppointmentsById = (appointments: Appointment[]) => {
-  return Array.from(
-    new Map(appointments.map((appt) => [appt.id, appt])).values()
-  );
-};
-
-const readJsonSafely = async (res: Response) => {
-  const text = await res.text();
-
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-};
-
 const normalizeStatus = (status?: string | null) => {
   const cleanStatus = (status || "").trim().toLowerCase();
 
@@ -107,11 +62,8 @@ const normalizeStatus = (status?: string | null) => {
   if (cleanStatus === "confirmed") return "Approved";
   if (cleanStatus === "completed") return "Completed";
   if (cleanStatus === "declined") return "Declined";
-  if (cleanStatus === "cancelled") return "Cancelled";
-  if (cleanStatus === "canceled") return "Cancelled";
-  if (cleanStatus === "no-show") return "No-Show";
-  if (cleanStatus === "noshow") return "No-Show";
-  if (cleanStatus === "missed") return "No-Show";
+  if (cleanStatus === "cancelled" || cleanStatus === "canceled") return "Cancelled";
+  if (cleanStatus === "no-show" || cleanStatus === "noshow" || cleanStatus === "missed") return "No-Show";
 
   return status?.trim() || "Unknown";
 };
@@ -129,7 +81,6 @@ export default function PatientDashboard() {
 
   const [patientName, setPatientName] = useState("Patient");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [navCollapsed, setNavCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
 
@@ -203,18 +154,8 @@ export default function PatientDashboard() {
     return `${formatDate(appt.date)} • ${formatTimeRange(appt)}`;
   };
 
-  const getDoctorImage = (doctorName?: string | null, fallbackDoctor?: string | null) => {
-    const finalDoctorName = doctorName || fallbackDoctor || "";
-    return doctorImages[finalDoctorName] || "/default-doctor.png";
-  };
-
   const getFollowUpDate = (appt: Appointment) => {
-    return (
-      appt.follow_up_date ||
-      appt.followup_date ||
-      appt.next_visit_date ||
-      null
-    );
+    return appt.follow_up_date || appt.followup_date || appt.next_visit_date || null;
   };
 
   const getFollowUpPlan = (appt: Appointment) => {
@@ -250,11 +191,7 @@ export default function PatientDashboard() {
     if (normalized === "Approved") return styles.badgeApproved;
     if (normalized === "Pending") return styles.badgePending;
     if (normalized === "Completed") return styles.badgeCompleted;
-    if (
-      normalized === "Declined" ||
-      normalized === "Cancelled" ||
-      normalized === "No-Show"
-    ) {
+    if (["Declined", "Cancelled", "No-Show"].includes(normalized)) {
       return styles.badgeDeclined;
     }
 
@@ -281,7 +218,7 @@ export default function PatientDashboard() {
           },
         });
 
-        const userData = await readJsonSafely(userRes);
+        const userData = await userRes.json();
 
         if (!userRes.ok) {
           throw new Error("Failed to fetch current user");
@@ -299,15 +236,17 @@ export default function PatientDashboard() {
           }
         );
 
-        const appointmentsData = await readJsonSafely(appointmentsRes);
+        const appointmentsData = (await appointmentsRes.json()) as Appointment[];
 
         if (!appointmentsRes.ok) {
           throw new Error("Failed to fetch appointments");
         }
 
-        setAppointments(
-          uniqueAppointmentsById(getAppointmentsArray(appointmentsData))
+        const unique: Appointment[] = Array.from(
+          new Map(appointmentsData.map((appt: Appointment) => [appt.id, appt])).values()
         );
+
+        setAppointments(unique);
       } catch (error) {
         console.error("Error loading patient dashboard:", error);
       } finally {
@@ -334,64 +273,18 @@ export default function PatientDashboard() {
     }
 
     fetchDashboardData();
-
-    const handleNavbarToggle = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
-      setNavCollapsed(customEvent.detail);
-    };
-
-    setNavCollapsed(document.body.classList.contains("navCollapsed"));
-    window.addEventListener("navbarToggle", handleNavbarToggle);
-
-    return () => {
-      window.removeEventListener("navbarToggle", handleNavbarToggle);
-    };
   }, [fetchDashboardData, router]);
-
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-
-    if (role !== "patient") return;
-
-    const refreshDashboardQuietly = () => {
-      if (document.hidden) return;
-      if (cancellingId !== null) return;
-
-      fetchDashboardData(false);
-    };
-
-    const intervalId = window.setInterval(refreshDashboardQuietly, 5000);
-
-    const handleFocus = () => {
-      refreshDashboardQuietly();
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshDashboardQuietly();
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchDashboardData, cancellingId]);
 
   const todayStr = getTodayLocalString();
 
   const approvedAppointments = useMemo(() => {
-    return uniqueAppointmentsById(appointments).filter(
+    return appointments.filter(
       (appt) => normalizeStatus(appt.status) === "Approved"
     );
   }, [appointments]);
 
   const pendingAppointments = useMemo(() => {
-    return uniqueAppointmentsById(appointments)
+    return appointments
       .filter((appt) => normalizeStatus(appt.status) === "Pending")
       .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a));
   }, [appointments]);
@@ -412,7 +305,7 @@ export default function PatientDashboard() {
   }, [approvedAppointments]);
 
   const followUps = useMemo<FollowUpDisplay[]>(() => {
-    return uniqueAppointmentsById(appointments)
+    return appointments
       .filter(hasFollowUp)
       .map((appt) => ({
         appointment: appt,
@@ -433,7 +326,7 @@ export default function PatientDashboard() {
   const recentAppointments = useMemo(() => {
     const now = new Date();
 
-    return uniqueAppointmentsById(appointments)
+    return appointments
       .filter((appt) => {
         const status = normalizeStatus(appt.status);
         const appointmentDateTime = getAppointmentDateTime(appt);
@@ -451,8 +344,6 @@ export default function PatientDashboard() {
 
   const nearestUpcomingAppointment =
     upcomingAppointments.length > 0 ? upcomingAppointments[0] : null;
-
-
 
   const cancelAppointment = async (appointmentId: number) => {
     const token = localStorage.getItem("token");
@@ -490,7 +381,7 @@ export default function PatientDashboard() {
         }
       );
 
-      const result = await readJsonSafely(res);
+      const result = await res.json();
 
       if (!res.ok) {
         console.error("Cancel appointment failed:", {
@@ -506,16 +397,14 @@ export default function PatientDashboard() {
       alert("Appointment cancelled successfully.");
 
       setAppointments((prev) =>
-        uniqueAppointmentsById(
-          prev.map((appt) =>
-            appt.id === appointmentId
-              ? {
-                  ...appt,
-                  status: "Cancelled",
-                  cancel_reason: reason.trim(),
-                }
-              : appt
-          )
+        prev.map((appt) =>
+          appt.id === appointmentId
+            ? {
+                ...appt,
+                status: "Cancelled",
+                cancel_reason: reason.trim(),
+              }
+            : appt
         )
       );
 
@@ -534,305 +423,202 @@ export default function PatientDashboard() {
       <div className={styles.reasonBox}>
         <strong>Appointment Instructions:</strong> {appt.patient_instruction}
         {appt.approval_email_sent && (
-          <div style={{ marginTop: "8px", fontSize: "13px", opacity: 0.9 }}>
-            Email notification was sent by the clinic.
-          </div>
+          <div className={styles.emailSent}>Email notification was sent by the clinic.</div>
         )}
       </div>
     );
   };
 
   return (
-    <>
-      <Navbar />
+    <PageShell className={styles.page}>
+      <PageHeader
+        eyebrow="Patient overview"
+        title="Your care summary"
+        description={`Hello, ${patientName}. This view brings together your upcoming care, any pending requests, and recent activity.`}
+      />
 
-      <main
-        className={`${styles.pageWrapper} ${
-          navCollapsed ? styles.navCollapsed : ""
-        }`}
-      >
-        <section className={styles.greetingSection}>
-          <h1 className={styles.greetingTitle}>Hello, {patientName}</h1>
+      {loading ? (
+        <EmptyState title="Loading your appointments..." />
+      ) : (
+        <>
+          <div className={styles.stats}>
+            <StatCard label="Upcoming visits" value={upcomingAppointments.length} hint="Approved future appointments" tone="info" />
+            <StatCard label="Follow-ups" value={followUps.length} hint="Planned care steps" tone="default" />
+            <StatCard label="Pending requests" value={pendingAppointments.length} hint="Awaiting confirmation" tone={pendingAppointments.length > 0 ? "warning" : "default"} />
+          </div>
 
-          <p className={styles.greetingSubtitle}>
-            {loading
-              ? "Loading your appointments..."
-              : `You have ${todayAppointments.length} appointment${
-                  todayAppointments.length !== 1 ? "s" : ""
-                } today`}
-          </p>
-        </section>
+          <div className={styles.grid}>
+            {nearestUpcomingAppointment && (
+              <Section
+                title="Next appointment"
+                description="Your confirmed visit and the details that matter most."
+              >
+                <div className={styles.appointmentCard}>
+                  <div className={styles.appointmentHeader}>
+                    <div>
+                      <div className={styles.doctorName}>
+                        {nearestUpcomingAppointment.doctor_name ||
+                          nearestUpcomingAppointment.doctor ||
+                          "Assigned Doctor"}
+                      </div>
+                      <div className={styles.serviceName}>
+                        {nearestUpcomingAppointment.services}
+                      </div>
+                      <div className={styles.scheduleText}>
+                        {getScheduleText(nearestUpcomingAppointment)}
+                      </div>
+                      <div className={styles.statusRow}>
+                        Status: {getStatusLabel(nearestUpcomingAppointment.status)}
+                      </div>
+                    </div>
+                    <StatusBadge tone="success">
+                      {getStatusLabel(nearestUpcomingAppointment.status)}
+                    </StatusBadge>
+                  </div>
+                  {renderInstructionBox(nearestUpcomingAppointment)}
+                </div>
+              </Section>
+            )}
 
+            {nearestFollowUp && (
+              <Section
+                title="Follow-up plan"
+                description="The next follow-up appointment or care step that has been arranged."
+              >
+                <div className={styles.appointmentCard}>
+                  <div className={styles.appointmentHeader}>
+                    <div>
+                      <div className={styles.doctorName}>
+                        {nearestFollowUp.appointment.doctor_name ||
+                          nearestFollowUp.appointment.doctor ||
+                          "Assigned Doctor"}
+                      </div>
+                      <div className={styles.serviceName}>
+                        {nearestFollowUp.appointment.services || "Consultation"}
+                      </div>
+                      <div className={styles.scheduleText}>
+                        {nearestFollowUp.date
+                          ? formatDate(nearestFollowUp.date)
+                          : "Follow-up date not specified"}
+                      </div>
+                      <div className={styles.statusRow}>
+                        {getFollowUpTiming(nearestFollowUp.date)}
+                      </div>
+                      {nearestFollowUp.plan && (
+                        <div className={styles.reasonBox}>{nearestFollowUp.plan}</div>
+                      )}
+                    </div>
+                    <StatusBadge tone="info">
+                      {getFollowUpTiming(nearestFollowUp.date)}
+                    </StatusBadge>
+                  </div>
+                </div>
+              </Section>
+            )}
 
+            {pendingAppointments.length > 0 && (
+              <Section
+                title="Pending requests"
+                description="Appointments still waiting for staff confirmation."
+              >
+                <div className={styles.list}>
+                  {pendingAppointments.slice(0, 3).map((appt) => {
+                    const isCancelling = cancellingId === appt.id;
 
-        <section className={styles.dashboardGrid}>
-          <div className={styles.leftColumn}>
-            <div
-              className={styles.summaryGrid}
-              style={{
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              }}
+                    return (
+                      <div key={appt.id} className={styles.row}>
+                        <div className={styles.rowMain}>
+                          <div className={styles.rowPrimary}>
+                            {appt.doctor_name ||
+                              appt.doctor ||
+                              "Doctor to be assigned"}
+                          </div>
+                          <div className={styles.rowSecondary}>
+                            {appt.services || "Consultation"}
+                          </div>
+                          <div className={styles.rowSecondary}>
+                            {getScheduleText(appt)}
+                          </div>
+                        </div>
+
+                        <div className={styles.rowActions}>
+                          <StatusBadge tone="warning">Pending</StatusBadge>
+                          <button
+                            type="button"
+                            onClick={() => cancelAppointment(appt.id)}
+                            className={styles.dangerButton}
+                            disabled={isCancelling}
+                          >
+                            {isCancelling ? "Cancelling..." : "Cancel Request"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
+
+            <Section
+              title="Recent activity"
+              description="Your completed, cancelled, or missed appointments."
             >
-              <div className={styles.summaryCard}>
-                <FaCalendarAlt className={styles.summaryIcon} />
-                <div>
-                  <h3>Total Appointments</h3>
-                  <p>{appointments.length}</p>
-                </div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <FaClock className={styles.summaryIcon} />
-                <div>
-                  <h3>Upcoming</h3>
-                  <p>{upcomingAppointments.length}</p>
-                </div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <FaNotesMedical className={styles.summaryIcon} />
-                <div>
-                  <h3>Follow-Ups</h3>
-                  <p>{followUps.length}</p>
-                </div>
-              </div>
-
-              <div className={styles.summaryCard}>
-                <FaCheckCircle className={styles.summaryIcon} />
-                <div>
-                  <h3>Pending Requests</h3>
-                  <p>{pendingAppointments.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>Recent Appointments</h3>
-
               {recentAppointments.length > 0 ? (
-                <div className={styles.recentAppointmentList}>
+                <div className={styles.list}>
                   {recentAppointments.slice(0, 5).map((appt) => {
                     const followUpDate = getFollowUpDate(appt);
                     const followUpPlan = getFollowUpPlan(appt);
                     const cleanStatus = normalizeStatus(appt.status);
 
                     return (
-                      <div
-                        key={appt.id}
-                        className={styles.recentAppointmentCard}
-                      >
-                        <div className={styles.recentAppointmentTop}>
-                          <div>
-                            <p className={styles.recentAppointmentDoctor}>
-                              {appt.doctor_name ||
-                                appt.doctor ||
-                                "Assigned Doctor"}
-                            </p>
-
-                            <p className={styles.recentAppointmentService}>
-                              {appt.services || "Consultation"}
-                            </p>
+                      <div key={appt.id} className={styles.row}>
+                        <div className={styles.rowMain}>
+                          <div className={styles.rowPrimary}>
+                            {appt.doctor_name ||
+                              appt.doctor ||
+                              "Assigned Doctor"}
                           </div>
+                          <div className={styles.rowSecondary}>
+                            {appt.services || "Consultation"}
+                          </div>
+                          <div className={styles.rowSecondary}>
+                            {getScheduleText(appt)}
+                          </div>
+                          {(followUpDate || followUpPlan) && (
+                            <div className={styles.reasonBox}>
+                              <strong>Follow-up:</strong>{" "}
+                              {followUpDate
+                                ? formatDate(followUpDate)
+                                : "Date not specified"}
+                              {followUpPlan ? ` • ${followUpPlan}` : ""}
+                            </div>
+                          )}
+                          {(cleanStatus === "Declined" ||
+                            cleanStatus === "Cancelled" ||
+                            cleanStatus === "No-Show") &&
+                            appt.cancel_reason && (
+                              <div className={styles.reasonBox}>
+                                <strong>Reason:</strong> {appt.cancel_reason}
+                              </div>
+                            )}
+                        </div>
 
-                          <span
-                            className={`${styles.statusBadge} ${getStatusBadgeClass(
-                              cleanStatus
-                            )}`}
-                          >
+                        <div className={styles.rowActions}>
+                          <span className={getStatusBadgeClass(appt.status)}>
                             {getStatusLabel(cleanStatus)}
                           </span>
                         </div>
-
-                        <p className={styles.recentAppointmentDate}>
-                          {getScheduleText(appt)}
-                        </p>
-
-                        {(followUpDate || followUpPlan) && (
-                          <div className={styles.reasonBox}>
-                            <strong>Follow-up:</strong>{" "}
-                            {followUpDate
-                              ? formatDate(followUpDate)
-                              : "Date not specified"}
-                            {followUpPlan ? ` • ${followUpPlan}` : ""}
-                          </div>
-                        )}
-
-                        {(cleanStatus === "Declined" ||
-                          cleanStatus === "Cancelled" ||
-                          cleanStatus === "No-Show") &&
-                          appt.cancel_reason && (
-                            <div className={styles.reasonBox}>
-                              <strong>Reason:</strong> {appt.cancel_reason}
-                            </div>
-                          )}
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className={styles.emptyStateText}>
-                  You don’t have any completed, cancelled, or missed appointments yet.
-                </p>
+                <EmptyState title="You don't have any completed, cancelled, or missed appointments yet." />
               )}
-            </div>
+            </Section>
           </div>
-
-          <div className={styles.rightColumn}>
-            <div className={styles.cardHighlight}>
-              <h3 className={styles.cardTitle}>Upcoming Appointment</h3>
-
-              {nearestUpcomingAppointment ? (
-                <div className={styles.upcomingHighlight}>
-                  <div className={styles.doctorPhotoLarge}>
-                    <Image
-                      src={getDoctorImage(
-                        nearestUpcomingAppointment.doctor_name,
-                        nearestUpcomingAppointment.doctor
-                      )}
-                      alt={
-                        nearestUpcomingAppointment.doctor_name ||
-                        nearestUpcomingAppointment.doctor ||
-                        "Doctor"
-                      }
-                      width={150}
-                      height={150}
-                    />
-                  </div>
-
-                  <div className={styles.upcomingTextLarge}>
-                    <h2>
-                      {nearestUpcomingAppointment.doctor_name ||
-                        nearestUpcomingAppointment.doctor ||
-                        "Assigned Doctor"}
-                    </h2>
-
-                    <p className={styles.upcomingSpecialty}>
-                      {nearestUpcomingAppointment.services}
-                    </p>
-
-                    <p className={styles.upcomingDate}>
-                      {getScheduleText(nearestUpcomingAppointment)}
-                    </p>
-
-                    <p className={styles.upcomingNote}>
-                      Status: {getStatusLabel(nearestUpcomingAppointment.status)}
-                    </p>
-
-                    {renderInstructionBox(nearestUpcomingAppointment)}
-                  </div>
-                </div>
-              ) : (
-                <p className={styles.emptyStateText}>
-                  No upcoming appointment scheduled.
-                </p>
-              )}
-            </div>
-
-            <div className={styles.cardHighlight}>
-              <h3 className={styles.cardTitle}>Scheduled Follow-Up</h3>
-
-              {nearestFollowUp ? (
-                <div className={styles.upcomingHighlight}>
-                  <div className={styles.upcomingTextLarge}>
-                    <h2>
-                      {nearestFollowUp.appointment.doctor_name ||
-                        nearestFollowUp.appointment.doctor ||
-                        "Assigned Doctor"}
-                    </h2>
-
-                    <p className={styles.upcomingSpecialty}>
-                      {nearestFollowUp.appointment.services || "Consultation"}
-                    </p>
-
-                    <p className={styles.upcomingDate}>
-                      {nearestFollowUp.date
-                        ? formatDate(nearestFollowUp.date)
-                        : "Follow-up date not specified"}
-                    </p>
-
-                    <p className={styles.upcomingNote}>
-                      {getFollowUpTiming(nearestFollowUp.date)}
-                    </p>
-
-                    {nearestFollowUp.plan && (
-                      <p className={styles.upcomingNote}>
-                        {nearestFollowUp.plan}
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      className={styles.btnBook}
-                      onClick={() => router.push("/pages/patient/history")}
-                    >
-                      View Appointment History
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className={styles.emptyStateText}>
-                  No follow-up schedule yet.
-                </p>
-              )}
-            </div>
-
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>Pending Requests</h3>
-
-              {pendingAppointments.length > 0 ? (
-                <div className={styles.pendingList}>
-                  {pendingAppointments.slice(0, 3).map((appt) => {
-                    const isCancelling = cancellingId === appt.id;
-
-                    return (
-                      <div key={appt.id} className={styles.pendingCard}>
-                        <div className={styles.pendingTopRow}>
-                          <h4 className={styles.pendingDoctor}>
-                            {appt.doctor_name ||
-                              appt.doctor ||
-                              "Doctor to be assigned"}
-                          </h4>
-
-                          <span className={styles.pendingBadge}>Pending</span>
-                        </div>
-
-                        <p className={styles.pendingService}>
-                          {appt.services || "Consultation"}
-                        </p>
-
-                        <p className={styles.pendingDateTime}>
-                          {getScheduleText(appt)}
-                        </p>
-
-                        <button
-                          type="button"
-                          onClick={() => cancelAppointment(appt.id)}
-                          className={styles.cancelRequestButton}
-                          disabled={isCancelling}
-                        >
-                          {isCancelling ? "Cancelling..." : "Cancel Request"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className={styles.emptyStateText}>
-                  You don’t have any pending requests right now.
-                </p>
-              )}
-
-              <button
-                type="button"
-                className={styles.btnBook}
-                onClick={() => router.push("/pages/patient/book")}
-              >
-                Book New Appointment
-              </button>
-            </div>
-          </div>
-        </section>
-      </main>
-    </>
+        </>
+      )}
+    </PageShell>
   );
 }

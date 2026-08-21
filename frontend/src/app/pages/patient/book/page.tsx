@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import PatientNavbar from "@/app/components/Navbar";
 import { API_BASE_URL, getAuth } from "@/lib/api";
-import styles from "@/app/styles/patient.module.css";
+import styles from "./page.module.css";
 
 type UserProfile = {
   id: number;
@@ -824,8 +823,6 @@ export default function PatientBookingPage() {
 
   return (
     <>
-      <PatientNavbar />
-
       <main className={styles.bookingPage}>
         <section className={styles.bookingHeader}>
           <div>

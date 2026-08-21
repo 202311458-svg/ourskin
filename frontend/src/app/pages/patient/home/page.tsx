@@ -11,10 +11,9 @@ import {
   FaUserCircle,
 } from "react-icons/fa";
 
-import Navbar from "@/app/components/Navbar";
 import PatientAnnouncements from "@/app/components/PatientAnnouncements";
 import PatientOnboarding from "@/app/components/PatientOnboarding";
-import styles from "@/app/styles/patient.module.css";
+import styles from "./page.module.css";
 
 type HomeAction = {
   title: string;
@@ -145,8 +144,6 @@ export default function PatientHomePage() {
 
   return (
     <>
-      <Navbar />
-
       <main
         className={`${styles.pageWrapper} ${
           navCollapsed ? styles.navCollapsed : ""

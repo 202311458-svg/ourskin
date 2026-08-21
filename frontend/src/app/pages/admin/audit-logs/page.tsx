@@ -2,43 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminNavbar from "@/app/components/AdminNavbar";
+import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
-import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/admin.module.css";
-
-type AuditLog = {
-  id: number;
-  action: string;
-  description: string;
-  actor_id: number | null;
-  target_id: number | null;
-  created_at: string | null;
-  actor_name?: string | null;
-  target_name?: string | null;
-  module?: string | null;
-};
-
-type ApiErrorResponse = {
-  detail?: string;
-  message?: string;
-};
-
-const API_BASE = API_BASE_URL;
-
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
-function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
-  if (data?.detail) return data.detail;
-  if (data?.message) return data.message;
-  return fallback;
-}
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import { AuditLog, getAdminAuditLogs } from "@/lib/admin-api";
+import styles from "./page.module.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -118,7 +86,7 @@ function getActionClass(action: string) {
   return styles.system;
 }
 
-function formatDateTime(value: string | null) {
+function formatDateTime(value?: string | null) {
   if (!value) return "N/A";
 
   const date = new Date(value);
@@ -143,6 +111,9 @@ export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -158,21 +129,9 @@ export default function AuditLogsPage() {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`${API_BASE}/admin/audit-logs`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await safeJson<AuditLog[] & ApiErrorResponse>(res);
-
-        if (!res.ok) {
-          throw new Error(
-            getApiErrorMessage(data, "Unable to load audit logs")
-          );
-        }
-
-        setLogs(Array.isArray(data) ? data : []);
+        const data = await getAdminAuditLogs(page, pageSize);
+        setLogs(data.items);
+        setTotal(data.total);
       } catch (loadError: unknown) {
         setError(getErrorMessage(loadError, "Unable to load audit logs"));
       } finally {
@@ -181,12 +140,12 @@ export default function AuditLogsPage() {
     }
 
     loadAuditLogs();
-  }, [router]);
+  }, [router, page, pageSize]);
 
   const enhancedLogs = useMemo(() => {
     return logs.map((log) => ({
       ...log,
-      module: log.module || getModuleFromAction(log.action || ""),
+      module: getModuleFromAction(log.action || ""),
     }));
   }, [logs]);
 
@@ -231,19 +190,9 @@ export default function AuditLogsPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={styles.auditLogsPage}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Audit Logs</h1>
-            <p className={styles.subtitle}>
-              Review system activity, admin actions, and important account
-              changes.
-            </p>
-          </div>
-        </div>
+        <PageHeader title="Audit Logs" description="Review system activity, admin actions, and important account changes." />
 
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
@@ -369,6 +318,16 @@ export default function AuditLogsPage() {
             </table>
           )}
         </section>
+        <PaginationControls
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
       </main>
       </PortalShell>
     </div>

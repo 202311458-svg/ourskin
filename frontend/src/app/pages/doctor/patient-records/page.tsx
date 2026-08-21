@@ -8,10 +8,9 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DoctorNavbar from "@/app/components/DoctorNavbar";
 import { API_BASE_URL } from "@/lib/api";
-import sharedStyles from "@/app/styles/doctor-shared.module.css";
-import recordStyles from "@/app/styles/doctor-patient-records.module.css";
+import styles from "./page.module.css";
+import PageShell from "@/app/components/portal/ui/PageShell"
 import {
   getDoctorPatientRecords,
   type PatientRecord,
@@ -242,7 +241,7 @@ function getStatusBadgeClass(status: string) {
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus === "completed") {
-    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusCompleted}`;
+    return `${styles.recordStatusBadge} ${styles.recordStatusCompleted}`;
   }
 
   if (
@@ -250,14 +249,14 @@ function getStatusBadgeClass(status: string) {
     normalizedStatus === "cancelled" ||
     normalizedStatus === "canceled"
   ) {
-    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusDeclined}`;
+    return `${styles.recordStatusBadge} ${styles.recordStatusDeclined}`;
   }
 
   if (normalizedStatus === "approved") {
-    return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusApproved}`;
+    return `${styles.recordStatusBadge} ${styles.recordStatusApproved}`;
   }
 
-  return `${recordStyles.recordStatusBadge} ${recordStyles.recordStatusPending}`;
+  return `${styles.recordStatusBadge} ${styles.recordStatusPending}`;
 }
 
 function getDoctorReportSources(
@@ -1240,79 +1239,77 @@ function DoctorPatientRecordsContent() {
 
   return (
     <>
-      <DoctorNavbar />
-
-      <main className={sharedStyles.pageWrapper}>
-        <div className={sharedStyles.headerSection}>
-          <h1 className={sharedStyles.pageTitle}>Patient Records</h1>
-          <p className={sharedStyles.pageSubtitle}>
+      <PageShell className={styles.pageWrapper}>
+        <div className={styles.headerSection}>
+          <h1 className={styles.pageTitle}>Patient Records</h1>
+          <p className={styles.pageSubtitle}>
             Select a patient first to view official doctor records and supporting
             AI results.
           </p>
         </div>
 
         {!selectedPatient ? (
-          <section className={`${sharedStyles.sectionCard} ${recordStyles.recordCard}`}>
-            <div className={sharedStyles.sectionHeader}>
+          <section className={`${styles.sectionCard} ${styles.recordCard}`}>
+            <div className={styles.sectionHeader}>
               <div>
-                <h2 className={sharedStyles.sectionTitle}>Choose a Patient</h2>
-                <p className={sharedStyles.listSecondary}>
+                <h2 className={styles.sectionTitle}>Choose a Patient</h2>
+                <p className={styles.listSecondary}>
                   Search and select a patient to open their consultation history.
                 </p>
               </div>
             </div>
 
-            <div className={recordStyles.patientSearchField}>
+            <div className={styles.patientSearchField}>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search patient name, service, doctor, date, or status..."
-                className={recordStyles.patientSearchInput}
+                className={styles.patientSearchInput}
               />
             </div>
 
-            <div className={recordStyles.patientResults}>
+            <div className={styles.patientResults}>
               {loading ? (
-                <div className={sharedStyles.emptyState}>
+                <div className={styles.emptyState}>
                   Loading patient records...
                 </div>
               ) : filteredPatients.length === 0 ? (
-                <div className={sharedStyles.emptyState}>
+                <div className={styles.emptyState}>
                   No patient records matched your search.
                 </div>
               ) : (
-                <div className={recordStyles.patientGrid}>
+                <div className={styles.patientGrid}>
                   {filteredPatients.map((patient) => (
                     <button
                       key={patient.id}
                       type="button"
                       onClick={() => setSelectedPatientId(patient.id)}
-                      className={recordStyles.patientCard}
+                      className={styles.patientCard}
                     >
-                      <div className={recordStyles.patientCardHeader}>
+                      <div className={styles.patientCardHeader}>
                         <div>
-                          <div className={recordStyles.patientCardName}>
+                          <div className={styles.patientCardName}>
                             {patient.patientName}
                           </div>
 
-                          <div className={recordStyles.patientCardLatestVisit}>
+                          <div className={styles.patientCardLatestVisit}>
                             Latest visit: {patient.latestVisitDate} •{" "}
                             {patient.latestVisitTime}
                           </div>
                         </div>
 
-                        <span className={recordStyles.patientCardActionBadge}>
+                        <span className={styles.patientCardActionBadge}>
                           View
                         </span>
                       </div>
 
-                      <div className={recordStyles.patientCardStats}>
-                        <span className={recordStyles.patientCardStat}>
+                      <div className={styles.patientCardStats}>
+                        <span className={styles.patientCardStat}>
                           Visits: {patient.totalVisits}
                         </span>
 
-                        <span className={recordStyles.patientCardStat}>
+                        <span className={styles.patientCardStat}>
                           Completed: {patient.completedVisits}
                         </span>
                       </div>
@@ -1323,14 +1320,14 @@ function DoctorPatientRecordsContent() {
             </div>
           </section>
         ) : (
-          <section className={`${sharedStyles.sectionCard} ${recordStyles.recordCard}`}>
-            <div className={recordStyles.selectedPatientHeader}>
+          <section className={`${styles.sectionCard} ${styles.recordCard}`}>
+            <div className={styles.selectedPatientHeader}>
               <div>
-                <div className={recordStyles.recordLabel}>Selected Patient</div>
-                <h2 className={recordStyles.selectedPatientName}>
+                <div className={styles.recordLabel}>Selected Patient</div>
+                <h2 className={styles.selectedPatientName}>
                   {selectedPatient.patientName}
                 </h2>
-                <p className={recordStyles.selectedPatientSummary}>
+                <p className={styles.selectedPatientSummary}>
                   Showing {selectedPatient.totalVisits} consultation record
                   {selectedPatient.totalVisits > 1 ? "s" : ""}.
                 </p>
@@ -1339,13 +1336,13 @@ function DoctorPatientRecordsContent() {
               <button
                 type="button"
                 onClick={handleBackToPatientList}
-                className={recordStyles.patientListBackButton}
+                className={styles.patientListBackButton}
               >
                 Back to Patient List
               </button>
             </div>
 
-            <div className={recordStyles.patientVisitList}>
+            <div className={styles.patientVisitList}>
               {selectedPatient.records.map((record) => {
                 const appointment = record.appointment;
                 const appointmentId = String(appointment.id);
@@ -1361,27 +1358,27 @@ function DoctorPatientRecordsContent() {
                 const doctorNotes = getDoctorNotes(record, diagnosisReport);
 
                 return (
-                  <article key={appointment.id} className={recordStyles.patientVisitCard}>
+                  <article key={appointment.id} className={styles.patientVisitCard}>
                     <div
-                      className={`${recordStyles.patientVisitHeader} ${
-                        completed ? recordStyles.patientVisitHeaderBordered : ""
+                      className={`${styles.patientVisitHeader} ${
+                        completed ? styles.patientVisitHeaderBordered : ""
                       }`}
                     >
                       <div>
-                        <h3 className={recordStyles.patientVisitTitle}>
+                        <h3 className={styles.patientVisitTitle}>
                           {appointment.services || "Consultation"}
                         </h3>
 
-                        <p className={recordStyles.patientVisitMeta}>
+                        <p className={styles.patientVisitMeta}>
                           {appointment.date} • {appointment.time}
                         </p>
 
-                        <p className={recordStyles.patientVisitMeta}>
+                        <p className={styles.patientVisitMeta}>
                           Assigned Doctor: {appointment.doctor_name || "N/A"}
                         </p>
                       </div>
 
-                      <div className={recordStyles.patientVisitActions}>
+                      <div className={styles.patientVisitActions}>
                         <span className={getStatusBadgeClass(status)}>
                           {status}
                         </span>
@@ -1396,7 +1393,7 @@ function DoctorPatientRecordsContent() {
                                 analysis,
                               })
                             }
-                            className={recordStyles.patientVisitAiButton}
+                            className={styles.patientVisitAiButton}
                           >
                             View AI Result
                           </button>
@@ -1405,49 +1402,49 @@ function DoctorPatientRecordsContent() {
                     </div>
 
                     {basicOnly || !completed ? null : (
-                      <div className={recordStyles.patientVisitBody}>
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>Doctor Final Diagnosis</div>
-                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
+                      <div className={styles.patientVisitBody}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>Doctor Final Diagnosis</div>
+                          <div className={`${styles.recordValue} ${styles.recordValueStrong}`}>
                             {getDoctorDiagnosis(record, diagnosisReport)}
                           </div>
                         </div>
 
-                        <div className={recordStyles.recordSection}>
-                          <h3 className={recordStyles.recordSectionTitle}>
+                        <div className={styles.recordSection}>
+                          <h3 className={styles.recordSectionTitle}>
                             Doctor Prescription
                           </h3>
 
                           {prescriptionItems.length === 0 ? (
-                            <div className={recordStyles.softPanel}>
-                              <div className={recordStyles.recordValue}>
+                            <div className={styles.softPanel}>
+                              <div className={styles.recordValue}>
                                 No prescription saved yet.
                               </div>
                             </div>
                           ) : (
-                            <div className={recordStyles.prescriptionList}>
+                            <div className={styles.prescriptionList}>
                               {prescriptionItems.map((item, index) => (
                                 <div
                                   key={`${item.medication}-${index}`}
-                                  className={recordStyles.prescriptionCard}
+                                  className={styles.prescriptionCard}
                                 >
-                                  <div className={recordStyles.prescriptionMedication}>
+                                  <div className={styles.prescriptionMedication}>
                                     {item.medication}
                                   </div>
 
-                                  <div className={recordStyles.prescriptionDetails}>
-                                    <div className={recordStyles.prescriptionRow}>
-                                      <div className={recordStyles.recordLabel}>Usage</div>
-                                      <div className={recordStyles.prescriptionText}>
+                                  <div className={styles.prescriptionDetails}>
+                                    <div className={styles.prescriptionRow}>
+                                      <div className={styles.recordLabel}>Usage</div>
+                                      <div className={styles.prescriptionText}>
                                         {item.usage}
                                       </div>
                                     </div>
 
                                     <div
-                                      className={`${recordStyles.prescriptionRow} ${recordStyles.prescriptionRowLast}`}
+                                      className={`${styles.prescriptionRow} ${styles.prescriptionRowLast}`}
                                     >
-                                      <div className={recordStyles.recordLabel}>Reason</div>
-                                      <div className={recordStyles.prescriptionText}>
+                                      <div className={styles.recordLabel}>Reason</div>
+                                      <div className={styles.prescriptionText}>
                                         {item.reason}
                                       </div>
                                     </div>
@@ -1459,15 +1456,15 @@ function DoctorPatientRecordsContent() {
                         </div>
 
                         {doctorNotes && (
-                          <div className={recordStyles.softPanel}>
-                            <div className={recordStyles.recordLabel}>Doctor Notes</div>
-                            <div className={recordStyles.recordValue}>{doctorNotes}</div>
+                          <div className={styles.softPanel}>
+                            <div className={styles.recordLabel}>Doctor Notes</div>
+                            <div className={styles.recordValue}>{doctorNotes}</div>
                           </div>
                         )}
 
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>Follow-up Plan</div>
-                          <div className={recordStyles.recordValue}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>Follow-up Plan</div>
+                          <div className={styles.recordValue}>
                             {getDoctorFollowUp(record, diagnosisReport)}
                           </div>
                         </div>
@@ -1479,31 +1476,31 @@ function DoctorPatientRecordsContent() {
             </div>
           </section>
         )}
-      </main>
+      </PageShell>
 
       {selectedAiModal && (
         <div
           role="dialog"
           aria-modal="true"
           onClick={() => setSelectedAiModal(null)}
-          className={recordStyles.recordModalOverlay}
+          className={styles.recordModalOverlay}
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            className={recordStyles.recordModalShell}
+            className={styles.recordModalShell}
           >
-            <div className={recordStyles.recordModalHeader}>
+            <div className={styles.recordModalHeader}>
               <div>
-                <div className={`${recordStyles.recordLabel} ${recordStyles.recordLabelAccent}`}>
+                <div className={`${styles.recordLabel} ${styles.recordLabelAccent}`}>
                   Supporting AI Result
                 </div>
 
-                <h2 className={recordStyles.recordModalTitle}>
+                <h2 className={styles.recordModalTitle}>
                   {selectedAiModal.appointment.date} •{" "}
                   {selectedAiModal.appointment.services || "Consultation"}
                 </h2>
 
-                <p className={recordStyles.recordModalSubtitle}>
+                <p className={styles.recordModalSubtitle}>
                   This AI result is for reference only. The doctor&apos;s final
                   diagnosis and prescription remain the official clinical
                   record.
@@ -1513,13 +1510,13 @@ function DoctorPatientRecordsContent() {
               <button
                 type="button"
                 onClick={() => setSelectedAiModal(null)}
-                className={recordStyles.recordModalClose}
+                className={styles.recordModalClose}
               >
                 Close
               </button>
             </div>
 
-            <div className={recordStyles.recordModalBody}>
+            <div className={styles.recordModalBody}>
               {(() => {
                 const analysis = selectedAiModal.analysis;
 
@@ -1574,47 +1571,47 @@ function DoctorPatientRecordsContent() {
                 );
 
                 return (
-                  <div className={recordStyles.recordModalContent}>
-                    <div className={recordStyles.recordModalResultGrid}>
+                  <div className={styles.recordModalContent}>
+                    <div className={styles.recordModalResultGrid}>
                       <div>
                         {analysisImage ? (
                           <img
                             src={analysisImage}
                             alt="Patient skin analysis"
-                            className={recordStyles.recordModalImage}
+                            className={styles.recordModalImage}
                           />
                         ) : (
-                          <div className={recordStyles.recordModalImagePlaceholder}>
+                          <div className={styles.recordModalImagePlaceholder}>
                             No image attached
                           </div>
                         )}
                       </div>
 
-                      <div className={recordStyles.recordModalSummaryGrid}>
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>AI Condition</div>
-                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
+                      <div className={styles.recordModalSummaryGrid}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>AI Condition</div>
+                          <div className={`${styles.recordValue} ${styles.recordValueStrong}`}>
                             {analysis.condition || "N/A"}
                           </div>
                         </div>
 
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>Confidence</div>
-                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>Confidence</div>
+                          <div className={`${styles.recordValue} ${styles.recordValueStrong}`}>
                             {formatConfidence(analysis.confidence)}
                           </div>
                         </div>
 
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>AI Severity</div>
-                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>AI Severity</div>
+                          <div className={`${styles.recordValue} ${styles.recordValueStrong}`}>
                             {analysis.severity || "N/A"}
                           </div>
                         </div>
 
-                        <div className={recordStyles.softPanel}>
-                          <div className={recordStyles.recordLabel}>Generated</div>
-                          <div className={`${recordStyles.recordValue} ${recordStyles.recordValueStrong}`}>
+                        <div className={styles.softPanel}>
+                          <div className={styles.recordLabel}>Generated</div>
+                          <div className={`${styles.recordValue} ${styles.recordValueStrong}`}>
                             {formatGeneratedDate(
                               readAny(analysis, [
                                 "created_at",
@@ -1626,67 +1623,67 @@ function DoctorPatientRecordsContent() {
                           </div>
                         </div>
 
-                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
-                          <div className={recordStyles.recordLabel}>Possible Conditions</div>
-                          <div className={recordStyles.recordValue}>{possibleConditions}</div>
+                        <div className={`${styles.softPanel} ${styles.fullWidth}`}>
+                          <div className={styles.recordLabel}>Possible Conditions</div>
+                          <div className={styles.recordValue}>{possibleConditions}</div>
                         </div>
 
-                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
-                          <div className={recordStyles.recordLabel}>Key Findings</div>
-                          <div className={recordStyles.recordValue}>{keyFindings}</div>
+                        <div className={`${styles.softPanel} ${styles.fullWidth}`}>
+                          <div className={styles.recordLabel}>Key Findings</div>
+                          <div className={styles.recordValue}>{keyFindings}</div>
                         </div>
 
-                        <div className={`${recordStyles.softPanel} ${sharedStyles.fullWidth}`}>
-                          <div className={recordStyles.recordLabel}>AI Recommendation</div>
-                          <div className={recordStyles.recordValue}>{recommendation}</div>
+                        <div className={`${styles.softPanel} ${styles.fullWidth}`}>
+                          <div className={styles.recordLabel}>AI Recommendation</div>
+                          <div className={styles.recordValue}>{recommendation}</div>
                         </div>
                       </div>
                     </div>
 
                     {showTreatmentSuggestions && (
-                      <div className={recordStyles.softPanel}>
-                        <h3 className={recordStyles.recordSectionTitle}>
+                      <div className={styles.softPanel}>
+                        <h3 className={styles.recordSectionTitle}>
                           AI Treatment Suggestions
                         </h3>
-                        <div className={recordStyles.recordValue}>{treatmentSuggestionsRaw}</div>
+                        <div className={styles.recordValue}>{treatmentSuggestionsRaw}</div>
                       </div>
                     )}
 
-                    <div className={recordStyles.recordSection}>
-                      <h3 className={recordStyles.recordSectionTitle}>
+                    <div className={styles.recordSection}>
+                      <h3 className={styles.recordSectionTitle}>
                         AI Prescription Suggestions
                       </h3>
 
                       {aiPrescriptionItems.length === 0 ? (
-                        <div className={recordStyles.recordValue}>
+                        <div className={styles.recordValue}>
                           No AI prescription suggestions available.
                         </div>
                       ) : (
-                        <div className={recordStyles.recordModalPrescriptionGrid}>
+                        <div className={styles.recordModalPrescriptionGrid}>
                           {aiPrescriptionItems.map((item, index) => (
                             <div
                               key={`${item.medication}-${index}`}
-                              className={recordStyles.prescriptionCard}
+                              className={styles.prescriptionCard}
                             >
                               <div
-                                className={`${recordStyles.prescriptionMedication} ${recordStyles.prescriptionMedicationAccent}`}
+                                className={`${styles.prescriptionMedication} ${styles.prescriptionMedicationAccent}`}
                               >
                                 {item.medication}
                               </div>
 
-                              <div className={recordStyles.prescriptionDetails}>
-                                <div className={recordStyles.prescriptionRowCompact}>
-                                  <div className={recordStyles.recordLabel}>Usage</div>
-                                  <div className={`${recordStyles.prescriptionText} ${recordStyles.prescriptionTextComfortable}`}>
+                              <div className={styles.prescriptionDetails}>
+                                <div className={styles.prescriptionRowCompact}>
+                                  <div className={styles.recordLabel}>Usage</div>
+                                  <div className={`${styles.prescriptionText} ${styles.prescriptionTextComfortable}`}>
                                     {item.usage}
                                   </div>
                                 </div>
 
                                 <div
-                                  className={`${recordStyles.prescriptionRowCompact} ${recordStyles.prescriptionRowLast}`}
+                                  className={`${styles.prescriptionRowCompact} ${styles.prescriptionRowLast}`}
                                 >
-                                  <div className={recordStyles.recordLabel}>Reason</div>
-                                  <div className={`${recordStyles.prescriptionText} ${recordStyles.prescriptionTextComfortable}`}>
+                                  <div className={styles.recordLabel}>Reason</div>
+                                  <div className={`${styles.prescriptionText} ${styles.prescriptionTextComfortable}`}>
                                     {item.reason}
                                   </div>
                                 </div>
@@ -1697,14 +1694,14 @@ function DoctorPatientRecordsContent() {
                       )}
                     </div>
 
-                    <div className={recordStyles.softPanel}>
-                      <div className={recordStyles.recordLabel}>AI Follow-up Suggestions</div>
-                      <div className={recordStyles.recordValue}>{followUpSuggestions}</div>
+                    <div className={styles.softPanel}>
+                      <div className={styles.recordLabel}>AI Follow-up Suggestions</div>
+                      <div className={styles.recordValue}>{followUpSuggestions}</div>
                     </div>
 
-                    <div className={recordStyles.softPanel}>
-                      <div className={recordStyles.recordLabel}>AI Red Flags</div>
-                      <div className={recordStyles.recordValue}>{redFlags}</div>
+                    <div className={styles.softPanel}>
+                      <div className={styles.recordLabel}>AI Red Flags</div>
+                      <div className={styles.recordValue}>{redFlags}</div>
                     </div>
                   </div>
                 );
@@ -1721,10 +1718,10 @@ export default function DoctorPatientRecordsPage() {
   return (
     <Suspense
       fallback={
-        <main className={recordStyles.pageFallback}>
+        <main className={styles.pageFallback}>
           Loading patient records...
         </main>
-      }
+        }
     >
       <DoctorPatientRecordsContent />
     </Suspense>

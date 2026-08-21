@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import StaffNavbar from "@/app/components/StaffNavbar";
 import { API_BASE_URL } from "@/lib/api";
+import PageShell from "@/app/components/portal/ui/PageShell"
 import styles from "@/app/styles/profile.module.css";
 
 type StaffProfile = {
@@ -171,12 +171,9 @@ export default function StaffProfilePage() {
     "Not provided";
 
   return (
-    <>
-      <StaffNavbar />
-
-      <main className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
-        <div className={styles.container}>
-          <div className={styles.header}>
+    <PageShell className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
+      <div className={styles.container}>
+        <div className={styles.header}>
             <h1>Staff Profile</h1>
             <p>View your account details and manage your login security</p>
           </div>
@@ -313,7 +310,6 @@ export default function StaffProfilePage() {
             </div>
           )}
         </div>
-      </main>
-    </>
+      </PageShell>
   );
 }

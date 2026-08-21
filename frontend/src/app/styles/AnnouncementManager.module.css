@@ -1,16 +1,16 @@
 .pageShell {
-  --announce-primary: var(--primary-color, #82334c);
-  --announce-primary-dark: var(--primary-hover, #6f2940);
-  --announce-accent: #0f766e;
-  --announce-bg-soft: var(--bg-soft, #fff7fa);
-  --announce-card: var(--bg-card, #ffffff);
-  --announce-text: var(--text-main, #374151);
-  --announce-heading: var(--text-heading, #20151a);
-  --announce-muted: var(--text-muted, #6b7280);
-  --announce-border: var(--border-color, #ead8df);
-  --announce-input: var(--input-bg, #fffefe);
-  --announce-shadow: var(--shadow-soft, 0 18px 45px rgba(130, 51, 76, 0.1));
-  --announce-shadow-hover: 0 22px 55px rgba(130, 51, 76, 0.14);
+  --announce-primary: var(--brand-primary);
+  --announce-primary-dark: var(--brand-primary-hover);
+  --announce-accent: var(--brand-accent);
+  --announce-bg-soft: var(--portal-surface-muted);
+  --announce-card: var(--portal-surface);
+  --announce-text: var(--text-primary);
+  --announce-heading: var(--text-primary);
+  --announce-muted: var(--text-secondary);
+  --announce-border: var(--surface-border);
+  --announce-input: var(--input-bg);
+  --announce-shadow: var(--surface-shadow);
+  --announce-shadow-hover: 0 22px 55px rgba(111, 41, 64, 0.14);
 
   width: min(100%, 1180px);
   margin: 0 auto;

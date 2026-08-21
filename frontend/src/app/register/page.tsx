@@ -9,6 +9,13 @@ import { FaCalendarAlt, FaEye, FaEyeSlash, FaMoon, FaSun } from "react-icons/fa"
 import landingStyles from "@/app/styles/landing.module.css"
 import policyStyles from "@/app/styles/Policy.module.css"
 import registerStyles from "@/app/styles/RegisterForm.module.css"
+import GoogleAuthButton from "@/app/components/GoogleAuthButton"
+import { getRoleHome, persistAuthSession } from "@/lib/auth-session"
+
+type GoogleOnboarding = {
+  token: string
+  profile?: { email?: string; first_name?: string; last_name?: string }
+}
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -47,6 +54,7 @@ export default function RegisterPage() {
 
   const [openPolicy, setOpenPolicy] = useState<"terms" | "privacy" | null>(null)
   const [loading, setLoading] = useState(false)
+  const [googleOnboarding, setGoogleOnboarding] = useState<GoogleOnboarding | null>(null)
 
   useEffect(() => {
     const savedMode = localStorage.getItem("ourskinDarkMode")
@@ -59,6 +67,22 @@ export default function RegisterPage() {
       document.body.classList.add("darkMode")
     } else {
       document.body.classList.remove("darkMode")
+    }
+  }, [])
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("googleOnboarding")
+    if (!raw) return
+    try {
+      const saved = JSON.parse(raw) as GoogleOnboarding
+      if (!saved.token) return
+      setGoogleOnboarding(saved)
+      setFirstName(saved.profile?.first_name || "")
+      setLastName(saved.profile?.last_name || "")
+      setEmail(saved.profile?.email || "")
+      setGuardianEmail(saved.profile?.email || "")
+    } catch {
+      sessionStorage.removeItem("googleOnboarding")
     }
   }, [])
 
@@ -221,8 +245,10 @@ export default function RegisterPage() {
   }
 
   const register = async () => {
-    setPasswordTouched(true)
-    setConfirmPasswordTouched(true)
+    if (!googleOnboarding) {
+      setPasswordTouched(true)
+      setConfirmPasswordTouched(true)
+    }
 
     const trimmedFirstName = firstName.trim()
     const trimmedLastName = lastName.trim()
@@ -297,14 +323,14 @@ export default function RegisterPage() {
       }
     }
 
-    if (!isPasswordStrong) {
+    if (!googleOnboarding && !isPasswordStrong) {
       alert(
         "Please use a strong password with at least 8 characters, 1 uppercase letter, 1 number, and 1 special character."
       )
       return
     }
 
-    if (!passwordsMatch) {
+    if (!googleOnboarding && !passwordsMatch) {
       alert("Confirm password does not match.")
       return
     }
@@ -319,12 +345,13 @@ export default function RegisterPage() {
     try {
       setLoading(true)
 
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      const res = await fetch(`${API_BASE_URL}${googleOnboarding ? "/auth/google/register" : "/auth/register"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...(googleOnboarding ? { onboarding_token: googleOnboarding.token } : {}),
           first_name: trimmedFirstName,
           last_name: trimmedLastName,
           date_of_birth: dateOfBirth,
@@ -333,8 +360,7 @@ export default function RegisterPage() {
           email: accountEmail,
           contact: accountContact,
 
-          password,
-          confirm_password: confirmPassword,
+          ...(!googleOnboarding ? { password, confirm_password: confirmPassword } : {}),
 
           guardian_first_name: isMinor ? guardianFirstName.trim() : null,
           guardian_last_name: isMinor ? guardianLastName.trim() : null,
@@ -360,6 +386,12 @@ export default function RegisterPage() {
         return
       }
 
+      if (googleOnboarding && data.access_token && data.role) {
+        persistAuthSession(data)
+        sessionStorage.removeItem("googleOnboarding")
+        router.push(getRoleHome(data.role))
+        return
+      }
       alert("Account created. Please check your email to verify before logging in.")
       resetFields()
       router.push("/")
@@ -378,8 +410,7 @@ export default function RegisterPage() {
     !dateOfBirth ||
     !address.trim() ||
     isBelowMinimumAge ||
-    !isPasswordStrong ||
-    !passwordsMatch ||
+    (!googleOnboarding && (!isPasswordStrong || !passwordsMatch)) ||
     !acceptedTerms ||
     (isMinor &&
       (!guardianFirstName.trim() ||
@@ -468,9 +499,19 @@ export default function RegisterPage() {
 
         <section className={registerStyles.registerPanel}>
           <div className={registerStyles.registerPanelHeader}>
-            <h2>Create an Account</h2>
-            <p></p>
+            <h2>{googleOnboarding ? "Complete your patient profile" : "Create an Account"}</h2>
+            <p>{googleOnboarding ? `Verified Google email: ${googleOnboarding.profile?.email || "Google account"}` : ""}</p>
           </div>
+
+          {!googleOnboarding && (
+            <GoogleAuthButton
+              onAuthenticated={(role, token) => {
+                persistAuthSession({ access_token: token, role })
+                router.push(getRoleHome(role))
+              }}
+              onOnboarding={() => window.location.reload()}
+            />
+          )}
 
           <form
             className={registerStyles.registerForm}
@@ -622,6 +663,7 @@ export default function RegisterPage() {
                       value={guardianEmail}
                       onChange={(e) => setGuardianEmail(e.target.value)}
                       placeholder="guardian@email.com"
+                      readOnly={Boolean(googleOnboarding)}
                     />
                   </div>
                 </div>
@@ -658,13 +700,14 @@ export default function RegisterPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="patient@email.com"
+                      readOnly={Boolean(googleOnboarding)}
                     />
                   </div>
                 </div>
               </>
             )}
 
-            <div className={registerStyles.registerField}>
+            {!googleOnboarding && <div className={registerStyles.registerField}>
               <label>Password</label>
               <div className={registerStyles.registerPasswordWrap}>
                 <input
@@ -690,9 +733,9 @@ export default function RegisterPage() {
                 Use at least 8 characters with 1 uppercase letter, 1 number, and 1
                 special character.
               </p>
-            </div>
+            </div>}
 
-            <div className={registerStyles.registerField}>
+            {!googleOnboarding && <div className={registerStyles.registerField}>
               <label>Confirm Password</label>
               <div className={registerStyles.registerPasswordWrap}>
                 <input
@@ -718,7 +761,7 @@ export default function RegisterPage() {
                     Confirm password does not match.
                   </p>
                 )}
-            </div>
+            </div>}
 
             <label className={registerStyles.registerCheckbox}>
               <input
@@ -753,7 +796,7 @@ export default function RegisterPage() {
               type="submit"
               disabled={isSubmitDisabled}
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? "Creating Account..." : googleOnboarding ? "Complete Google Registration" : "Create Account"}
             </button>
 
             <p className={registerStyles.registerLoginText}>

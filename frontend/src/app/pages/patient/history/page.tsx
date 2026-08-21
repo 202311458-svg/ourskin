@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell"
 import { useRouter } from "next/navigation";
-import Navbar from "@/app/components/Navbar";
 import { API_BASE_URL } from "@/lib/api";
-import styles from "@/app/styles/patient.module.css";
+import styles from "./page.module.css";
 
 interface Appointment {
   id: number;
@@ -390,32 +391,18 @@ export default function PatientHistory() {
   };
 
   return (
-    <div className={navCollapsed ? "nav-collapsed" : "nav-active"}>
-      <Navbar />
-
-      <main
-        className={`${styles.historyContainer} ${
-          navCollapsed ? styles.navCollapsed : ""
-        }`}
-      >
-        <section className={styles.contentWrapper}>
-          <div className={styles.headerRow}>
-            <div>
-              <p className={styles.eyebrow}>Patient Portal</p>
-
-              <h1 className={styles.h1}>Appointment History</h1>
-
-              <p className={styles.subtitle}>
-                View your past and current appointments, including approval
-                instructions, booking status, cancellation notes, missed appointment
-                records, and follow-up schedules.
-              </p>
-            </div>
-
-            <Link href="/pages/patient/records" className={styles.primaryButton}>
-              View Medical Records
-            </Link>
-          </div>
+    <PageShell
+      className={`${styles.historyContainer} ${
+        navCollapsed ? styles.navCollapsed : ""
+      }`}
+    >
+      <section className={styles.contentWrapper}>
+        <PageHeader
+            eyebrow="Patient Portal"
+            title="Appointment History"
+            description="View your past and current appointments, including approval instructions, booking status, cancellation notes, missed appointment records, and follow-up schedules."
+            primaryAction={<Link href="/pages/patient/records" className={styles.primaryButton}>View Medical Records</Link>}
+          />
 
           <div className={styles.summaryGrid}>
             <div className={styles.summaryCard}>
@@ -633,7 +620,6 @@ export default function PatientHistory() {
             </div>
           )}
         </section>
-      </main>
-    </div>
+      </PageShell>
   );
 }

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FaBrain,
-  FaClipboardCheck,
   FaNotesMedical,
   FaSearch,
   FaStethoscope,
@@ -12,10 +11,11 @@ import {
   FaUserMd,
 } from "react-icons/fa";
 
-import AdminNavbar from "@/app/components/AdminNavbar";
+import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
 import { AdminAiLog, getAdminAiLogs } from "@/lib/admin-api";
-import styles from "@/app/styles/admin.module.css";
+import styles from "./page.module.css";
 
 type SeverityFilter = "all" | "mild" | "moderate" | "severe" | "unspecified";
 type ReviewFilter = "all" | "pending" | "reviewed" | "completed";
@@ -211,6 +211,9 @@ export default function AdminAiLogsPage() {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
 
   const loadLogs = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -225,14 +228,15 @@ export default function AdminAiLogsPage() {
       setLoading(true);
       setError("");
 
-      const data = await getAdminAiLogs();
-      setLogs(Array.isArray(data) ? data.map(normalizeAiLog) : []);
+      const data = await getAdminAiLogs(page, pageSize);
+      setLogs(data.items.map(normalizeAiLog));
+      setTotal(data.total);
     } catch (loadError: unknown) {
       setError(getErrorMessage(loadError, "Unable to load AI logs."));
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, page, pageSize]);
 
   useEffect(() => {
     loadLogs();
@@ -287,28 +291,23 @@ export default function AdminAiLogsPage() {
 
   return (
     <div className="staffLayout">
-      <AdminNavbar />
-
       <PortalShell role="admin">
       <main className={`${styles.aiLogsPage} ${styles.visualPageFix}`}>
-        <div className={styles.headerRow}>
-          <div>
-            <p className={styles.eyebrow}>Clinical Monitoring</p>
-            <h1 className={styles.title}>AI Review Monitor</h1>
-            <p className={styles.subtitle}>
-              Review AI-assisted skin analysis records without duplicate fields or cluttered card layouts.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className={styles.softActionButton}
-            onClick={loadLogs}
-            disabled={loading}
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
+        <PageHeader
+          eyebrow="Clinical Monitoring"
+          title="AI Review Monitor"
+          description="Review AI-assisted skin analysis records without duplicate fields or cluttered card layouts."
+          primaryAction={
+            <button
+              type="button"
+              className={styles.softActionButton}
+              onClick={loadLogs}
+              disabled={loading}
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          }
+        />
 
         <div className={styles.statsGrid}>
           <div className={`${styles.statCard} ${styles.pinkAccent}`}>
@@ -457,6 +456,16 @@ export default function AdminAiLogsPage() {
             </div>
           )}
         </section>
+        <PaginationControls
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
       </main>
       </PortalShell>
 
