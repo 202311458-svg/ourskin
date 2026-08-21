@@ -9,7 +9,7 @@ export function getRoleHome(role: string) {
   if (role === "admin") return "/pages/admin/dashboard";
   if (role === "staff") return "/pages/staff/dashboard";
   if (role === "doctor") return "/pages/doctor/dashboard";
-  return "/pages/patient/home";
+  return "/pages/patient/dashboard";
 }
 
 export async function persistAuthSession(session: AuthSession) {
