@@ -5,12 +5,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.security import (
-    SESSION_COOKIE_NAME,
+    clear_session_cookie,
     create_access_token,
     get_current_user,
     hash_token,
+    set_session_cookie,
     verify_password,
 )
 from app.db import get_db
@@ -31,41 +31,13 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
-def _cookie_secure() -> bool:
-    return settings.environment in {"staging", "production"}
-
-
-def _set_session_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=token,
-        max_age=settings.access_token_expire_minutes * 60,
-        httponly=True,
-        secure=_cookie_secure(),
-        samesite="lax",
-        path="/",
-    )
-
-
-def _clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(
-        key=SESSION_COOKIE_NAME,
-        httponly=True,
-        secure=_cookie_secure(),
-        samesite="lax",
-        path="/",
-    )
-
-
 def _auth_response(user: User, response: Response):
     token = create_access_token({"sub": user.email})
-    _set_session_cookie(response, token)
+    set_session_cookie(response, token)
 
-    # access_token remains temporarily for legacy browser callers. Phase 5 will
-    # remove frontend persistence before this compatibility field is retired.
+    # Browser authentication is cookie-based. The JWT is intentionally not
+    # exposed in the normal password-login response.
     return {
-        "access_token": token,
-        "token_type": "bearer",
         "role": user.role,
         "status": user.status,
     }
@@ -174,7 +146,24 @@ def session(current_user: User = Depends(get_current_user)):
     }
 
 
+@router.post("/session/exchange")
+def exchange_bearer_for_cookie(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+):
+    """Exchange a transient bearer login result (e.g. legacy Google auth) for
+    the browser's HttpOnly session cookie without persisting the bearer token.
+    """
+
+    token = create_access_token({"sub": current_user.email})
+    set_session_cookie(response, token)
+    return {
+        "role": current_user.role,
+        "status": current_user.status,
+    }
+
+
 @router.post("/logout")
 def logout(response: Response):
-    _clear_session_cookie(response)
+    clear_session_cookie(response)
     return {"message": "Logged out successfully."}
