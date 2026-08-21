@@ -3,10 +3,18 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FaBars, FaMoon, FaSun, FaTimes } from "react-icons/fa";
+import {
+  FaBars,
+  FaChevronLeft,
+  FaChevronRight,
+  FaMoon,
+  FaSun,
+  FaTimes,
+} from "react-icons/fa";
 import AuthModal from "@/app/components/AuthModal";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
 import styles from "@/app/styles/landing.module.css";
+import refineStyles from "@/app/styles/landing-refinements.module.css";
 
 type ServiceCategory = {
   title: string;
@@ -192,6 +200,21 @@ const doctors: Doctor[] = [
   },
 ];
 
+const aboutSlides = [
+  {
+    src: "/clinic7.jpg",
+    alt: "Dermatology equipment inside OurSkin Dermatology Center",
+  },
+  {
+    src: "/clinic4.jpg",
+    alt: "Treatment equipment at OurSkin Dermatology Center",
+  },
+  {
+    src: "/clinic6.jpg",
+    alt: "OurSkin Dermatology Center treatment room and equipment",
+  },
+];
+
 const dermatologistTeam = doctors.slice(1, 5);
 const cosmeticSurgeons = doctors.slice(5);
 const clinicalServiceIndexes = [0, 1, 3];
@@ -203,11 +226,24 @@ export default function Home() {
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [currentService, setCurrentService] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [aboutSlide, setAboutSlide] = useState(0);
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const openService = (index: number) => {
     setCurrentService(index);
     setServiceModalOpen(true);
+  };
+
+  const showPreviousAboutSlide = () => {
+    setAboutSlide((current) =>
+      current === 0 ? aboutSlides.length - 1 : current - 1
+    );
+  };
+
+  const showNextAboutSlide = () => {
+    setAboutSlide((current) =>
+      current === aboutSlides.length - 1 ? 0 : current + 1
+    );
   };
 
   const handleLoginSuccess = (role: string, token: string) => {
@@ -389,22 +425,8 @@ export default function Home() {
           </p>
         </div>
 
-        <div className={styles.osServicesLayout}>
-          <div className={styles.osServiceVisuals} aria-hidden="true">
-            <div className={styles.osServiceVisualMain}>
-              <Image src="/service1.jpg" alt="" fill sizes="(max-width: 900px) 100vw, 42vw" />
-            </div>
-            <div className={styles.osServiceVisualPair}>
-              <div>
-                <Image src="/service4.jpg" alt="" fill sizes="(max-width: 900px) 50vw, 20vw" />
-              </div>
-              <div>
-                <Image src="/service7.jpg" alt="" fill sizes="(max-width: 900px) 50vw, 20vw" />
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.osServiceIndex}>
+        <div className={`${styles.osServicesLayout} ${refineStyles.servicesTextOnly}`}>
+          <div className={`${styles.osServiceIndex} ${refineStyles.serviceIndexGrid}`}>
             <div className={styles.osServiceGroup}>
               <p>Clinical dermatology</p>
               {clinicalServiceIndexes.map((serviceIndex) => {
@@ -445,37 +467,50 @@ export default function Home() {
 
             <button
               type="button"
-              className={styles.osSectionCta}
+              className={`${styles.osSectionCta} ${refineStyles.serviceCta}`}
               onClick={() => setModal(true)}
             >
               Book a consultation
             </button>
           </div>
         </div>
-
-        <div className={styles.osServiceFilmstrip} aria-hidden="true">
-          {[2, 3, 5, 6].map((imageNumber) => (
-            <div key={imageNumber}>
-              <Image
-                src={`/service${imageNumber}.jpg`}
-                alt=""
-                fill
-                sizes="(max-width: 700px) 42vw, 22vw"
-              />
-            </div>
-          ))}
-        </div>
       </section>
 
       <section id="about" className={`${styles.osSection} ${styles.osAboutSection}`}>
         <div className={styles.osAboutGrid}>
-          <div className={styles.osAboutFeature}>
+          <div
+            className={`${styles.osAboutFeature} ${refineStyles.aboutSlideshow}`}
+            role="region"
+            aria-label="OurSkin treatment equipment gallery"
+          >
             <Image
-              src="/clinic1.jpg"
-              alt="OurSkin Dermatology Center consultation space"
+              key={aboutSlides[aboutSlide].src}
+              src={aboutSlides[aboutSlide].src}
+              alt={aboutSlides[aboutSlide].alt}
               fill
               sizes="(max-width: 900px) 100vw, 50vw"
             />
+
+            <div className={refineStyles.aboutSlideControls}>
+              <button
+                type="button"
+                onClick={showPreviousAboutSlide}
+                aria-label="Show previous clinic equipment photo"
+              >
+                <FaChevronLeft aria-hidden="true" />
+              </button>
+              <span aria-live="polite">
+                {String(aboutSlide + 1).padStart(2, "0")} /{" "}
+                {String(aboutSlides.length).padStart(2, "0")}
+              </span>
+              <button
+                type="button"
+                onClick={showNextAboutSlide}
+                aria-label="Show next clinic equipment photo"
+              >
+                <FaChevronRight aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
           <div className={styles.osAboutCopy}>
@@ -511,25 +546,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        <div className={styles.osClinicGallery}>
-          <figure className={styles.osClinicGalleryWide}>
-            <Image
-              src="/clinic4.jpg"
-              alt="Interior view of OurSkin Dermatology Center"
-              fill
-              sizes="(max-width: 700px) 100vw, 60vw"
-            />
-          </figure>
-          <figure>
-            <Image
-              src="/clinic6.jpg"
-              alt="Another view of the OurSkin clinic"
-              fill
-              sizes="(max-width: 700px) 100vw, 32vw"
-            />
-          </figure>
-        </div>
       </section>
 
       <section id="doctors" className={`${styles.osSection} ${styles.osDoctorsSection}`}>
@@ -544,16 +560,16 @@ export default function Home() {
           </p>
         </div>
 
-        <article className={styles.osLeadDoctor}>
-          <div className={styles.osLeadDoctorImage}>
+        <article className={`${styles.osLeadDoctor} ${refineStyles.leadDoctorBalanced}`}>
+          <div className={`${styles.osLeadDoctorImage} ${refineStyles.leadDoctorPortrait}`}>
             <Image
               src={doctors[0].img}
               alt={doctors[0].name}
               fill
-              sizes="(max-width: 800px) 100vw, 42vw"
+              sizes="220px"
             />
           </div>
-          <div className={styles.osLeadDoctorCopy}>
+          <div className={`${styles.osLeadDoctorCopy} ${refineStyles.leadDoctorCopy}`}>
             <p>Lead Dermatologist</p>
             <h3>{doctors[0].name}</h3>
             <span>
@@ -574,13 +590,18 @@ export default function Home() {
             </div>
             <div className={styles.osDoctorList}>
               {dermatologistTeam.map((doctor) => (
-                <article key={doctor.name} className={styles.osDoctorRow}>
-                  <div className={styles.osDoctorPortrait}>
+                <article
+                  key={doctor.name}
+                  className={`${styles.osDoctorRow} ${refineStyles.doctorRowBalanced}`}
+                >
+                  <div
+                    className={`${styles.osDoctorPortrait} ${refineStyles.doctorPortraitCircle}`}
+                  >
                     <Image
                       src={doctor.img}
                       alt={doctor.name}
                       fill
-                      sizes="96px"
+                      sizes="108px"
                     />
                   </div>
                   <div>
@@ -599,13 +620,18 @@ export default function Home() {
             </div>
             <div className={styles.osDoctorList}>
               {cosmeticSurgeons.map((doctor) => (
-                <article key={doctor.name} className={styles.osDoctorRow}>
-                  <div className={styles.osDoctorPortrait}>
+                <article
+                  key={doctor.name}
+                  className={`${styles.osDoctorRow} ${refineStyles.doctorRowBalanced}`}
+                >
+                  <div
+                    className={`${styles.osDoctorPortrait} ${refineStyles.doctorPortraitCircle}`}
+                  >
                     <Image
                       src={doctor.img}
                       alt={doctor.name}
                       fill
-                      sizes="96px"
+                      sizes="108px"
                     />
                   </div>
                   <div>
@@ -677,8 +703,8 @@ export default function Home() {
       <section id="contact" className={`${styles.osSection} ${styles.osContactSection}`}>
         <div className={styles.osContactVisual}>
           <Image
-            src="/clinic7.jpg"
-            alt="OurSkin Dermatology Center clinic"
+            src="/clinic1.jpg"
+            alt="OurSkin Dermatology Center consultation space"
             fill
             sizes="(max-width: 900px) 100vw, 45vw"
           />
@@ -758,11 +784,8 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={styles.osFooterBottom}>
+        <div className={`${styles.osFooterBottom} ${refineStyles.footerBottomSingle}`}>
           <p>© OurSkin Dermatology Center</p>
-          <button type="button" onClick={() => setModal(true)}>
-            Patient Login
-          </button>
         </div>
       </footer>
 
