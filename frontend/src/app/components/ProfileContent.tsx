@@ -1,161 +1,206 @@
 "use client";
 
-import { API_BASE_URL } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { FormEvent, useEffect, useState } from "react";
 
 type User = {
   id: number;
   name: string;
   email: string;
-  contact: string;
+  contact?: string | null;
 };
+
+type Feedback = {
+  kind: "error" | "success";
+  message: string;
+} | null;
 
 export default function ProfileContent() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadUser = async () => {
       try {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-          alert("No token found. Please log in again.");
-          return;
-        }
-
-        const res = await fetch(`${API_BASE_URL}/users/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch profile");
-        }
-
-        const data = await res.json();
-        setUser(data);
+        const data = await apiFetch<User>("/users/me");
+        if (!cancelled) setUser(data);
       } catch (error) {
         console.error("Profile fetch error:", error);
-        alert("Failed to load profile.");
+        if (!cancelled) {
+          setFeedback({ kind: "error", message: "Unable to load your profile right now." });
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    loadUser();
+    void loadUser();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const changePassword = async () => {
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const changePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setFeedback(null);
+
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+      setFeedback({ kind: "error", message: "Please fill in all password fields." });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match.");
+      setFeedback({ kind: "error", message: "New password and confirmation do not match." });
       return;
     }
 
-    const token = localStorage.getItem("token");
-
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      setSaving(true);
+      const data = await apiFetch<{ message?: string }>("/auth/change-password", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,
         }),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Password updated successfully.");
-
-        setShowPasswordForm(false);
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      } else {
-        alert(data.detail || "Password update failed.");
-      }
+      setFeedback({
+        kind: "success",
+        message: data?.message || "Password updated successfully.",
+      });
+      setShowPasswordForm(false);
+      resetPasswordForm();
     } catch (error) {
-      console.error("Change password error:", error);
-      alert("Something went wrong while updating password.");
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Password update failed.",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <main className="pageWrapper">
+    <main className="pageWrapper" aria-busy={loading}>
+      <h1>Account Profile &amp; Security</h1>
+      <p>Review your account details and update your password securely.</p>
+
+      {feedback && (
+        <p
+          role={feedback.kind === "error" ? "alert" : "status"}
+          aria-live="polite"
+          style={{
+            padding: "12px 14px",
+            borderRadius: "10px",
+            margin: "16px 0",
+            border: "1px solid currentColor",
+          }}
+        >
+          {feedback.message}
+        </p>
+      )}
+
       {loading ? (
-        <p>Loading profile...</p>
+        <p role="status">Loading profile…</p>
       ) : !user ? (
         <p>Unable to load profile.</p>
       ) : (
-        <>
-          <h1>Account Profile</h1>
+        <section className="profileCard" aria-labelledby="account-details-heading">
+          <h2 id="account-details-heading">Account details</h2>
+          <dl>
+            <div>
+              <dt><strong>Name</strong></dt>
+              <dd>{user.name}</dd>
+            </div>
+            <div>
+              <dt><strong>Email</strong></dt>
+              <dd>{user.email}</dd>
+            </div>
+            <div>
+              <dt><strong>Phone</strong></dt>
+              <dd>{user.contact || "Not provided"}</dd>
+            </div>
+          </dl>
 
-          <div className="profileCard">
-            <p><b>Name:</b> {user.name}</p>
-            <p><b>Email:</b> {user.email}</p>
-            <p><b>Phone:</b> {user.contact || "N/A"}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setFeedback(null);
+              setShowPasswordForm((value) => !value);
+              if (showPasswordForm) resetPasswordForm();
+            }}
+            className="mainBtn"
+            aria-expanded={showPasswordForm}
+            aria-controls="password-change-form"
+            style={{ marginTop: "15px" }}
+          >
+            {showPasswordForm ? "Cancel password change" : "Change password"}
+          </button>
 
-            <button
-              onClick={() => setShowPasswordForm(!showPasswordForm)}
-              className="mainBtn"
-              style={{ marginTop: "15px" }}
+          {showPasswordForm && (
+            <form
+              id="password-change-form"
+              onSubmit={changePassword}
+              style={{ marginTop: "20px", maxWidth: "520px" }}
             >
-              {showPasswordForm ? "Cancel" : "Change Password"}
-            </button>
+              <label htmlFor="current-password"><strong>Current password</strong></label>
+              <input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                className="formInput"
+                disabled={saving}
+              />
 
-            {showPasswordForm && (
-              <div style={{ marginTop: "20px" }}>
-                <input
-                  type="password"
-                  placeholder="Current Password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="formInput"
-                />
+              <label htmlFor="new-password"><strong>New password</strong></label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="formInput"
+                disabled={saving}
+              />
 
-                <input
-                  type="password"
-                  placeholder="New Password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="formInput"
-                />
+              <label htmlFor="confirm-password"><strong>Confirm new password</strong></label>
+              <input
+                id="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                className="formInput"
+                disabled={saving}
+              />
 
-                <input
-                  type="password"
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="formInput"
-                />
-
-                <button
-                  onClick={changePassword}
-                  className="mainBtn"
-                  style={{ marginTop: "15px" }}
-                >
-                  Update Password
-                </button>
-              </div>
-            )}
-          </div>
-        </>
+              <button
+                type="submit"
+                className="mainBtn"
+                style={{ marginTop: "15px" }}
+                disabled={saving}
+              >
+                {saving ? "Updating…" : "Update password"}
+              </button>
+            </form>
+          )}
+        </section>
       )}
     </main>
   );
