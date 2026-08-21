@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.core.security import hash_password
+from app.core.security import create_access_token, hash_password
 from app.models.user import User
 from app.routes import auth_phase2
 
@@ -100,6 +100,7 @@ def test_password_change_invalidates_preexisting_access_token(clinical_api):
         db.commit()
         db.refresh(user)
         assert user.auth_invalid_before is not None
+        email = user.email
 
     after = clinical_api["client"].get(
         "/doctor/appointments",
@@ -109,8 +110,15 @@ def test_password_change_invalidates_preexisting_access_token(clinical_api):
     assert after.status_code == 401
     assert after.json()["detail"] == "Session expired. Please log in again."
 
+    refreshed_token = create_access_token({"sub": email})
+    refreshed = clinical_api["client"].get(
+        "/doctor/appointments",
+        headers={"Authorization": f"Bearer {refreshed_token}"},
+    )
+    assert refreshed.status_code == 200
 
-def test_legacy_plaintext_verification_token_is_temporarily_supported(clinical_api):
+
+def test_expired_legacy_plaintext_verification_token_is_rejected(clinical_api):
     session_factory = clinical_api["session_factory"]
     raw_token = "legacy-verification-token"
 
@@ -140,6 +148,4 @@ def test_legacy_plaintext_verification_token_is_temporarily_supported(clinical_a
     with _phase2_client(session_factory) as client:
         response = client.get("/auth/verify-email", params={"token": raw_token})
 
-    # The simulated token expires at 'now', so it must never be accepted past
-    # the migration grace timestamp.
     assert response.status_code == 400
