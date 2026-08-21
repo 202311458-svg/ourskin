@@ -38,7 +38,7 @@ export const roleLabels: Record<PortalRole, string> = {
 };
 
 export const profileRoutes: Record<PortalRole, string | null> = {
-  admin: null,
+  admin: "/pages/admin/profile",
   staff: "/pages/staff/profile",
   doctor: "/pages/doctor/settings",
   patient: "/pages/patient/profile",
