@@ -11,6 +11,8 @@ export function getAuth() {
   }
 
   return {
+    // Temporary Phase 5 compatibility fields. New authentication should rely
+    // on the HttpOnly cookie and `/auth/session`, not JavaScript token access.
     token: localStorage.getItem("token"),
     role: localStorage.getItem("role"),
     user: localStorage.getItem("user"),
@@ -46,6 +48,7 @@ export async function apiFetch<T>(
 
   const res = await fetch(`${API_BASE_URL}${cleanPath}`, {
     ...options,
+    credentials: "include",
     headers,
   });
 
@@ -87,12 +90,21 @@ export async function apiRequest(
 
   return fetch(`${API_BASE_URL}${cleanPath}`, {
     ...options,
+    credentials: "include",
     headers,
   });
 }
 
 export function logoutUser() {
   if (typeof window === "undefined") return;
+
+  // Clear the server-held browser session as well as temporary legacy browser
+  // state. keepalive lets the request finish even as navigation begins.
+  void fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    keepalive: true,
+  }).catch(() => undefined);
 
   localStorage.removeItem("token");
   localStorage.removeItem("role");
