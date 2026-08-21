@@ -46,6 +46,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
 
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false)
 
@@ -237,6 +238,7 @@ export default function RegisterPage() {
     setPassword("")
     setConfirmPassword("")
     setAcceptedTerms(false)
+    setAcceptedPrivacy(false)
     setPasswordTouched(false)
     setConfirmPasswordTouched(false)
     setShowPassword(false)
@@ -336,9 +338,12 @@ export default function RegisterPage() {
     }
 
     if (!acceptedTerms) {
-      alert(
-        "Please accept the Terms and Conditions and Privacy Policy before registering."
-      )
+      alert("Please accept the Terms and Conditions before registering.")
+      return
+    }
+
+    if (!acceptedPrivacy) {
+      alert("Please accept the Privacy Policy before registering.")
       return
     }
 
@@ -370,7 +375,7 @@ export default function RegisterPage() {
           guardian_consent: isMinor ? guardianConsent : false,
 
           terms_accepted: acceptedTerms,
-          privacy_accepted: acceptedTerms,
+          privacy_accepted: acceptedPrivacy,
         }),
       })
 
@@ -412,6 +417,7 @@ export default function RegisterPage() {
     isBelowMinimumAge ||
     (!googleOnboarding && (!isPasswordStrong || !passwordsMatch)) ||
     !acceptedTerms ||
+    !acceptedPrivacy ||
     (isMinor &&
       (!guardianFirstName.trim() ||
         !guardianLastName.trim() ||
@@ -769,7 +775,6 @@ export default function RegisterPage() {
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
               />
-
               <span>
                 I agree to the{" "}
                 <button
@@ -778,8 +783,19 @@ export default function RegisterPage() {
                   onClick={() => setOpenPolicy("terms")}
                 >
                   Terms and Conditions
-                </button>{" "}
-                and{" "}
+                </button>
+                .
+              </span>
+            </label>
+
+            <label className={registerStyles.registerCheckbox}>
+              <input
+                type="checkbox"
+                checked={acceptedPrivacy}
+                onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+              />
+              <span>
+                I have read and accept the{" "}
                 <button
                   type="button"
                   className={policyStyles.registerPolicyBtn}

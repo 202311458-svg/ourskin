@@ -119,6 +119,7 @@ def has_blocking_doctor_appointment(
         is not None
     )
 
+
 def serialize_service(service: Service):
     return {
         "id": service.id,
@@ -130,12 +131,16 @@ def serialize_service(service: Service):
 
 
 def serialize_doctor(doctor: User):
+    """Return only fields a patient needs to choose a clinician.
+
+    Account identifiers such as email are deliberately excluded from booking
+    discovery responses; patients can contact the clinic through normal channels.
+    """
     return {
         "id": doctor.id,
         "name": doctor.name,
         "first_name": doctor.first_name,
         "last_name": doctor.last_name,
-        "email": doctor.email,
         "specialty": doctor.specialty,
         "availability": doctor.availability,
         "profile_image": doctor.profile_image,
