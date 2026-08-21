@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { persistAuthSession } from "@/lib/auth-session";
 import { SESSION_MARKER } from "@/app/utils/auth";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 import styles from "./GoogleAuthButton.module.css";
 
 type GoogleResponse = { credential: string };
@@ -42,6 +43,7 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   const [error, setError] = useState("");
   const [linkCredential, setLinkCredential] = useState("");
   const [linkPassword, setLinkPassword] = useState("");
+  const { darkMode } = useDarkMode();
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const finishAuthentication = useCallback(async (data: GoogleStartResponse) => {
@@ -111,10 +113,10 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
     containerRef.current.replaceChildren();
     window.google.accounts.id.initialize({ client_id: clientId, callback: handleCredential, ux_mode: "popup" });
     window.google.accounts.id.renderButton(containerRef.current, {
-      type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", width: 360,
+      type: "standard", theme: darkMode ? "filled_black" : "outline", size: "large", text: "continue_with", shape: "pill", width: 360,
     });
     return () => window.google?.accounts.id.cancel();
-  }, [scriptReady, clientId, handleCredential]);
+  }, [scriptReady, clientId, handleCredential, darkMode]);
 
   if (!clientId) return null;
 

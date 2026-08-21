@@ -152,6 +152,12 @@ canvas {
   height: auto;
 }
 
+/* Keep doctor portraits centered inside their landing-page cards. */
+#doctors article > img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ============================================================
    ACCESSIBILITY & STATE
    ============================================================ */
