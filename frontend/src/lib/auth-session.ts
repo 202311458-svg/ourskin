@@ -1,4 +1,4 @@
-import { API_BASE_URL, markBrowserSession } from "@/app/utils/auth";
+import { markBrowserSession } from "@/app/utils/auth";
 
 export type AuthSession = {
   access_token?: string;
@@ -13,17 +13,8 @@ export function getRoleHome(role: string) {
 }
 
 export async function persistAuthSession(session: AuthSession) {
-  if (session.access_token) {
-    const response = await fetch(`${API_BASE_URL}/auth/session/exchange`, {
-      method: "POST",
-      credentials: "include",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error("Unable to establish secure browser session");
-    }
-  }
-
+  // Password and Google auth endpoints now establish the HttpOnly cookie on the
+  // server response itself. Browser JavaScript never exchanges or persists a
+  // bearer token; only non-secret compatibility metadata remains client-side.
   markBrowserSession(session.role);
 }

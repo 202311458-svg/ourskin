@@ -8,6 +8,7 @@ import { FaBars, FaChevronLeft, FaMoon, FaSignOutAlt, FaSun, FaUserCircle } from
 import NotificationBell from "@/app/components/NotificationBell";
 import { useDarkMode } from "@/app/hooks/useDarkMode";
 import { sidebarState } from "@/app/state/sidebarState";
+import { getSession, logoutUser, markBrowserSession } from "@/app/utils/auth";
 import {
   portalNavigation,
   profileRoutes,
@@ -31,6 +32,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [collapsed, setCollapsed] = useState(sidebarState.collapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const groups = portalNavigation[role];
   const headerSummary = useMemo(() => {
@@ -58,17 +60,43 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
   }, [mobileOpen]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedRole = localStorage.getItem("role");
-    if (!token || storedRole !== role) router.replace("/");
+    let cancelled = false;
+
+    const verify = async () => {
+      try {
+        const session = await getSession();
+        if (cancelled) return;
+
+        if (!session || session.role !== role) {
+          router.replace("/");
+          return;
+        }
+
+        markBrowserSession(session.role, session);
+        setSessionReady(true);
+      } catch {
+        if (!cancelled) router.replace("/");
+      }
+    };
+
+    void verify();
+    return () => {
+      cancelled = true;
+    };
   }, [role, router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
     document.body.classList.remove("navCollapsed");
-    router.push("/");
+    void logoutUser();
   };
+
+  if (!sessionReady) {
+    return (
+      <div className={styles.frame} data-portal-role={role} aria-busy="true">
+        <div id="portal-content" className={styles.content}>Verifying session…</div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.frame} data-portal-role={role}>

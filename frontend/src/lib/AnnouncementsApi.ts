@@ -8,7 +8,6 @@ export type AnnouncementCategory =
   | "Appointment Reminder";
 
 export type AnnouncementPriority = "Normal" | "Important" | "Urgent";
-
 export type AnnouncementStatus = "Draft" | "Published" | "Archived";
 
 export type AnnouncementPayload = {
@@ -45,20 +44,6 @@ class ApiRequestError extends Error {
   }
 }
 
-function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
-}
-
-function getHeaders(hasBody = false): HeadersInit {
-  const token = getToken();
-
-  return {
-    ...(hasBody ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
 async function safeJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
@@ -77,12 +62,16 @@ async function requestApi<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers = new Headers(options.headers || {});
+  headers.delete("Authorization");
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      ...getHeaders(Boolean(options.body)),
-      ...(options.headers || {}),
-    },
+    credentials: "include",
+    headers,
   });
 
   const data = await safeJson<T | ApiErrorResponse>(response);
@@ -121,9 +110,7 @@ function normalizeAnnouncement(raw: Record<string, unknown>): Announcement {
 
 function normalizeAnnouncements(data: unknown): Announcement[] {
   if (Array.isArray(data)) {
-    return data.map((item) =>
-      normalizeAnnouncement(item as Record<string, unknown>)
-    );
+    return data.map((item) => normalizeAnnouncement(item as Record<string, unknown>));
   }
 
   if (
@@ -145,7 +132,6 @@ function sortAnnouncements(items: Announcement[]) {
 
     const bTime = new Date(b.created_at || "").getTime();
     const aTime = new Date(a.created_at || "").getTime();
-
     return bTime - aTime;
   });
 }
@@ -168,7 +154,6 @@ export async function createAnnouncement(payload: AnnouncementPayload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-
   return normalizeAnnouncement(data as Record<string, unknown>);
 }
 
@@ -180,7 +165,6 @@ export async function updateAnnouncement(
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-
   return normalizeAnnouncement(data as Record<string, unknown>);
 }
 
@@ -188,7 +172,6 @@ export async function archiveAnnouncement(id: string) {
   const data = await requestApi<unknown>(`${MANAGER_ENDPOINT}/${id}/archive`, {
     method: "PATCH",
   });
-
   return normalizeAnnouncement(data as Record<string, unknown>);
 }
 

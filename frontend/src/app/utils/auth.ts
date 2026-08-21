@@ -1,7 +1,17 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
+// Non-secret compatibility marker only. It is intentionally never accepted as
+// or emitted as a bearer credential. Legacy screens may still use its presence
+// while the authoritative portal guard verifies /auth/session.
 export const SESSION_MARKER = "cookie-session";
+
+export type SessionUser = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  role: string;
+};
 
 export function getAuth() {
   if (typeof window === "undefined") {
@@ -9,24 +19,39 @@ export function getAuth() {
   }
 
   return {
-    token: localStorage.getItem("token"),
+    token: localStorage.getItem("token") === SESSION_MARKER ? SESSION_MARKER : null,
     role: localStorage.getItem("role"),
     user: localStorage.getItem("user"),
   };
 }
 
+// Phase 10: browser bearer tokens are no longer part of the application auth
+// contract. Keep this compatibility export returning null so older callers do
+// not accidentally manufacture an Authorization header.
 export function getToken() {
-  if (typeof window === "undefined") return null;
-  const value = localStorage.getItem("token");
-  return value && value !== SESSION_MARKER ? value : null;
+  return null;
 }
 
 export function getAuthHeaders(extra?: HeadersInit): HeadersInit {
-  const token = getToken();
-  return {
-    ...(extra || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  return new Headers(extra || {});
+}
+
+export async function getSession(): Promise<SessionUser | null> {
+  const response = await fetch(`${API_BASE_URL}/auth/session`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("Unable to verify the current session");
+  }
+
+  const data = (await response.json()) as SessionUser;
+  return data?.role ? data : null;
 }
 
 export async function apiFetch<T>(
@@ -34,10 +59,13 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const isFormData = options.body instanceof FormData;
-  const headers: HeadersInit = {
-    ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...getAuthHeaders(options.headers),
-  };
+  const headers = new Headers(options.headers || {});
+  headers.delete("Authorization");
+
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const res = await fetch(`${API_BASE_URL}${cleanPath}`, {
     ...options,
@@ -69,10 +97,13 @@ export async function apiRequest(
   options: RequestInit = {}
 ): Promise<Response> {
   const isFormData = options.body instanceof FormData;
-  const headers: HeadersInit = {
-    ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...getAuthHeaders(options.headers),
-  };
+  const headers = new Headers(options.headers || {});
+  headers.delete("Authorization");
+
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return fetch(`${API_BASE_URL}${cleanPath}`, {
     ...options,
@@ -81,10 +112,23 @@ export async function apiRequest(
   });
 }
 
-export function markBrowserSession(role: string) {
+export function markBrowserSession(role: string, user?: Partial<SessionUser>) {
   if (typeof window === "undefined") return;
+
   localStorage.setItem("token", SESSION_MARKER);
   localStorage.setItem("role", role);
+
+  if (user) {
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+      })
+    );
+  }
 }
 
 export function clearBrowserSessionState() {
@@ -94,13 +138,17 @@ export function clearBrowserSessionState() {
   localStorage.removeItem("user");
 }
 
-export function logoutUser() {
+export async function logoutUser() {
   if (typeof window === "undefined") return;
-  void fetch(`${API_BASE_URL}/auth/logout`, {
-    method: "POST",
-    credentials: "include",
-    keepalive: true,
-  }).catch(() => undefined);
-  clearBrowserSessionState();
-  window.location.href = "/";
+
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    });
+  } finally {
+    clearBrowserSessionState();
+    window.location.href = "/";
+  }
 }

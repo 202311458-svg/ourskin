@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, auth_phase2, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, staff_schedules_phase9, booking, staff_follow_ups, announcements, notifications, doctor_phase1
+from app.routes import auth, auth_phase2, auth_phase10, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, staff_schedules_phase9, booking, staff_follow_ups, announcements, notifications, doctor_phase1
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -71,9 +71,10 @@ app.add_middleware(
 )
 
 
-# Phase 2 auth routes are registered first so hardened implementations handle
-# paths that still exist in the legacy auth router during the migration.
+# Hardened auth routes are registered first so cookie-session implementations
+# handle duplicate legacy paths. Phase 10 covers the remaining Google routes.
 app.include_router(auth_phase2.router)
+app.include_router(auth_phase10.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 # Phase 3 AI routes take precedence over legacy upload/review implementations.
