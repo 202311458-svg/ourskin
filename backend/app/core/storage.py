@@ -27,13 +27,15 @@ CONTENT_TYPE_EXTENSIONS = {
     "image/webp": ".webp",
 }
 
+_supabase_client: Client | None = None
+
 
 def validate_supabase_config():
     if not SUPABASE_URL:
-        raise RuntimeError("SUPABASE_URL is missing in your backend .env file.")
+        raise RuntimeError("SUPABASE_URL is missing in the backend environment.")
 
     if not SUPABASE_SERVICE_ROLE_KEY:
-        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is missing in your backend .env file.")
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is missing in the backend environment.")
 
     key = SUPABASE_SERVICE_ROLE_KEY.strip()
 
@@ -41,20 +43,23 @@ def validate_supabase_config():
     is_new_secret_key = key.startswith("sb_secret_")
 
     if not is_legacy_jwt_key and not is_new_secret_key:
-        raise RuntimeError(
-            "SUPABASE_SERVICE_ROLE_KEY is invalid. Use either the legacy service_role JWT key or the new sb_secret_ key."
-        )
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is invalid.")
 
     if not SUPABASE_STORAGE_BUCKET:
-        raise RuntimeError("SUPABASE_STORAGE_BUCKET is missing in your backend .env file.")
+        raise RuntimeError("SUPABASE_STORAGE_BUCKET is missing in the backend environment.")
 
 
-validate_supabase_config()
+def get_supabase_client() -> Client:
+    global _supabase_client
 
-supabase: Client = create_client(
-    SUPABASE_URL.strip(),
-    SUPABASE_SERVICE_ROLE_KEY.strip(),
-)
+    if _supabase_client is None:
+        validate_supabase_config()
+        _supabase_client = create_client(
+            SUPABASE_URL.strip(),
+            SUPABASE_SERVICE_ROLE_KEY.strip(),
+        )
+
+    return _supabase_client
 
 
 def get_safe_extension(filename: str | None, content_type: str | None) -> str:
@@ -201,7 +206,7 @@ async def upload_skin_image_to_supabase(
 
         storage_path = f"{folder}/{file_name}"
 
-        supabase.storage.from_(SUPABASE_STORAGE_BUCKET).upload(
+        get_supabase_client().storage.from_(SUPABASE_STORAGE_BUCKET).upload(
             path=storage_path,
             file=file_bytes,
             file_options={
@@ -220,6 +225,9 @@ async def upload_skin_image_to_supabase(
         raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
     except HTTPException:
         raise
+    except RuntimeError:
+        logger.exception("Supabase image storage is not configured")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
     except Exception:
         logger.exception("Unexpected image upload failure")
         raise HTTPException(status_code=500, detail="Image upload failed.")
@@ -245,7 +253,7 @@ def upload_skin_bytes_to_supabase(
             f"appointment-{appointment_id}/{file_name}"
         )
 
-        supabase.storage.from_(SUPABASE_STORAGE_BUCKET).upload(
+        get_supabase_client().storage.from_(SUPABASE_STORAGE_BUCKET).upload(
             path=storage_path,
             file=file_bytes,
             file_options={
@@ -264,6 +272,9 @@ def upload_skin_bytes_to_supabase(
         raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
     except HTTPException:
         raise
+    except RuntimeError:
+        logger.exception("Supabase image storage is not configured")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
     except Exception:
         logger.exception("Unexpected image upload failure")
         raise HTTPException(status_code=500, detail="Image upload failed.")
@@ -282,7 +293,9 @@ def create_signed_image_url(storage_path: str | None, expires_in: int = 3600) ->
         if cleaned_path.startswith("http://") or cleaned_path.startswith("https://"):
             return cleaned_path
 
-        response = supabase.storage.from_(SUPABASE_STORAGE_BUCKET).create_signed_url(
+        response = get_supabase_client().storage.from_(
+            SUPABASE_STORAGE_BUCKET
+        ).create_signed_url(
             cleaned_path,
             expires_in,
         )
@@ -330,6 +343,9 @@ def create_signed_image_url(storage_path: str | None, expires_in: int = 3600) ->
         logger.exception("Supabase signed image URL failed")
         raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
 
+    except RuntimeError:
+        logger.exception("Supabase image storage is not configured")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
     except Exception:
         logger.exception("Unexpected signed image URL failure")
         raise HTTPException(status_code=500, detail="Unable to load image.")
