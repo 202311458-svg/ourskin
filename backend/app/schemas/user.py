@@ -1,6 +1,14 @@
-from pydantic import BaseModel, EmailStr, model_validator
+import re
 from datetime import datetime, date
 from typing import Optional
+
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
+
+
+PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$")
+PASSWORD_ERROR = (
+    "Password must be at least 8 characters, include uppercase, number, and special character."
+)
 
 
 class UserCreate(BaseModel):
@@ -128,6 +136,13 @@ class StaffCreate(BaseModel):
     contact: Optional[str] = None
     profile_image: Optional[str] = None
     status: Optional[str] = "Active"
+
+    @field_validator("password")
+    @classmethod
+    def validate_staff_password(cls, value: str) -> str:
+        if not PASSWORD_PATTERN.match(value):
+            raise ValueError(PASSWORD_ERROR)
+        return value
 
 
 class StaffUpdate(BaseModel):
