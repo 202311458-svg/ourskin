@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, auth_phase2, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
+from app.routes import auth, auth_phase2, users, ai_analysis, ai_phase3, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -76,6 +76,8 @@ app.add_middleware(
 app.include_router(auth_phase2.router)
 app.include_router(auth.router)
 app.include_router(users.router)
+# Phase 3 AI routes take precedence over legacy upload/review implementations.
+app.include_router(ai_phase3.router)
 app.include_router(ai_analysis.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
