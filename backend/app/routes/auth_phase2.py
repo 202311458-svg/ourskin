@@ -21,6 +21,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 LOGIN_LOCK_MINUTES = 15
+BROWSER_SESSION_MARKER = "cookie-session"
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -35,9 +36,11 @@ def _auth_response(user: User, response: Response):
     token = create_access_token({"sub": user.email})
     set_session_cookie(response, token)
 
-    # Browser authentication is cookie-based. The JWT is intentionally not
-    # exposed in the normal password-login response.
+    # Keep the legacy response key while older UI callbacks are migrated, but
+    # never expose the JWT to browser JavaScript. The fixed marker is non-secret.
     return {
+        "access_token": BROWSER_SESSION_MARKER,
+        "token_type": "cookie",
         "role": user.role,
         "status": user.status,
     }
