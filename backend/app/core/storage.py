@@ -1,21 +1,31 @@
+import logging
 import os
-import uuid
-import tempfile
 import shutil
+import tempfile
+import uuid
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 from fastapi import HTTPException, UploadFile
-from supabase import create_client, Client
 from storage3.exceptions import StorageApiError
+from supabase import Client, create_client
 
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "ourskin-images")
+
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+CONTENT_TYPE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 def validate_supabase_config():
@@ -48,34 +58,32 @@ supabase: Client = create_client(
 
 
 def get_safe_extension(filename: str | None, content_type: str | None) -> str:
-    if filename:
-        extension = Path(filename).suffix.lower()
+    supplied_content_type = (content_type or "").strip().lower()
+    expected_extension = CONTENT_TYPE_EXTENSIONS.get(supplied_content_type)
 
-        if extension in [".jpg", ".jpeg", ".png", ".webp"]:
-            return extension
+    if not expected_extension:
+        raise ValueError("Unsupported image content type")
 
-    if content_type == "image/png":
-        return ".png"
+    extension = Path(filename or "").suffix.lower()
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError("Unsupported image filename extension")
 
-    if content_type == "image/webp":
-        return ".webp"
+    normalized_extension = ".jpg" if extension == ".jpeg" else extension
+    if normalized_extension != expected_extension:
+        raise ValueError("Image filename extension does not match content type")
 
-    return ".jpg"
+    return expected_extension
 
 
 def normalize_extension(extension: str | None) -> str:
-    if not extension:
-        return ".jpg"
-
-    extension = extension.strip().lower()
-
-    if not extension.startswith("."):
-        extension = f".{extension}"
-
-    if extension not in [".jpg", ".jpeg", ".png", ".webp"]:
-        return ".jpg"
-
-    return extension
+    normalized = (extension or "").strip().lower()
+    if not normalized.startswith("."):
+        normalized = f".{normalized}" if normalized else ""
+    if normalized == ".jpeg":
+        normalized = ".jpg"
+    if normalized not in {".jpg", ".png", ".webp"}:
+        raise ValueError("Unsupported image extension")
+    return normalized
 
 
 def clean_storage_path(path: Optional[str]) -> Optional[str]:
@@ -113,14 +121,9 @@ def clean_storage_path(path: Optional[str]) -> Optional[str]:
 
     return cleaned.lstrip("/")
 
-def save_temp_image(file_or_bytes: Any, extension: str | None = None) -> str:
-    """
-    Saves an uploaded image temporarily so the AI model can read it locally.
 
-    Supports:
-    save_temp_image(file)
-    save_temp_image(file_bytes, extension)
-    """
+def save_temp_image(file_or_bytes: Any, extension: str | None = None) -> str:
+    """Save a validated image temporarily so the ML model can read it locally."""
 
     try:
         if isinstance(file_or_bytes, bytes):
@@ -156,10 +159,13 @@ def save_temp_image(file_or_bytes: Any, extension: str | None = None) -> str:
 
         raise ValueError("Unsupported file type passed to save_temp_image.")
 
-    except Exception as e:
+    except ValueError:
+        raise
+    except Exception:
+        logger.exception("Failed to save temporary image")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to save temporary image: {str(e)}",
+            detail="Failed to prepare image for analysis.",
         )
 
 
@@ -172,7 +178,7 @@ def delete_temp_file(file_path: str | None) -> None:
             os.remove(file_path)
 
     except Exception:
-        pass
+        logger.warning("Failed to remove temporary image file", exc_info=True)
 
 
 async def upload_skin_image_to_supabase(
@@ -199,7 +205,7 @@ async def upload_skin_image_to_supabase(
             path=storage_path,
             file=file_bytes,
             file_options={
-                "content-type": file.content_type or "image/jpeg",
+                "content-type": file.content_type,
                 "cache-control": "3600",
                 "upsert": "false",
             },
@@ -207,17 +213,16 @@ async def upload_skin_image_to_supabase(
 
         return storage_path
 
-    except StorageApiError as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Supabase image upload failed: {str(e)}",
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected image upload error: {str(e)}",
-        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except StorageApiError:
+        logger.exception("Supabase image upload failed")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unexpected image upload failure")
+        raise HTTPException(status_code=500, detail="Image upload failed.")
 
 
 def upload_skin_bytes_to_supabase(
@@ -228,19 +233,10 @@ def upload_skin_bytes_to_supabase(
     original_filename: str | None = None,
     filename: str | None = None,
 ) -> str:
-    """
-    Uploads raw image bytes to Supabase.
-
-    Supports both:
-    original_filename=...
-    filename=...
-
-    This prevents errors when ai_analysis.py uses filename as the keyword.
-    """
+    """Upload already validated image bytes to private Supabase storage."""
 
     try:
         final_filename = original_filename or filename
-
         extension = get_safe_extension(final_filename, content_type)
         file_name = f"{uuid.uuid4().hex}{extension}"
 
@@ -253,7 +249,7 @@ def upload_skin_bytes_to_supabase(
             path=storage_path,
             file=file_bytes,
             file_options={
-                "content-type": content_type or "image/jpeg",
+                "content-type": content_type,
                 "cache-control": "3600",
                 "upsert": "false",
             },
@@ -261,17 +257,16 @@ def upload_skin_bytes_to_supabase(
 
         return storage_path
 
-    except StorageApiError as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Supabase image upload failed: {str(e)}",
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected image upload error: {str(e)}",
-        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except StorageApiError:
+        logger.exception("Supabase image upload failed")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unexpected image upload failure")
+        raise HTTPException(status_code=500, detail="Image upload failed.")
 
 
 def create_signed_image_url(storage_path: str | None, expires_in: int = 3600) -> str:
@@ -326,19 +321,15 @@ def create_signed_image_url(storage_path: str | None, expires_in: int = 3600) ->
 
         return signed_url or ""
 
-    except StorageApiError as e:
-        error_text = str(e)
+    except StorageApiError as exc:
+        error_text = str(exc)
 
         if "Object not found" in error_text or "not_found" in error_text:
             return ""
 
-        raise HTTPException(
-            status_code=500,
-            detail=f"Supabase signed image URL failed: {str(e)}",
-        )
+        logger.exception("Supabase signed image URL failed")
+        raise HTTPException(status_code=503, detail="Image storage is temporarily unavailable.")
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected signed image URL error: {str(e)}",
-        )
+    except Exception:
+        logger.exception("Unexpected signed image URL failure")
+        raise HTTPException(status_code=500, detail="Unable to load image.")
