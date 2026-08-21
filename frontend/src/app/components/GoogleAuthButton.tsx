@@ -103,6 +103,10 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   };
 
   useEffect(() => {
+    if (window.google?.accounts?.id) setScriptReady(true);
+  }, []);
+
+  useEffect(() => {
     if (!scriptReady || !clientId || !window.google || !containerRef.current) return;
     containerRef.current.replaceChildren();
     window.google.accounts.id.initialize({ client_id: clientId, callback: handleCredential, ux_mode: "popup" });
@@ -116,7 +120,7 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
 
   return (
     <div className={styles.wrapper} aria-busy={busy}>
-      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onLoad={() => setScriptReady(true)} onError={() => setError("Google sign-in could not be loaded.")} />
+      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onReady={() => setScriptReady(true)} onError={() => setError("Google sign-in could not be loaded.")} />
       <div className={styles.divider}><span>or</span></div>
       <div ref={containerRef} className={styles.googleButton} />
       {busy && <p className={styles.status}>Authenticating securely…</p>}
