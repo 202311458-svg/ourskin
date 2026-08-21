@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import JWT_ALGORITHM, settings
-from app.core.password_policy import validate_new_password
+from app.core.password_policy import validate_bcrypt_input
 from app.db import get_db
 from app.models.user import User
 
@@ -24,20 +24,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    """Hash a newly-created password after enforcing the shared bcrypt policy."""
+    """Hash a new secret after enforcing bcrypt's byte-safety boundary."""
 
-    return pwd_context.hash(validate_new_password(password))
+    return pwd_context.hash(validate_bcrypt_input(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify existing bcrypt hashes without pre-truncating user input.
+    """Verify legacy hashes using bcrypt's historical 72-byte effective input.
 
-    bcrypt itself defines the legacy 72-byte effective input. Keeping verification
-    compatible avoids locking out accounts created before the explicit Phase 6
-    length limit, while all newly-created hashes go through ``hash_password``.
+    Existing accounts may have been created before Phase 6 explicitly rejected
+    longer passwords. Supplying the first 72 UTF-8 bytes recreates bcrypt's old
+    effective input without allowing new hashes to be silently truncated.
     """
 
-    return pwd_context.verify(plain_password, hashed_password)
+    effective_password = plain_password.encode("utf-8")[:72]
+    return pwd_context.verify(effective_password, hashed_password)
 
 
 def hash_token(token: str) -> str:
@@ -58,9 +59,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode.update(
         {
             "exp": expire,
-            # Store a numeric timestamp with sub-second precision so a token
-            # issued immediately after a password change is distinguishable
-            # from a token created immediately before it.
             "iat": now.timestamp(),
             "iss": settings.jwt_issuer,
             "aud": settings.jwt_audience,
@@ -78,7 +76,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 # TOKEN DECODING
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             token,
             settings.secret_key.get_secret_value(),
             algorithms=[JWT_ALGORITHM],
@@ -86,19 +84,10 @@ def decode_access_token(token: str) -> dict:
             audience=settings.jwt_audience,
             options={"require": ["exp", "iat", "iss", "aud", "jti", "sub"]},
         )
-        return payload
-
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-        )
-
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
 # BROWSER SESSION COOKIE
@@ -107,8 +96,6 @@ def session_cookie_secure() -> bool:
 
 
 def session_cookie_samesite() -> str:
-    # Deployed frontend/API hosts may be cross-site. SameSite=None is therefore
-    # paired with Secure cookies and explicit Origin checks for unsafe methods.
     return "none" if session_cookie_secure() else "lax"
 
 
@@ -137,11 +124,9 @@ def clear_session_cookie(response: Response) -> None:
 def _normalize_origin(value: str | None) -> str | None:
     if not value:
         return None
-
     parsed = urlsplit(value.strip())
     if not parsed.scheme or not parsed.netloc:
         return None
-
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
@@ -163,12 +148,6 @@ def trusted_browser_origins() -> set[str]:
 
 
 def validate_cookie_request_origin(request: Request) -> None:
-    """Protect unsafe browser requests authenticated by the session cookie.
-
-    Bearer-only API clients are not subject to browser CSRF. Cookie-authenticated
-    writes must originate from an explicitly configured OurSkin frontend origin.
-    """
-
     if request.method.upper() in SAFE_BROWSER_METHODS:
         return
 
@@ -181,9 +160,6 @@ def validate_cookie_request_origin(request: Request) -> None:
 
 
 # AUTH DEPENDENCIES
-# Bearer authentication remains accepted for non-browser/API compatibility.
-# Browsers prefer the HttpOnly cookie whenever it is present, preventing stale
-# JavaScript-readable bearer values from overriding the protected session.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
@@ -209,18 +185,11 @@ def get_current_user(
     email = payload.get("sub")
 
     if email is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication")
 
     user = db.query(User).filter(User.email == email).first()
-
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication")
 
     invalid_before = user.auth_invalid_before
     if invalid_before:
@@ -228,11 +197,7 @@ def get_current_user(
             invalid_before = invalid_before.replace(tzinfo=timezone.utc)
 
         issued_at = payload.get("iat")
-        issued_at_timestamp = (
-            issued_at.timestamp()
-            if isinstance(issued_at, datetime)
-            else float(issued_at)
-        )
+        issued_at_timestamp = issued_at.timestamp() if isinstance(issued_at, datetime) else float(issued_at)
 
         if issued_at_timestamp <= invalid_before.timestamp():
             raise HTTPException(
@@ -241,9 +206,6 @@ def get_current_user(
             )
 
     if user.status != "Active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is inactive.",
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive.")
 
     return user
