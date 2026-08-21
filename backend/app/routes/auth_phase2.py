@@ -1,11 +1,18 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_token, verify_password
+from app.core.security import (
+    clear_session_cookie,
+    create_access_token,
+    get_current_user,
+    hash_token,
+    set_session_cookie,
+    verify_password,
+)
 from app.db import get_db
 from app.models.user import User
 
@@ -14,6 +21,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 LOGIN_LOCK_MINUTES = 15
+BROWSER_SESSION_MARKER = "cookie-session"
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -24,10 +32,15 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
-def _auth_response(user: User):
+def _auth_response(user: User, response: Response):
+    token = create_access_token({"sub": user.email})
+    set_session_cookie(response, token)
+
+    # Keep the legacy response key while older UI callbacks are migrated, but
+    # never expose the JWT to browser JavaScript. The fixed marker is non-secret.
     return {
-        "access_token": create_access_token({"sub": user.email}),
-        "token_type": "bearer",
+        "access_token": BROWSER_SESSION_MARKER,
+        "token_type": "cookie",
         "role": user.role,
         "status": user.status,
     }
@@ -69,6 +82,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -121,4 +135,38 @@ def login(
         db.commit()
         db.refresh(db_user)
 
-    return _auth_response(db_user)
+    return _auth_response(db_user, response)
+
+
+@router.get("/session")
+def session(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "status": current_user.status,
+    }
+
+
+@router.post("/session/exchange")
+def exchange_bearer_for_cookie(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+):
+    """Exchange a transient bearer login result (e.g. legacy Google auth) for
+    the browser's HttpOnly session cookie without persisting the bearer token.
+    """
+
+    token = create_access_token({"sub": current_user.email})
+    set_session_cookie(response, token)
+    return {
+        "role": current_user.role,
+        "status": current_user.status,
+    }
+
+
+@router.post("/logout")
+def logout(response: Response):
+    clear_session_cookie(response)
+    return {"message": "Logged out successfully."}

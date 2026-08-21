@@ -1,5 +1,7 @@
+import { API_BASE_URL, markBrowserSession } from "@/app/utils/auth";
+
 export type AuthSession = {
-  access_token: string;
+  access_token?: string;
   role: string;
 };
 
@@ -10,7 +12,18 @@ export function getRoleHome(role: string) {
   return "/pages/patient/home";
 }
 
-export function persistAuthSession(session: AuthSession) {
-  localStorage.setItem("token", session.access_token);
-  localStorage.setItem("role", session.role);
+export async function persistAuthSession(session: AuthSession) {
+  if (session.access_token) {
+    const response = await fetch(`${API_BASE_URL}/auth/session/exchange`, {
+      method: "POST",
+      credentials: "include",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to establish secure browser session");
+    }
+  }
+
+  markBrowserSession(session.role);
 }
