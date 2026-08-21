@@ -1,11 +1,18 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_token, verify_password
+from app.core.config import settings
+from app.core.security import (
+    SESSION_COOKIE_NAME,
+    create_access_token,
+    get_current_user,
+    hash_token,
+    verify_password,
+)
 from app.db import get_db
 from app.models.user import User
 
@@ -24,9 +31,40 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
-def _auth_response(user: User):
+def _cookie_secure() -> bool:
+    return settings.environment in {"staging", "production"}
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=settings.access_token_expire_minutes * 60,
+        httponly=True,
+        secure=_cookie_secure(),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        httponly=True,
+        secure=_cookie_secure(),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _auth_response(user: User, response: Response):
+    token = create_access_token({"sub": user.email})
+    _set_session_cookie(response, token)
+
+    # access_token remains temporarily for legacy browser callers. Phase 5 will
+    # remove frontend persistence before this compatibility field is retired.
     return {
-        "access_token": create_access_token({"sub": user.email}),
+        "access_token": token,
         "token_type": "bearer",
         "role": user.role,
         "status": user.status,
@@ -69,6 +107,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -121,4 +160,21 @@ def login(
         db.commit()
         db.refresh(db_user)
 
-    return _auth_response(db_user)
+    return _auth_response(db_user, response)
+
+
+@router.get("/session")
+def session(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "status": current_user.status,
+    }
+
+
+@router.post("/logout")
+def logout(response: Response):
+    _clear_session_cookie(response)
+    return {"message": "Logged out successfully."}
