@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 
@@ -5,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.core.clock import clinic_now, get_clinic_timezone
+from app.core.security import get_current_user
 from app.db import get_db
 from app.models.appointment import AppointmentModel
 from app.models.clinic_unavailable_date import ClinicUnavailableDate
@@ -12,7 +15,6 @@ from app.models.doctor_schedule import DoctorSchedule
 from app.models.doctor_service import DoctorService
 from app.models.service import Service
 from app.models.user import User
-from app.core.security import get_current_user
 
 
 router = APIRouter(
@@ -84,29 +86,44 @@ def generate_hourly_slots(schedule: DoctorSchedule):
     return slots
 
 
-def has_blocking_doctor_appointment(
-    db: Session,
-    doctor_id: int,
-    appointment_date: date,
-    slot_start: time,
-    slot_end: time,
-):
-    """
-    Checks doctor-level booking conflicts instead of schedule_id-only conflicts.
+def load_closed_dates(db: Session, schedule_dates: set[date]) -> set[date]:
+    if not schedule_dates:
+        return set()
 
-    Approved appointments always block a slot. Pending initial evaluation requests
-    also block once staff has assigned a doctor/date/time, because those are
-    already coordinated internally with the doctor.
+    rows = (
+        db.query(ClinicUnavailableDate.closure_date)
+        .filter(ClinicUnavailableDate.closure_date.in_(schedule_dates))
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def load_blocking_appointments(
+    db: Session,
+    doctor_ids: set[int],
+    schedule_dates: set[date],
+) -> dict[tuple[int, date], list[tuple[time, time]]]:
+    """Load all appointment intervals that can block the returned schedules.
+
+    This replaces one conflict query per generated slot with one bounded query
+    for all doctors/dates already returned by the schedule query.
     """
-    return (
-        db.query(AppointmentModel)
+
+    if not doctor_ids or not schedule_dates:
+        return {}
+
+    rows = (
+        db.query(
+            AppointmentModel.doctor_id,
+            AppointmentModel.date,
+            AppointmentModel.time,
+            AppointmentModel.end_time,
+        )
         .filter(
-            AppointmentModel.doctor_id == doctor_id,
-            AppointmentModel.date == appointment_date,
+            AppointmentModel.doctor_id.in_(doctor_ids),
+            AppointmentModel.date.in_(schedule_dates),
             AppointmentModel.time.isnot(None),
             AppointmentModel.end_time.isnot(None),
-            AppointmentModel.time < slot_end,
-            AppointmentModel.end_time > slot_start,
             or_(
                 AppointmentModel.status == "Approved",
                 and_(
@@ -115,8 +132,28 @@ def has_blocking_doctor_appointment(
                 ),
             ),
         )
-        .first()
-        is not None
+        .all()
+    )
+
+    blocked: dict[tuple[int, date], list[tuple[time, time]]] = defaultdict(list)
+    for doctor_id, appointment_date, start_time, end_time in rows:
+        blocked[(doctor_id, appointment_date)].append((start_time, end_time))
+
+    return dict(blocked)
+
+
+def slot_is_blocked(
+    blocking_appointments: dict[tuple[int, date], list[tuple[time, time]]],
+    doctor_id: int,
+    appointment_date: date,
+    slot_start: time,
+    slot_end: time,
+) -> bool:
+    return any(
+        appointment_start < slot_end and appointment_end > slot_start
+        for appointment_start, appointment_end in blocking_appointments.get(
+            (doctor_id, appointment_date), []
+        )
     )
 
 
@@ -278,8 +315,9 @@ def get_schedules_by_service(
     if not allowed_doctor_ids:
         return []
 
-    today = date.today()
-    now = datetime.now()
+    now = clinic_now()
+    today = now.date()
+    clinic_tz = get_clinic_timezone()
 
     query = (
         db.query(DoctorSchedule, User)
@@ -312,26 +350,26 @@ def get_schedules_by_service(
             DoctorSchedule.schedule_date <= week_saturday,
         )
 
-    query = query.order_by(
+    rows = query.order_by(
         DoctorSchedule.schedule_date.asc(),
         DoctorSchedule.start_time.asc()
+    ).all()
+
+    schedule_dates = {schedule.schedule_date for schedule, _ in rows}
+    row_doctor_ids = {doctor.id for _, doctor in rows}
+    closed_dates = load_closed_dates(db, schedule_dates)
+    blocking_appointments = load_blocking_appointments(
+        db, row_doctor_ids, schedule_dates
     )
 
     requested_time = clean_time_string(preferred_time)
-    rows = query.all()
     results = []
 
     for schedule, doctor in rows:
         if is_sunday(schedule.schedule_date):
             continue
 
-        clinic_closed = (
-            db.query(ClinicUnavailableDate)
-            .filter(ClinicUnavailableDate.closure_date == schedule.schedule_date)
-            .first()
-        )
-
-        if clinic_closed:
+        if schedule.schedule_date in closed_dates:
             continue
 
         if not service_matches_schedule(schedule.services, service.name):
@@ -344,13 +382,17 @@ def get_schedules_by_service(
             if requested_time and format_time(slot_start) != requested_time:
                 continue
 
-            slot_start_datetime = datetime.combine(schedule.schedule_date, slot_start)
+            slot_start_datetime = datetime.combine(
+                schedule.schedule_date,
+                slot_start,
+                tzinfo=clinic_tz,
+            )
 
             if slot_start_datetime <= now:
                 continue
 
-            blocked = has_blocking_doctor_appointment(
-                db=db,
+            blocked = slot_is_blocked(
+                blocking_appointments=blocking_appointments,
                 doctor_id=doctor.id,
                 appointment_date=schedule.schedule_date,
                 slot_start=slot_start,
