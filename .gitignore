@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# Environment files are never source-controlled. Sanitized templates are
+# explicitly allowed.
 .env*
+**/.env*
+!.env.example
+!**/.env.example
 
 # vercel
 .vercel
@@ -55,3 +59,9 @@ __pycache__/
 
 # uploads or temp files
 uploads/
+
+# Local test/security output
+.pytest_cache/
+htmlcov/
+.coverage*
+gitleaks-report.*
