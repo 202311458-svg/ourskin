@@ -20,9 +20,9 @@ export default function SessionInitializer() {
   useLayoutEffect(() => {
     const originalFetch = window.fetch.bind(window);
 
-    // Central compatibility bridge for legacy pages that still call fetch()
-    // directly. API requests always send the HttpOnly cookie, and the
-    // non-secret session marker is never emitted as a bearer credential.
+    // Compatibility bridge for legacy direct fetch() calls. Same-origin API
+    // requests always use the HttpOnly cookie and never emit browser bearer
+    // credentials, even if an old page still constructs an Authorization header.
     window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
       const rawUrl =
         typeof input === "string"
@@ -45,10 +45,7 @@ export default function SessionInitializer() {
       const headers = new Headers(
         init.headers || (input instanceof Request ? input.headers : undefined)
       );
-
-      if (headers.get("Authorization") === `Bearer ${SESSION_MARKER}`) {
-        headers.delete("Authorization");
-      }
+      headers.delete("Authorization");
 
       return originalFetch(input, {
         ...init,
@@ -62,33 +59,16 @@ export default function SessionInitializer() {
     const initializeSession = async () => {
       const storedToken = localStorage.getItem("token");
 
-      // One-time migration for users who were already signed in before Phase 5:
-      // exchange the old browser token for an HttpOnly cookie, then erase it.
+      // Phase 10 removes the browser JWT migration path. Any pre-cookie JWT
+      // left in storage is erased rather than sent back over the network.
       if (storedToken && storedToken !== SESSION_MARKER) {
-        try {
-          const exchange = await originalFetch(
-            `${API_BASE_URL}/auth/session/exchange`,
-            {
-              method: "POST",
-              credentials: "include",
-              headers: { Authorization: `Bearer ${storedToken}` },
-            }
-          );
-
-          if (exchange.ok) {
-            const data = await exchange.json().catch(() => ({}));
-            if (!cancelled && data.role) markBrowserSession(data.role);
-          } else if (!cancelled) {
-            clearBrowserSessionState();
-          }
-        } catch {
-          if (!cancelled) clearBrowserSessionState();
-        }
+        clearBrowserSessionState();
       }
 
       try {
         const response = await originalFetch(`${API_BASE_URL}/auth/session`, {
           credentials: "include",
+          cache: "no-store",
         });
 
         if (!response.ok) {
@@ -98,22 +78,11 @@ export default function SessionInitializer() {
 
         const data = await response.json().catch(() => ({}));
         if (!cancelled && data.role) {
-          markBrowserSession(data.role);
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              role: data.role,
-            })
-          );
+          markBrowserSession(data.role, data);
         }
       } catch {
-        // Network failures should not manufacture an authenticated state. Keep
-        // an existing cookie marker so a transient outage does not force a
-        // destructive local logout; the next protected API call still verifies
-        // the real server-side session.
+        // Do not manufacture auth state during a network failure. A subsequent
+        // protected request still verifies the server-side cookie.
       }
     };
 
