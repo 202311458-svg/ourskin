@@ -3,8 +3,9 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import jwt
 import secrets
+from urllib.parse import urlsplit
 
-from fastapi import HTTPException, status, Depends, Request
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,8 @@ from app.models.user import User
 
 
 SESSION_COOKIE_NAME = "ourskin_session"
+SAFE_BROWSER_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
 
 # PASSWORD HASHING
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -93,11 +96,89 @@ def decode_access_token(token: str) -> dict:
         )
 
 
+# BROWSER SESSION COOKIE
+def session_cookie_secure() -> bool:
+    return settings.environment in {"staging", "production"}
+
+
+def session_cookie_samesite() -> str:
+    # Deployed frontend/API hosts may be cross-site. SameSite=None is therefore
+    # paired with Secure cookies and explicit Origin checks for unsafe methods.
+    return "none" if session_cookie_secure() else "lax"
+
+
+def set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=settings.access_token_expire_minutes * 60,
+        httponly=True,
+        secure=session_cookie_secure(),
+        samesite=session_cookie_samesite(),
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        httponly=True,
+        secure=session_cookie_secure(),
+        samesite=session_cookie_samesite(),
+        path="/",
+    )
+
+
+def _normalize_origin(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    parsed = urlsplit(value.strip())
+    if not parsed.scheme or not parsed.netloc:
+        return None
+
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+def trusted_browser_origins() -> set[str]:
+    candidates = {
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        settings.frontend_url,
+        *settings.cors_origins,
+    }
+    if settings.environment == "test":
+        candidates.add("http://testserver")
+
+    return {
+        normalized
+        for candidate in candidates
+        if (normalized := _normalize_origin(candidate)) is not None
+    }
+
+
+def validate_cookie_request_origin(request: Request) -> None:
+    """Protect unsafe browser requests authenticated by the session cookie.
+
+    Bearer-only API clients are not subject to browser CSRF. Cookie-authenticated
+    writes must originate from an explicitly configured OurSkin frontend origin.
+    """
+
+    if request.method.upper() in SAFE_BROWSER_METHODS:
+        return
+
+    origin = _normalize_origin(request.headers.get("origin"))
+    if origin is None or origin not in trusted_browser_origins():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid request origin.",
+        )
+
+
 # AUTH DEPENDENCIES
-# Bearer authentication remains accepted during the Phase 5 migration so older
-# frontend pages continue to work while the browser session moves to HttpOnly
-# cookies. Once all callers are cookie-based this compatibility path can be
-# removed.
+# Bearer authentication remains accepted for non-browser/API compatibility.
+# Browsers prefer the HttpOnly cookie whenever it is present, preventing stale
+# JavaScript-readable bearer values from overriding the protected session.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
@@ -106,7 +187,8 @@ def get_current_user(
     token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    session_token = token or request.cookies.get(SESSION_COOKIE_NAME)
+    cookie_token = request.cookies.get(SESSION_COOKIE_NAME)
+    session_token = cookie_token or token
 
     if not session_token:
         raise HTTPException(
@@ -114,6 +196,9 @@ def get_current_user(
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if cookie_token:
+        validate_cookie_request_origin(request)
 
     payload = decode_access_token(session_token)
     email = payload.get("sub")
