@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { persistAuthSession } from "@/lib/auth-session";
 import { SESSION_MARKER } from "@/app/utils/auth";
-import { useDarkMode } from "@/app/hooks/useDarkMode";
 import styles from "./GoogleAuthButton.module.css";
 
 type GoogleResponse = { credential: string };
@@ -36,6 +35,14 @@ declare global {
   }
 }
 
+function documentUsesDarkTheme() {
+  if (typeof document === "undefined") return false;
+  return (
+    document.documentElement.getAttribute("data-theme") === "dark" ||
+    document.body.classList.contains("darkMode")
+  );
+}
+
 export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -43,7 +50,7 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   const [error, setError] = useState("");
   const [linkCredential, setLinkCredential] = useState("");
   const [linkPassword, setLinkPassword] = useState("");
-  const { darkMode } = useDarkMode();
+  const [darkTheme, setDarkTheme] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const finishAuthentication = useCallback(async (data: GoogleStartResponse) => {
@@ -109,22 +116,58 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   }, []);
 
   useEffect(() => {
-    if (!scriptReady || !clientId || !window.google || !containerRef.current) return;
-    containerRef.current.replaceChildren();
-    window.google.accounts.id.initialize({ client_id: clientId, callback: handleCredential, ux_mode: "popup" });
-    window.google.accounts.id.renderButton(containerRef.current, {
-      type: "standard", theme: darkMode ? "filled_black" : "outline", size: "large", text: "continue_with", shape: "pill", width: 360,
+    const syncTheme = () => setDarkTheme(documentUsesDarkTheme());
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "class"],
     });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!scriptReady || !clientId || !window.google || !containerRef.current) return;
+
+    containerRef.current.replaceChildren();
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleCredential,
+      ux_mode: "popup",
+    });
+    window.google.accounts.id.renderButton(containerRef.current, {
+      type: "standard",
+      theme: darkTheme ? "filled_black" : "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "pill",
+      width: 360,
+    });
+
     return () => window.google?.accounts.id.cancel();
-  }, [scriptReady, clientId, handleCredential, darkMode]);
+  }, [scriptReady, clientId, handleCredential, darkTheme]);
 
   if (!clientId) return null;
 
   return (
     <div className={styles.wrapper} aria-busy={busy}>
-      <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onReady={() => setScriptReady(true)} onError={() => setError("Google sign-in could not be loaded.")} />
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onReady={() => setScriptReady(true)}
+        onError={() => setError("Google sign-in could not be loaded.")}
+      />
       <div className={styles.divider}><span>or</span></div>
-      <div ref={containerRef} className={styles.googleButton} />
+      <div
+        ref={containerRef}
+        className={`${styles.googleButton} ${darkTheme ? styles.googleButtonDark : ""}`}
+      />
       {busy && <p className={styles.status}>Authenticating securely…</p>}
       {error && <p className={styles.error} role="alert">{error}</p>}
       {linkCredential && (
