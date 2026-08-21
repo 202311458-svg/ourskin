@@ -18,7 +18,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    # bcrypt only supports 72 bytes
+    # bcrypt only supports 72 bytes. The application password policy currently
+    # keeps normal credentials below that limit; slicing is retained here for
+    # compatibility with existing password hashes.
     password = password[:72]
     return pwd_context.hash(password)
 
@@ -110,6 +112,24 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication",
         )
+
+    invalid_before = user.auth_invalid_before
+    if invalid_before:
+        if invalid_before.tzinfo is None:
+            invalid_before = invalid_before.replace(tzinfo=timezone.utc)
+
+        issued_at = payload.get("iat")
+        issued_at_timestamp = (
+            issued_at.timestamp()
+            if isinstance(issued_at, datetime)
+            else float(issued_at)
+        )
+
+        if issued_at_timestamp <= invalid_before.timestamp():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired. Please log in again.",
+            )
 
     if user.status != "Active":
         raise HTTPException(
