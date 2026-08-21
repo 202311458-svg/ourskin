@@ -1,0 +1,3 @@
+#top > div:last-child > figure:first-child > figcaption {
+  display: none !important;
+}
