@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, auth_phase2, users, ai_analysis, ai_phase3, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
+from app.routes import auth, auth_phase2, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -79,6 +79,10 @@ app.include_router(users.router)
 # Phase 3 AI routes take precedence over legacy upload/review implementations.
 app.include_router(ai_phase3.router)
 app.include_router(ai_analysis.router)
+# Phase 9 appointment guards take precedence over the legacy appointment router
+# for clinic-time-sensitive and bounded list endpoints while reusing the legacy
+# transactional create/assignment paths through hardened shared helpers.
+app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(announcements.router)
