@@ -1,6 +1,6 @@
 "use client"
 
-import { API_BASE_URL } from "@/lib/api"
+import { API_BASE_URL, SESSION_MARKER, markBrowserSession } from "@/app/utils/auth"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
@@ -21,10 +21,8 @@ export default function AuthModal({
   const router = useRouter()
 
   const [isForgot, setIsForgot] = useState(false)
-
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-
   const [forgotCooldown, setForgotCooldown] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -51,9 +49,7 @@ export default function AuthModal({
     }
 
     updateCooldown()
-
     const interval = setInterval(updateCooldown, 1000)
-
     return () => clearInterval(interval)
   }, [])
 
@@ -66,6 +62,14 @@ export default function AuthModal({
     setPassword("")
     setShowPassword(false)
     setIsForgot(false)
+  }
+
+  const finishLogin = (role: string) => {
+    markBrowserSession(role)
+    // Keep the legacy callback shape while passing only the non-secret marker.
+    onLoginSuccess(role, SESSION_MARKER)
+    resetFields()
+    onClose()
   }
 
   const login = async () => {
@@ -89,37 +93,29 @@ export default function AuthModal({
 
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
           username: email.trim(),
-          password: password,
+          password,
         }),
       })
 
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        if (typeof data.detail === "string") {
-          alert(data.detail)
-        } else {
-          alert("Invalid email or password.")
-        }
-
+        alert(typeof data.detail === "string" ? data.detail : "Invalid email or password.")
         return
       }
 
-      if (!data.access_token) {
+      if (!data.role) {
         alert("Login failed.")
         return
       }
 
-      localStorage.setItem("token", data.access_token)
-
-      onLoginSuccess(data.role, data.access_token)
-      resetFields()
-      onClose()
+      finishLogin(data.role)
     } catch (error) {
       console.error("Login error:", error)
       alert("Failed to connect to the server. Please make sure the backend is running.")
@@ -166,7 +162,6 @@ export default function AuthModal({
             : 60
 
         const cooldownUntil = Date.now() + retryAfter * 1000
-
         localStorage.setItem("resetCooldownUntil", String(cooldownUntil))
         setForgotCooldown(retryAfter)
 
@@ -189,7 +184,6 @@ export default function AuthModal({
       }
 
       const cooldownUntil = Date.now() + 60 * 1000
-
       localStorage.setItem("resetCooldownUntil", String(cooldownUntil))
       setForgotCooldown(60)
 
@@ -231,12 +225,8 @@ export default function AuthModal({
         <form
           onSubmit={(e) => {
             e.preventDefault()
-
-            if (isForgot) {
-              forgotPassword()
-            } else {
-              login()
-            }
+            if (isForgot) forgotPassword()
+            else login()
           }}
         >
           <input
@@ -301,7 +291,7 @@ export default function AuthModal({
 
         {!isForgot && (
           <GoogleAuthButton
-            onAuthenticated={onLoginSuccess}
+            onAuthenticated={(role) => finishLogin(role)}
             onOnboarding={() => {
               resetFields()
               onClose()
