@@ -4,7 +4,7 @@ import hashlib
 import jwt
 import secrets
 
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,8 @@ from app.core.config import JWT_ALGORITHM, settings
 from app.db import get_db
 from app.models.user import User
 
+
+SESSION_COOKIE_NAME = "ourskin_session"
 
 # PASSWORD HASHING
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -92,14 +94,28 @@ def decode_access_token(token: str) -> dict:
 
 
 # AUTH DEPENDENCIES
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# Bearer authentication remains accepted during the Phase 5 migration so older
+# frontend pages continue to work while the browser session moves to HttpOnly
+# cookies. Once all callers are cookie-based this compatibility path can be
+# removed.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    payload = decode_access_token(token)
+    session_token = token or request.cookies.get(SESSION_COOKIE_NAME)
+
+    if not session_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = decode_access_token(session_token)
     email = payload.get("sub")
 
     if email is None:
