@@ -4,12 +4,10 @@ import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { persistAuthSession } from "@/lib/auth-session";
+import { SESSION_MARKER } from "@/app/utils/auth";
 import styles from "./GoogleAuthButton.module.css";
 
-type GoogleResponse = {
-  credential: string;
-};
-
+type GoogleResponse = { credential: string };
 type GoogleStartResponse = {
   action: "authenticated" | "link_required" | "onboarding_required" | "verification_required";
   access_token?: string;
@@ -18,7 +16,6 @@ type GoogleStartResponse = {
   onboarding_token?: string;
   profile?: { email: string; first_name?: string; last_name?: string };
 };
-
 type Props = {
   onAuthenticated: (role: string, token: string) => void;
   onOnboarding?: () => void;
@@ -47,10 +44,10 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   const [linkPassword, setLinkPassword] = useState("");
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const finishAuthentication = useCallback((data: GoogleStartResponse) => {
+  const finishAuthentication = useCallback(async (data: GoogleStartResponse) => {
     if (!data.access_token || !data.role) throw new Error("Invalid authentication response");
-    persistAuthSession({ access_token: data.access_token, role: data.role });
-    onAuthenticated(data.role, data.access_token);
+    await persistAuthSession({ access_token: data.access_token, role: data.role });
+    onAuthenticated(data.role, SESSION_MARKER);
   }, [onAuthenticated]);
 
   const handleCredential = useCallback(async ({ credential }: GoogleResponse) => {
@@ -59,6 +56,7 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
     try {
       const response = await fetch(`${API_BASE_URL}/auth/google/start`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential }),
       });
@@ -66,14 +64,11 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
       if (!response.ok) throw new Error(data.detail || "Google authentication failed");
 
       if (data.action === "authenticated") {
-        finishAuthentication(data);
+        await finishAuthentication(data);
       } else if (data.action === "link_required") {
         setLinkCredential(credential);
       } else if (data.action === "onboarding_required") {
-        sessionStorage.setItem(
-          "googleOnboarding",
-          JSON.stringify({ token: data.onboarding_token, profile: data.profile })
-        );
+        sessionStorage.setItem("googleOnboarding", JSON.stringify({ token: data.onboarding_token, profile: data.profile }));
         onOnboarding?.();
       } else {
         setError(data.message || "Please complete account verification before logging in.");
@@ -92,12 +87,13 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
     try {
       const response = await fetch(`${API_BASE_URL}/auth/google/link`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: linkCredential, password: linkPassword }),
       });
       const data = (await response.json().catch(() => ({}))) as GoogleStartResponse & { detail?: string };
       if (!response.ok) throw new Error(data.detail || "Unable to link Google account");
-      if (data.action === "authenticated") finishAuthentication(data);
+      if (data.action === "authenticated") await finishAuthentication(data);
       else setError(data.message || "Verify your OurSkin email before logging in.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to link Google account");
@@ -109,18 +105,9 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   useEffect(() => {
     if (!scriptReady || !clientId || !window.google || !containerRef.current) return;
     containerRef.current.replaceChildren();
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleCredential,
-      ux_mode: "popup",
-    });
+    window.google.accounts.id.initialize({ client_id: clientId, callback: handleCredential, ux_mode: "popup" });
     window.google.accounts.id.renderButton(containerRef.current, {
-      type: "standard",
-      theme: "outline",
-      size: "large",
-      text: "continue_with",
-      shape: "pill",
-      width: 360,
+      type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", width: 360,
     });
     return () => window.google?.accounts.id.cancel();
   }, [scriptReady, clientId, handleCredential]);
