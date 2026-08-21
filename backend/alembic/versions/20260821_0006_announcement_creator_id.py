@@ -16,6 +16,8 @@ down_revision: str | None = "20260821_0005"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
+CREATOR_FK_NAME = "fk_announcements_created_by_users"
+
 
 def _column_type(table_name: str, column_name: str):
     inspector = sa.inspect(op.get_bind())
@@ -25,7 +27,7 @@ def _column_type(table_name: str, column_name: str):
     return None
 
 
-def _creator_fk_exists() -> bool:
+def _creator_fk_name() -> str | None:
     inspector = sa.inspect(op.get_bind())
     for foreign_key in inspector.get_foreign_keys("announcements"):
         if (
@@ -33,8 +35,8 @@ def _creator_fk_exists() -> bool:
             and foreign_key.get("referred_table") == "users"
             and foreign_key.get("referred_columns") == ["id"]
         ):
-            return True
-    return False
+            return foreign_key.get("name")
+    return None
 
 
 def upgrade() -> None:
@@ -54,9 +56,9 @@ def upgrade() -> None:
             existing_nullable=True,
         )
 
-    if not _creator_fk_exists():
+    if _creator_fk_name() is None:
         op.create_foreign_key(
-            "fk_announcements_created_by_users",
+            CREATOR_FK_NAME,
             "announcements",
             "users",
             ["created_by"],
@@ -66,9 +68,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if _creator_fk_exists():
+    # Only remove the FK if this revision created the named constraint. A fresh
+    # Phase-4 bootstrap may already have an equivalent metadata-created FK.
+    if _creator_fk_name() == CREATOR_FK_NAME:
         op.drop_constraint(
-            "fk_announcements_created_by_users",
+            CREATOR_FK_NAME,
             "announcements",
             type_="foreignkey",
         )
