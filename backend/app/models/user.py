@@ -17,6 +17,7 @@ class User(Base):
 
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    google_sub = Column(String(255), unique=True, index=True, nullable=True)
     contact = Column(String, nullable=True)
 
     role = Column(String, default="patient", nullable=False)

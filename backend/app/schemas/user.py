@@ -37,6 +37,33 @@ class UserLogin(BaseModel):
     password: str
 
 
+class GoogleCredentialRequest(BaseModel):
+    credential: str
+
+
+class GoogleLinkRequest(GoogleCredentialRequest):
+    password: str
+
+
+class GooglePatientRegistration(BaseModel):
+    onboarding_token: str
+    first_name: str
+    last_name: str
+    date_of_birth: date
+    address: str
+    contact: str
+
+    guardian_first_name: Optional[str] = None
+    guardian_last_name: Optional[str] = None
+    guardian_relationship: Optional[str] = None
+    guardian_contact: Optional[str] = None
+    guardian_email: Optional[EmailStr] = None
+    guardian_consent: Optional[bool] = False
+
+    terms_accepted: bool = False
+    privacy_accepted: bool = False
+
+
 class UserResponse(BaseModel):
     id: int
     name: str

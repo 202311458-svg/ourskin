@@ -1,14 +1,15 @@
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import jwt
-import os
+import secrets
 
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.db import SessionLocal
+from app.core.config import JWT_ALGORITHM, settings
+from app.db import get_db
 from app.models.user import User
 
 
@@ -27,36 +28,49 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-# JWT SETTINGS
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
-
-
 def hash_token(token: str) -> str:
-    token_value = f"{SECRET_KEY}:{token}"
+    token_value = f"{settings.secret_key.get_secret_value()}:{token}"
     return hashlib.sha256(token_value.encode("utf-8")).hexdigest()
 
 
 # TOKEN CREATION
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-
-    expire = datetime.utcnow() + (
+    now = datetime.now(timezone.utc)
+    expire = now + (
         expires_delta
         if expires_delta
-        else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        else timedelta(minutes=settings.access_token_expire_minutes)
     )
 
-    to_encode.update({"exp": expire})
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+            "jti": secrets.token_urlsafe(24),
+        }
+    )
 
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        to_encode,
+        settings.secret_key.get_secret_value(),
+        algorithm=JWT_ALGORITHM,
+    )
 
 
 # TOKEN DECODING
-def decode_access_token(token: str):
+def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.secret_key.get_secret_value(),
+            algorithms=[JWT_ALGORITHM],
+            issuer=settings.jwt_issuer,
+            audience=settings.jwt_audience,
+            options={"require": ["exp", "iat", "iss", "aud", "jti", "sub"]},
+        )
         return payload
 
     except jwt.ExpiredSignatureError:
@@ -76,7 +90,10 @@ def decode_access_token(token: str):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
     payload = decode_access_token(token)
     email = payload.get("sub")
 
@@ -86,24 +103,18 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             detail="Invalid authentication",
         )
 
-    db: Session = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
 
-    try:
-        user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication",
+        )
 
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-            )
+    if user.status != "Active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive.",
+        )
 
-        if user.status != "Active":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is inactive.",
-            )
-
-        return user
-
-    finally:
-        db.close()
+    return user

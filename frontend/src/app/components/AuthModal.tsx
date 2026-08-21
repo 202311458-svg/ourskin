@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
 import styles from "@/app/components/AuthModal.module.css"
+import GoogleAuthButton from "@/app/components/GoogleAuthButton"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -297,6 +298,17 @@ export default function AuthModal({
               : "Login"}
           </button>
         </form>
+
+        {!isForgot && (
+          <GoogleAuthButton
+            onAuthenticated={onLoginSuccess}
+            onOnboarding={() => {
+              resetFields()
+              onClose()
+              router.push("/register?google=1")
+            }}
+          />
+        )}
 
         {!isForgot ? (
           <p className={styles.switch}>
