@@ -1,4 +1,6 @@
-from datetime import date, datetime, time
+from datetime import date as Date
+from datetime import datetime
+from datetime import time as Time
 from typing import Optional
 
 from pydantic import BaseModel
@@ -10,8 +12,8 @@ class AppointmentCreate(BaseModel):
     # Required only for regular appointment bookings.
     # Initial evaluation requests intentionally send these as null or omit them.
     schedule_id: Optional[int] = None
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    start_time: Optional[Time] = None
+    end_time: Optional[Time] = None
 
     patient_contact: Optional[str] = None
     patient_address: Optional[str] = None
@@ -29,9 +31,9 @@ class AppointmentScheduleAssign(BaseModel):
     # based on staff-doctor coordination without using doctor_schedules.
     schedule_id: Optional[int] = None
     doctor_id: Optional[int] = None
-    schedule_date: Optional[date] = None
-    start_time: time
-    end_time: time
+    schedule_date: Optional[Date] = None
+    start_time: Time
+    end_time: Time
     consultation_mode: Optional[str] = "In-Person"
 
 
@@ -66,9 +68,9 @@ class AppointmentOut(BaseModel):
 
     doctor_name: Optional[str]
 
-    date: Optional[date]
-    time: Optional[time]
-    end_time: Optional[time]
+    date: Optional[Date]
+    time: Optional[Time]
+    end_time: Optional[Time]
     services: str
 
     appointment_type: str
@@ -85,3 +87,36 @@ class AppointmentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StaffAppointmentListItem(BaseModel):
+    """Least-privilege contract for staff/admin appointment work queues."""
+
+    id: int
+    patient_id: Optional[int] = None
+    doctor_id: Optional[int] = None
+    schedule_id: Optional[int] = None
+    service_id: Optional[int] = None
+    patient_name: str
+    doctor_name: Optional[str] = None
+    date: Optional[Date] = None
+    time: Optional[Time] = None
+    end_time: Optional[Time] = None
+    services: str
+    appointment_type: str
+    consultation_mode: str
+    is_initial_evaluation_request: bool
+    status: str
+
+
+class StaffAppointmentHistoryItem(AppointmentOut):
+    last_action_by_name: Optional[str] = None
+    last_action_by_role: Optional[str] = None
+
+
+class PaginatedStaffAppointmentHistory(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    items: list[StaffAppointmentHistoryItem]

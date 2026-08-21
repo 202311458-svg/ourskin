@@ -1,5 +1,29 @@
 import { apiFetch } from "@/lib/api";
 
+export type PaginatedResponse<T> = {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  items: T[];
+};
+
+function assertPaginatedResponse<T>(value: unknown, resource: string): PaginatedResponse<T> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !Array.isArray((value as PaginatedResponse<T>).items) ||
+    typeof (value as PaginatedResponse<T>).total !== "number" ||
+    typeof (value as PaginatedResponse<T>).page !== "number" ||
+    typeof (value as PaginatedResponse<T>).page_size !== "number" ||
+    typeof (value as PaginatedResponse<T>).total_pages !== "number"
+  ) {
+    throw new Error(`Invalid paginated ${resource} response.`);
+  }
+
+  return value as PaginatedResponse<T>;
+}
+
 export type AdminDashboardStats = {
   total_users: number;
   total_patients: number;
@@ -227,12 +251,16 @@ export async function getAdminDashboard() {
   return apiFetch<AdminDashboardStats>("/admin/dashboard");
 }
 
-export async function getAdminUsers() {
-  return apiFetch<AdminUser[]>("/admin/users");
+export async function getAdminUsers(page = 1, pageSize = 25) {
+  const data = await apiFetch<unknown>(`/admin/users?page=${page}&page_size=${pageSize}`);
+  return assertPaginatedResponse<AdminUser>(data, "users");
 }
 
-export async function getAdminAppointments() {
-  return apiFetch<AdminAppointment[]>("/admin/appointments");
+export async function getAdminAppointments(page = 1, pageSize = 25, status?: string) {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  if (status && status !== "all") params.set("status", status);
+  const data = await apiFetch<unknown>(`/admin/appointments?${params.toString()}`);
+  return assertPaginatedResponse<AdminAppointment>(data, "appointments");
 }
 
 export async function getAppointmentById(appointmentId: number) {
@@ -319,12 +347,14 @@ export async function updateAdminFollowUp(
   });
 }
 
-export async function getAdminAiLogs() {
-  return apiFetch<AdminAiLog[]>("/admin/ai-logs");
+export async function getAdminAiLogs(page = 1, pageSize = 25) {
+  const data = await apiFetch<unknown>(`/admin/ai-logs?page=${page}&page_size=${pageSize}`);
+  return assertPaginatedResponse<AdminAiLog>(data, "AI logs");
 }
 
-export async function getAdminAuditLogs() {
-  return apiFetch<AuditLog[]>("/admin/audit-logs");
+export async function getAdminAuditLogs(page = 1, pageSize = 25) {
+  const data = await apiFetch<unknown>(`/admin/audit-logs?page=${page}&page_size=${pageSize}`);
+  return assertPaginatedResponse<AuditLog>(data, "audit logs");
 }
 
 export type AdminDoctor = {

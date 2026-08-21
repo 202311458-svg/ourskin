@@ -15,6 +15,7 @@ from app.core.security import get_current_user
 from app.schemas.user import StaffCreate
 from app.models.audit_log import AuditLog
 from app.services.audit_service import log_action
+from app.schemas.pagination import get_total_pages
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -275,6 +276,7 @@ def get_users(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": get_total_pages(total, page_size),
         "items": [serialize_admin_user(user) for user in users],
     }
     
@@ -310,6 +312,7 @@ def get_appointments(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": get_total_pages(total, page_size),
         "items": [
             serialize_admin_appointment(appointment, db)
             for appointment in appointments
@@ -569,6 +572,7 @@ def get_ai_logs(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": get_total_pages(total, page_size),
         "items": results,
     }
 
@@ -1217,5 +1221,6 @@ def get_audit_logs(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": get_total_pages(total, page_size),
         "items": items,
     }

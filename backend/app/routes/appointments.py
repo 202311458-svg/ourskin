@@ -1,7 +1,9 @@
 from datetime import date, datetime, time, timedelta, timezone
+import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,12 +17,29 @@ from app.models.doctor_service import DoctorService
 from app.models.service import Service
 from app.models.skin_analysis import SkinAnalysis
 from app.models.user import User
-from app.schemas.appointment import AppointmentCreate, AppointmentScheduleAssign, AppointmentStatusUpdate
+from app.schemas.appointment import (
+    AppointmentCreate,
+    AppointmentScheduleAssign,
+    AppointmentStatusUpdate,
+    PaginatedStaffAppointmentHistory,
+    StaffAppointmentListItem,
+)
 from app.core.security import get_current_user
+from app.core.authorization import (
+    get_authorized_appointment_or_404,
+    require_staff_or_admin,
+)
 from app.core.email import send_appointment_approval_email
+from app.schemas.pagination import get_total_pages
+from app.services.notification_service import (
+    create_notification,
+    create_notifications_for_recipients,
+    get_active_user_ids_by_roles,
+)
 
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
+logger = logging.getLogger(__name__)
 
 
 VALID_STATUSES = {
@@ -92,7 +111,9 @@ ROLE_STATUS_TRANSITIONS = {
         "Approved": {"Completed", "Cancelled", "No-Show"},
     },
     "doctor": {
-        "Approved": {"Completed", "Cancelled"},
+        # Completion is intentionally excluded. Doctors must use the atomic
+        # complete-with-report command in the doctor router.
+        "Approved": {"Cancelled"},
     },
 }
 
@@ -279,23 +300,31 @@ def create_appointment_log(
     )
 
     db.add(log)
-    db.commit()
-    db.refresh(log)
-
     return log
 
 
-def commit_or_raise_slot_conflict(db: Session):
+def raise_booking_conflict(error: IntegrityError):
+    raise HTTPException(
+        status_code=409,
+        detail="This appointment conflicts with an existing active booking.",
+    ) from error
+
+
+def flush_or_raise_booking_conflict(db: Session):
+    try:
+        db.flush()
+    except IntegrityError as error:
+        db.rollback()
+        raise_booking_conflict(error)
+
+
+def commit_or_raise_booking_conflict(db: Session):
     try:
         db.commit()
 
     except IntegrityError as error:
         db.rollback()
-
-        raise HTTPException(
-            status_code=409,
-            detail="This doctor already has an active appointment during this time slot.",
-        ) from error
+        raise_booking_conflict(error)
 
 
 def validate_status_transition(role: str, current_status: str, new_status: str):
@@ -373,6 +402,26 @@ def serialize_appointment(appointment: AppointmentModel, db: Optional[Session] =
             if appointment.approval_email_sent_at
             else None
         ),
+    }
+
+
+def serialize_staff_appointment_list_item(appointment: AppointmentModel):
+    return {
+        "id": appointment.id,
+        "patient_id": appointment.patient_id,
+        "doctor_id": appointment.doctor_id,
+        "schedule_id": appointment.schedule_id,
+        "service_id": appointment.service_id,
+        "patient_name": appointment.patient_name,
+        "doctor_name": appointment.doctor_name,
+        "date": appointment.date,
+        "time": appointment.time,
+        "end_time": appointment.end_time,
+        "services": appointment.services,
+        "appointment_type": appointment.appointment_type,
+        "consultation_mode": appointment.consultation_mode,
+        "is_initial_evaluation_request": appointment.is_initial_evaluation_request,
+        "status": appointment.status,
     }
 
 
@@ -516,6 +565,62 @@ def get_week_window(value: date):
     return monday, saturday
 
 
+def notify_appointment_operators(db: Session, appointment: AppointmentModel):
+    recipient_ids = get_active_user_ids_by_roles(db, ["staff", "admin"])
+    role_rows = (
+        db.query(User.id, User.role).filter(User.id.in_(recipient_ids)).all()
+        if recipient_ids
+        else []
+    )
+    targets = {
+        recipient_id: (
+            "/pages/staff/requests"
+            if role == "staff"
+            else "/pages/admin/appointments"
+        )
+        for recipient_id, role in role_rows
+    }
+    create_notifications_for_recipients(
+        db,
+        recipient_ids=recipient_ids,
+        title="New appointment request",
+        message=f"{appointment.patient_name} requested {appointment.services}.",
+        notification_type="appointment_created",
+        related_entity_type="appointment",
+        related_entity_id=appointment.id,
+        target_url_by_recipient=targets,
+    )
+
+
+def notify_appointment_status_change(
+    db: Session,
+    appointment: AppointmentModel,
+    previous_status: str,
+):
+    if appointment.patient_id:
+        create_notification(
+            db,
+            recipient_id=appointment.patient_id,
+            title=f"Appointment {appointment.status.lower()}",
+            message=f"Your {appointment.services} appointment changed from {previous_status} to {appointment.status}.",
+            notification_type="appointment_status_changed",
+            related_entity_type="appointment",
+            related_entity_id=appointment.id,
+            target_url="/pages/patient/history",
+        )
+    if appointment.doctor_id and appointment.doctor_id != appointment.patient_id:
+        create_notification(
+            db,
+            recipient_id=appointment.doctor_id,
+            title="Appointment status updated",
+            message=f"Appointment #{appointment.id} for {appointment.patient_name} is now {appointment.status}.",
+            notification_type="appointment_status_changed",
+            related_entity_type="appointment",
+            related_entity_id=appointment.id,
+            target_url="/pages/doctor/appointments",
+        )
+
+
 @router.post("/")
 def create_appointment(
     data: AppointmentCreate,
@@ -599,8 +704,7 @@ def create_appointment(
         )
 
         db.add(appointment)
-        commit_or_raise_slot_conflict(db)
-        db.refresh(appointment)
+        flush_or_raise_booking_conflict(db)
 
         create_appointment_log(
             db=db,
@@ -611,6 +715,11 @@ def create_appointment(
             performed_by_role=current_user.role,
             reason="Initial evaluation request submitted",
         )
+
+        notify_appointment_operators(db, appointment)
+
+        commit_or_raise_booking_conflict(db)
+        db.refresh(appointment)
 
         return {
             "message": "Initial evaluation request created",
@@ -748,8 +857,7 @@ def create_appointment(
     )
 
     db.add(appointment)
-    db.commit()
-    db.refresh(appointment)
+    flush_or_raise_booking_conflict(db)
 
     create_appointment_log(
         db=db,
@@ -761,6 +869,21 @@ def create_appointment(
         reason=None,
     )
 
+    notify_appointment_operators(db, appointment)
+    create_notification(
+        db,
+        recipient_id=doctor.id,
+        title="New appointment request",
+        message=f"{patient.name} requested {service.name} on {schedule.schedule_date.isoformat()}.",
+        notification_type="appointment_created",
+        related_entity_type="appointment",
+        related_entity_id=appointment.id,
+        target_url="/pages/doctor/appointments",
+    )
+
+    commit_or_raise_booking_conflict(db)
+    db.refresh(appointment)
+
     return {
         "message": "Appointment created",
         "appointment": serialize_appointment(appointment, db),
@@ -769,17 +892,24 @@ def create_appointment(
 
 @router.get("/my")
 def get_my_appointments(
+    page: int | None = Query(None, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "patient":
         raise HTTPException(status_code=403, detail="Patient access only")
 
-    appointments = (
+    query = (
         db.query(AppointmentModel)
         .filter(AppointmentModel.patient_id == current_user.id)
         .order_by(AppointmentModel.id.desc())
-        .all()
+    )
+    total = query.count()
+    appointments = (
+        query.offset((page - 1) * page_size).limit(page_size).all()
+        if page is not None
+        else query.all()
     )
 
     results = []
@@ -838,7 +968,15 @@ def get_my_appointments(
 
         results.append(item)
 
-    return results
+    if page is None:
+        return results
+    return {
+        "items": results,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": get_total_pages(total, page_size),
+    }
 
 
 @router.put("/{id}/status")
@@ -848,20 +986,14 @@ def update_appointment_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
     role = current_user.role
-    current_status = appointment.status
-    new_status = body.status
 
     if role not in ["patient", "staff", "admin", "doctor"]:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    if role == "patient" and appointment.patient_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You can only modify your own appointment")
+    appointment = get_authorized_appointment_or_404(db, id, current_user)
+    current_status = appointment.status
+    new_status = body.status
 
     validate_status_transition(role, current_status, new_status)
 
@@ -968,9 +1100,6 @@ def update_appointment_status(
 
     appointment.status = new_status
 
-    db.commit()
-    db.refresh(appointment)
-
     create_appointment_log(
         db=db,
         appointment_id=appointment.id,
@@ -980,6 +1109,11 @@ def update_appointment_status(
         performed_by_role=current_user.role,
         reason=approval_instruction if new_status == "Approved" else appointment.cancel_reason,
     )
+
+    notify_appointment_status_change(db, appointment, current_status)
+
+    commit_or_raise_booking_conflict(db)
+    db.refresh(appointment)
 
     if new_status == "Approved" and body.send_email:
         try:
@@ -1005,8 +1139,12 @@ def update_appointment_status(
             db.commit()
             db.refresh(appointment)
 
-        except Exception as email_error:
-            email_warning = str(email_error)
+        except Exception:
+            logger.exception(
+                "Appointment approval email failed for appointment_id=%s",
+                appointment.id,
+            )
+            email_warning = "The appointment was updated, but notification delivery failed."
 
     return {
         "message": (
@@ -1019,8 +1157,11 @@ def update_appointment_status(
     }
 
 
-@router.get("/today")
-def get_today_appointments(db: Session = Depends(get_db)):
+@router.get("/today", response_model=list[StaffAppointmentListItem])
+def get_today_appointments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
+):
     today = date.today()
 
     appointments = (
@@ -1030,11 +1171,14 @@ def get_today_appointments(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment, db) for appointment in appointments]
+    return [serialize_staff_appointment_list_item(item) for item in appointments]
 
 
-@router.get("/requests")
-def get_pending_requests(db: Session = Depends(get_db)):
+@router.get("/requests", response_model=list[StaffAppointmentListItem])
+def get_pending_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
+):
     appointments = (
         db.query(AppointmentModel)
         .filter(AppointmentModel.status == "Pending")
@@ -1042,11 +1186,14 @@ def get_pending_requests(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment, db) for appointment in appointments]
+    return [serialize_staff_appointment_list_item(item) for item in appointments]
 
 
-@router.get("/confirmed")
-def get_confirmed_appointments(db: Session = Depends(get_db)):
+@router.get("/confirmed", response_model=list[StaffAppointmentListItem])
+def get_confirmed_appointments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
+):
     appointments = (
         db.query(AppointmentModel)
         .filter(AppointmentModel.status == "Approved")
@@ -1054,7 +1201,61 @@ def get_confirmed_appointments(db: Session = Depends(get_db)):
         .all()
     )
 
-    return [serialize_appointment(appointment, db) for appointment in appointments]
+    return [serialize_staff_appointment_list_item(item) for item in appointments]
+
+
+@router.get("/history", response_model=PaginatedStaffAppointmentHistory)
+def get_staff_appointment_history(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff_or_admin),
+):
+    query = db.query(AppointmentModel)
+
+    if status and status != "All":
+        if status not in VALID_STATUSES:
+            raise HTTPException(status_code=400, detail="Invalid status")
+        query = query.filter(AppointmentModel.status == status)
+
+    total = query.count()
+    appointments = (
+        query.order_by(AppointmentModel.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    appointment_ids = [appointment.id for appointment in appointments]
+    latest_logs = {}
+
+    if appointment_ids:
+        logs = (
+            db.query(AppointmentLog)
+            .filter(AppointmentLog.appointment_id.in_(appointment_ids))
+            .order_by(AppointmentLog.created_at.desc(), AppointmentLog.id.desc())
+            .all()
+        )
+        for log in logs:
+            latest_logs.setdefault(log.appointment_id, log)
+
+    items = []
+    for appointment in appointments:
+        item = serialize_appointment(appointment, db)
+        latest_log = latest_logs.get(appointment.id)
+        item.update({
+            "last_action_by_name": latest_log.performed_by_name if latest_log else None,
+            "last_action_by_role": latest_log.performed_by_role if latest_log else None,
+        })
+        items.append(item)
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": get_total_pages(total, page_size),
+        "items": items,
+    }
 
 
 @router.get("/history-with-analysis")
@@ -1501,9 +1702,6 @@ def assign_schedule_to_initial_evaluation_request(
 
     appointment.is_initial_evaluation_request = True
 
-    commit_or_raise_slot_conflict(db)
-    db.refresh(appointment)
-
     create_appointment_log(
         db=db,
         appointment_id=appointment.id,
@@ -1513,6 +1711,30 @@ def assign_schedule_to_initial_evaluation_request(
         performed_by_role=current_user.role,
         reason=f"Assigned to {appointment.doctor_name} on {appointment.date.isoformat()} from {format_time(appointment.time)} to {format_time(appointment.end_time)}",
     )
+
+    create_notification(
+        db,
+        recipient_id=appointment.patient_id,
+        title="Appointment schedule assigned",
+        message=f"Your {appointment.services} evaluation was assigned to {appointment.doctor_name} on {appointment.date.isoformat()}.",
+        notification_type="appointment_rescheduled",
+        related_entity_type="appointment",
+        related_entity_id=appointment.id,
+        target_url="/pages/patient/history",
+    )
+    create_notification(
+        db,
+        recipient_id=appointment.doctor_id,
+        title="Initial evaluation assigned",
+        message=f"{appointment.patient_name} was assigned to your schedule.",
+        notification_type="appointment_assigned",
+        related_entity_type="appointment",
+        related_entity_id=appointment.id,
+        target_url="/pages/doctor/appointments",
+    )
+
+    commit_or_raise_booking_conflict(db)
+    db.refresh(appointment)
 
     return {
         "message": "Initial evaluation schedule assigned",
@@ -1529,13 +1751,7 @@ def get_appointment_logs(
     if current_user.role not in ["staff", "admin", "doctor", "patient"]:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    if current_user.role == "patient" and appointment.patient_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    appointment = get_authorized_appointment_or_404(db, id, current_user)
 
     logs = (
         db.query(AppointmentLog)
@@ -1565,15 +1781,9 @@ def get_appointment_by_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == id).first()
-
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    if current_user.role == "patient" and appointment.patient_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
-
     if current_user.role not in ["staff", "admin", "doctor", "patient"]:
         raise HTTPException(status_code=403, detail="Not allowed")
+
+    appointment = get_authorized_appointment_or_404(db, id, current_user)
 
     return serialize_appointment(appointment, db)
