@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.authorization import get_doctor_appointment_or_404
+from app.core.clock import clinic_now, get_clinic_timezone
 from app.core.security import get_current_user
 from app.db import get_db
 from app.models.user import User
@@ -28,8 +29,12 @@ def ensure_appointment_has_started(appointment) -> None:
             detail="Appointment must have a confirmed schedule before it can be completed.",
         )
 
-    scheduled_start = datetime.combine(appointment.date, appointment.time)
-    if scheduled_start > datetime.now():
+    scheduled_start = datetime.combine(
+        appointment.date,
+        appointment.time,
+        tzinfo=get_clinic_timezone(),
+    )
+    if scheduled_start > clinic_now():
         raise HTTPException(
             status_code=400,
             detail="Appointment cannot be completed before its scheduled start time.",
