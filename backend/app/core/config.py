@@ -1,7 +1,7 @@
 """Validated application configuration.
 
 Secrets are deliberately loaded once and never printed or included in validation
-messages.  Importing this module fails closed when required configuration is
+messages. Importing this module fails closed when required configuration is
 missing or unsafe.
 """
 
@@ -11,6 +11,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -21,8 +22,6 @@ BOOTSTRAP_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 if BOOTSTRAP_ENVIRONMENT in {"development", "test"}:
     load_dotenv(BACKEND_DIR / ".env", override=False)
 
-# The signing algorithm is application-controlled. It must not be selected by
-# deployment input or by an untrusted token header.
 JWT_ALGORITHM = "HS256"
 
 
@@ -37,6 +36,7 @@ class Settings(BaseModel):
     cors_origins: tuple[str, ...] = ()
     google_client_id: str | None = None
     google_onboarding_token_expire_minutes: int = Field(default=15, ge=5, le=60)
+    clinic_timezone: str = "Asia/Manila"
 
     @field_validator("database_url", "jwt_issuer", "jwt_audience")
     @classmethod
@@ -44,6 +44,16 @@ class Settings(BaseModel):
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("required configuration value must not be empty")
+        return cleaned
+
+    @field_validator("clinic_timezone")
+    @classmethod
+    def validate_clinic_timezone(cls, value: str) -> str:
+        cleaned = value.strip()
+        try:
+            ZoneInfo(cleaned)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError("CLINIC_TIMEZONE must be a valid IANA timezone")
         return cleaned
 
     @field_validator("secret_key")
@@ -85,6 +95,7 @@ class Settings(BaseModel):
             google_onboarding_token_expire_minutes=os.getenv(
                 "GOOGLE_ONBOARDING_TOKEN_EXPIRE_MINUTES", "15"
             ),
+            clinic_timezone=os.getenv("CLINIC_TIMEZONE", "Asia/Manila"),
         )
 
 
