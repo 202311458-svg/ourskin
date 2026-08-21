@@ -8,6 +8,7 @@ from typing import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import UUID
 
 
 revision: str = "20260821_0006"
@@ -78,7 +79,7 @@ def downgrade() -> None:
             "announcements",
             "created_by",
             existing_type=sa.Integer(),
-            type_=sa.dialects.postgresql.UUID(as_uuid=True),
+            type_=UUID(as_uuid=True),
             postgresql_using="NULL::uuid",
             existing_nullable=True,
         )
