@@ -16,27 +16,24 @@ branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
-def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("verification_token_expires", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.add_column(
-        "users",
-        sa.Column("failed_login_attempts", sa.Integer(), server_default="0", nullable=False),
-    )
-    op.add_column(
-        "users",
-        sa.Column("login_locked_until", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.add_column(
-        "users",
-        sa.Column("auth_invalid_before", sa.DateTime(timezone=True), nullable=True),
-    )
+def _column_names() -> set[str]:
+    inspector = sa.inspect(op.get_bind())
+    return {column["name"] for column in inspector.get_columns("users")}
 
-    # Existing unverified accounts may still have pre-Phase-2 plaintext
-    # verification tokens. Keep those links usable only for a bounded window;
-    # new tokens are stored as keyed hashes by the application model.
+
+def upgrade() -> None:
+    columns = _column_names()
+    additions = [
+        ("verification_token_expires", sa.Column("verification_token_expires", sa.DateTime(timezone=True), nullable=True)),
+        ("failed_login_attempts", sa.Column("failed_login_attempts", sa.Integer(), server_default="0", nullable=False)),
+        ("login_locked_until", sa.Column("login_locked_until", sa.DateTime(timezone=True), nullable=True)),
+        ("auth_invalid_before", sa.Column("auth_invalid_before", sa.DateTime(timezone=True), nullable=True)),
+    ]
+
+    for name, column in additions:
+        if name not in columns:
+            op.add_column("users", column)
+
     op.execute(
         sa.text(
             """

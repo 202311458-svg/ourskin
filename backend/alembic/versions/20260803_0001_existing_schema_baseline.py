@@ -1,14 +1,37 @@
-"""Mark the audited pre-Alembic schema as the existing-schema baseline.
+"""Create the audited application schema baseline.
 
 Revision ID: 20260803_0001
 Revises: None
 
-This revision is intentionally empty. It must only be stamped on an existing
-database after the staging schema has been compared with SQLAlchemy metadata.
-It is not a fresh-database bootstrap migration.
+This revision is safe for both an empty database and an existing OurSkin
+schema. SQLAlchemy ``create_all(checkfirst=True)`` creates only missing tables;
+it does not rewrite or drop existing production tables. Later migrations remain
+responsible for database-specific integrity constraints and data transitions.
 """
 
 from typing import Sequence
+
+from alembic import op
+
+from app.db import Base
+
+# Import every model module so Base.metadata contains the complete application
+# schema when Alembic is run without importing the FastAPI application first.
+from app.models import (  # noqa: F401,E402
+    announcement,
+    appointment,
+    appointment_log,
+    audit_log,
+    clinic_unavailable_date,
+    diagnosis_report,
+    doctor_schedule,
+    doctor_service,
+    follow_up,
+    notification,
+    service,
+    skin_analysis,
+    user,
+)
 
 
 revision: str = "20260803_0001"
@@ -18,8 +41,10 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    pass
+    Base.metadata.create_all(bind=op.get_bind(), checkfirst=True)
 
 
 def downgrade() -> None:
+    # The baseline may have been applied to a pre-existing production schema.
+    # Never drop the entire application schema from a baseline downgrade.
     pass
