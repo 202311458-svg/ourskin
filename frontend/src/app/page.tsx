@@ -194,6 +194,8 @@ const doctors: Doctor[] = [
 
 const dermatologistTeam = doctors.slice(1, 5);
 const cosmeticSurgeons = doctors.slice(5);
+const clinicalServiceIndexes = [0, 1, 3];
+const aestheticServiceIndexes = [2, 4, 5, 6, 7];
 
 export default function Home() {
   const router = useRouter();
@@ -405,32 +407,35 @@ export default function Home() {
           <div className={styles.osServiceIndex}>
             <div className={styles.osServiceGroup}>
               <p>Clinical dermatology</p>
-              {serviceCategories.slice(0, 4).map((service, index) => (
-                <button
-                  type="button"
-                  key={service.title}
-                  className={styles.osServiceRow}
-                  onClick={() => openService(index)}
-                >
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <strong>{service.title}</strong>
-                  <span aria-hidden="true">↗</span>
-                </button>
-              ))}
-            </div>
-
-            <div className={styles.osServiceGroup}>
-              <p>Aesthetic & procedural care</p>
-              {serviceCategories.slice(4).map((service, index) => {
-                const realIndex = index + 4;
+              {clinicalServiceIndexes.map((serviceIndex) => {
+                const service = serviceCategories[serviceIndex];
                 return (
                   <button
                     type="button"
                     key={service.title}
                     className={styles.osServiceRow}
-                    onClick={() => openService(realIndex)}
+                    onClick={() => openService(serviceIndex)}
                   >
-                    <span>{String(realIndex + 1).padStart(2, "0")}</span>
+                    <span>{String(serviceIndex + 1).padStart(2, "0")}</span>
+                    <strong>{service.title}</strong>
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className={styles.osServiceGroup}>
+              <p>Aesthetic & procedural care</p>
+              {aestheticServiceIndexes.map((serviceIndex) => {
+                const service = serviceCategories[serviceIndex];
+                return (
+                  <button
+                    type="button"
+                    key={service.title}
+                    className={styles.osServiceRow}
+                    onClick={() => openService(serviceIndex)}
+                  >
+                    <span>{String(serviceIndex + 1).padStart(2, "0")}</span>
                     <strong>{service.title}</strong>
                     <span aria-hidden="true">↗</span>
                   </button>
