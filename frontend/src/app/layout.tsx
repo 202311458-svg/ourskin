@@ -1,6 +1,7 @@
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import ThemeInitializer from "./components/ThemeInitializer";
+import SessionInitializer from "./components/SessionInitializer";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={poppins.className}>
+        <SessionInitializer />
         <ThemeInitializer />
         {children}
       </body>
