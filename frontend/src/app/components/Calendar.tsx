@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "@/app/styles/calendar.module.css";
-import {
-  getDoctorAppointments,
-  updateDoctorAppointmentStatus,
-  type Appointment,
-} from "@/lib/doctor-api";
+import { getDoctorAppointments, type Appointment } from "@/lib/doctor-api";
 
 type CalendarProps = {
   mode?: "compact" | "full";
@@ -33,14 +29,12 @@ function toDateKey(date: Date): string {
 function buildMonthGrid(baseDate: Date): Date[] {
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();
-
   const firstDayOfMonth = new Date(year, month, 1);
   const lastDayOfMonth = new Date(year, month + 1, 0);
-
   const gridStart = new Date(firstDayOfMonth);
-  gridStart.setDate(firstDayOfMonth.getDate() - firstDayOfMonth.getDay());
-
   const gridEnd = new Date(lastDayOfMonth);
+
+  gridStart.setDate(firstDayOfMonth.getDate() - firstDayOfMonth.getDay());
   gridEnd.setDate(lastDayOfMonth.getDate() + (6 - lastDayOfMonth.getDay()));
 
   const days: Date[] = [];
@@ -55,10 +49,7 @@ function buildMonthGrid(baseDate: Date): Date[] {
 }
 
 function formatMonthTitle(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 function formatDisplayDate(dateString: string): string {
@@ -70,13 +61,10 @@ function formatDisplayDate(dateString: string): string {
 }
 
 function formatDisplayTime(timeString: string): string {
-  const parts = timeString.split(":");
-  const hour = Number(parts[0] ?? "0");
-  const minute = parts[1] ?? "00";
-
+  const [hourValue = "0", minute = "00"] = timeString.split(":");
+  const hour = Number(hourValue);
   const suffix = hour >= 12 ? "PM" : "AM";
   const displayHour = hour % 12 || 12;
-
   return `${displayHour}:${minute} ${suffix}`;
 }
 
@@ -92,15 +80,12 @@ export default function Calendar({
   mode = "full",
   statusFilter = "All",
   refreshKey = 0,
-  onUpdated,
 }: CalendarProps) {
   const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [viewDate, setViewDate] = useState<Date>(new Date());
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const loadAppointments = useCallback(async () => {
@@ -128,22 +113,16 @@ export default function Calendar({
       isCalendarVisibleStatus(appointment.status)
     );
 
-    if (statusFilter === "Approved") {
+    if (statusFilter === "Approved" || statusFilter === "Pending") {
       filteredAppointments = filteredAppointments.filter(
-        (appointment) => appointment.status === "Approved"
-      );
-    } else if (statusFilter === "Pending") {
-      filteredAppointments = filteredAppointments.filter(
-        (appointment) => appointment.status === "Pending"
+        (appointment) => appointment.status === statusFilter
       );
     }
 
     const grouped: Record<string, Appointment[]> = {};
 
     for (const appointment of filteredAppointments) {
-      if (!grouped[appointment.date]) {
-        grouped[appointment.date] = [];
-      }
+      if (!grouped[appointment.date]) grouped[appointment.date] = [];
       grouped[appointment.date].push(appointment);
     }
 
@@ -157,39 +136,17 @@ export default function Calendar({
   const todayKey = toDateKey(new Date());
   const maxVisibleAppointments = mode === "compact" ? 1 : 2;
 
-  const handleStatusUpdate = async (appointmentId: number, status: string) => {
-    try {
-      setSaving(true);
-
-      let cancel_reason: string | undefined;
-
-      if (status === "Declined") {
-        const reason = window.prompt("Enter cancel reason:");
-        if (!reason) {
-          setSaving(false);
-          return;
-        }
-        cancel_reason = reason;
-      }
-
-      await updateDoctorAppointmentStatus(appointmentId, status, cancel_reason);
-      await loadAppointments();
-
-      if (selectedAppointment?.id === appointmentId) {
-        const updatedList = await getDoctorAppointments(statusFilter);
-        const updatedAppointment = updatedList.find(
-          (appt) => appt.id === appointmentId
-        );
-        setSelectedAppointment(updatedAppointment || null);
-      }
-
-      onUpdated?.();
-    } catch (err) {
-      console.error("Failed to update appointment from calendar:", err);
-      alert("Failed to update appointment.");
-    } finally {
-      setSaving(false);
+  const openAppointmentWorkspace = (appointment: Appointment) => {
+    if (appointment.status === "Approved" && appointment.patient_id) {
+      const params = new URLSearchParams({
+        patient_id: String(appointment.patient_id),
+        appointment_id: String(appointment.id),
+      });
+      router.push(`/pages/doctor/ai-analysis?${params.toString()}`);
+      return;
     }
+
+    router.push("/pages/doctor/appointments");
   };
 
   return (
@@ -206,7 +163,7 @@ export default function Calendar({
           <p className={styles.subtitle}>
             {mode === "compact"
               ? "Quick monthly preview of approved and pending appointments."
-              : "View and manage scheduled appointments by month."}
+              : "View scheduled appointments by month. Appointment status changes are handled from the main appointment workflow."}
           </p>
         </div>
 
@@ -233,6 +190,7 @@ export default function Calendar({
             <button
               type="button"
               className={styles.navButton}
+              aria-label="Previous month"
               onClick={() =>
                 setViewDate(
                   (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
@@ -247,6 +205,7 @@ export default function Calendar({
             <button
               type="button"
               className={styles.navButton}
+              aria-label="Next month"
               onClick={() =>
                 setViewDate(
                   (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
@@ -261,26 +220,22 @@ export default function Calendar({
 
       <div className={styles.legend}>
         <span className={styles.legendItem}>
-          <span className={`${styles.legendDot} ${styles.approved}`} />
-          Approved
+          <span className={`${styles.legendDot} ${styles.approved}`} /> Approved
         </span>
         <span className={styles.legendItem}>
-          <span className={`${styles.legendDot} ${styles.pending}`} />
-          Pending
+          <span className={`${styles.legendDot} ${styles.pending}`} /> Pending
         </span>
       </div>
 
       {loading ? (
         <div className={styles.stateBox}>Loading calendar...</div>
       ) : error ? (
-        <div className={styles.stateBox}>{error}</div>
+        <div className={styles.stateBox} role="alert">{error}</div>
       ) : (
         <div className={styles.calendarScroll}>
           <div className={styles.weekHeader}>
             {WEEK_DAYS.map((day) => (
-              <div key={day} className={styles.weekDay}>
-                {day}
-              </div>
+              <div key={day} className={styles.weekDay}>{day}</div>
             ))}
           </div>
 
@@ -288,30 +243,22 @@ export default function Calendar({
             {calendarDays.map((day) => {
               const dateKey = toDateKey(day);
               const dayAppointments = appointmentsByDate[dateKey] || [];
-              const visibleAppointments = dayAppointments.slice(
-                0,
-                maxVisibleAppointments
-              );
+              const visibleAppointments = dayAppointments.slice(0, maxVisibleAppointments);
               const hiddenCount = dayAppointments.length - visibleAppointments.length;
               const isCurrentMonth = day.getMonth() === viewDate.getMonth();
               const isToday = dateKey === todayKey;
-
               const cellClassName = [
                 styles.dayCell,
                 !isCurrentMonth ? styles.outsideMonth : "",
                 isToday ? styles.today : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
+              ].filter(Boolean).join(" ");
 
               return (
                 <div key={dateKey} className={cellClassName}>
                   <div className={styles.dayHeader}>
                     <span className={styles.dayNumber}>{day.getDate()}</span>
                     {dayAppointments.length > 0 && (
-                      <span className={styles.countBadge}>
-                        {dayAppointments.length}
-                      </span>
+                      <span className={styles.countBadge}>{dayAppointments.length}</span>
                     )}
                   </div>
 
@@ -323,9 +270,7 @@ export default function Calendar({
                           className={`${styles.eventButton} ${styles.compactStaticEvent}`}
                           data-status={normalizeStatus(appointment.status)}
                         >
-                          <span className={styles.eventTime}>
-                            {formatDisplayTime(appointment.time)}
-                          </span>
+                          <span className={styles.eventTime}>{formatDisplayTime(appointment.time)}</span>
                         </div>
                       ) : (
                         <button
@@ -335,15 +280,9 @@ export default function Calendar({
                           data-status={normalizeStatus(appointment.status)}
                           onClick={() => setSelectedAppointment(appointment)}
                         >
-                          <span className={styles.eventTime}>
-                            {formatDisplayTime(appointment.time)}
-                          </span>
-                          <span className={styles.eventPatient}>
-                            {appointment.patient_name}
-                          </span>
-                          <span className={styles.eventService}>
-                            {appointment.services}
-                          </span>
+                          <span className={styles.eventTime}>{formatDisplayTime(appointment.time)}</span>
+                          <span className={styles.eventPatient}>{appointment.patient_name}</span>
+                          <span className={styles.eventService}>{appointment.services}</span>
                         </button>
                       )
                     )}
@@ -360,25 +299,26 @@ export default function Calendar({
       )}
 
       {mode === "full" && selectedAppointment && (
-        <div
-          className={styles.modalOverlay}
-          onClick={() => setSelectedAppointment(null)}
-        >
+        <div className={styles.modalOverlay} onClick={() => setSelectedAppointment(null)}>
           <div
             className={styles.modalCard}
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="calendar-appointment-title"
+            onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.modalHeader}>
               <div>
-                <h3 className={styles.modalTitle}>Appointment Details</h3>
+                <h3 id="calendar-appointment-title" className={styles.modalTitle}>Appointment Details</h3>
                 <p className={styles.modalSubtitle}>
-                  Review the selected appointment information below.
+                  Review the appointment here, then continue in the main workflow for clinical or status actions.
                 </p>
               </div>
 
               <button
                 type="button"
                 className={styles.closeButton}
+                aria-label="Close appointment details"
                 onClick={() => setSelectedAppointment(null)}
               >
                 ✕
@@ -386,111 +326,33 @@ export default function Calendar({
             </div>
 
             <div className={styles.detailGrid}>
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Patient</span>
-                <p className={styles.detailValue}>
-                  {selectedAppointment.patient_name}
-                </p>
-              </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Email</span>
-                <p className={styles.detailValue}>
-                  {selectedAppointment.patient_email}
-                </p>
-              </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Doctor</span>
-                <p className={styles.detailValue}>
-                  {selectedAppointment.doctor_name}
-                </p>
-              </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Date</span>
-                <p className={styles.detailValue}>
-                  {formatDisplayDate(selectedAppointment.date)}
-                </p>
-              </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Time</span>
-                <p className={styles.detailValue}>
-                  {formatDisplayTime(selectedAppointment.time)}
-                </p>
-              </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Service</span>
-                <p className={styles.detailValue}>
-                  {selectedAppointment.services}
-                </p>
-              </div>
-
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Patient</span><p className={styles.detailValue}>{selectedAppointment.patient_name}</p></div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Email</span><p className={styles.detailValue}>{selectedAppointment.patient_email}</p></div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Doctor</span><p className={styles.detailValue}>{selectedAppointment.doctor_name}</p></div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Date</span><p className={styles.detailValue}>{formatDisplayDate(selectedAppointment.date)}</p></div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Time</span><p className={styles.detailValue}>{formatDisplayTime(selectedAppointment.time)}</p></div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Service</span><p className={styles.detailValue}>{selectedAppointment.services}</p></div>
               <div className={styles.detailCard}>
                 <span className={styles.detailLabel}>Status</span>
-                <p
-                  className={styles.statusBadge}
-                  data-status={normalizeStatus(selectedAppointment.status)}
-                >
-                  {selectedAppointment.status}
-                </p>
+                <p className={styles.statusBadge} data-status={normalizeStatus(selectedAppointment.status)}>{selectedAppointment.status}</p>
               </div>
-
-              <div className={styles.detailCard}>
-                <span className={styles.detailLabel}>Cancel Reason</span>
-                <p className={styles.detailValue}>
-                  {selectedAppointment.cancel_reason || "None"}
-                </p>
-              </div>
+              <div className={styles.detailCard}><span className={styles.detailLabel}>Cancel Reason</span><p className={styles.detailValue}>{selectedAppointment.cancel_reason || "None"}</p></div>
             </div>
 
             <div className={styles.modalFooter}>
               <div className={styles.modalActions}>
-                {selectedAppointment.status !== "Approved" && (
-                  <button
-                    type="button"
-                    className={styles.successButton}
-                    onClick={() =>
-                      handleStatusUpdate(selectedAppointment.id, "Approved")
-                    }
-                    disabled={saving}
-                  >
-                    Approve
-                  </button>
-                )}
-
-                {selectedAppointment.status !== "Completed" && (
-                  <button
-                    type="button"
-                    className={styles.completeButton}
-                    onClick={() =>
-                      handleStatusUpdate(selectedAppointment.id, "Completed")
-                    }
-                    disabled={saving}
-                  >
-                    Complete
-                  </button>
-                )}
-
-                {selectedAppointment.status !== "Declined" && (
-                  <button
-                    type="button"
-                    className={styles.dangerButton}
-                    onClick={() =>
-                      handleStatusUpdate(selectedAppointment.id, "Declined")
-                    }
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={() => openAppointmentWorkspace(selectedAppointment)}
+                >
+                  {selectedAppointment.status === "Approved" ? "Continue Clinical Work" : "Open Appointments"}
+                </button>
               </div>
 
               <button
                 type="button"
-                className={styles.primaryButton}
+                className={styles.secondaryButton}
                 onClick={() => setSelectedAppointment(null)}
               >
                 Close

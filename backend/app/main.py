@@ -1,13 +1,14 @@
 import logging
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications
+from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -16,6 +17,34 @@ from app.models.appointment_log import AppointmentLog
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="OurSkin API")
+
+
+@app.exception_handler(HTTPException)
+async def sanitize_server_http_errors(request: Request, exc: HTTPException):
+    if exc.status_code >= 500:
+        logger.error(
+            "Server HTTP error on %s %s: status=%s detail=%s",
+            request.method,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
+        public_detail = (
+            "Service is temporarily unavailable."
+            if exc.status_code == 503
+            else "An internal server error occurred."
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": public_detail},
+            headers=exc.headers,
+        )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
 
 
 @app.get("/")
@@ -52,6 +81,9 @@ app.include_router(admin.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)
 app.include_router(booking.router)
+# Register the phase-1 compatibility guards before the legacy doctor router so
+# duplicate paths resolve to the guarded implementations.
+app.include_router(doctor_phase1.router)
 app.include_router(doctor_router)
 app.include_router(notifications.router)
 
@@ -64,7 +96,6 @@ def health_check():
 @app.get("/healthz")
 def healthz_check():
     return {"status": "ok", "service": "OurSkin API"}
-
 
 
 @app.get("/readyz")

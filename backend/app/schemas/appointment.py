@@ -1,9 +1,13 @@
+import re
 from datetime import date as Date
 from datetime import datetime
 from datetime import time as Time
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+
+PH_MOBILE_PATTERN = re.compile(r"^(09\d{9}|\+639\d{9})$")
 
 
 class AppointmentCreate(BaseModel):
@@ -17,12 +21,54 @@ class AppointmentCreate(BaseModel):
 
     patient_contact: Optional[str] = None
     patient_address: Optional[str] = None
-    patient_age: Optional[int] = None
-    patient_age_label: Optional[str] = None
-    concern: Optional[str] = None
+    patient_age: Optional[int] = Field(default=None, ge=0, le=150)
+    patient_age_label: Optional[str] = Field(default=None, max_length=80)
+    concern: Optional[str] = Field(default=None, max_length=2000)
 
     # Optional for staff/admin-created bookings later.
     patient_id: Optional[int] = None
+
+    @field_validator("patient_contact")
+    @classmethod
+    def validate_patient_contact(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+
+        if not PH_MOBILE_PATTERN.match(cleaned):
+            raise ValueError(
+                "Patient contact number must be a valid Philippine mobile number. "
+                "Example: 09123456789 or +639123456789."
+            )
+
+        return cleaned
+
+    @field_validator("patient_address")
+    @classmethod
+    def validate_patient_address(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+
+        if len(cleaned) < 5:
+            raise ValueError("Patient address must contain at least 5 characters.")
+        if len(cleaned) > 500:
+            raise ValueError("Patient address must not exceed 500 characters.")
+
+        return cleaned
+
+    @field_validator("concern")
+    @classmethod
+    def normalize_concern(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class AppointmentScheduleAssign(BaseModel):
