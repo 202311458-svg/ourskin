@@ -40,7 +40,7 @@ class AnnouncementUpdate(BaseModel):
 class AnnouncementResponse(AnnouncementBase):
     id: UUID
 
-    created_by: Optional[UUID] = None
+    created_by: Optional[int] = None
     created_by_name: Optional[str] = None
     created_by_role: Optional[str] = None
 
