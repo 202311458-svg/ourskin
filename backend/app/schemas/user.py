@@ -1,14 +1,9 @@
-import re
 from datetime import datetime, date
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
-
-PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$")
-PASSWORD_ERROR = (
-    "Password must be at least 8 characters, include uppercase, number, and special character."
-)
+from app.core.password_policy import validate_new_password
 
 
 class UserCreate(BaseModel):
@@ -32,6 +27,11 @@ class UserCreate(BaseModel):
 
     terms_accepted: bool = False
     privacy_accepted: bool = False
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_policy(cls, value: str) -> str:
+        return validate_new_password(value)
 
     @model_validator(mode="after")
     def passwords_match(self):
@@ -116,6 +116,11 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_policy(cls, value: str) -> str:
+        return validate_new_password(value)
+
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
@@ -125,6 +130,17 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
     confirm_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_policy(cls, value: str) -> str:
+        return validate_new_password(value)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
 
 
 class StaffCreate(BaseModel):
@@ -140,9 +156,7 @@ class StaffCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_staff_password(cls, value: str) -> str:
-        if not PASSWORD_PATTERN.match(value):
-            raise ValueError(PASSWORD_ERROR)
-        return value
+        return validate_new_password(value)
 
 
 class StaffUpdate(BaseModel):
