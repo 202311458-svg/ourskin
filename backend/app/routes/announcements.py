@@ -5,7 +5,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from app.db import get_db
 from app.models.announcement import Announcement
@@ -178,10 +177,7 @@ def create_announcement(
         is_pinned=payload.is_pinned,
         starts_at=payload.starts_at,
         expires_at=payload.expires_at,
-
-        # Keep this as None for now because Announcement.created_by is UUID,
-        # while User.id is Integer in your current database.
-        created_by=None,
+        created_by=current_user.id,
         created_by_name=current_user.name or current_user.email,
         created_by_role=current_user.role,
     )
