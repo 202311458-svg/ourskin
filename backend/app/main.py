@@ -7,7 +7,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications
+from app.routes import auth, users, ai_analysis, appointments, patients, admin, staff_schedules, booking, staff_follow_ups, announcements, notifications, doctor_phase1
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -52,6 +52,9 @@ app.include_router(admin.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)
 app.include_router(booking.router)
+# Register the phase-1 compatibility guards before the legacy doctor router so
+# duplicate paths resolve to the guarded implementations.
+app.include_router(doctor_phase1.router)
 app.include_router(doctor_router)
 app.include_router(notifications.router)
 
@@ -64,7 +67,6 @@ def health_check():
 @app.get("/healthz")
 def healthz_check():
     return {"status": "ok", "service": "OurSkin API"}
-
 
 
 @app.get("/readyz")
