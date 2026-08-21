@@ -1,7 +1,8 @@
 import logging
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -16,6 +17,34 @@ from app.models.appointment_log import AppointmentLog
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="OurSkin API")
+
+
+@app.exception_handler(HTTPException)
+async def sanitize_server_http_errors(request: Request, exc: HTTPException):
+    if exc.status_code >= 500:
+        logger.error(
+            "Server HTTP error on %s %s: status=%s detail=%s",
+            request.method,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
+        public_detail = (
+            "Service is temporarily unavailable."
+            if exc.status_code == 503
+            else "An internal server error occurred."
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": public_detail},
+            headers=exc.headers,
+        )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
 
 
 @app.get("/")
