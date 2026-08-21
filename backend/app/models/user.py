@@ -96,3 +96,49 @@ def invalidate_sessions_after_password_change(_mapper, _connection, target: User
     state = inspect(target)
     if state.attrs.password_hash.history.has_changes():
         target.auth_invalid_before = datetime.now(timezone.utc)
+
+
+@event.listens_for(User, "after_update")
+def audit_security_state_changes(_mapper, connection, target: User):
+    """Record security-sensitive user changes in the central audit trail.
+
+    These inserts share the caller's database transaction. No password hashes,
+    verification tokens, reset tokens, or credentials are written to audit
+    metadata.
+    """
+
+    state = inspect(target)
+    events: list[tuple[str, str]] = []
+
+    if state.attrs.password_hash.history.has_changes():
+        events.append(("PASSWORD_CHANGED", "Password changed; prior sessions invalidated"))
+
+    if state.attrs.is_verified.history.has_changes() and target.is_verified:
+        events.append(("EMAIL_VERIFIED", "Email address verified"))
+
+    if state.attrs.login_locked_until.history.has_changes():
+        if target.login_locked_until is not None:
+            events.append(("ACCOUNT_LOGIN_LOCKED", "Account temporarily locked after failed login attempts"))
+        else:
+            events.append(("ACCOUNT_LOGIN_UNLOCKED", "Temporary login lock cleared"))
+
+    if not events:
+        return
+
+    from app.models.audit_log import AuditLog
+
+    actor_name = target.name or target.email or f"User #{target.id}"
+    for action, description in events:
+        connection.execute(
+            AuditLog.__table__.insert().values(
+                action=action,
+                description=description,
+                performed_by=actor_name,
+                actor_id=target.id,
+                actor_role=target.role,
+                target_id=target.id,
+                target_type="user",
+                target_record_id=str(target.id),
+                metadata_json={"security_event": True},
+            )
+        )
