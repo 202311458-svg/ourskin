@@ -12,17 +12,22 @@ PASSWORD_TOO_LONG_ERROR = (
 )
 
 
-def validate_new_password(password: str) -> str:
-    """Validate credentials before creating a bcrypt hash.
+def validate_bcrypt_input(password: str) -> str:
+    """Reject inputs bcrypt would silently truncate.
 
-    bcrypt considers only the first 72 bytes. Rejecting longer *new* passwords
-    prevents two visibly different credentials from silently producing the same
-    effective bcrypt input. Existing hashes remain verifiable through the
-    compatibility path in ``verify_password``.
+    This is deliberately separate from the user-facing strength policy because
+    system-generated opaque secrets also pass through the hashing boundary.
     """
 
     if len(password.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES:
         raise ValueError(PASSWORD_TOO_LONG_ERROR)
+    return password
+
+
+def validate_new_password(password: str) -> str:
+    """Validate a user-selected password before creating a bcrypt hash."""
+
+    validate_bcrypt_input(password)
 
     if not PASSWORD_PATTERN.match(password):
         raise ValueError(PASSWORD_ERROR)
