@@ -1,5 +1,6 @@
 import { Newsreader, Poppins } from "next/font/google";
 import "./globals.css";
+import "./styles/landing-hero-cleanup.css";
 import ThemeInitializer from "./components/ThemeInitializer";
 import SessionInitializer from "./components/SessionInitializer";
 
