@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import JWT_ALGORITHM, settings
+from app.core.password_policy import validate_new_password
 from app.db import get_db
 from app.models.user import User
 
@@ -23,15 +24,19 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    # bcrypt only supports 72 bytes. The application password policy currently
-    # keeps normal credentials below that limit; slicing is retained here for
-    # compatibility with existing password hashes.
-    password = password[:72]
-    return pwd_context.hash(password)
+    """Hash a newly-created password after enforcing the shared bcrypt policy."""
+
+    return pwd_context.hash(validate_new_password(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    plain_password = plain_password[:72]
+    """Verify existing bcrypt hashes without pre-truncating user input.
+
+    bcrypt itself defines the legacy 72-byte effective input. Keeping verification
+    compatible avoids locking out accounts created before the explicit Phase 6
+    length limit, while all newly-created hashes go through ``hash_password``.
+    """
+
     return pwd_context.verify(plain_password, hashed_password)
 
 
