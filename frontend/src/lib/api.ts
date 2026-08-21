@@ -5,5 +5,8 @@ export {
   getAuth,
   getToken,
   getAuthHeaders,
+  getSession,
   logoutUser,
+  markBrowserSession,
+  clearBrowserSessionState,
 } from "@/app/utils/auth";
