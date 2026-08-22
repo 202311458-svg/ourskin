@@ -1,44 +1,36 @@
-.page,
-.contentWrapper,
-.historyContainer {
+.page {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: var(--space-5);
-  min-width: 0;
 }
 
-.headerRow {
-  display: flex;
+.tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: var(--space-1);
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.tab {
+  display: inline-flex;
+  min-height: 40px;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.h {
-  color: var(--color-text-strong);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.eyebrow {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.subtitle {
+  padding: 0 var(--space-4);
+  border-radius: calc(var(--radius-md) - 3px);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
 }
 
-.summaryGrid {
-  display: none;
+.tabActive {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .filterBar {
@@ -51,29 +43,23 @@
 }
 
 .filterButton {
-  min-height: 44px;
+  min-height: 42px;
   flex: 0 0 auto;
   padding: 0 var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text-secondary);
+  cursor: pointer;
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .filterButton:hover,
 .filterButton:focus-visible {
   border-color: var(--color-border-strong);
   color: var(--color-text-strong);
-}
-
-.filterButton:focus-visible {
-  outline: 3px solid rgba(138, 51, 79, 0.2);
-  outline-offset: 2px;
 }
 
 .filterButtonActive {
@@ -84,80 +70,58 @@
 
 .cards {
   display: grid;
-  gap: var(--space-4);
-}
-
-.card {
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.cardTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.cardTitle {
-  color: var(--color-text-strong);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.followUpPanel {
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-subtle);
-}
-
-.detailsGrid {
-  display: grid;
   gap: var(--space-3);
 }
 
-.detailBox {
-  padding: var(--space-4);
+.card {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
 
-.detailLabel {
+.appointmentGrid {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.4fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(120px, 0.75fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+}
+
+.primaryInfo,
+.metaItem {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.primaryInfo strong,
+.metaItem strong {
+  overflow: hidden;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+}
+
+.primaryInfo span,
+.metaItem span {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
-.detailValue {
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
-}
-
-.serviceText {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+.statusArea {
+  justify-self: end;
 }
 
 .statusBadge {
   display: inline-flex;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
   padding: 5px 12px;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  line-height: 1;
   white-space: nowrap;
 }
 
@@ -167,64 +131,146 @@
 .statusPending { background: var(--color-warning-bg); color: var(--color-warning); }
 .statusDefault { background: var(--color-neutral-bg); color: var(--color-text-secondary); }
 
-.noticeBox {
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
-}
-
-.emptyState {
-  padding: var(--space-5);
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.emptyStateText {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
-}
-
-.primaryButton {
-  display: inline-flex;
-  min-height: 44px;
+.cardFooter {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 var(--space-4);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-brand-600);
-  color: var(--color-text-inverse);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-decoration: none;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
 }
 
-.primaryButton:hover { background: var(--color-brand-700); }
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.reasonText {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
 
 .inlineLink {
   color: var(--color-brand-600);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
 
-.inlineLink:hover { text-decoration: underline; }
+.primaryButton {
+  border: 1px solid var(--color-brand-600);
+  background: var(--color-brand-600);
+  color: var(--color-text-inverse);
+}
+
+.secondaryButton {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+.emptyState {
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.emptyState h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-lg);
+}
+
+.emptyState p {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 1050px) {
+  .appointmentGrid {
+    grid-template-columns: minmax(210px, 1.2fr) repeat(2, minmax(120px, 0.8fr)) auto;
+  }
+
+  .metaItem:nth-of-type(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .appointmentGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .primaryInfo {
+    grid-column: 1 / -1;
+  }
+
+  .statusArea {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .cardFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 
 @media (max-width: 640px) {
-  .headerRow,
-  .cardTop {
-    flex-direction: column;
-    align-items: stretch;
+  .tabs {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tab {
+    justify-content: center;
   }
 
   .filterBar {
     margin-inline: calc(var(--content-padding-x) * -1);
     padding-inline: var(--content-padding-x);
+  }
+
+  .appointmentGrid {
+    grid-template-columns: 1fr;
+    padding: var(--space-4);
+  }
+
+  .primaryInfo,
+  .statusArea {
+    grid-column: auto;
+  }
+
+  .cardFooter {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
   }
 }
