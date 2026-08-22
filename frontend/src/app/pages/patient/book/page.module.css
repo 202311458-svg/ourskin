@@ -1,21 +1,9 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
-}
-
-.bookingPage {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
-}
-
+.page,
+.bookingPage,
 .bookingWizardShell {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -27,7 +15,12 @@
   flex-wrap: wrap;
 }
 
+.bookingHeader > .secondaryBtn {
+  display: none;
+}
+
 .eyebrow {
+  margin: 0 0 var(--space-1);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -36,46 +29,93 @@
 }
 
 .pageSubtext {
+  max-width: 680px;
+  margin-top: var(--space-2);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
 }
 
 .bookingStepper {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
-  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
 }
 
 .bookingStepItem {
+  position: relative;
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.bookingStepItem > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-subtle);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bookingStepItem p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bookingStepActive {
   color: var(--color-text-strong);
-  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
 }
 
-.bookingStepDone {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+.bookingStepActive > span {
+  border-color: var(--color-brand-600);
+  background: var(--color-brand-600);
+  color: var(--color-text-inverse);
+}
+
+.bookingStepDone > span {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .bookingNavButtons {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
+  justify-content: flex-end;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
 }
 
-.bookingCard {
-  padding: var(--space-5);
+.bookingCard,
+.bookingSubSection,
+.doctorWeekPanel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+}
+
+.bookingCard {
+  padding: clamp(var(--space-4), 2vw, var(--space-5));
 }
 
 .cardHeader {
@@ -86,53 +126,59 @@
   margin-bottom: var(--space-4);
 }
 
-.serviceGrid {
+.cardHeader p {
+  max-width: 720px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.serviceGrid,
+.doctorGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-4);
 }
 
-.serviceCard {
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease;
-}
-
-.serviceCard:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-subtle);
-}
-
-.serviceCardActive {
-  border-color: var(--color-brand-600);
-  background: var(--color-brand-600);
-  color: var(--color-text-inverse);
+.serviceGrid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .doctorGrid {
-  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--space-4);
 }
 
+.serviceCard,
 .doctorCard {
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+  color: var(--color-text);
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
+.serviceCard:hover,
 .doctorCard:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-subtle);
 }
 
-.doctorCardActive {
+.serviceCard:focus-visible,
+.doctorCard:focus-visible,
+.scheduleOption:focus-visible,
+.primaryBtn:focus-visible,
+.secondaryBtn:focus-visible,
+.formGroup input:focus-visible,
+.formGroup textarea:focus-visible {
+  outline: 3px solid rgba(138, 51, 79, 0.28);
+  outline-offset: 2px;
+}
+
+.serviceCardActive,
+.doctorCardActive,
+.scheduleOptionActive {
   border-color: var(--color-brand-600);
   background: var(--color-brand-600);
   color: var(--color-text-inverse);
@@ -146,24 +192,24 @@
 }
 
 .doctorAvatar {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border-radius: var(--radius-pill);
-  background: var(--color-brand-600);
-  color: var(--color-text-inverse);
-  font-size: 20px;
-  font-weight: var(--font-weight-semibold);
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .doctorInfo {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: var(--space-1);
 }
 
-.doctorBio {
+.doctorBio,
+.doctorScheduleEmpty,
+.summaryHelp {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
@@ -171,61 +217,54 @@
 
 .doctorSelectedBadge {
   display: inline-flex;
+  width: fit-content;
+  min-height: 30px;
   align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
   background: var(--color-success-bg);
   color: var(--color-success);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  line-height: 1;
-  white-space: nowrap;
+  font-style: normal;
 }
 
-.doctorSchedulePreviewList {
+.doctorSchedulePreviewList,
+.summaryList {
   display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
+  gap: var(--space-3);
 }
 
 .doctorSchedulePreviewItem {
+  display: grid;
+  gap: 2px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: var(--color-surface-subtle);
   color: var(--color-text);
   font-size: var(--font-size-sm);
 }
 
-.doctorWeekPanel {
+.doctorWeekPanel,
+.bookingSubSection {
   padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
 }
 
 .doctorWeekTitle {
   color: var(--color-text-strong);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.doctorScheduleEmpty {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
 }
 
 .scheduleGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--space-3);
 }
 
 .scheduleOption {
+  min-height: 48px;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -234,8 +273,7 @@
   font: inherit;
   font-size: var(--font-size-sm);
   cursor: pointer;
-  text-align: center;
-  transition: border-color 140ms ease, background 140ms ease;
+  text-align: left;
 }
 
 .scheduleOption:hover:not(:disabled) {
@@ -243,80 +281,98 @@
   background: var(--color-surface-subtle);
 }
 
-.scheduleOptionActive {
-  border-color: var(--color-brand-600);
-  background: var(--color-brand-600);
-  color: var(--color-text-inverse);
-}
-
 .patientInfoGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+  max-width: 860px;
+}
+
+.patientInfoGrid .formGroup:nth-child(5),
+.patientInfoGrid .formGroup:nth-child(6) {
+  grid-column: 1 / -1;
 }
 
 .formGroup {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.bookingSubSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.summaryList {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.summaryHelp {
-  color: var(--color-text-secondary);
+.formGroup label {
+  color: var(--color-text-strong);
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-medium);
 }
 
-.primaryBtn {
-  min-height: 40px;
-  padding: 0 var(--space-4);
-  border: 0;
+.formGroup input,
+.formGroup textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-brand-600);
-  color: var(--color-text-inverse);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font: inherit;
+}
+
+.formGroup textarea {
+  min-height: 128px;
+  padding-block: var(--space-3);
+  resize: vertical;
+}
+
+.formGroup input[readonly] {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+.summaryList > div {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.55fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summaryList span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.summaryList strong {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+}
+
+.primaryBtn,
+.secondaryBtn {
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background 140ms ease, opacity 140ms ease;
+}
+
+.primaryBtn {
+  border: 1px solid var(--color-brand-600);
+  background: var(--color-brand-600);
+  color: var(--color-text-inverse);
 }
 
 .primaryBtn:hover:not(:disabled) {
   background: var(--color-brand-700);
 }
 
-.primaryBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .secondaryBtn {
-  min-height: 40px;
-  padding: 0 var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text-strong);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease;
 }
 
 .secondaryBtn:hover:not(:disabled) {
@@ -324,54 +380,83 @@
   border-color: var(--color-border-strong);
 }
 
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.scheduleOption:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .emptyState {
-  padding: var(--space-6);
+  padding: var(--space-5);
   text-align: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
-.errorBox {
+.errorBox,
+.noticeBox,
+.successBox {
   padding: var(--space-4);
-  border: 1px solid var(--color-danger-bg);
   border-radius: var(--radius-md);
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
+}
+
+.errorBox {
+  border: 1px solid var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .noticeBox {
-  padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
   background: var(--color-surface-subtle);
   color: var(--color-text);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
 }
 
 .successBox {
-  padding: var(--space-4);
-  border: 1px solid var(--color-success-bg);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-success);
   background: var(--color-success-bg);
   color: var(--color-success);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+}
+
+@media (max-width: 900px) {
+  .bookingStepper {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .bookingStepItem {
+    min-width: 150px;
+    scroll-snap-align: start;
+  }
 }
 
 @media (max-width: 640px) {
-  .bookingHeader {
+  .bookingHeader,
+  .cardHeader {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .bookingNavButtons {
-    flex-direction: column;
+  .patientInfoGrid,
+  .summaryList > div {
+    grid-template-columns: 1fr;
   }
 
-  .bookingNavButtons > * {
+  .patientInfoGrid .formGroup:nth-child(5),
+  .patientInfoGrid .formGroup:nth-child(6) {
+    grid-column: auto;
+  }
+
+  .bookingNavButtons {
+    flex-direction: column-reverse;
+  }
+
+  .bookingNavButtons > *,
+  .bookingCard > .primaryBtn {
     width: 100%;
   }
 }
