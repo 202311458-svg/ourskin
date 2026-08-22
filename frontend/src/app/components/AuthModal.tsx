@@ -1,11 +1,12 @@
 "use client"
 
 import { API_BASE_URL, SESSION_MARKER, markBrowserSession } from "@/app/utils/auth"
+import { useDarkMode } from "@/app/hooks/useDarkMode"
 import { useRouter } from "next/navigation"
-import { useEffect, useId, useRef, useState } from "react"
-import { FaEye, FaEyeSlash } from "react-icons/fa"
-import styles from "@/app/components/AuthModal.module.css"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { FaEye, FaEyeSlash, FaTimes } from "react-icons/fa"
 import GoogleAuthButton from "@/app/components/GoogleAuthButton"
+import styles from "@/app/components/AuthModal.module.css"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -24,10 +25,12 @@ export default function AuthModal({
   onLoginSuccess,
 }: AuthModalProps) {
   const router = useRouter()
+  const { darkMode } = useDarkMode()
   const titleId = useId()
   const descriptionId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   const [isForgot, setIsForgot] = useState(false)
   const [email, setEmail] = useState("")
@@ -36,6 +39,20 @@ export default function AuthModal({
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>(null)
+
+  const resetFields = useCallback(() => {
+    setEmail("")
+    setPassword("")
+    setShowPassword(false)
+    setIsForgot(false)
+    setFeedback(null)
+    setLoading(false)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    resetFields()
+    onClose()
+  }, [onClose, resetFields])
 
   useEffect(() => {
     const updateCooldown = () => {
@@ -60,16 +77,18 @@ export default function AuthModal({
 
     const previousActive = document.activeElement as HTMLElement | null
     const frame = window.requestAnimationFrame(() => emailRef.current?.focus())
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
-        onClose()
+        closeModal()
         return
       }
 
       if (event.key !== "Tab" || !dialogRef.current) return
+
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
@@ -79,6 +98,7 @@ export default function AuthModal({
 
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
+
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()
@@ -92,42 +112,38 @@ export default function AuthModal({
     return () => {
       window.cancelAnimationFrame(frame)
       document.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = ""
+      document.body.style.overflow = previousOverflow
       previousActive?.focus()
     }
-  }, [isOpen, onClose])
+  }, [isOpen, closeModal])
 
-  const isValidEmailFormat = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
-
-  const resetFields = () => {
-    setEmail("")
-    setPassword("")
-    setShowPassword(false)
-    setIsForgot(false)
-    setFeedback(null)
-  }
+  const isValidEmailFormat = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
   const finishLogin = (role: string) => {
     markBrowserSession(role)
     onLoginSuccess(role, SESSION_MARKER)
-    resetFields()
-    onClose()
+    closeModal()
   }
 
   const login = async () => {
     setFeedback(null)
+
     if (!email.trim()) {
       setFeedback({ kind: "error", message: "Please enter your email." })
       emailRef.current?.focus()
       return
     }
+
     if (!isValidEmailFormat(email)) {
       setFeedback({ kind: "error", message: "Please enter a valid email address." })
       emailRef.current?.focus()
       return
     }
+
     if (!password) {
       setFeedback({ kind: "error", message: "Please enter your password." })
+      passwordRef.current?.focus()
       return
     }
 
@@ -148,10 +164,12 @@ export default function AuthModal({
         })
         return
       }
+
       if (!data.role) {
         setFeedback({ kind: "error", message: "Login failed. Please try again." })
         return
       }
+
       finishLogin(data.role)
     } catch (error) {
       console.error("Login error:", error)
@@ -163,18 +181,24 @@ export default function AuthModal({
 
   const forgotPassword = async () => {
     setFeedback(null)
+
     if (!email.trim()) {
       setFeedback({ kind: "error", message: "Please enter your email first." })
       emailRef.current?.focus()
       return
     }
+
     if (!isValidEmailFormat(email)) {
       setFeedback({ kind: "error", message: "Please enter a valid email address." })
       emailRef.current?.focus()
       return
     }
+
     if (forgotCooldown > 0) {
-      setFeedback({ kind: "info", message: `Please wait ${forgotCooldown} seconds before requesting again.` })
+      setFeedback({
+        kind: "info",
+        message: `Please wait ${forgotCooldown} seconds before requesting again.`,
+      })
       return
     }
 
@@ -229,38 +253,56 @@ export default function AuthModal({
   }
 
   const goToRegister = () => {
-    resetFields()
-    onClose()
+    closeModal()
     router.push("/register")
   }
 
   if (!isOpen) return null
 
+  const feedbackClass = feedback
+    ? `${styles.feedback} ${styles[`feedback${feedback.kind[0].toUpperCase()}${feedback.kind.slice(1)}`]}`
+    : ""
+
   return (
     <div
-      className={styles.modal}
+      className={styles.backdrop}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget) closeModal()
       }}
     >
-      <div
+      <section
         ref={dialogRef}
-        className={styles.modalCard}
+        className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
       >
-        <h2 id={titleId}>{isForgot ? "Forgot Password" : "Login"}</h2>
-        <p id={descriptionId} className={styles.authHelperText}>
-          {isForgot
-            ? "Enter your email and we’ll send you a reset link."
-            : "Please log in to continue your booking."}
-        </p>
+        <header className={styles.header}>
+          <div className={styles.headingBlock}>
+            <p className={styles.eyebrow}>OurSkin Dermatology Center</p>
+            <h2 id={titleId}>{isForgot ? "Reset your password" : "Welcome back"}</h2>
+            <p id={descriptionId} className={styles.helperText}>
+              {isForgot
+                ? "Enter your email and we’ll send you a secure reset link."
+                : "Log in to continue your booking and access your patient account."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={closeModal}
+            aria-label="Close login modal"
+          >
+            <FaTimes aria-hidden="true" />
+            <span>Close</span>
+          </button>
+        </header>
 
         {feedback && (
           <p
-            className={`${styles.feedback} ${styles[`feedback${feedback.kind[0].toUpperCase()}${feedback.kind.slice(1)}`]}`}
+            className={feedbackClass}
             role={feedback.kind === "error" ? "alert" : "status"}
             aria-live="polite"
           >
@@ -269,125 +311,128 @@ export default function AuthModal({
         )}
 
         <form
+          className={styles.form}
           onSubmit={(event) => {
             event.preventDefault()
             if (isForgot) void forgotPassword()
             else void login()
           }}
+          noValidate
         >
-          <label className={styles.fieldLabel} htmlFor="auth-email">Email address</label>
-          <input
-            ref={emailRef}
-            id="auth-email"
-            className={styles.authInput}
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+          <div className={styles.field}>
+            <label htmlFor="auth-email">Email address</label>
+            <input
+              ref={emailRef}
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              disabled={loading}
+            />
+          </div>
 
           {!isForgot && (
-            <>
-              <label className={styles.fieldLabel} htmlFor="auth-password">Password</label>
-              <div className={styles.inputWrapper}>
+            <div className={styles.field}>
+              <label htmlFor="auth-password">Password</label>
+              <div className={styles.passwordField}>
                 <input
+                  ref={passwordRef}
                   id="auth-password"
-                  className={styles.authInput}
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
+                  disabled={loading}
                 />
                 <button
                   type="button"
-                  className={styles.eyeIcon}
+                  className={styles.passwordToggle}
                   onClick={() => setShowPassword((value) => !value)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
+                  disabled={loading}
                 >
-                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  {showPassword ? <FaEyeSlash aria-hidden="true" /> : <FaEye aria-hidden="true" />}
                 </button>
               </div>
-            </>
+            </div>
           )}
 
           {!isForgot && (
             <div className={styles.forgotRow}>
               <button
                 type="button"
-                className={styles.forgotLink}
+                className={styles.textAction}
                 onClick={() => {
                   setFeedback(null)
                   setIsForgot(true)
                   setPassword("")
                   setShowPassword(false)
                 }}
+                disabled={loading}
               >
-                Forgot Password?
+                Forgot password?
               </button>
             </div>
           )}
 
           <button
-            className={styles.submitBtn}
+            className={styles.primaryButton}
             type="submit"
             disabled={loading || (isForgot && forgotCooldown > 0)}
           >
             {isForgot
               ? forgotCooldown > 0
-                ? `Send Again in ${forgotCooldown}s`
+                ? `Send again in ${forgotCooldown}s`
                 : loading
-                ? "Sending..."
-                : "Send Reset Link"
+                ? "Sending reset link…"
+                : "Send reset link"
               : loading
-              ? "Logging in..."
+              ? "Logging in…"
               : "Login"}
           </button>
         </form>
 
-        {!isForgot && (
-          <GoogleAuthButton
-            onAuthenticated={(role) => finishLogin(role)}
-            onOnboarding={() => {
-              resetFields()
-              onClose()
-              router.push("/register?google=1")
-            }}
-          />
-        )}
+        {!isForgot ? (
+          <>
+            <GoogleAuthButton
+              theme={darkMode ? "dark" : "light"}
+              onAuthenticated={(role) => finishLogin(role)}
+              onOnboarding={() => {
+                closeModal()
+                router.push("/register?google=1")
+              }}
+            />
 
-        <p className={styles.switch}>
-          {!isForgot ? "Don’t have an account? " : "Remember your password? "}
-          <button
-            type="button"
-            className={styles.switchAction}
-            onClick={() => {
-              if (!isForgot) goToRegister()
-              else {
+            <p className={styles.accountPrompt}>
+              Don&apos;t have an account?
+              <button type="button" className={styles.textAction} onClick={goToRegister}>
+                Register
+              </button>
+            </p>
+          </>
+        ) : (
+          <p className={styles.accountPrompt}>
+            Remember your password?
+            <button
+              type="button"
+              className={styles.textAction}
+              onClick={() => {
                 setFeedback(null)
                 setIsForgot(false)
                 setPassword("")
                 setShowPassword(false)
-              }
-            }}
-          >
-            {!isForgot ? "Register" : "Login"}
-          </button>
-        </p>
-
-        <div className={styles.authCloseRow}>
-          <button
-            type="button"
-            className={styles.authCloseBtn}
-            onClick={() => {
-              resetFields()
-              onClose()
-            }}
-          >
-            Close
-          </button>
-        </div>
-      </div>
+              }}
+            >
+              Back to login
+            </button>
+          </p>
+        )}
+      </section>
     </div>
   )
 }
