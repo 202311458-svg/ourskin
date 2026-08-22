@@ -38,7 +38,7 @@
 
 .bookingStepper {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
@@ -118,6 +118,28 @@
   padding: clamp(var(--space-4), 2vw, var(--space-5));
 }
 
+.bookingCard:has(.doctorGrid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.bookingCard:has(.doctorGrid) > .cardHeader {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.bookingCard:has(.doctorGrid) > .doctorGrid {
+  grid-column: 1;
+}
+
+.bookingCard:has(.doctorGrid) > .bookingSubSection {
+  grid-column: 2;
+  position: sticky;
+  top: calc(var(--portal-header-height) + var(--space-4));
+}
+
 .cardHeader {
   display: flex;
   align-items: flex-start;
@@ -144,7 +166,7 @@
 }
 
 .doctorGrid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .serviceCard,
@@ -259,7 +281,7 @@
 
 .scheduleGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -283,14 +305,16 @@
 
 .patientInfoGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
-  max-width: 860px;
 }
 
-.patientInfoGrid .formGroup:nth-child(5),
+.patientInfoGrid .formGroup:nth-child(5) {
+  grid-column: span 1;
+}
+
 .patientInfoGrid .formGroup:nth-child(6) {
-  grid-column: 1 / -1;
+  grid-column: span 3;
 }
 
 .formGroup {
@@ -330,11 +354,15 @@
   cursor: default;
 }
 
+.summaryList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .summaryList > div {
   display: grid;
-  grid-template-columns: minmax(140px, 0.55fr) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 0.5fr) minmax(0, 1fr);
   gap: var(--space-3);
-  padding-bottom: var(--space-3);
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -421,6 +449,30 @@
   color: var(--color-success);
 }
 
+@media (max-width: 1120px) {
+  .bookingCard:has(.doctorGrid) {
+    grid-template-columns: 1fr;
+  }
+
+  .bookingCard:has(.doctorGrid) > .doctorGrid,
+  .bookingCard:has(.doctorGrid) > .bookingSubSection {
+    grid-column: 1;
+  }
+
+  .bookingCard:has(.doctorGrid) > .bookingSubSection {
+    position: static;
+  }
+
+  .patientInfoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .patientInfoGrid .formGroup:nth-child(5),
+  .patientInfoGrid .formGroup:nth-child(6) {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 900px) {
   .bookingStepper {
     display: flex;
@@ -432,6 +484,10 @@
     min-width: 150px;
     scroll-snap-align: start;
   }
+
+  .doctorGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -442,13 +498,10 @@
   }
 
   .patientInfoGrid,
-  .summaryList > div {
+  .summaryList,
+  .summaryList > div,
+  .scheduleGrid {
     grid-template-columns: 1fr;
-  }
-
-  .patientInfoGrid .formGroup:nth-child(5),
-  .patientInfoGrid .formGroup:nth-child(6) {
-    grid-column: auto;
   }
 
   .bookingNavButtons {
