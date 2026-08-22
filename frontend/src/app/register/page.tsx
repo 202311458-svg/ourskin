@@ -28,24 +28,37 @@ type StepKey = "patient" | "guardian" | "security" | "consent"
 type RegistrationStep = {
   key: StepKey
   label: string
-  description: string
 }
+
+type FieldErrorKey =
+  | "firstName"
+  | "lastName"
+  | "dateOfBirth"
+  | "address"
+  | "contact"
+  | "email"
+  | "guardianName"
+  | "guardianRelationship"
+  | "guardianContact"
+  | "guardianEmail"
+  | "guardianConsent"
+  | "password"
+  | "confirmPassword"
+  | "consent"
+
+type FieldErrors = Partial<Record<FieldErrorKey, string>>
 
 export default function RegisterPage() {
   const router = useRouter()
   const { darkMode, toggleDarkMode } = useDarkMode()
   const policyDialogRef = useRef<HTMLDivElement>(null)
   const policyCloseRef = useRef<HTMLButtonElement>(null)
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
 
   const [loginOpen, setLoginOpen] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [dateOfBirth, setDateOfBirth] = useState("")
-  const [dobMonth, setDobMonth] = useState("")
-  const [dobDay, setDobDay] = useState("")
-  const [dobYear, setDobYear] = useState("")
   const [address, setAddress] = useState("")
   const [contact, setContact] = useState("")
   const [email, setEmail] = useState("")
@@ -66,6 +79,7 @@ export default function RegisterPage() {
   const [openPolicy, setOpenPolicy] = useState<"terms" | "privacy" | null>(null)
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [googleOnboarding, setGoogleOnboarding] = useState<GoogleOnboarding | null>(null)
 
   useEffect(() => {
@@ -75,6 +89,7 @@ export default function RegisterPage() {
     try {
       const saved = JSON.parse(raw) as GoogleOnboarding
       if (!saved.token) return
+
       setGoogleOnboarding(saved)
       setFirstName(saved.profile?.first_name || "")
       setLastName(saved.profile?.last_name || "")
@@ -99,6 +114,7 @@ export default function RegisterPage() {
         setOpenPolicy(null)
         return
       }
+
       if (event.key !== "Tab" || !policyDialogRef.current) return
 
       const focusable = Array.from(
@@ -106,10 +122,12 @@ export default function RegisterPage() {
           'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
       )
+
       if (focusable.length === 0) return
 
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
+
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()
@@ -120,6 +138,7 @@ export default function RegisterPage() {
     }
 
     document.addEventListener("keydown", handleKeyDown)
+
     return () => {
       window.cancelAnimationFrame(frame)
       document.removeEventListener("keydown", handleKeyDown)
@@ -128,48 +147,19 @@ export default function RegisterPage() {
     }
   }, [openPolicy])
 
-  const currentYear = new Date().getFullYear()
-  const monthOptions = [
-    { value: "01", label: "January" },
-    { value: "02", label: "February" },
-    { value: "03", label: "March" },
-    { value: "04", label: "April" },
-    { value: "05", label: "May" },
-    { value: "06", label: "June" },
-    { value: "07", label: "July" },
-    { value: "08", label: "August" },
-    { value: "09", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-  ]
-  const yearOptions = Array.from({ length: 120 }, (_, index) => String(currentYear - index))
-  const getDaysInMonth = (year: string, month: string) => {
-    if (!year || !month) return 31
-    return new Date(Number(year), Number(month), 0).getDate()
-  }
-  const daysInSelectedMonth = getDaysInMonth(dobYear, dobMonth)
-  const dayOptions = Array.from({ length: daysInSelectedMonth }, (_, index) =>
-    String(index + 1).padStart(2, "0")
-  )
-
-  useEffect(() => {
-    if (dobDay && Number(dobDay) > daysInSelectedMonth) setDobDay("")
-  }, [dobMonth, dobYear, dobDay, daysInSelectedMonth])
-
-  useEffect(() => {
-    if (dobYear && dobMonth && dobDay) setDateOfBirth(`${dobYear}-${dobMonth}-${dobDay}`)
-    else setDateOfBirth("")
-  }, [dobYear, dobMonth, dobDay])
-
   const passwordChecks = {
     length: password.length >= 8,
     uppercase: /[A-Z]/.test(password),
     number: /\d/.test(password),
     special: /[@$!%*?&]/.test(password),
   }
+
   const isPasswordStrong =
-    passwordChecks.length && passwordChecks.uppercase && passwordChecks.number && passwordChecks.special
+    passwordChecks.length &&
+    passwordChecks.uppercase &&
+    passwordChecks.number &&
+    passwordChecks.special
+
   const passwordsMatch = confirmPassword === password
 
   const parseDateInput = (birthDate: string) => {
@@ -179,10 +169,14 @@ export default function RegisterPage() {
 
   const getAgeInMonths = (birthDate: string) => {
     if (!birthDate) return 0
+
     const today = new Date()
     const dob = parseDateInput(birthDate)
+
     let months =
-      (today.getFullYear() - dob.getFullYear()) * 12 + (today.getMonth() - dob.getMonth())
+      (today.getFullYear() - dob.getFullYear()) * 12 +
+      (today.getMonth() - dob.getMonth())
+
     if (today.getDate() < dob.getDate()) months -= 1
     return months
   }
@@ -193,49 +187,41 @@ export default function RegisterPage() {
 
   const getAgeLabel = () => {
     if (!dateOfBirth) return ""
-    if (ageInMonths < 12) return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"} old`
+
+    if (ageInMonths < 12) {
+      return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"} old`
+    }
+
     const years = Math.floor(ageInMonths / 12)
     const months = ageInMonths % 12
-    if (months === 0) return `${years} year${years === 1 ? "" : "s"} old`
-    return `${years} year${years === 1 ? "" : "s"} and ${months} month${months === 1 ? "" : "s"} old`
+
+    if (months === 0) {
+      return `${years} year${years === 1 ? "" : "s"} old`
+    }
+
+    return `${years} year${years === 1 ? "" : "s"} and ${months} month${
+      months === 1 ? "" : "s"
+    } old`
   }
 
-  const isValidEmailFormat = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
-  const isValidContactNumber = (value: string) => /^(09\d{9}|\+639\d{9})$/.test(value.trim())
+  const isValidEmailFormat = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+
+  const isValidContactNumber = (value: string) =>
+    /^(09\d{9}|\+639\d{9})$/.test(value.trim())
 
   const steps = useMemo<RegistrationStep[]>(() => {
-    const next: RegistrationStep[] = [
-      {
-        key: "patient",
-        label: "Patient information",
-        description: isMinor
-          ? "Enter the patient's details. Guardian account information is collected in the next step."
-          : "Enter the patient details used for verification and clinic communication.",
-      },
-    ]
+    const next: RegistrationStep[] = [{ key: "patient", label: "Patient information" }]
 
     if (isMinor) {
-      next.push({
-        key: "guardian",
-        label: "Guardian information",
-        description: "A parent or legal guardian manages registration for a patient below 18.",
-      })
+      next.push({ key: "guardian", label: "Guardian information" })
     }
 
     if (!googleOnboarding) {
-      next.push({
-        key: "security",
-        label: "Account security",
-        description: "Create a secure password for the OurSkin patient account.",
-      })
+      next.push({ key: "security", label: "Account security" })
     }
 
-    next.push({
-      key: "consent",
-      label: "Review & consent",
-      description: "Review the clinic terms and privacy notice, then create the account.",
-    })
-
+    next.push({ key: "consent", label: "Review & consent" })
     return next
   }, [googleOnboarding, isMinor])
 
@@ -245,15 +231,14 @@ export default function RegisterPage() {
 
   const activeStep = steps[currentStep] ?? steps[0]
   const isLastStep = currentStep === steps.length - 1
+  const upcomingSteps = steps.slice(currentStep + 1).map((step) => step.label)
+  const maxBirthDate = new Date().toISOString().slice(0, 10)
 
   const resetFields = () => {
     setCurrentStep(0)
     setFirstName("")
     setLastName("")
     setDateOfBirth("")
-    setDobMonth("")
-    setDobDay("")
-    setDobYear("")
     setAddress("")
     setContact("")
     setEmail("")
@@ -273,138 +258,236 @@ export default function RegisterPage() {
     setShowConfirmPassword(false)
     setOpenPolicy(null)
     setFeedback(null)
+    setFieldErrors({})
   }
 
-  const showError = (message: string) => setFeedback({ kind: "error", message })
+  const showFieldError = (
+    key: FieldErrorKey,
+    message: string,
+    fieldId: string,
+    focus = true
+  ) => {
+    setFieldErrors({ [key]: message })
 
-  const validatePatientStep = () => {
+    if (focus) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(fieldId)?.focus()
+      })
+    }
+  }
+
+  const validatePatientStep = (focus = true) => {
     if (firstName.trim().length < 2) {
-      showError("Please enter a valid first name.")
+      showFieldError("firstName", "Enter a valid first name.", "register-first-name", focus)
       return false
     }
+
     if (lastName.trim().length < 2) {
-      showError("Please enter a valid last name.")
+      showFieldError("lastName", "Enter a valid last name.", "register-last-name", focus)
       return false
     }
+
     if (!dateOfBirth) {
-      showError("Please enter the patient's date of birth.")
+      showFieldError("dateOfBirth", "Select the patient's date of birth.", "register-dob", focus)
       return false
     }
+
     if (isBelowMinimumAge) {
-      showError("Patient must be at least 3 months old to register.")
+      showFieldError(
+        "dateOfBirth",
+        "Patient must be at least 3 months old to register.",
+        "register-dob",
+        focus
+      )
       return false
     }
+
     if (address.trim().length < 5) {
-      showError("Please enter the patient's complete address.")
+      showFieldError(
+        "address",
+        "Enter the patient's complete address.",
+        "register-address",
+        focus
+      )
       return false
     }
+
     if (!isMinor) {
       if (!isValidContactNumber(contact)) {
-        showError("Please enter a valid contact number. Example: 09123456789 or +639123456789.")
+        showFieldError(
+          "contact",
+          "Use 09XXXXXXXXX or +639XXXXXXXXX.",
+          "register-contact",
+          focus
+        )
         return false
       }
+
       if (!isValidEmailFormat(email)) {
-        showError("Please enter a valid email address.")
+        showFieldError("email", "Enter a valid email address.", "register-email", focus)
         return false
       }
     }
+
+    setFieldErrors({})
     return true
   }
 
-  const validateGuardianStep = () => {
+  const validateGuardianStep = (focus = true) => {
     if (!guardianFirstName.trim() || !guardianLastName.trim()) {
-      showError("Please enter the parent or guardian's full name.")
+      showFieldError(
+        "guardianName",
+        "Enter the parent or guardian's full name.",
+        "guardian-first-name",
+        focus
+      )
       return false
     }
+
     if (!guardianRelationship.trim()) {
-      showError("Please enter the guardian's relationship to the patient.")
+      showFieldError(
+        "guardianRelationship",
+        "Enter the guardian's relationship to the patient.",
+        "guardian-relationship",
+        focus
+      )
       return false
     }
+
     if (!isValidContactNumber(guardianContact)) {
-      showError("Please enter a valid guardian contact number. Example: 09123456789 or +639123456789.")
+      showFieldError(
+        "guardianContact",
+        "Use 09XXXXXXXXX or +639XXXXXXXXX.",
+        "guardian-contact",
+        focus
+      )
       return false
     }
+
     if (!isValidEmailFormat(guardianEmail)) {
-      showError("Please enter a valid guardian email address.")
+      showFieldError(
+        "guardianEmail",
+        "Enter a valid guardian email address.",
+        "guardian-email",
+        focus
+      )
       return false
     }
+
     if (!guardianConsent) {
-      showError("Please confirm parent or guardian consent before continuing.")
+      showFieldError(
+        "guardianConsent",
+        "Guardian consent is required to continue.",
+        "guardian-consent",
+        focus
+      )
       return false
     }
+
+    setFieldErrors({})
     return true
   }
 
-  const validateSecurityStep = () => {
+  const validateSecurityStep = (focus = true) => {
     setPasswordTouched(true)
     setConfirmPasswordTouched(true)
+
     if (!isPasswordStrong) {
-      showError("Please complete all password requirements before continuing.")
+      showFieldError(
+        "password",
+        "Complete all four password requirements.",
+        "register-password",
+        focus
+      )
       return false
     }
+
     if (!passwordsMatch) {
-      showError("Confirm password does not match.")
+      showFieldError(
+        "confirmPassword",
+        "Confirm password does not match.",
+        "register-confirm-password",
+        focus
+      )
       return false
     }
+
+    setFieldErrors({})
     return true
   }
 
-  const validateConsentStep = () => {
+  const validateConsentStep = (focus = true) => {
     if (!acceptedTerms) {
-      showError("Please accept the Terms and Conditions before registering.")
+      showFieldError(
+        "consent",
+        "Accept the Terms and Conditions to create your account.",
+        "register-terms",
+        focus
+      )
       return false
     }
+
     if (!acceptedPrivacy) {
-      showError("Please accept the Privacy Policy before registering.")
+      showFieldError(
+        "consent",
+        "Accept the Privacy Policy to create your account.",
+        "register-privacy",
+        focus
+      )
       return false
     }
+
+    setFieldErrors({})
     return true
   }
 
-  const validateStep = (key: StepKey) => {
-    if (key === "patient") return validatePatientStep()
-    if (key === "guardian") return validateGuardianStep()
-    if (key === "security") return validateSecurityStep()
-    return validateConsentStep()
+  const validateStep = (key: StepKey, focus = true) => {
+    if (key === "patient") return validatePatientStep(focus)
+    if (key === "guardian") return validateGuardianStep(focus)
+    if (key === "security") return validateSecurityStep(focus)
+    return validateConsentStep(focus)
   }
 
-  const goToStep = (nextStep: number, clearFeedback = true) => {
-    if (clearFeedback) setFeedback(null)
+  const goToStep = (nextStep: number, clearErrors = true) => {
+    setFeedback(null)
+    if (clearErrors) setFieldErrors({})
     setCurrentStep(nextStep)
-    window.requestAnimationFrame(() => stepHeadingRef.current?.focus())
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("registration-progress")?.focus()
+    })
   }
 
   const handleContinue = () => {
     setFeedback(null)
+    setFieldErrors({})
+
     if (!validateStep(activeStep.key)) return
     goToStep(Math.min(currentStep + 1, steps.length - 1))
   }
 
   const register = async () => {
     setFeedback(null)
+    setFieldErrors({})
 
-    if (!validatePatientStep()) {
+    if (!validatePatientStep(false)) {
       goToStep(0, false)
       return
     }
 
     const guardianStepIndex = steps.findIndex((step) => step.key === "guardian")
-    if (isMinor && !validateGuardianStep()) {
+    if (isMinor && !validateGuardianStep(false)) {
       goToStep(Math.max(guardianStepIndex, 0), false)
       return
     }
 
     const securityStepIndex = steps.findIndex((step) => step.key === "security")
-    if (!googleOnboarding && !validateSecurityStep()) {
+    if (!googleOnboarding && !validateSecurityStep(false)) {
       goToStep(Math.max(securityStepIndex, 0), false)
       return
     }
 
-    const consentStepIndex = steps.findIndex((step) => step.key === "consent")
-    if (!validateConsentStep()) {
-      goToStep(Math.max(consentStepIndex, 0), false)
-      return
-    }
+    if (!validateConsentStep()) return
 
     const trimmedFirstName = firstName.trim()
     const trimmedLastName = lastName.trim()
@@ -414,6 +497,7 @@ export default function RegisterPage() {
 
     try {
       setLoading(true)
+
       const res = await fetch(
         `${API_BASE_URL}${googleOnboarding ? "/auth/google/register" : "/auth/register"}`,
         {
@@ -441,12 +525,17 @@ export default function RegisterPage() {
       )
 
       const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
         if (typeof data.detail === "string") {
-          showError(data.detail)
+          setFeedback({ kind: "error", message: data.detail })
           return
         }
-        showError("Registration failed. Please check your details and try again.")
+
+        setFeedback({
+          kind: "error",
+          message: "Registration failed. Please check your details and try again.",
+        })
         return
       }
 
@@ -462,7 +551,10 @@ export default function RegisterPage() {
       router.push("/")
     } catch (error) {
       console.error("Registration error:", error)
-      showError("Failed to connect to the server. Please make sure the backend is running.")
+      setFeedback({
+        kind: "error",
+        message: "Failed to connect to the server. Please make sure the backend is running.",
+      })
     } finally {
       setLoading(false)
     }
@@ -478,6 +570,11 @@ export default function RegisterPage() {
       }`
     : ""
 
+  const clearValidation = () => {
+    if (feedback) setFeedback(null)
+    if (Object.keys(fieldErrors).length) setFieldErrors({})
+  }
+
   const openLogin = () => setLoginOpen(true)
 
   return (
@@ -489,7 +586,7 @@ export default function RegisterPage() {
       <header className={registerStyles.authHeader}>
         <div className={registerStyles.authHeaderInner}>
           <Link href="/" className={registerStyles.authBrand} aria-label="OurSkin home">
-            <Image src="/navlogo.png" alt="OurSkin" width={170} height={62} priority />
+            <Image src="/navlogo.png" alt="OurSkin" width={210} height={76} priority />
           </Link>
 
           <div className={registerStyles.authHeaderActions}>
@@ -502,6 +599,7 @@ export default function RegisterPage() {
             >
               {darkMode ? <FaSun aria-hidden="true" /> : <FaMoon aria-hidden="true" />}
             </button>
+
             <p>
               <span>Already have an account?</span>
               <button type="button" className={registerStyles.loginLink} onClick={openLogin}>
@@ -513,57 +611,73 @@ export default function RegisterPage() {
       </header>
 
       <section className={registerStyles.registerMain} aria-labelledby="register-title">
-        <header className={registerStyles.registerHeader}>
-          <p className={registerStyles.registerEyebrow}>Patient registration</p>
-          <h1 id="register-title">
-            {googleOnboarding ? "Complete your patient profile" : "Create your account"}
-          </h1>
-          <p>
-            {googleOnboarding
-              ? "Your Google identity is verified. Complete the steps below to finish registration."
-              : "A short guided setup for your OurSkin patient account."}
-          </p>
-        </header>
+        <div
+          className={`${registerStyles.introRow} ${
+            currentStep === 0 ? registerStyles.introRowWithAuth : registerStyles.introRowSingle
+          }`}
+        >
+          <header className={registerStyles.registerHeader}>
+            <h1 id="register-title">
+              {googleOnboarding ? "Complete your patient profile" : "Create your account"}
+            </h1>
+            <p>
+              {googleOnboarding
+                ? "Your Google identity is verified. Complete the remaining steps to finish setup."
+                : "Set up your patient profile to book appointments and manage care with OurSkin."}
+            </p>
+          </header>
 
-        {currentStep === 0 &&
-          (googleOnboarding ? (
-            <div className={registerStyles.googleVerified} role="status">
-              <span>Verified Google email</span>
-              <strong>{googleOnboarding.profile?.email || "Google account"}</strong>
-            </div>
-          ) : (
-            <GoogleAuthButton
-              theme={darkMode ? "dark" : "light"}
-              dividerPosition="after"
-              dividerText="or register with email"
-              onAuthenticated={(role, token) => {
-                persistAuthSession({ access_token: token, role })
-                router.push(getRoleHome(role))
-              }}
-              onOnboarding={() => window.location.reload()}
-            />
-          ))}
+          {currentStep === 0 &&
+            (googleOnboarding ? (
+              <div className={registerStyles.googleVerified} role="status">
+                <span>Verified Google email</span>
+                <strong>{googleOnboarding.profile?.email || "Google account"}</strong>
+              </div>
+            ) : (
+              <div className={registerStyles.authChoice}>
+                <p>Prefer a faster start?</p>
+                <GoogleAuthButton
+                  theme={darkMode ? "dark" : "light"}
+                  dividerPosition="after"
+                  dividerText="or use email below"
+                  onAuthenticated={(role, token) => {
+                    persistAuthSession({ access_token: token, role })
+                    router.push(getRoleHome(role))
+                  }}
+                  onOnboarding={() => window.location.reload()}
+                />
+              </div>
+            ))}
+        </div>
 
-        <div className={registerStyles.stepSummary} aria-label="Registration progress">
-          <div>
-            <span>
-              Step {currentStep + 1} of {steps.length}
-            </span>
-            <strong>{activeStep.label}</strong>
+        <div
+          id="registration-progress"
+          className={registerStyles.progressBlock}
+          tabIndex={-1}
+          aria-label={`Step ${currentStep + 1} of ${steps.length}: ${activeStep.label}`}
+        >
+          <div className={registerStyles.progressMeta}>
+            <p>
+              <strong>
+                Step {currentStep + 1} of {steps.length}
+              </strong>
+              <span aria-hidden="true">·</span>
+              <span>{activeStep.label}</span>
+            </p>
+
+            <p className={registerStyles.remainingSteps}>
+              {upcomingSteps.length
+                ? `Next: ${upcomingSteps.join(" → ")}`
+                : "Final step"}
+            </p>
           </div>
+
           <div className={registerStyles.progressTrack} aria-hidden="true">
             <span style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }} />
           </div>
         </div>
 
-        <div className={registerStyles.stepContent}>
-          <header className={registerStyles.stepHeader}>
-            <h2 ref={stepHeadingRef} tabIndex={-1}>
-              {activeStep.label}
-            </h2>
-            <p>{activeStep.description}</p>
-          </header>
-
+        <div className={registerStyles.flowBody}>
           {feedback && (
             <p
               className={feedbackClass}
@@ -578,15 +692,15 @@ export default function RegisterPage() {
             className={registerStyles.registerForm}
             noValidate
             aria-busy={loading}
-            onChange={() => {
-              if (feedback) setFeedback(null)
-            }}
+            onChange={clearValidation}
             onSubmit={(event) => {
               event.preventDefault()
               if (isLastStep) void register()
               else handleContinue()
             }}
           >
+            <p className={registerStyles.requirementNote}>All fields in this step are required.</p>
+
             {activeStep.key === "patient" && (
               <fieldset className={registerStyles.formSection}>
                 <legend className={registerStyles.srOnly}>Patient information</legend>
@@ -600,10 +714,24 @@ export default function RegisterPage() {
                       onChange={(event) => setFirstName(event.target.value)}
                       placeholder="Enter first name"
                       autoComplete="given-name"
+                      aria-invalid={Boolean(fieldErrors.firstName)}
+                      aria-describedby={
+                        fieldErrors.firstName ? "register-first-name-error" : undefined
+                      }
                       required
                       disabled={loading}
                     />
+                    {fieldErrors.firstName && (
+                      <p
+                        id="register-first-name-error"
+                        className={registerStyles.registerError}
+                        role="alert"
+                      >
+                        {fieldErrors.firstName}
+                      </p>
+                    )}
                   </div>
+
                   <div className={registerStyles.registerField}>
                     <label htmlFor="register-last-name">Last name</label>
                     <input
@@ -612,113 +740,88 @@ export default function RegisterPage() {
                       onChange={(event) => setLastName(event.target.value)}
                       placeholder="Enter last name"
                       autoComplete="family-name"
+                      aria-invalid={Boolean(fieldErrors.lastName)}
+                      aria-describedby={
+                        fieldErrors.lastName ? "register-last-name-error" : undefined
+                      }
                       required
                       disabled={loading}
                     />
+                    {fieldErrors.lastName && (
+                      <p
+                        id="register-last-name-error"
+                        className={registerStyles.registerError}
+                        role="alert"
+                      >
+                        {fieldErrors.lastName}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className={registerStyles.registerField}>
-                  <span className={registerStyles.fieldLabel}>Date of birth</span>
-                  <div className={registerStyles.dobGrid}>
-                    <div>
-                      <label className={registerStyles.srOnly} htmlFor="register-dob-month">
-                        Birth month
-                      </label>
-                      <select
-                        id="register-dob-month"
-                        value={dobMonth}
-                        onChange={(event) => setDobMonth(event.target.value)}
-                        autoComplete="bday-month"
-                        aria-label="Birth month"
-                        required
-                        disabled={loading}
+                <div className={registerStyles.registerGrid}>
+                  <div className={registerStyles.registerField}>
+                    <label htmlFor="register-dob">Date of birth</label>
+                    <input
+                      id="register-dob"
+                      type="date"
+                      value={dateOfBirth}
+                      max={maxBirthDate}
+                      onChange={(event) => setDateOfBirth(event.target.value)}
+                      autoComplete="bday"
+                      aria-invalid={Boolean(fieldErrors.dateOfBirth)}
+                      aria-describedby={
+                        fieldErrors.dateOfBirth
+                          ? "register-dob-help register-dob-error"
+                          : "register-dob-help"
+                      }
+                      required
+                      disabled={loading}
+                    />
+                    <p id="register-dob-help" className={registerStyles.registerHelper}>
+                      At least 3 months old. Patients under 18 continue with guardian details.
+                    </p>
+                    {dateOfBirth && !fieldErrors.dateOfBirth && (
+                      <p className={registerStyles.dobPreview} aria-live="polite">
+                        {getAgeLabel()}
+                      </p>
+                    )}
+                    {fieldErrors.dateOfBirth && (
+                      <p
+                        id="register-dob-error"
+                        className={registerStyles.registerError}
+                        role="alert"
                       >
-                        <option value="">Month</option>
-                        {monthOptions.map((month) => (
-                          <option key={month.value} value={month.value}>
-                            {month.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={registerStyles.srOnly} htmlFor="register-dob-day">
-                        Birth day
-                      </label>
-                      <select
-                        id="register-dob-day"
-                        value={dobDay}
-                        onChange={(event) => setDobDay(event.target.value)}
-                        autoComplete="bday-day"
-                        aria-label="Birth day"
-                        required
-                        disabled={loading}
-                      >
-                        <option value="">Day</option>
-                        {dayOptions.map((day) => (
-                          <option key={day} value={day}>
-                            {day}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={registerStyles.srOnly} htmlFor="register-dob-year">
-                        Birth year
-                      </label>
-                      <select
-                        id="register-dob-year"
-                        value={dobYear}
-                        onChange={(event) => setDobYear(event.target.value)}
-                        autoComplete="bday-year"
-                        aria-label="Birth year"
-                        required
-                        disabled={loading}
-                      >
-                        <option value="">Year</option>
-                        {yearOptions.map((year) => (
-                          <option key={year} value={year}>
-                            {year}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        {fieldErrors.dateOfBirth}
+                      </p>
+                    )}
                   </div>
 
-                  {!dateOfBirth && (
-                    <p className={registerStyles.registerHelper}>Patients must be at least 3 months old.</p>
-                  )}
-                  {dateOfBirth && (
-                    <p className={registerStyles.dobPreview} aria-live="polite">
-                      <time dateTime={dateOfBirth}>{dateOfBirth}</time>
-                      <span aria-hidden="true">·</span>
-                      <span>{getAgeLabel()}</span>
-                    </p>
-                  )}
-                  {isBelowMinimumAge && (
-                    <p className={registerStyles.registerError} role="alert">
-                      Patient must be at least 3 months old to register.
-                    </p>
-                  )}
-                  {dateOfBirth && isMinor && !isBelowMinimumAge && (
-                    <p className={registerStyles.registerInfo} role="status">
-                      Guardian information will be collected in the next step.
-                    </p>
-                  )}
-                </div>
-
-                <div className={registerStyles.registerField}>
-                  <label htmlFor="register-address">Complete address</label>
-                  <input
-                    id="register-address"
-                    value={address}
-                    onChange={(event) => setAddress(event.target.value)}
-                    placeholder="House no., street, barangay, city, province"
-                    autoComplete="street-address"
-                    required
-                    disabled={loading}
-                  />
+                  <div className={registerStyles.registerField}>
+                    <label htmlFor="register-address">Complete address</label>
+                    <input
+                      id="register-address"
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      placeholder="House no., street, barangay, city / province"
+                      autoComplete="street-address"
+                      aria-invalid={Boolean(fieldErrors.address)}
+                      aria-describedby={
+                        fieldErrors.address ? "register-address-error" : undefined
+                      }
+                      required
+                      disabled={loading}
+                    />
+                    {fieldErrors.address && (
+                      <p
+                        id="register-address-error"
+                        className={registerStyles.registerError}
+                        role="alert"
+                      >
+                        {fieldErrors.address}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {!isMinor && (
@@ -729,14 +832,24 @@ export default function RegisterPage() {
                         id="register-contact"
                         value={contact}
                         onChange={(event) => setContact(event.target.value)}
-                        placeholder="09123456789"
+                        placeholder="09XXXXXXXXX"
                         autoComplete="tel"
                         inputMode="tel"
+                        aria-invalid={Boolean(fieldErrors.contact)}
+                        aria-describedby="register-contact-help"
                         required
                         disabled={loading}
                       />
-                      <p className={registerStyles.registerHelper}>Use 09XXXXXXXXX or +639XXXXXXXXX.</p>
+                      <p id="register-contact-help" className={registerStyles.registerHelper}>
+                        Philippine mobile: 09XXXXXXXXX or +639XXXXXXXXX.
+                      </p>
+                      {fieldErrors.contact && (
+                        <p className={registerStyles.registerError} role="alert">
+                          {fieldErrors.contact}
+                        </p>
+                      )}
                     </div>
+
                     <div className={registerStyles.registerField}>
                       <label htmlFor="register-email">Email address</label>
                       <input
@@ -749,11 +862,31 @@ export default function RegisterPage() {
                         inputMode="email"
                         readOnly={Boolean(googleOnboarding)}
                         aria-readonly={Boolean(googleOnboarding)}
+                        aria-invalid={Boolean(fieldErrors.email)}
+                        aria-describedby={
+                          fieldErrors.email ? "register-email-error" : undefined
+                        }
                         required
                         disabled={loading}
                       />
+                      {fieldErrors.email && (
+                        <p
+                          id="register-email-error"
+                          className={registerStyles.registerError}
+                          role="alert"
+                        >
+                          {fieldErrors.email}
+                        </p>
+                      )}
                     </div>
                   </div>
+                )}
+
+                {dateOfBirth && isMinor && !isBelowMinimumAge && (
+                  <p className={registerStyles.registerInfo} role="status">
+                    Because this patient is under 18, a parent or legal guardian will provide the
+                    account contact details in the next step.
+                  </p>
                 )}
               </fieldset>
             )}
@@ -761,6 +894,11 @@ export default function RegisterPage() {
             {activeStep.key === "guardian" && (
               <fieldset className={registerStyles.formSection}>
                 <legend className={registerStyles.srOnly}>Guardian information</legend>
+
+                <p className={registerStyles.stepLead}>
+                  The guardian's verified contact details become the account contact information
+                  for this minor patient.
+                </p>
 
                 <div className={registerStyles.registerGrid}>
                   <div className={registerStyles.registerField}>
@@ -771,10 +909,17 @@ export default function RegisterPage() {
                       onChange={(event) => setGuardianFirstName(event.target.value)}
                       placeholder="Enter first name"
                       autoComplete="section-guardian given-name"
+                      aria-invalid={Boolean(fieldErrors.guardianName)}
                       required
                       disabled={loading}
                     />
+                    {fieldErrors.guardianName && (
+                      <p className={registerStyles.registerError} role="alert">
+                        {fieldErrors.guardianName}
+                      </p>
+                    )}
                   </div>
+
                   <div className={registerStyles.registerField}>
                     <label htmlFor="guardian-last-name">Guardian last name</label>
                     <input
@@ -783,69 +928,97 @@ export default function RegisterPage() {
                       onChange={(event) => setGuardianLastName(event.target.value)}
                       placeholder="Enter last name"
                       autoComplete="section-guardian family-name"
+                      aria-invalid={Boolean(fieldErrors.guardianName)}
                       required
                       disabled={loading}
                     />
                   </div>
                 </div>
 
-                <div className={registerStyles.registerField}>
-                  <label htmlFor="guardian-relationship">Relationship to patient</label>
-                  <input
-                    id="guardian-relationship"
-                    value={guardianRelationship}
-                    onChange={(event) => setGuardianRelationship(event.target.value)}
-                    placeholder="Example: Mother, Father, Legal Guardian"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
                 <div className={registerStyles.registerGrid}>
+                  <div className={registerStyles.registerField}>
+                    <label htmlFor="guardian-relationship">Relationship to patient</label>
+                    <input
+                      id="guardian-relationship"
+                      value={guardianRelationship}
+                      onChange={(event) => setGuardianRelationship(event.target.value)}
+                      placeholder="Mother, Father, Legal Guardian"
+                      aria-invalid={Boolean(fieldErrors.guardianRelationship)}
+                      required
+                      disabled={loading}
+                    />
+                    {fieldErrors.guardianRelationship && (
+                      <p className={registerStyles.registerError} role="alert">
+                        {fieldErrors.guardianRelationship}
+                      </p>
+                    )}
+                  </div>
+
                   <div className={registerStyles.registerField}>
                     <label htmlFor="guardian-contact">Guardian contact number</label>
                     <input
                       id="guardian-contact"
                       value={guardianContact}
                       onChange={(event) => setGuardianContact(event.target.value)}
-                      placeholder="09123456789"
+                      placeholder="09XXXXXXXXX"
                       autoComplete="section-guardian tel"
                       inputMode="tel"
+                      aria-invalid={Boolean(fieldErrors.guardianContact)}
                       required
                       disabled={loading}
                     />
+                    {fieldErrors.guardianContact && (
+                      <p className={registerStyles.registerError} role="alert">
+                        {fieldErrors.guardianContact}
+                      </p>
+                    )}
                   </div>
-                  <div className={registerStyles.registerField}>
-                    <label htmlFor="guardian-email">Guardian email address</label>
-                    <input
-                      id="guardian-email"
-                      type="email"
-                      value={guardianEmail}
-                      onChange={(event) => setGuardianEmail(event.target.value)}
-                      placeholder="guardian@email.com"
-                      autoComplete="section-guardian email"
-                      inputMode="email"
-                      readOnly={Boolean(googleOnboarding)}
-                      aria-readonly={Boolean(googleOnboarding)}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+                </div>
+
+                <div className={registerStyles.registerField}>
+                  <label htmlFor="guardian-email">Guardian email address</label>
+                  <input
+                    id="guardian-email"
+                    type="email"
+                    value={guardianEmail}
+                    onChange={(event) => setGuardianEmail(event.target.value)}
+                    placeholder="guardian@email.com"
+                    autoComplete="section-guardian email"
+                    inputMode="email"
+                    readOnly={Boolean(googleOnboarding)}
+                    aria-readonly={Boolean(googleOnboarding)}
+                    aria-invalid={Boolean(fieldErrors.guardianEmail)}
+                    required
+                    disabled={loading}
+                  />
+                  {fieldErrors.guardianEmail && (
+                    <p className={registerStyles.registerError} role="alert">
+                      {fieldErrors.guardianEmail}
+                    </p>
+                  )}
                 </div>
 
                 <label className={registerStyles.registerCheckbox}>
                   <input
+                    id="guardian-consent"
                     type="checkbox"
                     checked={guardianConsent}
                     onChange={(event) => setGuardianConsent(event.target.checked)}
+                    aria-invalid={Boolean(fieldErrors.guardianConsent)}
                     required
                     disabled={loading}
                   />
                   <span>
                     I confirm that I am the parent or legal guardian and consent to the collection
-                    and processing of this patient&apos;s information for dermatology care.
+                    and processing of this patient's information for dermatology care.
                   </span>
                 </label>
+
+                {fieldErrors.guardianConsent && (
+                  <p className={registerStyles.registerError} role="alert">
+                    {fieldErrors.guardianConsent}
+                  </p>
+                )}
               </fieldset>
             )}
 
@@ -853,80 +1026,123 @@ export default function RegisterPage() {
               <fieldset className={registerStyles.formSection}>
                 <legend className={registerStyles.srOnly}>Account security</legend>
 
-                <div className={registerStyles.registerField}>
-                  <label htmlFor="register-password">Password</label>
-                  <div className={registerStyles.registerPasswordWrap}>
-                    <input
-                      id="register-password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      onBlur={() => setPasswordTouched(true)}
-                      placeholder="Create password"
-                      autoComplete="new-password"
-                      aria-invalid={passwordTouched && !isPasswordStrong}
-                      aria-describedby="password-requirements"
-                      required
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      aria-pressed={showPassword}
-                      disabled={loading}
-                    >
-                      {showPassword ? <FaEyeSlash aria-hidden="true" /> : <FaEye aria-hidden="true" />}
-                    </button>
-                  </div>
-                  <ul
-                    id="password-requirements"
-                    className={registerStyles.passwordChecklist}
-                    aria-label="Password requirements"
-                  >
-                    <li className={passwordChecks.length ? registerStyles.requirementMet : ""}>8+ characters</li>
-                    <li className={passwordChecks.uppercase ? registerStyles.requirementMet : ""}>Uppercase letter</li>
-                    <li className={passwordChecks.number ? registerStyles.requirementMet : ""}>Number</li>
-                    <li className={passwordChecks.special ? registerStyles.requirementMet : ""}>Special character</li>
-                  </ul>
-                </div>
+                <div className={registerStyles.securityGrid}>
+                  <div className={registerStyles.registerField}>
+                    <label htmlFor="register-password">Password</label>
+                    <div className={registerStyles.registerPasswordWrap}>
+                      <input
+                        id="register-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        onBlur={() => setPasswordTouched(true)}
+                        placeholder="Create password"
+                        autoComplete="new-password"
+                        aria-invalid={
+                          Boolean(fieldErrors.password) ||
+                          (passwordTouched && !isPasswordStrong)
+                        }
+                        aria-describedby="password-requirements"
+                        required
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <FaEyeSlash aria-hidden="true" />
+                        ) : (
+                          <FaEye aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
 
-                <div className={registerStyles.registerField}>
-                  <label htmlFor="register-confirm-password">Confirm password</label>
-                  <div className={registerStyles.registerPasswordWrap}>
-                    <input
-                      id="register-confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      onBlur={() => setConfirmPasswordTouched(true)}
-                      placeholder="Re-enter password"
-                      autoComplete="new-password"
-                      aria-invalid={
-                        confirmPasswordTouched && confirmPassword.length > 0 && !passwordsMatch
-                      }
-                      required
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((value) => !value)}
-                      aria-label={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}
-                      aria-pressed={showConfirmPassword}
-                      disabled={loading}
+                    <ul
+                      id="password-requirements"
+                      className={registerStyles.passwordChecklist}
+                      aria-label="Password requirements"
                     >
-                      {showConfirmPassword ? (
-                        <FaEyeSlash aria-hidden="true" />
-                      ) : (
-                        <FaEye aria-hidden="true" />
-                      )}
-                    </button>
+                      <li className={passwordChecks.length ? registerStyles.requirementMet : ""}>
+                        8+ characters
+                      </li>
+                      <li
+                        className={passwordChecks.uppercase ? registerStyles.requirementMet : ""}
+                      >
+                        Uppercase letter
+                      </li>
+                      <li className={passwordChecks.number ? registerStyles.requirementMet : ""}>
+                        Number
+                      </li>
+                      <li className={passwordChecks.special ? registerStyles.requirementMet : ""}>
+                        Special character
+                      </li>
+                    </ul>
+
+                    {fieldErrors.password && (
+                      <p className={registerStyles.registerError} role="alert">
+                        {fieldErrors.password}
+                      </p>
+                    )}
                   </div>
-                  {confirmPasswordTouched && confirmPassword.length > 0 && !passwordsMatch && (
-                    <p className={registerStyles.registerError} role="alert">
-                      Confirm password does not match.
-                    </p>
-                  )}
+
+                  <div className={registerStyles.registerField}>
+                    <label htmlFor="register-confirm-password">Confirm password</label>
+                    <div className={registerStyles.registerPasswordWrap}>
+                      <input
+                        id="register-confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        onBlur={() => setConfirmPasswordTouched(true)}
+                        placeholder="Re-enter password"
+                        autoComplete="new-password"
+                        aria-invalid={
+                          Boolean(fieldErrors.confirmPassword) ||
+                          (confirmPasswordTouched &&
+                            confirmPassword.length > 0 &&
+                            !passwordsMatch)
+                        }
+                        required
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((value) => !value)}
+                        aria-label={
+                          showConfirmPassword
+                            ? "Hide confirmed password"
+                            : "Show confirmed password"
+                        }
+                        aria-pressed={showConfirmPassword}
+                        disabled={loading}
+                      >
+                        {showConfirmPassword ? (
+                          <FaEyeSlash aria-hidden="true" />
+                        ) : (
+                          <FaEye aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
+
+                    {confirmPasswordTouched &&
+                      confirmPassword.length > 0 &&
+                      !passwordsMatch &&
+                      !fieldErrors.confirmPassword && (
+                        <p className={registerStyles.registerError} role="alert">
+                          Confirm password does not match.
+                        </p>
+                      )}
+
+                    {fieldErrors.confirmPassword && (
+                      <p className={registerStyles.registerError} role="alert">
+                        {fieldErrors.confirmPassword}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </fieldset>
             )}
@@ -938,15 +1154,17 @@ export default function RegisterPage() {
                 <div className={registerStyles.reviewSummary}>
                   <div>
                     <span>Patient</span>
-                    <strong>{firstName.trim()} {lastName.trim()}</strong>
+                    <strong>
+                      {firstName.trim()} {lastName.trim()}
+                    </strong>
                   </div>
                   <div>
                     <span>Account email</span>
                     <strong>{isMinor ? guardianEmail.trim() : email.trim()}</strong>
                   </div>
                   <div>
-                    <span>Registration</span>
-                    <strong>{googleOnboarding ? "Google account" : "Email & password"}</strong>
+                    <span>Sign-in method</span>
+                    <strong>{googleOnboarding ? "Google" : "Email & password"}</strong>
                   </div>
                 </div>
 
@@ -995,22 +1213,36 @@ export default function RegisterPage() {
                     </p>
                   </div>
                 </div>
+
+                {fieldErrors.consent && (
+                  <p className={registerStyles.registerError} role="alert">
+                    {fieldErrors.consent}
+                  </p>
+                )}
               </fieldset>
             )}
 
-            <div className={registerStyles.stepActions}>
-              {currentStep > 0 ? (
-                <button
-                  type="button"
-                  className={registerStyles.backButton}
-                  onClick={() => goToStep(currentStep - 1)}
-                  disabled={loading}
-                >
-                  Back
-                </button>
-              ) : (
-                <span />
-              )}
+            <div className={registerStyles.stepFooter}>
+              <div className={registerStyles.footerSupport}>
+                {currentStep > 0 && (
+                  <button
+                    type="button"
+                    className={registerStyles.backButton}
+                    onClick={() => goToStep(currentStep - 1)}
+                    disabled={loading}
+                  >
+                    Back
+                  </button>
+                )}
+
+                <p>
+                  {isLastStep
+                    ? "Your information is used for account setup, appointment coordination, and clinic communication."
+                    : "Need assistance completing this step?"}
+                  {" "}
+                  <Link href="/#contact">{isLastStep ? "Privacy & support" : "Contact OurSkin"}</Link>
+                </p>
+              </div>
 
               <button
                 className={registerStyles.registerSubmit}
@@ -1028,13 +1260,6 @@ export default function RegisterPage() {
             </div>
           </form>
         </div>
-
-        <p className={registerStyles.mobileLoginPrompt}>
-          Already have an account?{" "}
-          <button type="button" className={registerStyles.loginLink} onClick={openLogin}>
-            Log in
-          </button>
-        </p>
       </section>
 
       {openPolicy && (
@@ -1058,6 +1283,7 @@ export default function RegisterPage() {
                   {openPolicy === "terms" ? "Terms and Conditions" : "Privacy Policy"}
                 </h2>
               </div>
+
               <button
                 ref={policyCloseRef}
                 type="button"
@@ -1078,16 +1304,19 @@ export default function RegisterPage() {
                     to provide accurate and updated information for account registration,
                     appointment booking, and clinic-related communication.
                   </p>
+
                   <h3>Appointment Requests</h3>
                   <p>
                     Appointment requests submitted through the system are subject to clinic review,
                     availability, and confirmation.
                   </p>
+
                   <h3>Medical and System Limitations</h3>
                   <p>
                     OurSkin supports clinic workflows but does not replace professional medical
                     advice, diagnosis, or treatment.
                   </p>
+
                   <h3>Account Security</h3>
                   <p>
                     Users are responsible for keeping their account credentials secure and using
@@ -1101,11 +1330,13 @@ export default function RegisterPage() {
                     email address, complete address, date of birth, appointment information, and
                     related account details to support clinic operations.
                   </p>
+
                   <h3>Minor Patient Information</h3>
                   <p>
                     If the patient is a minor, parent or guardian details and consent may be
                     collected to manage appointment booking and account verification.
                   </p>
+
                   <h3>Use of Information</h3>
                   <p>
                     Personal information is used for account management, appointment processing,
