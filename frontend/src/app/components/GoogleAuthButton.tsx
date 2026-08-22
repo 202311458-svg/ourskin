@@ -21,6 +21,8 @@ type Props = {
   onAuthenticated: (role: string, token: string) => void;
   onOnboarding?: () => void;
   theme?: "light" | "dark";
+  dividerPosition?: "before" | "after";
+  dividerText?: string;
 };
 
 declare global {
@@ -40,6 +42,8 @@ export default function GoogleAuthButton({
   onAuthenticated,
   onOnboarding,
   theme,
+  dividerPosition = "before",
+  dividerText = "or continue with",
 }: Props) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -192,6 +196,15 @@ export default function GoogleAuthButton({
 
   if (!clientId) return null;
 
+  const divider = (
+    <div
+      className={`${styles.divider} ${dividerPosition === "after" ? styles.dividerAfter : ""}`}
+      aria-hidden="true"
+    >
+      <span>{dividerText}</span>
+    </div>
+  );
+
   return (
     <div className={styles.wrapper} aria-busy={busy}>
       <Script
@@ -201,9 +214,7 @@ export default function GoogleAuthButton({
         onError={() => setError("Google sign-in could not be loaded.")}
       />
 
-      <div className={styles.divider} aria-hidden="true">
-        <span>or continue with</span>
-      </div>
+      {dividerPosition === "before" && divider}
 
       <div ref={buttonRef} className={styles.buttonHost} />
 
@@ -247,6 +258,8 @@ export default function GoogleAuthButton({
           </div>
         </div>
       )}
+
+      {dividerPosition === "after" && divider}
     </div>
   );
 }

@@ -13,6 +13,11 @@
   font-size: var(--font-size-xs);
 }
 
+.dividerAfter {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
 .divider::before,
 .divider::after {
   content: "";
