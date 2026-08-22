@@ -143,7 +143,7 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
     });
     window.google.accounts.id.renderButton(containerRef.current, {
       type: "standard",
-      theme: darkTheme ? "filled_black" : "outline",
+      theme: darkTheme ? "outline_dark" : "outline",
       size: "large",
       text: "continue_with",
       shape: "pill",
