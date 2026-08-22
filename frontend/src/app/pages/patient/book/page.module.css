@@ -38,7 +38,7 @@
 
 .bookingStepper {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
