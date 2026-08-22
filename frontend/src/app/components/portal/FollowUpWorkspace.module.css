@@ -1,47 +1,13 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-width: 0;
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-border);
-  overflow: hidden;
-}
-
-.summary div {
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-surface);
-}
-
-.summary span {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.summary strong {
-  display: block;
-  margin-top: var(--space-1);
-  color: var(--color-text-strong);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-}
-
-.summary div:first-child strong {
-  color: var(--color-danger);
+  width: 100%;
 }
 
 .error {
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-danger-bg);
   border-radius: var(--radius-md);
   background: var(--color-danger-bg);
@@ -54,47 +20,58 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.toolbarMain {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .filters {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
 
 .filters button {
-  min-height: 40px;
-  padding: 0 var(--space-3);
+  min-height: 34px;
+  padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  white-space: nowrap;
 }
 
-.filters button:hover {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-strong);
-}
-
+.filters button:hover,
 .filters .active {
   border-color: var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-surface-subtle);
   color: var(--color-text-strong);
 }
 
 .search {
   width: min(300px, 100%);
-  height: 40px;
+  min-width: 180px;
+  min-height: 36px;
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-input);
   color: var(--color-text);
   font: inherit;
@@ -103,11 +80,23 @@
 
 .search:focus {
   outline: none;
-  border-color: var(--color-focus);
-  box-shadow: 0 0 0 3px rgba(39, 111, 154, 0.12);
+  border-color: var(--color-brand-600);
+  box-shadow: 0 0 0 3px rgba(138, 51, 79, 0.16);
+}
+
+.toolbarMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
 }
 
 .tableWrap {
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 
@@ -115,14 +104,16 @@
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
+  table-layout: fixed;
 }
 
 .table th,
 .table td {
-  padding: var(--space-3) var(--space-4);
+  padding: 10px var(--space-3);
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .table th {
@@ -151,17 +142,17 @@
 }
 
 .primaryButton {
-  min-height: 40px;
-  padding: 0 var(--space-4);
+  min-height: 34px;
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-brand-600);
   color: var(--color-text-inverse);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background 140ms ease, opacity 140ms ease;
+  white-space: nowrap;
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -173,18 +164,28 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 760px) {
-  .summary {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .toolbar {
-    flex-direction: column;
+@media (max-width: 1180px) {
+  .toolbar,
+  .toolbarMain {
     align-items: stretch;
+    flex-direction: column;
   }
 
   .search {
     width: 100%;
+    min-width: 0;
+  }
+
+  .toolbarMeta {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .tableWrap {
+    overflow: visible;
   }
 
   .table thead {
@@ -200,15 +201,15 @@
   }
 
   .table tr {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3);
     border-bottom: 1px solid var(--color-border);
   }
 
   .table td {
     display: grid;
-    grid-template-columns: 100px 1fr;
+    grid-template-columns: minmax(110px, 0.35fr) minmax(0, 1fr);
     gap: var(--space-3);
-    padding: var(--space-2) 0;
+    padding: 7px 0;
     border: 0;
   }
 
@@ -220,13 +221,47 @@
   }
 }
 
-@media (max-width: 480px) {
-  .summary {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  .toolbar {
+    padding: var(--space-2);
   }
 
   .filters {
     width: 100%;
+    flex-wrap: nowrap;
     overflow-x: auto;
+    padding-bottom: 2px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .filters button {
+    flex: 0 0 auto;
+  }
+
+  .toolbarMeta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .table td {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .primaryButton {
+    min-height: 40px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .table tr {
+    padding-inline: var(--space-2);
+  }
+
+  .table td {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }

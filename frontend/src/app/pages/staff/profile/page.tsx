@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
-import PageShell from "@/app/components/portal/ui/PageShell"
+import PageShell from "@/app/components/portal/ui/PageShell";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import Section from "@/app/components/portal/ui/Section";
 import styles from "@/app/styles/profile.module.css";
 
 type StaffProfile = {
@@ -13,31 +15,26 @@ type StaffProfile = {
   contact?: string | null;
   phone?: string | null;
   phone_number?: string | null;
-  profile_image?: string | null;
 };
 
 export default function StaffProfilePage() {
   const router = useRouter();
-
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [collapsed, setCollapsed] = useState(false);
-
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
-
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const loadProfile = useCallback(async () => {
     const token = localStorage.getItem("token");
-
     if (!token) {
       router.push("/");
       return;
@@ -48,27 +45,16 @@ export default function StaffProfilePage() {
 
     try {
       const res = await fetch(`${API_BASE_URL}/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       const data = await res.json().catch(() => null);
-
       if (!res.ok) {
-        throw new Error(
-          data?.detail || data?.message || "Unable to load profile."
-        );
+        throw new Error(data?.detail || data?.message || "Unable to load profile.");
       }
-
       setProfile(data);
     } catch (err) {
       console.error("Failed to load staff profile:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load staff profile details."
-      );
+      setError(err instanceof Error ? err.message : "Unable to load staff profile details.");
       setProfile(null);
     } finally {
       setLoading(false);
@@ -78,25 +64,12 @@ export default function StaffProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-
     if (!token || role !== "staff") {
       router.push("/");
       return;
     }
-
     loadProfile();
   }, [loadProfile, router]);
-
-  useEffect(() => {
-    const sync = () => {
-      setCollapsed(document.body.classList.contains("navCollapsed"));
-    };
-
-    sync();
-    window.addEventListener("navbarToggle", sync);
-
-    return () => window.removeEventListener("navbarToggle", sync);
-  }, []);
 
   const resetPasswordForm = () => {
     setShowPasswordForm(false);
@@ -106,23 +79,29 @@ export default function StaffProfilePage() {
     setShowCurrent(false);
     setShowNew(false);
     setShowConfirm(false);
+    setPasswordError("");
   };
 
   const handleChangePassword = async () => {
+    setPasswordError("");
+    setPasswordMessage("");
+
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+      setPasswordError("Complete all password fields.");
       return;
     }
-
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match.");
+      setPasswordError("New password and confirmation do not match.");
       return;
     }
 
     const token = localStorage.getItem("token");
-
     if (!token) {
-      alert("You are not logged in.");
+      setPasswordError("Your session has expired. Please sign in again.");
       router.push("/");
       return;
     }
@@ -141,175 +120,164 @@ export default function StaffProfilePage() {
           new_password: newPassword,
         }),
       });
-
       const data = await res.json().catch(() => null);
-
       if (!res.ok) {
-        throw new Error(
-          data?.detail || data?.message || "Password update failed."
-        );
+        throw new Error(data?.detail || data?.message || "Password update failed.");
       }
 
-      alert("Password updated successfully.");
       resetPasswordForm();
+      setPasswordMessage("Password updated successfully.");
     } catch (err) {
       console.error("Password change failed:", err);
-      alert(err instanceof Error ? err.message : "Password update failed.");
+      setPasswordError(err instanceof Error ? err.message : "Password update failed.");
     } finally {
       setUpdatingPassword(false);
     }
   };
 
-  const displayName = profile?.name || "Staff User";
-  const firstLetter = displayName.charAt(0).toUpperCase();
-  const profileImage = profile?.profile_image || null;
-
-  const phoneNumber =
-    profile?.contact ||
-    profile?.phone ||
-    profile?.phone_number ||
-    "Not provided";
+  const display = (value?: string | null) => value?.trim() || "Not provided";
+  const displayName = profile?.name?.trim() || "Staff User";
+  const phoneNumber = profile?.contact || profile?.phone || profile?.phone_number || "Not provided";
 
   return (
-    <PageShell className={`${styles.page} ${collapsed ? styles.collapsed : ""}`}>
-      <div className={styles.container}>
-        <div className={styles.header}>
-            <h1>Staff Profile</h1>
-            <p>View your account details and manage your login security</p>
+    <PageShell className={styles.page}>
+      <PageHeader
+        eyebrow="Staff portal"
+        title="Profile"
+        description="Review your registered staff information and manage account security."
+      />
+
+      {loading ? (
+        <div className={styles.state}>Loading profile...</div>
+      ) : error ? (
+        <div className={styles.state} role="alert">
+          <div>{error}</div>
+          <div className={styles.stateActions}>
+            <button className={styles.primaryBtn} type="button" onClick={loadProfile}>Try again</button>
           </div>
-
-          {loading ? (
-            <p className={styles.loading}>Loading...</p>
-          ) : error ? (
-            <p className={styles.error}>{error}</p>
-          ) : !profile ? (
-            <p className={styles.error}>Unable to load profile.</p>
-          ) : (
-            <div className={styles.grid}>
-              <div className={styles.cardLarge}>
-                <div className={styles.profileHeader}>
-                  <div className={styles.photoWrapper}>
-                    {profileImage ? (
-                      <img
-                        src={profileImage}
-                        className={styles.profilePhoto}
-                        alt="Staff profile"
-                      />
-                    ) : (
-                      <div className={styles.avatar}>{firstLetter}</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h2>{displayName}</h2>
-                    <p className={styles.subText}>Staff Account</p>
-                  </div>
-                </div>
-
-                <div className={styles.divider}></div>
-
-                <div className={styles.infoBlock}>
-                  <div className={styles.infoRow}>
-                    <span>Full Name</span>
-                    <span>{profile.name || "Not available"}</span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span>Email</span>
-                    <span>{profile.email || "Not available"}</span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span>Phone Number</span>
-                    <span>{phoneNumber}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.card}>
-                <h3>Security</h3>
-                <p className={styles.smallText}>
-                  Update your password to keep your staff account protected.
-                </p>
-
-                <button
-                  className={styles.primaryBtn}
-                  onClick={() => setShowPasswordForm(!showPasswordForm)}
-                >
-                  {showPasswordForm ? "Hide Password Form" : "Change Password"}
-                </button>
-
-                {showPasswordForm && (
-                  <div className={styles.form}>
-                    <div className={styles.inputGroup}>
-                      <input
-                        type={showCurrent ? "text" : "password"}
-                        placeholder="Current Password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrent(!showCurrent)}
-                      >
-                        {showCurrent ? "Hide" : "Show"}
-                      </button>
-                    </div>
-
-                    <div className={styles.inputGroup}>
-                      <input
-                        type={showNew ? "text" : "password"}
-                        placeholder="New Password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowNew(!showNew)}
-                      >
-                        {showNew ? "Hide" : "Show"}
-                      </button>
-                    </div>
-
-                    <div className={styles.inputGroup}>
-                      <input
-                        type={showConfirm ? "text" : "password"}
-                        placeholder="Confirm New Password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
-                      >
-                        {showConfirm ? "Hide" : "Show"}
-                      </button>
-                    </div>
-
-                    <button
-                      className={styles.primaryBtn}
-                      onClick={handleChangePassword}
-                      disabled={updatingPassword}
-                    >
-                      {updatingPassword ? "Updating..." : "Update Password"}
-                    </button>
-
-                    <button
-                      className={styles.primaryBtn}
-                      type="button"
-                      onClick={resetPasswordForm}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
+        </div>
+      ) : !profile ? (
+        <div className={styles.state}>Unable to load profile.</div>
+      ) : (
+        <div className={styles.profileGrid}>
+          <Section
+            title="Staff information"
+            description="These details are used by the clinic to identify your staff account."
+          >
+            <div className={styles.identityRow}>
+              <div className={styles.avatar}>{displayName.charAt(0).toUpperCase()}</div>
+              <div>
+                <h2>{displayName}</h2>
+                <p>Registered staff profile</p>
               </div>
             </div>
-          )}
+
+            <div className={styles.infoGrid}>
+              <InfoItem label="Full name" value={display(profile.name)} />
+              <InfoItem label="Email" value={display(profile.email)} />
+              <InfoItem label="Contact number" value={phoneNumber} />
+            </div>
+
+            <div className={styles.supportNote}>
+              <strong>Need to correct something?</strong>
+              <span>Contact an administrator so registered staff information can be updated safely.</span>
+            </div>
+          </Section>
+
+          <Section title="Security" description="Change your password without changing your registered staff details.">
+            {passwordMessage && <div className={styles.successMessage} role="status">{passwordMessage}</div>}
+            {passwordError && <div className={styles.errorMessage} role="alert">{passwordError}</div>}
+
+            {!showPasswordForm ? (
+              <button className={styles.primaryBtn} type="button" onClick={() => setShowPasswordForm(true)}>
+                Change password
+              </button>
+            ) : (
+              <div className={styles.form}>
+                <PasswordField
+                  label="Current password"
+                  value={currentPassword}
+                  onChange={setCurrentPassword}
+                  visible={showCurrent}
+                  onToggle={() => setShowCurrent(!showCurrent)}
+                  autoComplete="current-password"
+                />
+                <PasswordField
+                  label="New password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  visible={showNew}
+                  onToggle={() => setShowNew(!showNew)}
+                  autoComplete="new-password"
+                  hint="Use at least 8 characters."
+                />
+                <PasswordField
+                  label="Confirm new password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  visible={showConfirm}
+                  onToggle={() => setShowConfirm(!showConfirm)}
+                  autoComplete="new-password"
+                />
+
+                <div className={styles.formActions}>
+                  <button className={styles.secondaryBtn} type="button" onClick={resetPasswordForm} disabled={updatingPassword}>
+                    Cancel
+                  </button>
+                  <button className={styles.primaryBtn} type="button" onClick={handleChangePassword} disabled={updatingPassword}>
+                    {updatingPassword ? "Updating..." : "Update password"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Section>
         </div>
-      </PageShell>
+      )}
+    </PageShell>
+  );
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.infoItem}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  visible,
+  onToggle,
+  autoComplete,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  visible: boolean;
+  onToggle: () => void;
+  autoComplete: string;
+  hint?: string;
+}) {
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <div className={styles.inputGroup}>
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoComplete={autoComplete}
+        />
+        <button type="button" onClick={onToggle}>
+          {visible ? "Hide" : "Show"}
+        </button>
+      </div>
+      {hint && <small>{hint}</small>}
+    </label>
   );
 }

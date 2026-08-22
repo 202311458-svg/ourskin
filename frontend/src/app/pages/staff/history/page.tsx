@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { API_BASE_URL } from "@/lib/api"
 import PageShell from "@/app/components/portal/ui/PageShell"
-import styles from "./page.module.css";
+import PageHeader from "@/app/components/portal/ui/PageHeader"
+import EmptyState from "@/app/components/portal/ui/EmptyState"
+import styles from "./page.module.css"
 
 type Appointment = {
   id: number
@@ -48,68 +50,6 @@ type AppointmentLog = {
   created_at: string
 }
 
-const STATUS_FILTERS = [
-  "All",
-  "Approved",
-  "Completed",
-  "No-Show",
-  "Declined",
-  "Cancelled",
-  "Pending",
-] as const
-
-type StatusFilter = (typeof STATUS_FILTERS)[number]
-
-const normalizeStatus = (status?: string | null) => {
-  const cleanStatus = (status || "").trim().toLowerCase()
-
-  if (cleanStatus === "pending") return "Pending"
-  if (cleanStatus === "approved") return "Approved"
-  if (cleanStatus === "confirmed") return "Approved"
-  if (cleanStatus === "completed") return "Completed"
-  if (cleanStatus === "no-show") return "No-Show"
-  if (cleanStatus === "noshow") return "No-Show"
-  if (cleanStatus === "missed") return "No-Show"
-  if (cleanStatus === "declined") return "Declined"
-  if (cleanStatus === "cancelled") return "Cancelled"
-  if (cleanStatus === "canceled") return "Cancelled"
-
-  return status?.trim() || "Unknown"
-}
-
-const getStatusClass = (status: string) => {
-  const cleanStatus = normalizeStatus(status)
-
-  if (cleanStatus === "Pending") return `${styles.badge} ${styles.statusPending}`
-  if (cleanStatus === "Approved") return `${styles.badge} ${styles.statusApproved}`
-  if (cleanStatus === "Completed") return `${styles.badge} ${styles.statusCompleted}`
-  if (cleanStatus === "No-Show") return `${styles.badge} ${styles.statusNoShow}`
-  if (cleanStatus === "Declined") return `${styles.badge} ${styles.statusDeclined}`
-  if (cleanStatus === "Cancelled") return `${styles.badge} ${styles.statusCancelled}`
-
-  return styles.badge
-}
-
-const getStatusLabel = (status?: string | null) => {
-  const cleanStatus = normalizeStatus(status)
-
-  if (cleanStatus === "No-Show") return "Missed Appointment"
-
-  return cleanStatus
-}
-
-const readJsonSafely = async (res: Response) => {
-  const text = await res.text()
-
-  if (!text) return null
-
-  try {
-    return JSON.parse(text)
-  } catch {
-    return null
-  }
-}
-
 type PaginatedAppointments = {
   total: number
   page: number
@@ -117,150 +57,110 @@ type PaginatedAppointments = {
   items: Appointment[]
 }
 
+const STATUS_FILTERS = ["All", "Approved", "Completed", "No-Show", "Declined", "Cancelled", "Pending"] as const
+type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+const normalizeStatus = (status?: string | null) => {
+  const clean = (status || "").trim().toLowerCase()
+  if (clean === "pending") return "Pending"
+  if (clean === "approved" || clean === "confirmed") return "Approved"
+  if (clean === "completed") return "Completed"
+  if (clean === "no-show" || clean === "noshow" || clean === "missed") return "No-Show"
+  if (clean === "declined") return "Declined"
+  if (clean === "cancelled" || clean === "canceled") return "Cancelled"
+  return status?.trim() || "Unknown"
+}
+
+const getStatusLabel = (status?: string | null) =>
+  normalizeStatus(status) === "No-Show" ? "Missed Appointment" : normalizeStatus(status)
+
+const readJsonSafely = async (res: Response) => {
+  const text = await res.text()
+  if (!text) return null
+  try { return JSON.parse(text) } catch { return null }
+}
+
 const parsePaginatedAppointments = (data: unknown): PaginatedAppointments => {
-  if (
-    !data ||
-    typeof data !== "object" ||
-    !Array.isArray((data as PaginatedAppointments).items) ||
-    typeof (data as PaginatedAppointments).total !== "number" ||
-    typeof (data as PaginatedAppointments).page !== "number" ||
-    typeof (data as PaginatedAppointments).page_size !== "number"
-  ) {
+  if (!data || typeof data !== "object") throw new Error("Invalid appointment history response")
+  const value = data as PaginatedAppointments
+  if (!Array.isArray(value.items) || typeof value.total !== "number" || typeof value.page !== "number" || typeof value.page_size !== "number") {
     throw new Error("Invalid appointment history response")
   }
-
-  return data as PaginatedAppointments
+  return value
 }
 
-const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "No date"
-
-  const date = new Date(`${dateString}T00:00:00`)
-
-  if (Number.isNaN(date.getTime())) return dateString
-
-  return date.toLocaleDateString("en-AU", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+const formatDate = (value?: string | null) => {
+  if (!value) return "No date"
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric" })
 }
 
-const formatTime = (timeString?: string | null) => {
-  if (!timeString) return ""
-
-  const parts = timeString.split(":")
-  const hour = Number(parts[0])
-  const minute = Number(parts[1])
-
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString
-
+const formatTime = (value?: string | null) => {
+  if (!value) return ""
+  const [hour, minute] = value.split(":")
   const date = new Date()
-  date.setHours(hour, minute, 0, 0)
-
-  return date.toLocaleTimeString("en-AU", {
-    hour: "numeric",
-    minute: "2-digit",
-  })
+  date.setHours(Number(hour), Number(minute), 0, 0)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })
 }
 
 const formatTimeRange = (appt: Appointment) => {
   if (!appt.time) return "No time"
-
   const start = formatTime(appt.time)
   const end = appt.end_time ? formatTime(appt.end_time) : ""
+  return end ? `${start} – ${end}` : start
+}
 
-  return end ? `${start} to ${end}` : start
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "No timestamp"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString("en-AU", { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
 }
 
 const formatPatientAge = (appt: Appointment) => {
-  const ageLabel = appt.patient_age_label?.trim()
-
-  if (ageLabel) return ageLabel
-
-  if (typeof appt.patient_age === "number") {
-    const unit = appt.patient_age === 1 ? "year" : "years"
-    return `${appt.patient_age} ${unit} old`
-  }
-
+  if (appt.patient_age_label?.trim()) return appt.patient_age_label.trim()
+  if (typeof appt.patient_age === "number") return `${appt.patient_age} ${appt.patient_age === 1 ? "year" : "years"} old`
   return "Not provided"
 }
 
-
 const getGuardianName = (appt?: Appointment | null) => {
   if (!appt) return "Not provided"
-
-  const firstName = appt.guardian_first_name?.trim() || ""
-  const lastName = appt.guardian_last_name?.trim() || ""
-  const fullName = `${firstName} ${lastName}`.trim()
-
-  return fullName || "Not provided"
+  return `${appt.guardian_first_name?.trim() || ""} ${appt.guardian_last_name?.trim() || ""}`.trim() || "Not provided"
 }
 
-const hasGuardianInfo = (appt?: Appointment | null) => {
-  if (!appt) return false
+const hasGuardianInfo = (appt?: Appointment | null) => Boolean(
+  appt && (appt.is_minor || appt.guardian_first_name || appt.guardian_last_name || appt.guardian_relationship || appt.guardian_contact || appt.guardian_email || appt.guardian_consent)
+)
 
-  return Boolean(
-    appt.is_minor ||
-      appt.guardian_first_name ||
-      appt.guardian_last_name ||
-      appt.guardian_relationship ||
-      appt.guardian_contact ||
-      appt.guardian_email ||
-      appt.guardian_consent
-  )
-}
-
-const getApprovalEmailStatus = (appt?: Appointment | null) => {
-  if (!appt?.approval_email_sent) return "Not sent"
-
-  if (!appt.approval_email_sent_at) return "Sent"
-
-  return `Sent on ${formatDateTime(appt.approval_email_sent_at)}`
-}
-
-const formatDateTime = (dateTimeString?: string | null) => {
-  if (!dateTimeString) return "No timestamp"
-
-  const date = new Date(dateTimeString)
-
-  if (Number.isNaN(date.getTime())) return dateTimeString
-
-  return date.toLocaleString("en-AU", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
-const getDateTimeValue = (appt: Appointment) => {
-  if (!appt.date || !appt.time) return 0
-
-  const value = new Date(`${appt.date}T${appt.time}`).getTime()
-
-  return Number.isNaN(value) ? 0 : value
+const getStatusClass = (status?: string | null) => {
+  const clean = normalizeStatus(status)
+  if (clean === "Approved") return styles.statusApproved
+  if (clean === "Completed") return styles.statusCompleted
+  if (clean === "No-Show" || clean === "Declined") return styles.statusDeclined
+  if (clean === "Cancelled") return styles.statusCancelled
+  return styles.statusPending
 }
 
 export default function StaffHistoryPage() {
   const router = useRouter()
-
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageSize = 25
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All")
-
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null)
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [appointmentLogs, setAppointmentLogs] = useState<AppointmentLog[]>([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (requestedPage = page) => {
     const token = localStorage.getItem("token")
-
     if (!token) {
       router.push("/")
       return
@@ -268,120 +168,74 @@ export default function StaffHistoryPage() {
 
     setLoading(true)
     setError("")
-
     try {
-      const res = await fetch(`${API_BASE_URL}/appointments/history?page_size=100`, {
+      const res = await fetch(`${API_BASE_URL}/appointments/history?page=${requestedPage}&page_size=${pageSize}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await readJsonSafely(res)
-      if (!res.ok) throw new Error("Unable to load appointment records")
-      const history = parsePaginatedAppointments(data)
-      setAppointments(
-        history.items.map((appt) => ({ ...appt, status: normalizeStatus(appt.status) }))
-      )
+      const body = await readJsonSafely(res)
+      if (!res.ok) throw new Error("Unable to load appointment history")
+      const history = parsePaginatedAppointments(body)
+      setAppointments(history.items.map((appt) => ({ ...appt, status: normalizeStatus(appt.status) })))
+      setTotal(history.total)
+      setPage(history.page)
+      setLastUpdated(new Date())
     } catch (err) {
-      console.error("Appointment records load failed:", err)
-      setError("Unable to load appointment records.")
+      console.error("Appointment history load failed:", err)
+      setError(err instanceof Error ? err.message : "Unable to load appointment history.")
       setAppointments([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }, [page, pageSize, router])
 
   useEffect(() => {
-    const role = localStorage.getItem("role")
-
-    if (role !== "staff") {
+    if (localStorage.getItem("role") !== "staff") {
       router.push("/")
       return
     }
-
-    loadHistory()
-  }, [loadHistory, router])
+    void loadHistory(page)
+  }, [loadHistory, page, router])
 
   const filteredAppointments = useMemo(() => {
-    const keyword = search.trim().toLowerCase()
-
-    return [...appointments]
-      .filter((appt) => {
-        const searchable = [
-          appt.patient_name,
-          appt.doctor_name,
-          appt.services,
-          appt.consultation_mode,
-          appt.appointment_type,
-          appt.cancel_reason,
-          appt.last_action_by_name,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-
-        const matchesSearch = searchable.includes(keyword)
-        const appointmentStatus = normalizeStatus(appt.status)
-        const matchesStatus =
-          statusFilter === "All" ? true : appointmentStatus === statusFilter
-
-        return matchesSearch && matchesStatus
-      })
-      .sort((a, b) => getDateTimeValue(b) - getDateTimeValue(a))
+    const q = search.trim().toLowerCase()
+    return appointments.filter((appt) => {
+      const matchesStatus = statusFilter === "All" || normalizeStatus(appt.status) === statusFilter
+      const matchesSearch = !q || [
+        appt.patient_name,
+        appt.doctor_name,
+        appt.services,
+        appt.consultation_mode,
+        appt.appointment_type,
+        appt.cancel_reason,
+        appt.last_action_by_name,
+      ].filter(Boolean).join(" ").toLowerCase().includes(q)
+      return matchesStatus && matchesSearch
+    })
   }, [appointments, search, statusFilter])
 
-  const statusCounts = useMemo(() => {
-    return appointments.reduce<Record<string, number>>((acc, appt) => {
-      const status = normalizeStatus(appt.status)
-      acc[status] = (acc[status] || 0) + 1
-      return acc
-    }, {})
-  }, [appointments])
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   const openDetails = async (appointment: Appointment) => {
     const token = localStorage.getItem("token")
-
-    if (!token) {
-      router.push("/")
-      return
-    }
+    if (!token) return router.push("/")
 
     try {
       setDetailsLoading(true)
       setDetailsOpen(true)
-
       const [appointmentRes, logsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/appointments/${appointment.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE_URL}/appointments/${appointment.id}/logs`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/appointments/${appointment.id}/logs`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
-
       const appointmentData = await readJsonSafely(appointmentRes)
       const logsData = await readJsonSafely(logsRes)
-
-      if (!appointmentRes.ok || !logsRes.ok) {
-        console.error("Details request failed:", {
-          appointmentStatus: appointmentRes.status,
-          logsStatus: logsRes.status,
-          appointmentBody: appointmentData,
-          logsBody: logsData,
-        })
-
-        throw new Error("Failed to fetch appointment details")
-      }
-
-      setSelectedAppointment({
-        ...(appointmentData as Appointment),
-        status: normalizeStatus((appointmentData as Appointment).status),
-      })
-
+      if (!appointmentRes.ok || !logsRes.ok) throw new Error("Unable to load appointment details")
+      setSelectedAppointment({ ...(appointmentData as Appointment), status: normalizeStatus((appointmentData as Appointment).status) })
       setAppointmentLogs(Array.isArray(logsData) ? logsData : [])
-    } catch (openError) {
-      console.error("Failed to open details:", openError)
-      setSelectedAppointment(null)
-      setAppointmentLogs([])
+    } catch (err) {
+      console.error("History details failed:", err)
       setDetailsOpen(false)
-      alert("Unable to load appointment details.")
+      setError(err instanceof Error ? err.message : "Unable to load appointment details.")
     } finally {
       setDetailsLoading(false)
     }
@@ -395,276 +249,172 @@ export default function StaffHistoryPage() {
 
   return (
     <PageShell className={styles.staffPage}>
-      <section className={styles.dashboardHeader}>
-            <div>
-              <span className={styles.eyebrow}>Audit-Friendly View</span>
-              <h1>Appointment History</h1>
-              <p className={styles.pageSubtext}>
-                Review appointment records, status changes, decline reasons, and action history in one searchable workspace.
-              </p>
-            </div>
+      <PageHeader
+        title="Appointment history"
+        description="Search completed and closed appointment records with their final status and staff activity."
+      />
 
-            <div className={styles.headerActions}>
-              <button className={styles.secondaryBtn} onClick={loadHistory}>
-                Refresh Records
+      <section className={styles.workspace}>
+        <div className={styles.toolbar}>
+          <input
+            className={styles.searchInput}
+            type="search"
+            placeholder="Search this page by patient, doctor, service, reason, or staff"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label="Search appointment history"
+          />
+
+          <div className={styles.filterRow} aria-label="History status filters">
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`${styles.filterChip} ${statusFilter === status ? styles.filterChipActive : ""}`}
+                onClick={() => setStatusFilter(status)}
+                aria-pressed={statusFilter === status}
+              >
+                {status}
               </button>
-            </div>
-          </section>
+            ))}
+          </div>
 
-          <section className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>Total Records</div>
-              <div className={styles.statValue}>{appointments.length}</div>
-              <div className={styles.statMeta}>Merged from request, confirmed, and history data</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>Approved</div>
-              <div className={styles.statValue}>{statusCounts.Approved || 0}</div>
-              <div className={styles.statMeta}>Confirmed appointment records</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>Completed</div>
-              <div className={styles.statValue}>{statusCounts.Completed || 0}</div>
-              <div className={styles.statMeta}>Finished clinic visits</div>
-            </div>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>Missed</div>
-              <div className={styles.statValue}>{statusCounts["No-Show"] || 0}</div>
-              <div className={styles.statMeta}>Patients who did not attend</div>
-            </div>
-          </section>
+          <div className={styles.resultMeta}>
+            <span>{filteredAppointments.length} shown · {total} total</span>
+            {lastUpdated && <span>Updated {lastUpdated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
+          </div>
+        </div>
 
-          <section className={styles.listCard}>
-            <div className={styles.listHeader}>
-              <div>
-                <h2>Appointment Records</h2>
-                <p className={styles.cardSubtext}>Use search and status filters to trace what happened quickly.</p>
+        {loading ? (
+          <EmptyState title="Loading appointment history..." />
+        ) : error ? (
+          <div className={styles.errorBanner} role="alert">{error}</div>
+        ) : filteredAppointments.length === 0 ? (
+          <EmptyState title="No appointment records match this view" />
+        ) : (
+          <div className={styles.historyTable} role="table" aria-label="Appointment history records">
+            <div className={styles.tableHeader} role="row">
+              <span role="columnheader">Date</span>
+              <span role="columnheader">Patient</span>
+              <span role="columnheader">Doctor</span>
+              <span role="columnheader">Service</span>
+              <span role="columnheader">Final status</span>
+              <span role="columnheader">Last action</span>
+              <span role="columnheader">Details</span>
+            </div>
+
+            {filteredAppointments.map((appt) => (
+              <div className={styles.tableRow} role="row" key={appt.id}>
+                <div className={styles.tableCell} role="cell" data-label="Date">
+                  <strong>{formatDate(appt.date)}</strong>
+                  <small>{formatTimeRange(appt)}</small>
+                </div>
+                <div className={styles.tableCell} role="cell" data-label="Patient">
+                  <strong>{appt.patient_name || "Patient unavailable"}</strong>
+                  {appt.patient_email && <small>{appt.patient_email}</small>}
+                </div>
+                <div className={styles.tableCell} role="cell" data-label="Doctor">{appt.doctor_name || "Not available"}</div>
+                <div className={styles.tableCell} role="cell" data-label="Service">
+                  <strong>{appt.services || "Not specified"}</strong>
+                  {appt.consultation_mode && <small>{appt.consultation_mode}</small>}
+                </div>
+                <div className={styles.tableCell} role="cell" data-label="Final status">
+                  <span className={`${styles.badge} ${getStatusClass(appt.status)}`}>{getStatusLabel(appt.status)}</span>
+                </div>
+                <div className={styles.tableCell} role="cell" data-label="Last action">
+                  <strong>{appt.last_action_by_name || "System"}</strong>
+                  {appt.last_action_by_role && <small>{appt.last_action_by_role}</small>}
+                  {appt.cancel_reason && <small>{appt.cancel_reason}</small>}
+                </div>
+                <div className={`${styles.tableCell} ${styles.actionCell}`} role="cell" data-label="Details">
+                  <button className={styles.secondaryBtn} type="button" onClick={() => openDetails(appt)}>Details</button>
+                </div>
               </div>
-              <span className={styles.metaText}>{filteredAppointments.length} records</span>
-            </div>
+            ))}
+          </div>
+        )}
 
-            <div className={styles.searchRow}>
-              <input
-                type="text"
-                placeholder="Search patient, doctor, service, reason, or staff name"
-                className={styles.searchInput}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-
-            <div className={styles.filterRow}>
-              {STATUS_FILTERS.map((status) => (
-                <button
-                  key={status}
-                  className={`${styles.filterChip} ${
-                    statusFilter === status ? styles.filterChipActive : ""
-                  }`}
-                  onClick={() => setStatusFilter(status)}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-
-            {loading ? (
-              <div className={styles.emptyState}>Loading appointment records...</div>
-            ) : error ? (
-              <div className={styles.emptyState}>{error}</div>
-            ) : filteredAppointments.length === 0 ? (
-              <div className={styles.emptyState}>No appointment records found.</div>
-            ) : (
-              filteredAppointments.map((appt) => {
-                const cleanStatus = normalizeStatus(appt.status)
-
-                return (
-                  <article key={appt.id} className={styles.requestCard}>
-                    <div className={styles.requestInfo}>
-                      <div className={styles.cardTitleRow}>
-                        <b>{appt.patient_name}</b>
-                        <span className={getStatusClass(cleanStatus)}>{getStatusLabel(cleanStatus)}</span>
-                      </div>
-
-                      <p>{appt.doctor_name || "Doctor unavailable"}</p>
-
-                      <span>
-                        {formatDate(appt.date)} at {formatTimeRange(appt)}
-                      </span>
-
-                      <div className={styles.metaPills}>
-                        {appt.services && <span>{appt.services}</span>}
-                        {appt.consultation_mode && <span>{appt.consultation_mode}</span>}
-                        {appt.appointment_type && <span>{appt.appointment_type}</span>}
-                      </div>
-
-                      {appt.cancel_reason && (
-                        <p className={styles.detailText}>Reason: {appt.cancel_reason}</p>
-                      )}
-
-                      {appt.last_action_by_name && (
-                        <p className={styles.metaText}>
-                          Last action by {appt.last_action_by_name}
-                          {appt.last_action_by_role ? `, ${appt.last_action_by_role}` : ""}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className={styles.actions}>
-                      <button
-                        className={styles.secondaryBtn}
-                        onClick={() => openDetails(appt)}
-                      >
-                        View Timeline
-                      </button>
-                    </div>
-                  </article>
-                )
-              })
-            )}
-          </section>
+        <div className={styles.pagination}>
+          <span>Page {page} of {totalPages}</span>
+          <div>
+            <button className={styles.secondaryBtn} type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
+            <button className={styles.secondaryBtn} type="button" disabled={page >= totalPages || loading} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next</button>
+          </div>
+        </div>
+      </section>
 
       {detailsOpen && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="history-details-title">
           <div className={styles.modalCard}>
             <div className={styles.modalHeader}>
-              <h2>Appointment Timeline</h2>
-              <button className={styles.modalCloseBtn} onClick={closeDetails}>
-                ×
-              </button>
+              <div>
+                <h2 id="history-details-title">Appointment record</h2>
+                <p>Patient, booking, and recorded activity for this appointment.</p>
+              </div>
+              <button className={styles.modalCloseBtn} type="button" onClick={closeDetails} aria-label="Close appointment details">×</button>
             </div>
 
             {detailsLoading ? (
-              <div className={styles.emptyState}>Loading appointment timeline...</div>
+              <EmptyState title="Loading appointment details..." />
             ) : selectedAppointment ? (
               <div className={styles.modalGrid}>
                 <section className={styles.detailPanel}>
-                  <h3>Patient Details</h3>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Patient Name</span>
-                    <span className={styles.infoValue}>{selectedAppointment.patient_name || "Not provided"}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Age</span>
-                    <span className={styles.infoValue}>{formatPatientAge(selectedAppointment)}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Address</span>
-                    <span className={styles.infoValue}>{selectedAppointment.patient_address || "Not provided"}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Contact No.</span>
-                    <span className={styles.infoValue}>{selectedAppointment.patient_contact || "Not provided"}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Email</span>
-                    <span className={styles.infoValue}>{selectedAppointment.patient_email || "Not provided"}</span>
-                  </div>
-
-                  {selectedAppointment.is_minor && (
-                    <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>Minor Patient</span>
-                      <span className={styles.infoValue}>Yes</span>
-                    </div>
-                  )}
-
+                  <h3>Record details</h3>
+                  <InfoRow label="Patient" value={selectedAppointment.patient_name || "Not provided"} />
+                  <InfoRow label="Age" value={formatPatientAge(selectedAppointment)} />
+                  <InfoRow label="Contact" value={selectedAppointment.patient_contact || "Not provided"} />
+                  <InfoRow label="Email" value={selectedAppointment.patient_email || "Not provided"} />
+                  <InfoRow label="Doctor" value={selectedAppointment.doctor_name || "Not available"} />
+                  <InfoRow label="Service" value={selectedAppointment.services || "Not specified"} />
+                  <InfoRow label="Schedule" value={`${formatDate(selectedAppointment.date)} · ${formatTimeRange(selectedAppointment)}`} />
+                  <InfoRow label="Status" value={getStatusLabel(selectedAppointment.status)} />
+                  <InfoRow label="Reason" value={selectedAppointment.cancel_reason || "Not provided"} />
                   {hasGuardianInfo(selectedAppointment) && (
                     <>
-                      <h3>Guardian Details</h3>
-
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Guardian Name</span>
-                        <span className={styles.infoValue}>{getGuardianName(selectedAppointment)}</span>
-                      </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Relationship</span>
-                        <span className={styles.infoValue}>
-                          {selectedAppointment.guardian_relationship || "Not provided"}
-                        </span>
-                      </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Guardian Contact</span>
-                        <span className={styles.infoValue}>
-                          {selectedAppointment.guardian_contact || "Not provided"}
-                        </span>
-                      </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Guardian Email</span>
-                        <span className={styles.infoValue}>
-                          {selectedAppointment.guardian_email || "Not provided"}
-                        </span>
-                      </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Guardian Consent</span>
-                        <span className={styles.infoValue}>
-                          {selectedAppointment.guardian_consent ? "Provided" : "Not provided"}
-                        </span>
-                      </div>
+                      <div className={styles.detailDivider} />
+                      <h3>Guardian</h3>
+                      <InfoRow label="Name" value={getGuardianName(selectedAppointment)} />
+                      <InfoRow label="Relationship" value={selectedAppointment.guardian_relationship || "Not provided"} />
+                      <InfoRow label="Contact" value={selectedAppointment.guardian_contact || "Not provided"} />
                     </>
                   )}
-
-                  <h3>Record Summary</h3>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Doctor</span>
-                    <span className={styles.infoValue}>{selectedAppointment.doctor_name || "Doctor unavailable"}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Service</span>
-                    <span className={styles.infoValue}>{selectedAppointment.services || "Not specified"}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Schedule</span>
-                    <span className={styles.infoValue}>
-                      {formatDate(selectedAppointment.date)} at {formatTimeRange(selectedAppointment)}
-                    </span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Status</span>
-                    <span className={styles.infoValue}>{getStatusLabel(selectedAppointment.status)}</span>
-                  </div>
-                  {selectedAppointment.cancel_reason && (
-                    <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>Reason</span>
-                      <span className={styles.infoValue}>{selectedAppointment.cancel_reason}</span>
-                    </div>
-                  )}
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Patient Instructions</span>
-                    <span className={styles.infoValue}>
-                      {selectedAppointment.patient_instruction || "Not provided"}
-                    </span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoLabel}>Approval Email</span>
-                    <span className={styles.infoValue}>{getApprovalEmailStatus(selectedAppointment)}</span>
-                  </div>
                 </section>
 
                 <section className={styles.detailPanel}>
-                  <h3>Activity Timeline</h3>
+                  <h3>Activity</h3>
                   {appointmentLogs.length === 0 ? (
-                    <div className={styles.emptyState}>No action logs found.</div>
+                    <EmptyState title="No activity logs found" />
                   ) : (
                     <div className={styles.timelineList}>
                       {appointmentLogs.map((log) => (
-                        <div key={log.id} className={styles.timelineItem}>
-                          <b>{log.action}</b>
-                          <span>
-                            {log.performed_by_name || "System"} · {log.performed_by_role || "Role unavailable"}
-                          </span>
-                          <p>{formatDateTime(log.created_at)}</p>
-                          {log.reason && <small>{log.reason}</small>}
-                        </div>
+                        <article className={styles.timelineItem} key={log.id}>
+                          <div>
+                            <strong>{log.action}</strong>
+                            <span>{log.performed_by_name || "System"}{log.performed_by_role ? ` · ${log.performed_by_role}` : ""}</span>
+                            {log.reason && <p>{log.reason}</p>}
+                          </div>
+                          <small>{formatDateTime(log.created_at)}</small>
+                        </article>
                       ))}
                     </div>
                   )}
                 </section>
               </div>
             ) : (
-              <div className={styles.emptyState}>No appointment selected.</div>
+              <EmptyState title="Appointment record unavailable" />
             )}
           </div>
         </div>
       )}
     </PageShell>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.infoRow}>
+      <span className={styles.infoLabel}>{label}</span>
+      <span className={styles.infoValue}>{value}</span>
+    </div>
   )
 }

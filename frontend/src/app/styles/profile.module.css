@@ -17,7 +17,16 @@
   align-items: start;
 }
 
-.profileGrid > section {
+.staffProfileGrid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.profileGrid > section,
+.staffProfileGrid > section {
   width: 100%;
   max-width: none;
 }
@@ -28,6 +37,12 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-text-secondary);
+}
+
+.stateActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .identityRow {
@@ -50,22 +65,52 @@
   font-size: var(--font-size-sm);
 }
 
-.avatar {
-  display: grid;
+.avatar,
+.profilePhoto {
   width: 58px;
   height: 58px;
   flex: 0 0 58px;
-  place-items: center;
   border-radius: 50%;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
   background: var(--color-brand-600);
   color: var(--color-text-inverse);
   font-size: 1.25rem;
   font-weight: var(--font-weight-semibold);
 }
 
+.profilePhoto {
+  display: block;
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+}
+
+.roleLabel {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  margin-top: var(--space-2);
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.staffInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
@@ -81,6 +126,7 @@
   grid-column: span 3;
 }
 
+.staffInfoGrid .infoItemWide,
 .guardianSection .infoItemWide {
   grid-column: 1 / -1;
 }
@@ -124,6 +170,13 @@
 
 .supportNote strong {
   color: var(--color-text-strong);
+}
+
+.securityNote {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
 }
 
 .guardianSection {
@@ -190,6 +243,10 @@
   font: inherit;
 }
 
+.inputGroup input::placeholder {
+  color: var(--color-text-muted);
+}
+
 .inputGroup button {
   align-self: stretch;
   padding: 0 var(--space-3);
@@ -201,6 +258,17 @@
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+}
+
+.inputGroup button:hover {
+  background: var(--color-surface-hover);
+}
+
+.inputGroup button:focus-visible,
+.primaryBtn:focus-visible,
+.secondaryBtn:focus-visible {
+  outline: 3px solid rgba(138, 51, 79, 0.24);
+  outline-offset: 2px;
 }
 
 .formActions {
@@ -226,10 +294,24 @@
   color: var(--color-text-inverse);
 }
 
+.primaryBtn:hover:not(:disabled) {
+  background: var(--color-brand-700);
+  border-color: var(--color-brand-700);
+}
+
+.primaryBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .secondaryBtn {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-strong);
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
 }
 
 .successMessage,
@@ -251,6 +333,10 @@
 }
 
 @media (max-width: 1120px) {
+  .staffProfileGrid {
+    grid-template-columns: 1fr;
+  }
+
   .infoGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -262,11 +348,13 @@
 }
 
 @media (max-width: 640px) {
-  .infoGrid {
+  .infoGrid,
+  .staffInfoGrid {
     grid-template-columns: 1fr;
   }
 
   .infoItemWide,
+  .staffInfoGrid .infoItemWide,
   .guardianSection .infoItemWide {
     grid-column: auto;
   }
@@ -280,11 +368,13 @@
     flex-direction: column;
   }
 
-  .formActions {
+  .formActions,
+  .stateActions {
     flex-direction: column-reverse;
   }
 
   .formActions > *,
+  .stateActions > *,
   .primaryBtn,
   .secondaryBtn {
     width: 100%;

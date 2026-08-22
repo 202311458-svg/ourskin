@@ -1,16 +1,12 @@
-"use client"
+"use client";
 
-import AnnouncementManager from "@/app/components/AnnouncementManager"
-import styles from "./page.module.css";
+import AnnouncementManager from "@/app/components/AnnouncementManager";
+import PageShell from "@/app/components/portal/ui/PageShell";
 
 export default function StaffAnnouncementsPage() {
   return (
-    <div className="staffLayout">
-      <main className="staffContent">
-        <div className={styles.staffPage}>
-          <AnnouncementManager roleLabel="Staff" />
-        </div>
-      </main>
-    </div>
-  )
+    <PageShell>
+      <AnnouncementManager roleLabel="Staff" />
+    </PageShell>
+  );
 }

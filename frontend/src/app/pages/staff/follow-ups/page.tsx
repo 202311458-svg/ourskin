@@ -1,2 +1,10 @@
 import FollowUpWorkspace from "@/app/components/portal/FollowUpWorkspace";
-export default function Page(){return <FollowUpWorkspace role="staff"/>}
+import PageShell from "@/app/components/portal/ui/PageShell";
+
+export default function Page() {
+  return (
+    <PageShell>
+      <FollowUpWorkspace role="staff" />
+    </PageShell>
+  );
+}

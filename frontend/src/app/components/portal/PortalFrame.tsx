@@ -34,15 +34,24 @@ const patientRouteTitles = [
   ["/pages/patient/notifications", "Notifications"],
 ] as const;
 
+const staffRouteTitles = [
+  ["/pages/staff/dashboard", "Dashboard"],
+  ["/pages/staff/requests", "Appointment Requests"],
+  ["/pages/staff/appointments", "Appointments"],
+  ["/pages/staff/schedules", "Schedules"],
+  ["/pages/staff/follow-ups", "Follow-Ups"],
+  ["/pages/staff/history", "History"],
+  ["/pages/staff/announcements", "Announcements"],
+  ["/pages/staff/profile", "Staff Profile"],
+  ["/pages/staff/notifications", "Notifications"],
+] as const;
+
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function getPatientRouteTitle(pathname: string) {
-  return (
-    patientRouteTitles.find(([route]) => isActive(pathname, route))?.[1] ||
-    "Patient portal"
-  );
+function getRouteTitle(pathname: string, routes: readonly (readonly [string, string])[], fallback: string) {
+  return routes.find(([route]) => isActive(pathname, route))?.[1] || fallback;
 }
 
 export default function PortalFrame({ role, children }: PortalFrameProps) {
@@ -55,10 +64,10 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
 
   const groups = portalNavigation[role];
   const headerSummary = useMemo(() => {
-    if (role === "patient") return getPatientRouteTitle(pathname);
+    if (role === "patient") return getRouteTitle(pathname, patientRouteTitles, "Patient portal");
+    if (role === "staff") return getRouteTitle(pathname, staffRouteTitles, "Staff portal");
     if (pathname.includes("notifications")) return "Notifications";
     if (role === "doctor") return "Clinical workflow";
-    if (role === "staff") return "Operations";
     return "Administration";
   }, [pathname, role]);
 
@@ -151,7 +160,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
               </span>
               <span className={styles.brandName}>OurSkin</span>
             </span>
-            {role !== "patient" && <span className={styles.brandRole}>{roleLabels[role]}</span>}
+            {role !== "patient" && role !== "staff" && <span className={styles.brandRole}>{roleLabels[role]}</span>}
           </div>
         </div>
 
