@@ -7,9 +7,10 @@
 
 .profileGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+  grid-template-columns: 1fr;
   gap: var(--space-5);
   align-items: start;
+  max-width: 980px;
 }
 
 .state {
@@ -142,6 +143,7 @@
 .form {
   display: grid;
   gap: var(--space-4);
+  max-width: 720px;
 }
 
 .field {
@@ -233,12 +235,6 @@
 .errorMessage {
   background: var(--color-danger-bg);
   color: var(--color-danger);
-}
-
-@media (max-width: 960px) {
-  .profileGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
