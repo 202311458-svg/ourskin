@@ -150,7 +150,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
               </span>
               <span className={styles.brandName}>OurSkin</span>
             </span>
-            <span className={styles.brandRole}>{roleLabels[role]}</span>
+            {role !== "patient" && <span className={styles.brandRole}>{roleLabels[role]}</span>}
           </div>
         </div>
 
