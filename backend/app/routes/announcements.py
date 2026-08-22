@@ -6,14 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.core.security import get_current_user
 from app.db import get_db
 from app.models.announcement import Announcement
 from app.models.user import User
-from app.core.security import get_current_user
 from app.schemas.announcement import (
     AnnouncementCreate,
-    AnnouncementUpdate,
     AnnouncementResponse,
+    AnnouncementUpdate,
+)
+from app.services.notification_service import (
+    create_notifications_for_recipients,
+    get_active_user_ids_by_roles,
 )
 
 
@@ -76,6 +80,27 @@ def clean_string(value):
         return value.strip()
 
     return value
+
+
+def notify_patients_of_announcement(db: Session, announcement: Announcement):
+    patient_ids = get_active_user_ids_by_roles(db, ["patient"])
+    if not patient_ids:
+        return
+
+    target_url = "/pages/patient/announcements"
+    target_urls = {patient_id: target_url for patient_id in patient_ids}
+    message = announcement.title.strip()
+
+    create_notifications_for_recipients(
+        db,
+        recipient_ids=patient_ids,
+        title="New clinic announcement",
+        message=message,
+        notification_type="clinic_announcement",
+        related_entity_type="announcement",
+        related_entity_id=announcement.id,
+        target_url_by_recipient=target_urls,
+    )
 
 
 @router.get("/", response_model=List[AnnouncementResponse])
@@ -183,6 +208,11 @@ def create_announcement(
     )
 
     db.add(announcement)
+    db.flush()
+
+    if announcement.status == "Published":
+        notify_patients_of_announcement(db, announcement)
+
     db.commit()
     db.refresh(announcement)
 
@@ -229,6 +259,7 @@ def update_announcement(
             detail="Announcement not found.",
         )
 
+    was_published = announcement.status == "Published"
     update_data = payload.model_dump(exclude_unset=True)
 
     category = update_data.get("category", announcement.category)
@@ -252,6 +283,9 @@ def update_announcement(
             )
 
         setattr(announcement, key, value)
+
+    if not was_published and announcement.status == "Published":
+        notify_patients_of_announcement(db, announcement)
 
     db.commit()
     db.refresh(announcement)
