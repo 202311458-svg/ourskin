@@ -2,9 +2,20 @@
 .divider { display: flex; align-items: center; gap: 12px; color: var(--color-text-muted); font-size: 13px; margin: 12px 0; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
 .googleButton { min-height: 44px; display: flex; justify-content: center; overflow: hidden; border-radius: 999px; color-scheme: light; }
-.googleButtonDark { color-scheme: dark; background: #131313; }
+.googleButtonDark { position: relative; color-scheme: dark; background: #131313; }
 .googleButtonDark > div,
 .googleButtonDark iframe { border-radius: 999px !important; }
+.googleButtonDark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 6px solid #131313;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.googleButtonDark:focus-within { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .status, .error { margin: 8px 0 0; text-align: center; font-size: 13px; }
 .status { color: var(--primary-color); }
 .error { color: var(--color-danger); }
