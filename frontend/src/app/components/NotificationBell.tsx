@@ -49,10 +49,22 @@ export default function NotificationBell({ role, onNavigate }: Props) {
   };
 
   useEffect(() => {
-    refreshCount();
-    const handleFocus = () => refreshCount();
+    void refreshCount();
+
+    const handleFocus = () => {
+      void refreshCount();
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (!document.hidden) void refreshCount();
+    }, 15000);
+
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -66,7 +78,7 @@ export default function NotificationBell({ role, onNavigate }: Props) {
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    if (next) loadRecent();
+    if (next) void loadRecent();
   };
 
   const openNotification = async (item: NotificationItem) => {
