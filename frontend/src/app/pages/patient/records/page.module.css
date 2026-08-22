@@ -1,21 +1,9 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
-}
-
-.contentWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
-}
-
+.page,
+.contentWrapper,
 .historyContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -24,7 +12,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -43,15 +31,21 @@
   letter-spacing: 0.08em;
 }
 
-.subtitle {
+.subtitle,
+.serviceText {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
 }
 
+.summaryGrid {
+  display: none;
+}
+
 .cards {
   display: grid;
   gap: var(--space-4);
+  max-width: 980px;
 }
 
 .card {
@@ -66,57 +60,30 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--space-4);
-}
-
-.summaryCard {
-  padding: var(--space-4) var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.summaryLabel {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.summaryValue {
-  color: var(--color-text-strong);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-4);
 }
 
 .recordSection {
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .recordFields {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .recordField {
   display: flex;
+  gap: var(--space-4);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
-  gap: var(--space-4);
 }
 
 .recordFieldHighlight {
   padding: var(--space-3) var(--space-4);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--color-surface-subtle);
 }
@@ -129,31 +96,30 @@
   font-weight: var(--font-weight-medium);
 }
 
-.recordValue {
+.recordValue,
+.recordValueHighlight {
   flex: 1;
   color: var(--color-text);
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+  line-height: 1.65;
 }
 
 .recordValueHighlight {
-  flex: 1;
   color: var(--color-text-strong);
-  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-base);
 }
 
 .detailsGrid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
 .detailBox {
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
 }
 
 .detailLabel {
@@ -170,27 +136,29 @@
   line-height: var(--line-height-base);
 }
 
-.serviceText {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
-}
-
 .statusBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 4px 10px;
+  min-height: 30px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
+  background: var(--color-info-bg);
+  color: var(--color-info);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  line-height: 1;
   white-space: nowrap;
+}
+
+.statusCompleted {
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .prescriptionTableWrapper {
   overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .prescriptionTable {
@@ -204,7 +172,7 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   text-align: left;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .prescriptionTable th {
@@ -220,32 +188,44 @@
 }
 
 .emptyState {
+  max-width: 720px;
   padding: var(--space-6);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-subtle);
   text-align: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .secondaryButton {
-  min-height: 40px;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   padding: 0 var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text-strong);
-  font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease;
+  text-decoration: none;
 }
 
-.secondaryButton:hover:not(:disabled) {
+.secondaryButton:hover {
   background: var(--color-surface-subtle);
   border-color: var(--color-border-strong);
 }
 
+@media (max-width: 760px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
+  .cardTop,
   .recordField {
     flex-direction: column;
     gap: var(--space-1);
