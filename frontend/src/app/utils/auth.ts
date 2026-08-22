@@ -1,5 +1,38 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+function resolveApiBaseUrl() {
+  const fallback = "http://localhost:8000";
+
+  if (typeof window === "undefined") {
+    return configuredApiBaseUrl || fallback;
+  }
+
+  const browserHost = window.location.hostname;
+  const browserUsesLoopback = browserHost === "localhost" || browserHost === "127.0.0.1";
+
+  if (!configuredApiBaseUrl) {
+    return `${window.location.protocol}//${browserHost}:8000`;
+  }
+
+  if (process.env.NODE_ENV !== "production" && browserUsesLoopback) {
+    try {
+      const configuredUrl = new URL(configuredApiBaseUrl);
+      const apiUsesLoopback =
+        configuredUrl.hostname === "localhost" || configuredUrl.hostname === "127.0.0.1";
+
+      if (apiUsesLoopback) {
+        configuredUrl.hostname = browserHost;
+        return configuredUrl.toString().replace(/\/$/, "");
+      }
+    } catch {
+      return configuredApiBaseUrl;
+    }
+  }
+
+  return configuredApiBaseUrl;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 // Non-secret compatibility marker only. It is intentionally never accepted as
 // or emitted as a bearer credential. Legacy screens may still use its presence
