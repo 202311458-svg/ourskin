@@ -9,6 +9,7 @@ import PageHeader from "@/app/components/portal/ui/PageHeader";
 import Section from "@/app/components/portal/ui/Section";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
 import EmptyState from "@/app/components/portal/ui/EmptyState";
+import AnnouncementsPreview from "./AnnouncementsPreview";
 import styles from "./page.module.css";
 
 type Appointment = {
@@ -223,6 +224,8 @@ export default function PatientDashboard() {
               </div>
             )}
           </Section>
+
+          <AnnouncementsPreview />
 
           <Section title="Recent care" description="A short view of your latest completed or closed appointments.">
             {recentAppointments.length === 0 ? (
