@@ -112,6 +112,7 @@ export const portalNavigation: Record<PortalRole, PortalNavGroup[]> = {
       items: [
         { label: "Book appointment", href: "/pages/patient/book", icon: <FaCalendarPlus /> },
         { label: "Appointments", href: "/pages/patient/history", icon: <FaCalendarCheck /> },
+        { label: "Follow-ups", href: "/pages/patient/follow-ups", icon: <FaUserClock /> },
         { label: "Medical records", href: "/pages/patient/records", icon: <FaFileMedicalAlt /> },
       ],
     },
