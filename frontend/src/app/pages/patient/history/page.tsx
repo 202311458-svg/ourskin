@@ -24,15 +24,6 @@ interface Appointment {
   patient_instruction?: string | null;
   approval_email_sent?: boolean | null;
   approval_email_sent_at?: string | null;
-  next_visit_date?: string | null;
-  follow_up_date?: string | null;
-  followup_date?: string | null;
-  follow_up_plan?: string | null;
-  followup_plan?: string | null;
-  follow_up?: string | null;
-  follow_up_reason?: string | null;
-  reason?: string | null;
-  notes?: string | null;
 }
 
 const STATUS_FILTERS = ["All", "Approved", "Pending", "Completed", "Cancelled", "Declined", "No-Show"] as const;
@@ -176,11 +167,6 @@ export default function PatientHistory() {
         primaryAction={<Link href="/pages/patient/book" className={styles.primaryButton}>Book appointment</Link>}
         secondaryAction={<Link href="/pages/patient/records" className={styles.secondaryButton}>Medical records</Link>}
       />
-
-      <nav className={styles.tabs} aria-label="Appointments views">
-        <Link href="/pages/patient/history" className={`${styles.tab} ${styles.tabActive}`} aria-current="page">Appointments</Link>
-        <Link href="/pages/patient/follow-ups" className={styles.tab}>Follow-Ups</Link>
-      </nav>
 
       <div className={styles.filterBar} aria-label="Filter appointments by status">
         {STATUS_FILTERS.map((status) => (
