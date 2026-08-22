@@ -116,6 +116,12 @@ export const portalNavigation: Record<PortalRole, PortalNavGroup[]> = {
         { label: "Medical records", href: "/pages/patient/records", icon: <FaFileMedicalAlt /> },
       ],
     },
+    {
+      label: "Clinic updates",
+      items: [
+        { label: "Announcements", href: "/pages/patient/announcements", icon: <FaBullhorn /> },
+      ],
+    },
   ],
 };
 
