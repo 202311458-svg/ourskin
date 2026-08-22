@@ -9,7 +9,6 @@ import PageHeader from "@/app/components/portal/ui/PageHeader";
 import Section from "@/app/components/portal/ui/Section";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
 import EmptyState from "@/app/components/portal/ui/EmptyState";
-import AppointmentInstructionsDialog from "@/app/components/portal/ui/AppointmentInstructionsDialog";
 import styles from "./page.module.css";
 
 type Appointment = {
@@ -23,7 +22,6 @@ type Appointment = {
   status: string;
   cancel_reason?: string | null;
   patient_instruction?: string | null;
-  approval_email_sent?: boolean | null;
   next_visit_date?: string | null;
   follow_up_date?: string | null;
   followup_date?: string | null;
@@ -36,7 +34,12 @@ type Appointment = {
 };
 
 type CurrentUser = { name?: string | null };
-type FollowUpDisplay = { appointment: Appointment; date: string; plan: string };
+
+type FollowUpDisplay = {
+  appointment: Appointment;
+  date: string;
+  plan: string;
+};
 
 const normalizeStatus = (status?: string | null) => {
   const clean = (status || "").trim().toLowerCase();
@@ -98,7 +101,9 @@ export default function PatientDashboard() {
         fetch(`${API_BASE_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/appointments/my`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
+
       if (!userRes.ok || !appointmentRes.ok) throw new Error("Unable to load dashboard");
+
       const user = (await userRes.json()) as CurrentUser;
       const appointmentData = (await appointmentRes.json()) as Appointment[];
       setPatientName(user.name || "Patient");
@@ -130,7 +135,11 @@ export default function PatientDashboard() {
       .sort((a, b) => (getAppointmentDateTime(a)?.getTime() || 0) - (getAppointmentDateTime(b)?.getTime() || 0));
   }, [appointments]);
 
-  const pendingAppointments = useMemo(() => appointments.filter((appt) => normalizeStatus(appt.status) === "Pending"), [appointments]);
+  const pendingAppointments = useMemo(
+    () => appointments.filter((appt) => normalizeStatus(appt.status) === "Pending"),
+    [appointments]
+  );
+
   const followUps = useMemo<FollowUpDisplay[]>(() =>
     appointments
       .filter((appt) => Boolean(getFollowUpDate(appt) || getFollowUpPlan(appt)))
@@ -138,10 +147,11 @@ export default function PatientDashboard() {
       .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")),
     [appointments]
   );
+
   const recentAppointments = useMemo(() =>
     appointments
       .filter((appt) => ["Completed", "Declined", "Cancelled", "Missed"].includes(normalizeStatus(appt.status)))
-      .slice(0, 4),
+      .slice(0, 5),
     [appointments]
   );
 
@@ -162,76 +172,69 @@ export default function PatientDashboard() {
         <EmptyState title="Loading your care information..." />
       ) : (
         <div className={styles.grid}>
-          <div className={styles.priorityGrid}>
-            <Section title="What is next" description="Your closest confirmed visit or the next action to take.">
-              {nextAppointment ? (
-                <div className={styles.appointmentCard}>
-                  <div className={styles.appointmentHeader}>
-                    <div>
-                      <div className={styles.doctorName}>{nextAppointment.doctor_name || nextAppointment.doctor || "Assigned Doctor"}</div>
-                      <div className={styles.serviceName}>{nextAppointment.services || "Consultation"}</div>
-                      <div className={styles.scheduleText}>{getScheduleText(nextAppointment)}</div>
-                    </div>
-                    <StatusBadge tone="success">Confirmed</StatusBadge>
+          <Section title="What is next" description="Your closest confirmed visit or the next action to take.">
+            {nextAppointment ? (
+              <div className={styles.appointmentCard}>
+                <div className={styles.appointmentHeader}>
+                  <div>
+                    <div className={styles.doctorName}>{nextAppointment.doctor_name || nextAppointment.doctor || "Assigned Doctor"}</div>
+                    <div className={styles.serviceName}>{nextAppointment.services || "Consultation"}</div>
+                    <div className={styles.scheduleText}>{getScheduleText(nextAppointment)}</div>
                   </div>
-                  {nextAppointment.patient_instruction && (
-                    <div className={styles.instructionAction}>
-                      <AppointmentInstructionsDialog
-                        instructions={nextAppointment.patient_instruction}
-                        emailSent={nextAppointment.approval_email_sent}
-                      />
-                    </div>
-                  )}
+                  <StatusBadge tone="success">Confirmed</StatusBadge>
                 </div>
-              ) : (
-                <EmptyState
-                  title="No upcoming appointment"
-                  description="When you are ready, start a booking request and choose the care you need."
-                  action={<Link href="/pages/patient/book" className={styles.primaryButton}>Book appointment</Link>}
-                />
-              )}
-            </Section>
+                {nextAppointment.patient_instruction && <div className={styles.reasonBox}><strong>Clinic instructions:</strong> {nextAppointment.patient_instruction}</div>}
+              </div>
+            ) : (
+              <EmptyState
+                title="No upcoming appointment"
+                description="When you are ready, start a booking request and choose the care you need."
+                action={<Link href="/pages/patient/book" className={styles.primaryButton}>Book appointment</Link>}
+              />
+            )}
+          </Section>
 
-            <Section title="What requires your attention" description="Requests or follow-up care that may need a response or review.">
-              {!needsAttention ? (
-                <EmptyState title="Nothing needs your attention right now." description="Pending requests and follow-up care will appear here." />
-              ) : (
-                <div className={styles.list}>
-                  {pendingAppointments.slice(0, 2).map((appt) => (
-                    <div key={appt.id} className={styles.row}>
-                      <div className={styles.rowMain}>
-                        <div className={styles.rowPrimary}>{appt.services || "Appointment request"}</div>
-                        <div className={styles.rowSecondary}>{getScheduleText(appt)}</div>
-                      </div>
-                      <StatusBadge tone="warning">Awaiting review</StatusBadge>
+          <Section title="What requires your attention" description="Requests or follow-up care that may need a response or review.">
+            {!needsAttention ? (
+              <EmptyState title="Nothing needs your attention right now." description="We will surface pending requests and follow-up care here." />
+            ) : (
+              <div className={styles.list}>
+                {pendingAppointments.slice(0, 3).map((appt) => (
+                  <div key={appt.id} className={styles.row}>
+                    <div className={styles.rowMain}>
+                      <div className={styles.rowPrimary}>{appt.services || "Appointment request"}</div>
+                      <div className={styles.rowSecondary}>{getScheduleText(appt)}</div>
+                      <div className={styles.rowSecondary}>The clinic is reviewing this request.</div>
                     </div>
-                  ))}
+                    <StatusBadge tone="warning">Awaiting review</StatusBadge>
+                  </div>
+                ))}
 
-                  {nextFollowUp && (
-                    <div className={styles.row}>
-                      <div className={styles.rowMain}>
-                        <div className={styles.rowPrimary}>Follow-up care</div>
-                        <div className={styles.rowSecondary}>{nextFollowUp.date ? formatDate(nextFollowUp.date) : "Date to be arranged"}</div>
-                        {nextFollowUp.plan && <div className={styles.rowSecondary}>{nextFollowUp.plan}</div>}
-                      </div>
-                      <Link href="/pages/patient/follow-ups" className={styles.textLink}>View follow-up</Link>
+                {nextFollowUp && (
+                  <div className={styles.row}>
+                    <div className={styles.rowMain}>
+                      <div className={styles.rowPrimary}>Follow-up care</div>
+                      <div className={styles.rowSecondary}>{nextFollowUp.date ? formatDate(nextFollowUp.date) : "Date to be arranged"}</div>
+                      {nextFollowUp.plan && <div className={styles.rowSecondary}>{nextFollowUp.plan}</div>}
                     </div>
-                  )}
-                </div>
-              )}
-            </Section>
-          </div>
+                    <StatusBadge tone="info">Follow-up</StatusBadge>
+                  </div>
+                )}
+              </div>
+            )}
+          </Section>
 
-          <Section title="Recent care" description="Your latest completed or closed appointments.">
+          <Section title="Recent care" description="A short view of your latest completed or closed appointments.">
             {recentAppointments.length === 0 ? (
               <EmptyState title="No recent appointment activity yet." />
             ) : (
-              <div className={styles.recentGrid}>
+              <div className={styles.list}>
                 {recentAppointments.map((appt) => (
-                  <div key={appt.id} className={styles.recentItem}>
-                    <div>
-                      <div className={styles.rowPrimary}>{appt.services || "Consultation"}</div>
-                      <div className={styles.rowSecondary}>{formatDate(appt.date)} · {appt.doctor_name || appt.doctor || "Assigned Doctor"}</div>
+                  <div key={appt.id} className={styles.row}>
+                    <div className={styles.rowMain}>
+                      <div className={styles.rowPrimary}>{appt.doctor_name || appt.doctor || "Assigned Doctor"}</div>
+                      <div className={styles.rowSecondary}>{appt.services || "Consultation"}</div>
+                      <div className={styles.rowSecondary}>{getScheduleText(appt)}</div>
                     </div>
                     <span className={styles.statusBadge}>{normalizeStatus(appt.status)}</span>
                   </div>
