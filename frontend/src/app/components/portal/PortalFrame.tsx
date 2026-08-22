@@ -27,6 +27,7 @@ const patientRouteTitles = [
   ["/pages/patient/home", "Dashboard"],
   ["/pages/patient/book", "Book an appointment"],
   ["/pages/patient/history", "Appointments"],
+  ["/pages/patient/follow-ups", "Follow-ups"],
   ["/pages/patient/records", "Medical records"],
   ["/pages/patient/profile", "Profile"],
   ["/pages/patient/notifications", "Notifications"],
