@@ -22,8 +22,25 @@ type PortalFrameProps = {
   children: React.ReactNode;
 };
 
+const patientRouteTitles = [
+  ["/pages/patient/dashboard", "Dashboard"],
+  ["/pages/patient/home", "Dashboard"],
+  ["/pages/patient/book", "Book an appointment"],
+  ["/pages/patient/history", "Appointments"],
+  ["/pages/patient/records", "Medical records"],
+  ["/pages/patient/profile", "Profile"],
+  ["/pages/patient/notifications", "Notifications"],
+] as const;
+
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getPatientRouteTitle(pathname: string) {
+  return (
+    patientRouteTitles.find(([route]) => isActive(pathname, route))?.[1] ||
+    "Patient portal"
+  );
 }
 
 export default function PortalFrame({ role, children }: PortalFrameProps) {
@@ -36,8 +53,8 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
 
   const groups = portalNavigation[role];
   const headerSummary = useMemo(() => {
+    if (role === "patient") return getPatientRouteTitle(pathname);
     if (pathname.includes("notifications")) return "Notifications";
-    if (role === "patient") return "Care overview";
     if (role === "doctor") return "Clinical workflow";
     if (role === "staff") return "Operations";
     return "Administration";
@@ -192,9 +209,6 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
           </div>
           <div className={styles.headerActions}>
             <NotificationBell role={role} />
-            <button type="button" className={styles.headerButton} onClick={toggleDarkMode} aria-label={darkMode ? "Use light mode" : "Use dark mode"}>
-              {darkMode ? <FaSun /> : <FaMoon />}
-            </button>
           </div>
         </header>
         <div id="portal-content" className={styles.content}>{children}</div>
