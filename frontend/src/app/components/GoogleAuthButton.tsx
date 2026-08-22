@@ -16,9 +16,11 @@ type GoogleStartResponse = {
   onboarding_token?: string;
   profile?: { email: string; first_name?: string; last_name?: string };
 };
+
 type Props = {
   onAuthenticated: (role: string, token: string) => void;
   onOnboarding?: () => void;
+  theme?: "light" | "dark";
 };
 
 declare global {
@@ -28,71 +30,92 @@ declare global {
         id: {
           initialize: (config: Record<string, unknown>) => void;
           renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
-          cancel: () => void;
         };
       };
     };
   }
 }
 
-function documentUsesDarkTheme() {
-  if (typeof document === "undefined") return false;
-  return (
-    document.documentElement.getAttribute("data-theme") === "dark" ||
-    document.body.classList.contains("darkMode")
-  );
-}
-
-export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function GoogleAuthButton({
+  onAuthenticated,
+  onOnboarding,
+  theme,
+}: Props) {
+  const buttonRef = useRef<HTMLDivElement>(null);
   const [scriptReady, setScriptReady] = useState(false);
+  const [buttonWidth, setButtonWidth] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [linkCredential, setLinkCredential] = useState("");
   const [linkPassword, setLinkPassword] = useState("");
-  const [darkTheme, setDarkTheme] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const finishAuthentication = useCallback(async (data: GoogleStartResponse) => {
-    if (!data.access_token || !data.role) throw new Error("Invalid authentication response");
-    await persistAuthSession({ access_token: data.access_token, role: data.role });
-    onAuthenticated(data.role, SESSION_MARKER);
-  }, [onAuthenticated]);
+  const resolvedTheme =
+    theme ??
+    (typeof document !== "undefined" && document.body.classList.contains("darkMode")
+      ? "dark"
+      : "light");
 
-  const handleCredential = useCallback(async ({ credential }: GoogleResponse) => {
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/google/start`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential }),
-      });
-      const data = (await response.json().catch(() => ({}))) as GoogleStartResponse & { detail?: string };
-      if (!response.ok) throw new Error(data.detail || "Google authentication failed");
-
-      if (data.action === "authenticated") {
-        await finishAuthentication(data);
-      } else if (data.action === "link_required") {
-        setLinkCredential(credential);
-      } else if (data.action === "onboarding_required") {
-        sessionStorage.setItem("googleOnboarding", JSON.stringify({ token: data.onboarding_token, profile: data.profile }));
-        onOnboarding?.();
-      } else {
-        setError(data.message || "Please complete account verification before logging in.");
+  const finishAuthentication = useCallback(
+    async (data: GoogleStartResponse) => {
+      if (!data.access_token || !data.role) {
+        throw new Error("Invalid authentication response");
       }
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Google authentication failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [finishAuthentication, onOnboarding]);
+
+      await persistAuthSession({ access_token: data.access_token, role: data.role });
+      onAuthenticated(data.role, SESSION_MARKER);
+    },
+    [onAuthenticated]
+  );
+
+  const handleCredential = useCallback(
+    async ({ credential }: GoogleResponse) => {
+      setBusy(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/google/start`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential }),
+        });
+        const data = (await response.json().catch(() => ({}))) as GoogleStartResponse & {
+          detail?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Google authentication failed");
+        }
+
+        if (data.action === "authenticated") {
+          await finishAuthentication(data);
+        } else if (data.action === "link_required") {
+          setLinkCredential(credential);
+        } else if (data.action === "onboarding_required") {
+          sessionStorage.setItem(
+            "googleOnboarding",
+            JSON.stringify({ token: data.onboarding_token, profile: data.profile })
+          );
+          onOnboarding?.();
+        } else {
+          setError(data.message || "Please complete account verification before logging in.");
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "Google authentication failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [finishAuthentication, onOnboarding]
+  );
 
   const linkAccount = async () => {
     if (!linkPassword) return;
+
     setBusy(true);
     setError("");
+
     try {
       const response = await fetch(`${API_BASE_URL}/auth/google/link`, {
         method: "POST",
@@ -100,10 +123,19 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: linkCredential, password: linkPassword }),
       });
-      const data = (await response.json().catch(() => ({}))) as GoogleStartResponse & { detail?: string };
-      if (!response.ok) throw new Error(data.detail || "Unable to link Google account");
-      if (data.action === "authenticated") await finishAuthentication(data);
-      else setError(data.message || "Verify your OurSkin email before logging in.");
+      const data = (await response.json().catch(() => ({}))) as GoogleStartResponse & {
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to link Google account");
+      }
+
+      if (data.action === "authenticated") {
+        await finishAuthentication(data);
+      } else {
+        setError(data.message || "Verify your OurSkin email before logging in.");
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to link Google account");
     } finally {
@@ -116,42 +148,47 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
   }, []);
 
   useEffect(() => {
-    const syncTheme = () => setDarkTheme(documentUsesDarkTheme());
-    syncTheme();
+    const node = buttonRef.current;
+    if (!node) return;
 
-    const observer = new MutationObserver(syncTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "class"],
-    });
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+    const updateWidth = () => {
+      const width = Math.floor(node.getBoundingClientRect().width);
+      if (width > 0) setButtonWidth(Math.max(200, Math.min(width, 400)));
+    };
 
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!scriptReady || !clientId || !window.google || !containerRef.current) return;
+    if (
+      !scriptReady ||
+      !clientId ||
+      !window.google?.accounts?.id ||
+      !buttonRef.current ||
+      buttonWidth === 0
+    ) {
+      return;
+    }
 
-    containerRef.current.replaceChildren();
+    buttonRef.current.replaceChildren();
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: handleCredential,
       ux_mode: "popup",
     });
-    window.google.accounts.id.renderButton(containerRef.current, {
+    window.google.accounts.id.renderButton(buttonRef.current, {
       type: "standard",
-      theme: darkTheme ? "filled_black" : "outline",
+      theme: resolvedTheme === "dark" ? "outline_dark" : "outline",
       size: "medium",
       text: "continue_with",
       shape: "pill",
-      width: 360,
+      logo_alignment: "left",
+      width: buttonWidth,
     });
-
-    return () => window.google?.accounts.id.cancel();
-  }, [scriptReady, clientId, handleCredential, darkTheme]);
+  }, [scriptReady, clientId, handleCredential, resolvedTheme, buttonWidth]);
 
   if (!clientId) return null;
 
@@ -163,20 +200,50 @@ export default function GoogleAuthButton({ onAuthenticated, onOnboarding }: Prop
         onReady={() => setScriptReady(true)}
         onError={() => setError("Google sign-in could not be loaded.")}
       />
-      <div className={styles.divider}><span>or</span></div>
-      <div
-        ref={containerRef}
-        className={`${styles.googleButton} ${darkTheme ? styles.googleButtonDark : ""}`}
-      />
-      {busy && <p className={styles.status}>Authenticating securely…</p>}
-      {error && <p className={styles.error} role="alert">{error}</p>}
+
+      <div className={styles.divider} aria-hidden="true">
+        <span>or continue with</span>
+      </div>
+
+      <div ref={buttonRef} className={styles.buttonHost} />
+
+      {busy && <p className={styles.status}>Connecting to Google…</p>}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+
       {linkCredential && (
         <div className={styles.linkPanel}>
-          <p>This email already has an OurSkin account. Enter its password to link Google without changing your role or profile.</p>
-          <input type="password" value={linkPassword} onChange={(event) => setLinkPassword(event.target.value)} placeholder="Existing OurSkin password" aria-label="Existing OurSkin password" disabled={busy} />
+          <p>
+            This email already has an OurSkin account. Enter the existing account
+            password once to link Google securely.
+          </p>
+          <label htmlFor="google-link-password">OurSkin password</label>
+          <input
+            id="google-link-password"
+            type="password"
+            value={linkPassword}
+            onChange={(event) => setLinkPassword(event.target.value)}
+            autoComplete="current-password"
+            disabled={busy}
+          />
           <div className={styles.linkActions}>
-            <button type="button" onClick={() => { setLinkCredential(""); setLinkPassword(""); }} disabled={busy}>Cancel</button>
-            <button type="button" onClick={linkAccount} disabled={busy || !linkPassword}>Link and continue</button>
+            <button
+              type="button"
+              onClick={() => {
+                setLinkCredential("");
+                setLinkPassword("");
+                setError("");
+              }}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+            <button type="button" onClick={linkAccount} disabled={busy || !linkPassword}>
+              {busy ? "Linking…" : "Link and continue"}
+            </button>
           </div>
         </div>
       )}
