@@ -10,6 +10,6 @@ cd frontend
 npm run dev
 
 Run backend:
-* .\venv\Scripts\Activate
+.\venv\Scripts\Activate
 cd backend
 uvicorn app.main:app --reload

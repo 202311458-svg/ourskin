@@ -280,12 +280,11 @@ export default function AuthModal({
       >
         <header className={styles.header}>
           <div className={styles.headingBlock}>
-            <p className={styles.eyebrow}>OurSkin Dermatology Center</p>
             <h2 id={titleId}>{isForgot ? "Reset your password" : "Welcome back"}</h2>
             <p id={descriptionId} className={styles.helperText}>
               {isForgot
                 ? "Enter your email and we’ll send you a secure reset link."
-                : "Log in to continue your booking and access your patient account."}
+                : "Log in to continue your booking and access your account."}
             </p>
           </div>
 
