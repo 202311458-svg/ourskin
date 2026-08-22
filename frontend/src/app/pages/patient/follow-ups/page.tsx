@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
@@ -133,17 +132,7 @@ export default function PatientFollowUps() {
         eyebrow="Patient portal"
         title="Follow-Ups"
         description="Review only the care steps that require a return visit, reassessment, or clinic follow-up."
-        secondaryAction={
-          <Link href="/pages/patient/history" className={styles.secondaryButton}>
-            Appointments
-          </Link>
-        }
       />
-
-      <nav className={styles.tabs} aria-label="Appointments views">
-        <Link href="/pages/patient/history" className={styles.tab}>Appointments</Link>
-        <Link href="/pages/patient/follow-ups" className={`${styles.tab} ${styles.tabActive}`} aria-current="page">Follow-Ups</Link>
-      </nav>
 
       {loading ? (
         <EmptyState title="Loading follow-up care..." />
@@ -151,7 +140,6 @@ export default function PatientFollowUps() {
         <EmptyState
           title="No follow-up care scheduled"
           description="When your doctor adds a follow-up plan or next-visit date, it will appear here."
-          action={<Link href="/pages/patient/history" className={styles.secondaryButton}>View appointments</Link>}
         />
       ) : (
         <div className={styles.list}>
