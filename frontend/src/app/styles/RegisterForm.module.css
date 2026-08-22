@@ -297,7 +297,6 @@
 .registerGrid + .registerGrid,
 .registerGrid + .registerField,
 .registerField + .registerGrid,
-.registerField + .registerField,
 .securityGrid + .registerField {
   margin-top: 12px;
 }
