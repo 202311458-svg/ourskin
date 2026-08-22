@@ -11,13 +11,6 @@
   gap: var(--space-5);
 }
 
-.priorityGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-  gap: var(--space-5);
-  align-items: start;
-}
-
 .list {
   display: flex;
   flex-direction: column;
@@ -26,8 +19,7 @@
 }
 
 .appointmentCard,
-.row,
-.recentItem {
+.row {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -38,8 +30,7 @@
 }
 
 .appointmentHeader,
-.row,
-.recentItem {
+.row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -60,10 +51,13 @@
   line-height: var(--line-height-base);
 }
 
-.instructionAction {
+.reasonBox {
   margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
 }
 
 .row {
@@ -76,32 +70,10 @@
 }
 
 .rowPrimary {
-  margin-bottom: var(--space-1);
   color: var(--color-text-strong);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-}
-
-.textLink {
-  flex-shrink: 0;
-  color: var(--color-brand-600);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-decoration: none;
-}
-
-.textLink:hover {
-  text-decoration: underline;
-}
-
-.recentGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.recentItem {
-  padding: var(--space-4);
+  margin-bottom: var(--space-1);
 }
 
 .statusBadge {
@@ -150,28 +122,11 @@
   margin-top: var(--space-4);
 }
 
-@media (max-width: 980px) {
-  .priorityGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 700px) {
-  .recentGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .appointmentHeader,
-  .row,
-  .recentItem {
+  .row {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .textLink {
-    align-self: flex-start;
   }
 
   .primaryButton,
