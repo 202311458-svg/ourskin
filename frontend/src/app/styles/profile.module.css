@@ -7,10 +7,10 @@
 
 .profileGrid {
   display: grid;
+  width: 100%;
   grid-template-columns: 1fr;
   gap: var(--space-5);
   align-items: start;
-  max-width: 980px;
 }
 
 .state {
@@ -56,8 +56,8 @@
 
 .infoGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
 .infoItem {
@@ -69,6 +69,10 @@
 }
 
 .infoItemWide {
+  grid-column: span 3;
+}
+
+.guardianSection .infoItemWide {
   grid-column: 1 / -1;
 }
 
@@ -237,12 +241,24 @@
   color: var(--color-danger);
 }
 
+@media (max-width: 1120px) {
+  .infoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .infoItemWide,
+  .guardianSection .infoItemWide {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 640px) {
   .infoGrid {
     grid-template-columns: 1fr;
   }
 
-  .infoItemWide {
+  .infoItemWide,
+  .guardianSection .infoItemWide {
     grid-column: auto;
   }
 
