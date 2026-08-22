@@ -1,911 +1,912 @@
-/* Registration page presentation. Shared landing chrome remains in landing.module.css. */
-
 .registerLandingPage {
   min-height: 100vh;
-  position: relative;
-  color: #333;
-  padding-top: 96px;
-  overflow-x: hidden;
-}
-
-.animatedBackground {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(-45deg, #ffffff, #ffd6dd, #fff3ed, #fff0e8);
-  background-size: 400% 400%;
-  animation: gradientMove 18s ease infinite;
-  z-index: -10;
-}
-
-@keyframes gradientMove {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.registerNavbar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  min-height: 86px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 10%;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-  border-bottom: 1px solid rgba(130, 51, 76, 0.08);
-  z-index: 100;
-}
-
-.registerLogoLink {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-.registerNavLogo {
-  width: 100px;
-  height: auto;
-  display: flex;
-  align-items: center;
-}
-
-.registerNavLogo img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-.registerNavLinks {
-  display: flex;
-  gap: 35px;
-  font-weight: 500;
-}
-
-.registerNavLinks a {
-  text-decoration: none;
-  color: #444;
-  transition: 0.3s;
-}
-
-.registerNavLinks a:hover {
-  color: #82334c;
-}
-
-.registerNavActions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.registerThemeBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid #ead5dd;
-  background: #ffffff;
-  color: #8b2f55;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.registerThemeBtn:hover {
-  background: #fff3f7;
-  transform: translateY(-1px);
-}
-
-.registerLoginBtn {
-  font-size: 15px;
-  background: none;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  color: #82334c;
-}
-
-.registerLoginBtn:hover {
-  color: #5f2437;
+  padding-top: 78px;
+  background: var(--os-bg);
+  color: var(--os-text);
 }
 
 .registerHero {
-  width: 100%;
-  max-width: 1320px;
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 40px 3% 60px;
+  padding: clamp(52px, 7vw, 92px) 0 96px;
   display: grid;
-  grid-template-columns: 0.9fr 1.25fr;
-  gap: 54px;
+  grid-template-columns: minmax(0, 0.78fr) minmax(580px, 1.22fr);
+  gap: clamp(48px, 7vw, 92px);
   align-items: start;
 }
 
 .registerIntro {
   position: sticky;
-  top: 10px;
-  padding-top: 26px;
+  top: 126px;
+  align-self: start;
+  max-width: 470px;
 }
 
-.registerEyebrow {
-  color: #82334c;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+.registerEyebrow,
+.panelEyebrow {
+  margin: 0 0 14px;
+  color: var(--os-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.3;
   text-transform: uppercase;
-  font-size: 13px;
-  margin-bottom: 14px;
 }
 
 .registerIntro h1 {
-  color: #82334c;
-  font-size: clamp(42px, 5vw, 70px);
-  line-height: 1.05;
-  margin-bottom: 22px;
-}
-
-.registerIntro p {
-  color: #4b5563;
-  font-size: 17px;
-  line-height: 1.75;
-  max-width: 520px;
-}
-
-.registerHighlights {
-  margin-top: 34px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  max-width: 520px;
-}
-
-.registerHighlights div {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid #f1d4de;
-  border-radius: 22px;
-  padding: 18px;
-  box-shadow: 0 12px 32px rgba(130, 51, 76, 0.08);
-}
-
-.registerHighlights h3 {
-  color: #82334c;
-  font-size: 22px;
-  margin-bottom: 4px;
-}
-
-.registerHighlights p {
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.registerPanel {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(130, 51, 76, 0.12);
-  border-radius: 32px;
-  padding: 30px;
-  box-shadow: 0 24px 70px rgba(130, 51, 76, 0.16);
-  backdrop-filter: blur(14px);
-}
-
-.registerPanelHeader {
-  margin-bottom: 24px;
-}
-
-.registerPanelHeader p {
-  color: #9b5570;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.registerPanelHeader h2 {
-  color: #82334c;
-  font-size: 32px;
   margin: 0;
+  max-width: 440px;
+  color: var(--os-text);
+  font-family: var(--os-display);
+  font-size: clamp(3rem, 5.4vw, 5.25rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
 }
 
-.registerPanel > :global(div[aria-busy]) {
-  margin-bottom: 20px;
-}
-
-.registerForm {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.registerDivider {
-  height: 1px;
-  width: 100%;
-  background: rgba(130, 51, 76, 0.16);
-  margin: 4px 0;
-}
-
-.registerGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.registerField {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-bottom: 8px;
-}
-
-.registerField:last-child {
-  margin-bottom: 0;
-}
-
-.registerField label {
-  color: #6f2940;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.registerField input {
-  width: 100%;
-  border: 1px solid #e4cbd5;
-  background: #ffffff;
-  color: #2f2f2f;
-  border-radius: 16px;
-  padding: 14px 16px;
-  font-size: 15px;
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-}
-
-.registerField input:focus {
-  border-color: #82334c;
-  box-shadow: 0 0 0 4px rgba(130, 51, 76, 0.1);
-}
-
-.registerPasswordWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.registerPasswordWrap input {
-  padding-right: 48px;
-}
-
-.registerPasswordWrap button {
-  position: absolute;
-  right: 14px;
-  border: none;
-  background: transparent;
-  color: #7b6870;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
+.registerLead {
+  margin: 26px 0 0;
+  max-width: 430px;
+  color: var(--os-text-soft);
   font-size: 16px;
+  line-height: 1.75;
 }
 
-.registerHelper {
-  color: #7b6870;
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 2px 0 0;
+.registerPrinciples {
+  margin-top: 42px;
+  border-top: 1px solid var(--os-line);
 }
 
-.registerValid {
-  color: #15803d;
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 2px 0 0;
+.registerPrinciple {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 14px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--os-line);
 }
 
-.registerError {
-  color: #b91c1c;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-top: 6px;
-}
-
-.registerInfo {
-  color: #82334c;
-  background: #fff0f5;
-  border: 1px solid #eed0dc;
-  border-radius: 14px;
-  padding: 11px 13px;
-  font-size: 13px;
-  line-height: 1.5;
+.registerPrinciple > span {
+  width: 6px;
+  height: 6px;
   margin-top: 8px;
+  border-radius: 50%;
+  background: var(--os-accent);
 }
 
-.registerCheckbox {
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  color: #4b5563;
+.registerPrinciple h2 {
+  margin: 0 0 5px;
+  color: var(--os-text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.registerPrinciple p {
+  margin: 0;
+  color: var(--os-text-faint);
   font-size: 13px;
   line-height: 1.6;
 }
 
-.registerCheckbox input {
-  width: 17px;
-  height: 17px;
-  margin-top: 3px;
-  accent-color: #82334c;
-  flex-shrink: 0;
-}
-
-.registerSubmit {
-  border: none;
-  border-radius: 999px;
-  background: #82334c;
-  color: white;
-  padding: 16px;
-  font-size: 17px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.registerSubmit:hover:not(:disabled) {
-  background: #94435d;
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(130, 51, 76, 0.24);
-}
-
-.registerSubmit:disabled {
-  opacity: 0.58;
-  cursor: not-allowed;
-}
-
-.registerLoginText {
-  text-align: center;
-  color: #5b6472;
-  font-size: 14px;
-}
-
-.registerLoginText a {
-  color: #82334c;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.registerLoginText a:hover {
-  text-decoration: underline;
-}
-
-:global(body.darkMode) .registerLandingPage {
-  color: #f8fafc;
-}
-
-:global(body.darkMode) .animatedBackground {
-  background:
-    radial-gradient(
-      circle at 15% 20%,
-      rgba(147, 52, 93, 0.28),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 85% 15%,
-      rgba(244, 114, 182, 0.18),
-      transparent 28%
-    ),
-    linear-gradient(135deg, #0f1117 0%, #20111a 50%, #321827 100%);
-}
-
-:global(body.darkMode) .registerNavbar {
-  background: #111827;
-  border-bottom: 1px solid #2d3340;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-}
-
-:global(body.darkMode) .registerNavLinks a {
-  color: #e5e7eb;
-}
-
-:global(body.darkMode) .registerNavLinks a:hover,
-:global(body.darkMode) .registerLoginBtn {
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .registerThemeBtn {
-  background: #1f2937;
-  color: #f9a8d4;
-  border-color: #374151;
-}
-
-:global(body.darkMode) .registerIntro h1,
-:global(body.darkMode) .registerEyebrow,
-:global(body.darkMode) .registerPanelHeader h2,
-:global(body.darkMode) .registerPanelHeader p,
-:global(body.darkMode) .registerSection h3,
-:global(body.darkMode) .registerField label,
-:global(body.darkMode) .registerHighlights h3 {
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .registerIntro p,
-:global(body.darkMode) .registerHighlights p,
-:global(body.darkMode) .registerCheckbox,
-:global(body.darkMode) .registerLoginText,
-:global(body.darkMode) .registerHelper {
-  color: #d1d5db;
-}
-
-:global(body.darkMode) .registerPanel,
-:global(body.darkMode) .registerHighlights div {
-  background: rgba(23, 25, 35, 0.92);
-  border-color: #2d3340;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
-}
-
-:global(body.darkMode) .registerSection {
-  background: #171923;
-  border-color: #2d3340;
-}
-
-:global(body.darkMode) .registerField input {
-  background: #1f2430;
-  color: #f8fafc;
-  border-color: #374151;
-}
-
-:global(body.darkMode) .registerField input:focus {
-  border-color: #f472b6;
-  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.12);
-}
-
-:global(body.darkMode) .registerInfo {
-  background: rgba(244, 114, 182, 0.1);
-  border-color: rgba(244, 114, 182, 0.24);
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .registerSubmit {
-  background: #93345d;
-}
-
-:global(body.darkMode) .registerSubmit:hover:not(:disabled) {
-  background: #a83d6b;
-}
-
-:global(body.darkMode) .registerLoginText a {
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .dobCard {
-  background: #171923;
-  border-color: #374151;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
-}
-
-:global(body.darkMode) .dobIcon {
-  background: rgba(244, 114, 182, 0.14);
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .dobGrid select {
-  background: #1f2430;
-  color: #f8fafc;
-  border-color: #374151;
-  color-scheme: dark;
-}
-
-:global(body.darkMode) .dobGrid select:hover {
-  border-color: rgba(244, 114, 182, 0.55);
-}
-
-:global(body.darkMode) .dobGrid select:focus {
-  background: #1f2430;
-  border-color: #f472b6;
-  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.12);
-}
-
-:global(body.darkMode) .dobGrid option {
-  background: #1f2430;
-  color: #f8fafc;
-}
-
-:global(body.darkMode) .dobPreview {
-  color: #d1d5db;
-}
-
-:global(body.darkMode) .dobPreview strong {
-  color: #f9a8d4;
-}
-
-:global(body.darkMode) .registerDivider {
-  background: rgba(249, 168, 212, 0.18);
-}
-
-@media (max-width: 1080px) {
-.registerHero {
-    grid-template-columns: 1fr;
-    gap: 34px;
-  }
-
-.registerIntro {
-    position: relative;
-    top: auto;
-    padding-top: 10px;
-  }
-
-.registerIntro p {
-    max-width: 760px;
-  }
-
-.registerHighlights {
-    max-width: 760px;
-  }
-}
-
-@media (max-width: 768px) {
-.registerLandingPage {
-    padding-top: 78px;
-  }
-
-.registerNavbar {
-    padding: 12px 18px;
-  }
-
-.registerBrand {
-    font-size: 21px;
-  }
-
-.registerNavLinks {
-    display: none;
-  }
-
-.registerHero {
-    padding: 40px 18px 64px;
-  }
-
-.registerPanel {
-    padding: 22px;
-    border-radius: 24px;
-  }
-
-.registerPanelHeader h2 {
-    font-size: 27px;
-  }
-
-.registerIntro h1 {
-    font-size: 42px;
-  }
-
-.registerGrid,
-.registerHighlights {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 520px) {
-.registerPanel {
-    padding: 18px;
-  }
-
-.registerSection {
-    padding: 18px;
-  }
-
-.registerIntro h1 {
-    font-size: 36px;
-  }
-
-.registerThemeBtn span {
-    display: none;
-  }
-
-.registerThemeBtn {
-    width: 42px;
-    height: 42px;
-    padding: 0;
-  }
-}
-
-@media (max-width: 640px) {
-.dobCard {
-    align-items: flex-start;
-  }
-
-.dobGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.dobCard {
+.eligibilityNote {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px;
-  border: 1px solid #e4cbd5;
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(130, 51, 76, 0.06);
-  transition:
-    background 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.dobIcon {
-  width: 42px;
-  height: 42px;
-  border-radius: 16px;
-  background: #fff0f5;
-  color: #82334c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition:
-    background 0.25s ease,
-    color 0.25s ease;
-}
-
-.dobGrid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1.3fr 0.8fr 0.9fr;
+  align-items: baseline;
   gap: 10px;
-}
-
-.dobGrid select {
-  width: 100%;
-  border: 1px solid #e4cbd5;
-  background: #fffafc;
-  color: #2f2f2f;
-  border-radius: 14px;
-  padding: 12px 36px 12px 13px;
-  font-size: 15px;
-  outline: none;
-  cursor: pointer;
-  color-scheme: light;
-  appearance: auto;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    color 0.2s ease;
-}
-
-.dobGrid select:focus {
-  border-color: #82334c;
-  box-shadow: 0 0 0 4px rgba(130, 51, 76, 0.1);
-  background: #ffffff;
-}
-
-.dobGrid option {
-  background: #ffffff;
-  color: #2f2f2f;
-}
-
-.dobPreview {
-  margin-top: 9px;
-  color: #6b5360;
-  font-size: 13px;
+  margin: 24px 0 0;
+  color: var(--os-text-faint);
+  font-size: 12px;
   line-height: 1.5;
 }
 
-.dobPreview strong {
-  color: #82334c;
-}
-
-@media (max-width: 640px) {
-.dobCard {
-    align-items: flex-start;
-  }
-
-.dobGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.registerLandingPage {
-  min-height: 100vh;
-  padding-top: 124px;
-  background: transparent;
-  color: var(--os-text);
-}
-
-.registerHero {
-  position: relative;
-  z-index: 1;
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 0px 0 40px;
-  display: grid;
-  grid-template-columns: 0.86fr 1.14fr;
-  gap: 42px;
-  align-items: start;
-}
-
-.registerIntro {
-  position: relative;
-  top: 0;
-  align-self: start;
-  padding-top: 12px;
-  margin-top: 0;
-}
-
-.registerEyebrow {
-  display: inline-flex;
-  width: fit-content;
-  margin-bottom: 16px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  color: var(--os-brand);
-  background: var(--os-brand-soft);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+.eligibilityNote strong {
+  color: var(--os-accent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.registerIntro h1 {
-  color: var(--os-brand);
-  font-size: clamp(42px, 5vw, 68px);
-  line-height: 1.02;
-  letter-spacing: -0.055em;
-  margin: 0 0 22px;
-}
-
-.registerIntro p {
-  color: var(--os-muted);
-}
-
-.registerHighlights div,
 .registerPanel {
-  background: var(--os-card);
-  border-color: var(--os-border);
-  box-shadow: var(--os-shadow);
+  width: 100%;
+  padding: clamp(28px, 4vw, 46px);
+  border: 1px solid var(--os-line);
+  border-radius: 20px;
+  background: var(--os-surface);
+  box-shadow: var(--shadow-sm);
 }
 
-.registerHighlights h3,
-.registerPanelHeader h2,
-.registerField label,
-.registerLoginText a,
-.registerInfo,
-.dobPreview strong {
-  color: var(--os-brand);
+.registerPanelHeader {
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--os-line);
 }
 
-.registerHighlights p,
-.registerLoginText,
-.registerCheckbox,
-.registerHelper,
-.registerIntro p,
-.registerField input,
-.dobPreview {
-  color: var(--os-muted);
-}
-
-.registerPanel {
-  border-radius: 32px;
-  backdrop-filter: blur(14px);
-}
-
-.registerField input,
-.dobCard,
-.dobGrid select {
-  background: var(--os-surface-solid);
+.registerPanelHeader h2 {
+  margin: 0;
   color: var(--os-text);
-  border-color: var(--os-border);
+  font-family: var(--os-display);
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
 }
 
-.registerField input:focus,
-.dobGrid select:focus {
-  border-color: var(--os-brand);
-  box-shadow: 0 0 0 4px var(--os-brand-soft);
+.registerPanelHeader > p:last-child {
+  margin: 12px 0 0;
+  max-width: 620px;
+  color: var(--os-text-soft);
+  font-size: 14px;
+  line-height: 1.65;
 }
 
-.dobIcon {
-  background: var(--os-brand-soft);
-  color: var(--os-brand);
+.googleVerified,
+.googleSecurityNote {
+  display: grid;
+  gap: 3px;
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--os-line);
+  border-radius: 12px;
+  background: var(--os-surface-soft);
+}
+
+.googleVerified span,
+.googleSecurityNote span {
+  color: var(--os-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.googleVerified strong,
+.googleSecurityNote strong {
+  color: var(--os-text);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.formFeedback {
+  margin: 22px 0 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.formFeedbackError {
+  border-color: color-mix(in srgb, var(--color-danger) 34%, transparent);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.formFeedbackSuccess {
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.formFeedbackInfo {
+  border-color: color-mix(in srgb, var(--color-info) 34%, transparent);
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.registerForm {
+  display: grid;
+  gap: 0;
+}
+
+.formSection {
+  min-width: 0;
+  margin: 0;
+  padding: 30px 0;
+  border: 0;
+  border-bottom: 1px solid var(--os-line);
+}
+
+.formSection legend {
+  margin: 0;
+  padding: 0;
+  color: var(--os-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sectionDescription {
+  margin: 7px 0 20px;
+  max-width: 600px;
+  color: var(--os-text-faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.registerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.registerGrid + .registerField,
+.registerField + .registerGrid,
+.registerField + .registerField,
+.registerGrid + .registerGrid,
+.registerCheckbox + .registerCheckbox {
+  margin-top: 16px;
+}
+
+.registerField {
+  min-width: 0;
+}
+
+.registerField label,
+.fieldLabel {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--os-text-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.registerField input,
+.dobGrid select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--os-line-strong);
+  border-radius: 10px;
+  outline: none;
+  background: var(--color-input);
+  color: var(--os-text);
+  caret-color: var(--os-accent);
+  font: inherit;
+  font-size: 14px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.registerField input {
+  padding: 12px 14px;
+}
+
+.registerField input::placeholder {
+  color: var(--os-text-faint);
+  opacity: 0.84;
+}
+
+.registerField input:hover:not(:disabled),
+.dobGrid select:hover:not(:disabled) {
+  border-color: var(--os-accent);
+}
+
+.registerField input:focus-visible,
+.dobGrid select:focus-visible {
+  border-color: var(--os-accent);
+  background: var(--os-surface);
+  box-shadow: 0 0 0 3px var(--os-accent-soft);
+}
+
+.registerField input:disabled,
+.dobGrid select:disabled {
+  cursor: not-allowed;
+  background: var(--color-disabled);
+  color: var(--color-disabled-text);
+  opacity: 0.72;
+}
+
+.registerField input[readonly] {
+  background: var(--os-surface-soft);
+  color: var(--os-text-soft);
+}
+
+.registerField input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.registerField input:-webkit-autofill,
+.registerField input:-webkit-autofill:hover,
+.registerField input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--os-text);
+  caret-color: var(--os-accent);
+  -webkit-box-shadow: inset 0 0 0 1000px var(--color-input);
+  transition: background-color 9999s ease-out 0s;
+}
+
+.registerHelper,
+.registerError,
+.registerInfo {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.registerHelper {
+  color: var(--os-text-faint);
+}
+
+.registerError {
+  color: var(--color-danger);
 }
 
 .registerInfo {
-  background: var(--os-brand-soft);
-  border-color: var(--os-border);
+  width: fit-content;
+  padding: 9px 11px;
+  border: 1px solid var(--os-line);
+  border-radius: 8px;
+  background: var(--os-accent-soft);
+  color: var(--os-accent-strong);
+}
+
+.dobControl {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.dobIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--os-line);
+  border-radius: 10px;
+  background: var(--os-surface-soft);
+  color: var(--os-accent);
+  font-size: 14px;
+}
+
+.dobGrid {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.4fr) minmax(84px, 0.7fr) minmax(96px, 0.9fr);
+  gap: 10px;
+}
+
+.dobGrid > div {
+  min-width: 0;
+}
+
+.dobGrid select {
+  padding: 10px 32px 10px 12px;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+:global(html[data-theme="dark"]) .dobGrid select,
+:global(body.darkMode) .dobGrid select {
+  color-scheme: dark;
+}
+
+.dobPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 9px 0 0 56px;
+  color: var(--os-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dobPreview time {
+  color: var(--os-text-soft);
+  font-weight: 700;
+}
+
+.registerPasswordWrap {
+  position: relative;
+}
+
+.registerPasswordWrap input {
+  padding-right: 50px;
+}
+
+.registerPasswordWrap button {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--os-text-faint);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.registerPasswordWrap button:hover:not(:disabled),
+.registerPasswordWrap button:focus-visible {
+  outline: none;
+  background: var(--os-accent-soft);
+  color: var(--os-accent-strong);
+}
+
+.registerPasswordWrap button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.passwordChecklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 14px;
+  margin: 11px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--os-text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.passwordChecklist li {
+  position: relative;
+  padding-left: 15px;
+}
+
+.passwordChecklist li::before {
+  content: "";
+  position: absolute;
+  top: 0.5em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--os-line-strong);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.passwordChecklist .requirementMet {
+  color: var(--color-success);
+}
+
+.passwordChecklist .requirementMet::before {
+  border-color: var(--color-success);
+  background: var(--color-success);
+}
+
+.googleSecurityNote {
+  margin: 30px 0 0;
+}
+
+.consentList {
+  display: grid;
+  gap: 14px;
+}
+
+.registerCheckbox,
+.consentRow {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  color: var(--os-text-soft);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.registerCheckbox {
+  cursor: pointer;
+}
+
+.registerCheckbox input,
+.consentRow input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: var(--os-accent);
+}
+
+.registerCheckbox input:focus-visible,
+.consentRow input:focus-visible {
+  outline: 2px solid var(--os-accent);
+  outline-offset: 3px;
+}
+
+.registerCheckbox input:disabled,
+.consentRow input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.consentRow p {
+  margin: 0;
+}
+
+.consentRow label {
+  cursor: pointer;
+}
+
+.registerPolicyBtn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--os-accent-strong);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.registerPolicyBtn:hover,
+.registerPolicyBtn:focus-visible {
+  color: var(--os-accent);
+}
+
+.registerPolicyBtn:focus-visible {
+  outline: 2px solid var(--os-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .registerSubmit {
-  background: var(--os-brand);
+  width: 100%;
+  min-height: 50px;
+  margin-top: 28px;
+  padding: 13px 18px;
+  border: 1px solid var(--os-accent);
+  border-radius: 10px;
+  background: var(--os-accent);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+:global(html[data-theme="dark"]) .registerSubmit,
+:global(body.darkMode) .registerSubmit {
+  color: #1a1015;
 }
 
 .registerSubmit:hover:not(:disabled) {
-  background: var(--os-brand-dark);
+  transform: translateY(-1px);
+  border-color: var(--os-accent-strong);
+  background: var(--os-accent-strong);
 }
 
-.registerNavbar,
-.registerLogoLink,
-.registerNavLogo,
-.registerNavLinks,
-.registerNavActions,
-.registerThemeBtn,
-.registerLoginBtn,
-.animatedBackground {
-  display: none;
+.registerSubmit:focus-visible {
+  outline: 3px solid var(--os-accent-soft);
+  outline-offset: 3px;
+}
+
+.registerSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.registerPanel > :global(div[aria-busy]) {
+  margin-top: 22px;
+}
+
+.registerLoginText {
+  margin: 22px 0 0;
+  color: var(--os-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.registerLoginText a {
+  color: var(--os-accent-strong);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.registerLoginText a:hover,
+.registerLoginText a:focus-visible {
+  color: var(--os-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.registerPolicyOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--os-overlay);
+  backdrop-filter: blur(6px);
+}
+
+.registerPolicyModal {
+  width: min(100%, 650px);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+  padding: clamp(22px, 4vw, 30px);
+  border: 1px solid var(--os-line);
+  border-radius: 18px;
+  background: var(--os-surface);
+  color: var(--os-text);
+  box-shadow: var(--shadow-dialog);
+}
+
+.registerPolicyHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--os-line);
+}
+
+.registerPolicyHeader p {
+  margin: 0 0 5px;
+  color: var(--os-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.registerPolicyHeader h2 {
+  margin: 0;
+  color: var(--os-text);
+  font-family: var(--os-display);
+  font-size: clamp(1.7rem, 4vw, 2.25rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.registerPolicyHeader > button {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--os-line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--os-text-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.registerPolicyHeader > button:hover,
+.registerPolicyHeader > button:focus-visible {
+  outline: none;
+  border-color: var(--os-line-strong);
+  background: var(--os-accent-soft);
+  color: var(--os-accent-strong);
+}
+
+.registerPolicyBody {
+  max-height: min(52vh, 390px);
+  overflow-y: auto;
+  padding: 22px 4px 4px 0;
+  color: var(--os-text-soft);
+  font-size: 13px;
+  line-height: 1.75;
+  scrollbar-width: thin;
+  scrollbar-color: var(--os-line-strong) transparent;
+}
+
+.registerPolicyBody p {
+  margin: 0;
+}
+
+.registerPolicyBody h3 {
+  margin: 22px 0 6px;
+  color: var(--os-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.registerPolicyClose {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 22px;
+  border: 1px solid var(--os-accent);
+  border-radius: 10px;
+  background: var(--os-accent);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+:global(html[data-theme="dark"]) .registerPolicyClose,
+:global(body.darkMode) .registerPolicyClose {
+  color: #1a1015;
+}
+
+.registerPolicyClose:hover,
+.registerPolicyClose:focus-visible {
+  outline: none;
+  border-color: var(--os-accent-strong);
+  background: var(--os-accent-strong);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (max-width: 1080px) {
-.registerHero {
+  .registerHero {
     grid-template-columns: 1fr;
-    gap: 34px;
+    gap: 46px;
+    max-width: 820px;
   }
 
-.registerIntro {
-    position: relative;
-    top: auto;
-  }
-
-.registerHighlights {
+  .registerIntro {
+    position: static;
     max-width: 760px;
+  }
+
+  .registerIntro h1,
+  .registerLead {
+    max-width: 680px;
+  }
+
+  .registerPrinciples {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--os-line);
+    border-bottom: 1px solid var(--os-line);
+  }
+
+  .registerPrinciple {
+    grid-template-columns: 9px minmax(0, 1fr);
+    padding: 18px 18px 18px 0;
+    border-bottom: 0;
+  }
+
+  .registerPrinciple + .registerPrinciple {
+    padding-left: 18px;
+    border-left: 1px solid var(--os-line);
   }
 }
 
-@media (max-width: 768px) {
-.registerLandingPage {
-    padding-top: 140px;
+@media (max-width: 760px) {
+  .registerLandingPage {
+    padding-top: 78px;
   }
 
-.registerHero {
-    width: min(100% - 28px, 1180px);
-    padding: 28px 0 64px;
+  .registerHero {
+    width: min(100% - 28px, 720px);
+    padding: 42px 0 64px;
+    gap: 36px;
   }
 
-.registerGrid,
-.registerHighlights {
+  .registerIntro h1 {
+    font-size: clamp(2.75rem, 13vw, 4.2rem);
+  }
+
+  .registerLead {
+    margin-top: 20px;
+  }
+
+  .registerPrinciples {
+    display: block;
+    margin-top: 30px;
+    border-bottom: 0;
+  }
+
+  .registerPrinciple,
+  .registerPrinciple + .registerPrinciple {
+    padding: 17px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--os-line);
+  }
+
+  .registerPanel {
+    padding: 26px 20px;
+    border-radius: 16px;
+  }
+
+  .registerGrid {
     grid-template-columns: 1fr;
   }
 
-.registerPanel {
-    padding: 22px;
-    border-radius: 24px;
+  .registerGrid > .registerField + .registerField {
+    margin-top: 16px;
   }
 
-.registerPanelHeader h2 {
-    font-size: 27px;
+  .dobControl {
+    grid-template-columns: 1fr;
   }
 
-.registerIntro h1 {
-    font-size: 42px;
+  .dobIcon {
+    display: none;
+  }
+
+  .dobPreview {
+    margin-left: 0;
+  }
+
+  .registerPolicyOverlay {
+    padding: 12px;
+  }
+
+  .registerPolicyModal {
+    max-height: calc(100dvh - 24px);
+    padding: 22px 18px;
+    border-radius: 14px;
   }
 }
 
 @media (max-width: 520px) {
-.registerLandingPage {
-    padding-top: 154px;
+  .registerHero {
+    width: min(100% - 20px, 720px);
+    padding-top: 34px;
   }
 
-.registerPanel {
-    padding: 18px;
+  .registerPanel {
+    padding: 22px 16px;
   }
 
-.registerIntro h1 {
-    font-size: 36px;
+  .formSection {
+    padding: 26px 0;
+  }
+
+  .dobGrid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(72px, 0.72fr) minmax(82px, 0.88fr);
+    gap: 7px;
+  }
+
+  .dobGrid select {
+    min-height: 46px;
+    padding-right: 24px;
+    font-size: 13px;
+  }
+
+  .passwordChecklist {
+    grid-template-columns: 1fr;
+  }
+
+  .eligibilityNote {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dobGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registerField input,
+  .dobGrid select,
+  .registerPasswordWrap button,
+  .registerSubmit,
+  .registerPolicyHeader > button,
+  .registerPolicyClose {
+    transition: none;
   }
 }
