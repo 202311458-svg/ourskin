@@ -29,6 +29,7 @@ const patientRouteTitles = [
   ["/pages/patient/history", "Appointments"],
   ["/pages/patient/follow-ups", "Follow-ups"],
   ["/pages/patient/records", "Medical records"],
+  ["/pages/patient/announcements", "Announcements"],
   ["/pages/patient/profile", "Profile"],
   ["/pages/patient/notifications", "Notifications"],
 ] as const;
