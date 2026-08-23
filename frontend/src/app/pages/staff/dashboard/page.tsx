@@ -3,30 +3,23 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "@/lib/api";
+import {
+  FaArrowRight,
+  FaBullhorn,
+  FaCalendarDay,
+  FaClipboardList,
+  FaClock,
+} from "react-icons/fa";
+import { apiRequest, getSession } from "@/lib/api";
+import { getAnnouncements, type Announcement } from "@/lib/AnnouncementsApi";
 import PageShell from "@/app/components/portal/ui/PageShell";
-import PageHeader from "@/app/components/portal/ui/PageHeader";
-import Section from "@/app/components/portal/ui/Section";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
-import EmptyState from "@/app/components/portal/ui/EmptyState";
 import styles from "./page.module.css";
 
 type Appointment = {
   id: number;
   patient_id?: number | null;
   patient_name: string;
-  patient_email?: string | null;
-  patient_contact?: string | null;
-  patient_address?: string | null;
-  patient_age?: number | null;
-  patient_age_label?: string | null;
-  is_minor?: boolean | null;
-  guardian_first_name?: string | null;
-  guardian_last_name?: string | null;
-  guardian_relationship?: string | null;
-  guardian_contact?: string | null;
-  guardian_email?: string | null;
-  guardian_consent?: boolean | null;
   doctor_name?: string | null;
   date?: string | null;
   time?: string | null;
@@ -34,7 +27,6 @@ type Appointment = {
   status: string;
   services?: string | null;
   appointment_type?: string | null;
-  cancel_reason?: string | null;
   is_initial_evaluation_request?: boolean | null;
 };
 
@@ -42,7 +34,6 @@ type StaffFollowUp = {
   id: number;
   patient_id?: number | null;
   patient_name?: string | null;
-  patient_email?: string | null;
   doctor_name?: string | null;
   appointment_id?: number | null;
   appointment_services?: string | null;
@@ -58,12 +49,21 @@ type DashboardData = {
   confirmed: Appointment[];
 };
 
+type DataKey = "today" | "requests" | "followUps" | "announcements";
+type LoadIssues = Partial<Record<DataKey, string>>;
+
+type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";
+
+const CLINIC_TIME_ZONE = process.env.NEXT_PUBLIC_CLINIC_TIMEZONE?.trim() || "Asia/Manila";
+
 const normalizeStatus = (status?: string | null) => {
   const cleanStatus = (status || "").trim().toLowerCase();
 
   if (cleanStatus === "pending") return "Pending";
   if (cleanStatus === "approved" || cleanStatus === "confirmed") return "Approved";
   if (cleanStatus === "scheduled") return "Scheduled";
+  if (cleanStatus === "checked in" || cleanStatus === "checked_in") return "Checked in";
+  if (cleanStatus === "in progress" || cleanStatus === "in_progress") return "In progress";
   if (cleanStatus === "completed") return "Completed";
   if (cleanStatus === "declined") return "Declined";
   if (cleanStatus === "cancelled" || cleanStatus === "canceled") return "Cancelled";
@@ -71,11 +71,48 @@ const normalizeStatus = (status?: string | null) => {
   return status?.trim() || "Unknown";
 };
 
-const getTodayInputDate = () => {
-  const today = new Date();
-  const timezoneOffset = today.getTimezoneOffset() * 60000;
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
+const getStatusTone = (status?: string | null): BadgeTone => {
+  const normalized = normalizeStatus(status);
+  if (normalized === "Completed") return "success";
+  if (normalized === "Cancelled" || normalized === "Declined") return "danger";
+  if (normalized === "Pending") return "warning";
+  if (["Approved", "Scheduled", "Checked in", "In progress"].includes(normalized)) return "info";
+  return "neutral";
 };
+
+const getClinicDateKey = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CLINIC_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+const getGreeting = () => {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: CLINIC_TIME_ZONE,
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date())
+  );
+
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+};
+
+const formatClinicDate = () =>
+  new Intl.DateTimeFormat("en-PH", {
+    timeZone: CLINIC_TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
 const readJsonSafely = async (res: Response) => {
   const text = await res.text();
@@ -162,34 +199,34 @@ const uniqueFollowUpsById = (followUps: StaffFollowUp[]) =>
   );
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "No date";
+  if (!dateString) return "Date unavailable";
   const date = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateString;
 
-  return date.toLocaleDateString("en-AU", {
+  return date.toLocaleDateString("en-PH", {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
   });
 };
 
 const formatTime = (timeString?: string | null) => {
   if (!timeString) return "";
-  const parts = timeString.split(":");
-  const hour = Number(parts[0]);
-  const minute = Number(parts[1]);
+  const [hourValue, minuteValue] = timeString.split(":");
+  const hour = Number(hourValue);
+  const minute = Number(minuteValue);
   if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
 
   const date = new Date();
   date.setHours(hour, minute, 0, 0);
-  return date.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
 };
 
 const formatTimeRange = (appt: Appointment) => {
   if (!appt.time) return "To be scheduled";
   const start = formatTime(appt.time);
   const end = appt.end_time ? formatTime(appt.end_time) : "";
-  return end ? `${start} to ${end}` : start;
+  return end ? `${start}–${end}` : start;
 };
 
 const getDateTimeValue = (appt: Appointment) => {
@@ -198,12 +235,11 @@ const getDateTimeValue = (appt: Appointment) => {
   return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value;
 };
 
-const getFollowUpTiming = (item: StaffFollowUp) => {
-  const today = getTodayInputDate();
+const getFollowUpTiming = (item: StaffFollowUp, today: string) => {
   const status = (item.status || "").trim().toLowerCase();
   if (status === "completed") return "Completed";
   if (item.follow_up_date < today) return "Overdue";
-  if (item.follow_up_date === today) return "Due Today";
+  if (item.follow_up_date === today) return "Due today";
   return "Upcoming";
 };
 
@@ -230,92 +266,142 @@ const getRequestAssignmentLine = (appt: Appointment) => {
   return `${doctor} · ${formatDate(appt.date)} · ${formatTimeRange(appt)}`;
 };
 
-const fetchAppointmentList = async (endpoint: string, token: string) => {
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+const fetchAppointmentList = async (endpoint: string) => {
+  const res = await apiRequest(endpoint, { cache: "no-store" });
   const result = await readJsonSafely(res);
 
   if (!res.ok) {
-    console.error(`${endpoint} request failed:`, { status: res.status, result });
-    return [];
+    const fallback = res.status === 403
+      ? "You do not have permission to view this appointment data."
+      : `Unable to load ${endpoint.replace("/appointments/", "")} appointments.`;
+    throw new Error(getErrorMessage(result, fallback));
   }
 
   return uniqueAppointmentsById(getAppointmentsArray(result));
 };
 
-const fetchFollowUpList = async (token: string) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/staff/follow-ups`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const result = await readJsonSafely(res);
-    if (res.ok) return uniqueFollowUpsById(getFollowUpsArray(result));
-  } catch (err) {
-    console.error("/staff/follow-ups request failed:", err);
+const fetchFollowUpList = async () => {
+  const res = await apiRequest("/staff/follow-ups", { cache: "no-store" });
+  const result = await readJsonSafely(res);
+
+  if (!res.ok) {
+    const fallback = res.status === 403
+      ? "You do not have permission to view follow-ups."
+      : "Unable to load follow-ups.";
+    throw new Error(getErrorMessage(result, fallback));
   }
-  return [];
+
+  return uniqueFollowUpsById(getFollowUpsArray(result));
+};
+
+const issueMessage = (reason: unknown, fallback: string) =>
+  reason instanceof Error && reason.message ? reason.message : fallback;
+
+const isActiveImportantAnnouncement = (announcement: Announcement) => {
+  if (announcement.status !== "Published") return false;
+  if (!["Important", "Urgent"].includes(announcement.priority)) return false;
+
+  const now = Date.now();
+  if (announcement.starts_at) {
+    const startsAt = new Date(announcement.starts_at).getTime();
+    if (!Number.isNaN(startsAt) && startsAt > now) return false;
+  }
+  if (announcement.expires_at) {
+    const expiresAt = new Date(announcement.expires_at).getTime();
+    if (!Number.isNaN(expiresAt) && expiresAt < now) return false;
+  }
+  return true;
 };
 
 export default function StaffDashboard() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData>({ today: [], requests: [], confirmed: [] });
   const [followUps, setFollowUps] = useState<StaffFollowUp[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [staffFirstName, setStaffFirstName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(null);
+  const [loadIssues, setLoadIssues] = useState<LoadIssues>({});
+
+  const clinicToday = useMemo(() => getClinicDateKey(), []);
 
   const loadDashboard = useCallback(
     async (showLoader = true) => {
-      const token = localStorage.getItem("token");
-      if (!token) {
+      if (showLoader) setLoading(true);
+
+      const [todayResult, requestsResult, confirmedResult, followUpsResult, announcementsResult] =
+        await Promise.allSettled([
+          fetchAppointmentList("/appointments/today"),
+          fetchAppointmentList("/appointments/requests"),
+          fetchAppointmentList("/appointments/confirmed"),
+          fetchFollowUpList(),
+          getAnnouncements(),
+        ] as const);
+
+      const issues: LoadIssues = {};
+
+      setData((previous) => ({
+        today: todayResult.status === "fulfilled" ? todayResult.value : previous.today,
+        requests: requestsResult.status === "fulfilled" ? requestsResult.value : previous.requests,
+        confirmed: confirmedResult.status === "fulfilled" ? confirmedResult.value : previous.confirmed,
+      }));
+
+      if (followUpsResult.status === "fulfilled") setFollowUps(followUpsResult.value);
+      if (announcementsResult.status === "fulfilled") setAnnouncements(announcementsResult.value);
+
+      if (todayResult.status === "rejected") {
+        issues.today = issueMessage(todayResult.reason, "Today's clinic data is unavailable.");
+      }
+      if (requestsResult.status === "rejected") {
+        issues.requests = issueMessage(requestsResult.reason, "Appointment requests are unavailable.");
+      }
+      if (confirmedResult.status === "rejected") {
+        console.error("Confirmed appointment data refresh failed:", confirmedResult.reason);
+      }
+      if (followUpsResult.status === "rejected") {
+        issues.followUps = issueMessage(followUpsResult.reason, "Follow-up data is unavailable.");
+      }
+      if (announcementsResult.status === "rejected") {
+        issues.announcements = issueMessage(announcementsResult.reason, "Announcements are unavailable.");
+      }
+
+      setLoadIssues(issues);
+      if (showLoader) setLoading(false);
+    },
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const prepare = async () => {
+      const role = localStorage.getItem("role");
+      if (role !== "staff") {
         router.push("/");
         return;
       }
 
-      if (showLoader) setLoading(true);
-      setError("");
-
       try {
-        const [todayData, requestsData, confirmedData, followUpData] = await Promise.all([
-          fetchAppointmentList("/appointments/today", token),
-          fetchAppointmentList("/appointments/requests", token),
-          fetchAppointmentList("/appointments/confirmed", token),
-          fetchFollowUpList(token),
-        ]);
-
-        setData({
-          today: uniqueAppointmentsById(todayData),
-          requests: uniqueAppointmentsById(requestsData),
-          confirmed: uniqueAppointmentsById(confirmedData),
-        });
-        setFollowUps(uniqueFollowUpsById(followUpData));
-      } catch (err) {
-        console.error("Dashboard load failed:", err);
-        setError("Unable to load dashboard data right now.");
-        setData({ today: [], requests: [], confirmed: [] });
-        setFollowUps([]);
-      } finally {
-        if (showLoader) setLoading(false);
+        const session = await getSession();
+        if (!cancelled && session?.role === "staff" && session.name) {
+          setStaffFirstName(session.name.trim().split(/\s+/)[0] || "");
+        }
+      } catch {
+        // PortalFrame remains the authoritative session guard; a missing display name is non-blocking here.
       }
-    },
-    [router]
-  );
 
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role !== "staff") {
-      router.push("/");
-      return;
-    }
-    loadDashboard();
+      if (!cancelled) await loadDashboard();
+    };
+
+    void prepare();
+    return () => {
+      cancelled = true;
+    };
   }, [loadDashboard, router]);
 
   useEffect(() => {
     const refreshDashboardQuietly = () => {
-      if (document.hidden || updatingFollowUpId !== null) return;
-      loadDashboard(false);
+      if (document.hidden) return;
+      void loadDashboard(false);
     };
 
     const intervalId = window.setInterval(refreshDashboardQuietly, 5000);
@@ -332,15 +418,21 @@ export default function StaffDashboard() {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [loadDashboard, updatingFollowUpId]);
+  }, [loadDashboard]);
 
-  const sortedToday = useMemo(
-    () =>
-      uniqueAppointmentsById(data.today)
-        .filter((appt) => normalizeStatus(appt.status) === "Approved")
-        .sort((a, b) => getDateTimeValue(a) - getDateTimeValue(b)),
-    [data.today]
-  );
+  const todayAppointments = useMemo(() => {
+    return uniqueAppointmentsById(data.today)
+      .filter((appt) => !["Pending", "Declined"].includes(normalizeStatus(appt.status)))
+      .sort((a, b) => {
+        const aStatus = normalizeStatus(a.status);
+        const bStatus = normalizeStatus(b.status);
+        const aCompleted = ["Completed", "Cancelled"].includes(aStatus);
+        const bCompleted = ["Completed", "Cancelled"].includes(bStatus);
+        if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+
+        return getDateTimeValue(a) - getDateTimeValue(b);
+      });
+  }, [data.today]);
 
   const pendingRequests = useMemo(
     () =>
@@ -350,247 +442,284 @@ export default function StaffDashboard() {
     [data.requests]
   );
 
-  const sortedFollowUps = useMemo(
+  const activeFollowUps = useMemo(
     () =>
-      uniqueFollowUpsById(followUps).sort((a, b) => {
-        const aCompleted = (a.status || "").toLowerCase() === "completed";
-        const bCompleted = (b.status || "").toLowerCase() === "completed";
-        if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
-        return a.follow_up_date.localeCompare(b.follow_up_date);
-      }),
+      uniqueFollowUpsById(followUps).filter(
+        (item) => (item.status || "").trim().toLowerCase() !== "completed"
+      ),
     [followUps]
   );
 
-  const activeFollowUps = useMemo(
-    () => sortedFollowUps.filter((item) => (item.status || "").toLowerCase() !== "completed"),
-    [sortedFollowUps]
-  );
-
   const overdueFollowUps = useMemo(
-    () => activeFollowUps.filter((item) => getFollowUpTiming(item) === "Overdue"),
-    [activeFollowUps]
+    () => activeFollowUps
+      .filter((item) => getFollowUpTiming(item, clinicToday) === "Overdue")
+      .sort((a, b) => a.follow_up_date.localeCompare(b.follow_up_date)),
+    [activeFollowUps, clinicToday]
   );
 
   const dueTodayFollowUps = useMemo(
-    () => activeFollowUps.filter((item) => getFollowUpTiming(item) === "Due Today"),
-    [activeFollowUps]
+    () => activeFollowUps.filter((item) => getFollowUpTiming(item, clinicToday) === "Due today"),
+    [activeFollowUps, clinicToday]
   );
 
-  const actionableFollowUps = useMemo(
-    () => activeFollowUps.filter((item) => ["Overdue", "Due Today"].includes(getFollowUpTiming(item))),
-    [activeFollowUps]
-  );
+  const actionableFollowUpCount = overdueFollowUps.length + dueTodayFollowUps.length;
+  const actionQueueCount = pendingRequests.length + actionableFollowUpCount;
+  const visibleOverdueFollowUps = overdueFollowUps.slice(0, 8);
+  const dueSlots = Math.max(0, 8 - visibleOverdueFollowUps.length);
+  const visibleDueTodayFollowUps = dueTodayFollowUps.slice(0, dueSlots);
+  const requestSlots = Math.max(0, 8 - visibleOverdueFollowUps.length - visibleDueTodayFollowUps.length);
+  const visiblePendingRequests = pendingRequests.slice(0, requestSlots);
+  const actionQueueUnavailable = Boolean(loadIssues.requests || loadIssues.followUps);
 
-  const canCompleteFollowUp = (item: StaffFollowUp) => {
-    const today = getTodayInputDate();
-    return (item.status || "").trim().toLowerCase() !== "completed" && item.follow_up_date <= today;
-  };
+  const importantAnnouncement = useMemo(() => {
+    const priorityWeight = (priority: Announcement["priority"]) => priority === "Urgent" ? 2 : priority === "Important" ? 1 : 0;
+    return announcements
+      .filter(isActiveImportantAnnouncement)
+      .sort((a, b) => {
+        const priorityDifference = priorityWeight(b.priority) - priorityWeight(a.priority);
+        if (priorityDifference !== 0) return priorityDifference;
+        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      })[0] || null;
+  }, [announcements]);
 
-  const completeFollowUp = async (followUpId: number) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/");
-      return;
-    }
-
-    setActionError("");
-    try {
-      setUpdatingFollowUpId(followUpId);
-      const res = await fetch(`${API_BASE_URL}/staff/follow-ups/${followUpId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: "Completed" }),
-      });
-      const result = await readJsonSafely(res);
-      if (!res.ok) {
-        throw new Error(getErrorMessage(result, "Unable to complete follow-up"));
-      }
-      await loadDashboard(false);
-    } catch (err) {
-      console.error("Follow-up update failed:", err);
-      setActionError(err instanceof Error ? err.message : "Unable to mark this follow-up as completed.");
-    } finally {
-      setUpdatingFollowUpId(null);
-    }
-  };
-
-  const renderAppointmentRow = (appt: Appointment, variant: "today" | "request") => {
-    if (variant === "request") {
-      return (
-        <div key={appt.id} className={`${styles.row} ${styles.requestRow}`}>
-          <div className={styles.rowMain}>
-            <div className={styles.rowPrimary}>{appt.patient_name || "Patient details unavailable"}</div>
-            <div className={styles.rowSecondary}>{getRequestDescriptor(appt)}</div>
-            <div className={styles.rowMeta}>{getRequestAssignmentLine(appt)}</div>
-          </div>
-
-          <div className={styles.rowActions}>
-            <button
-              className={styles.primaryButton}
-              type="button"
-              onClick={() => router.push("/pages/staff/requests")}
-              aria-label={`Review appointment request for ${appt.patient_name || "patient"}`}
-            >
-              Review
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={appt.id} className={styles.row}>
-        <div className={styles.rowMain}>
-          <div className={styles.rowPrimary}>{appt.patient_name || "Patient details unavailable"}</div>
-          <div className={styles.rowSecondary}>
-            <span>{appt.services || "Service not specified"}</span>
-            <span className={styles.separator}>•</span>
-            <span>{appt.doctor_name || "Doctor unavailable"}</span>
-          </div>
-          <div className={styles.rowMeta}>
-            {formatDate(appt.date)} {appt.time ? `• ${formatTimeRange(appt)}` : ""}
-          </div>
-        </div>
-
-        <div className={styles.rowActions}>
-          <StatusBadge tone="success">{normalizeStatus(appt.status)}</StatusBadge>
-        </div>
-      </div>
-    );
-  };
+  const greeting = `${getGreeting()}${staffFirstName ? `, ${staffFirstName}` : ""}`;
+  const hasAnyLoadIssue = Object.keys(loadIssues).length > 0;
 
   return (
     <PageShell className={styles.page}>
-      <PageHeader
-        eyebrow="Staff overview"
-        title="Clinic operations"
-        description="See what needs staff attention now, review today's approved visits, and keep follow-ups moving."
-      />
+      <header className={styles.welcome}>
+        <div>
+          <h1>{greeting}</h1>
+          <p className={styles.welcomeLead}>Here&apos;s what needs attention today.</p>
+        </div>
+        <time className={styles.clinicDate} dateTime={clinicToday}>{formatClinicDate()}</time>
+      </header>
 
-      {loading ? (
-        <EmptyState title="Loading dashboard..." />
-      ) : error ? (
-        <EmptyState title={error} />
-      ) : (
-        <>
-          <div className={styles.summaryBar} aria-label="Clinic workload summary">
-            <div className={styles.summaryItem}>
-              <span>Pending requests</span>
-              <strong>{pendingRequests.length}</strong>
-            </div>
-            <div className={styles.summaryItem}>
-              <span>Today's visits</span>
-              <strong>{sortedToday.length}</strong>
-            </div>
-            <div className={styles.summaryItem}>
-              <span>Follow-ups due</span>
-              <strong>{overdueFollowUps.length + dueTodayFollowUps.length}</strong>
-            </div>
+      {hasAnyLoadIssue && !loading && (
+        <div className={styles.dataNotice} role="status">
+          Some dashboard data could not be refreshed. Unavailable sections are marked below rather than shown as zero.
+        </div>
+      )}
+
+      <nav className={styles.summaryGrid} aria-label="Clinic workload shortcuts" aria-busy={loading}>
+        <Link
+          className={`${styles.summaryItem} ${!loading && !loadIssues.requests && pendingRequests.length > 0 ? styles.summaryWarning : ""}`}
+          href="/pages/staff/requests"
+          aria-label={loadIssues.requests ? "Appointment requests unavailable" : `${pendingRequests.length} appointment request${pendingRequests.length === 1 ? "" : "s"} awaiting review`}
+        >
+          <span className={styles.summaryIcon} aria-hidden="true"><FaClipboardList /></span>
+          <span className={styles.summaryCopy}>
+            <strong>{loading ? "…" : loadIssues.requests ? "—" : pendingRequests.length}</strong>
+            <span>Requests awaiting review</span>
+            <small>{loadIssues.requests ? "Data unavailable" : "Review requests"}</small>
+          </span>
+          <FaArrowRight className={styles.summaryArrow} aria-hidden="true" />
+        </Link>
+
+        <Link
+          className={`${styles.summaryItem} ${!loading && !loadIssues.today && todayAppointments.length > 0 ? styles.summaryInfo : ""}`}
+          href="/pages/staff/appointments"
+          aria-label={loadIssues.today ? "Today's appointments unavailable" : `${todayAppointments.length} visit${todayAppointments.length === 1 ? "" : "s"} today`}
+        >
+          <span className={styles.summaryIcon} aria-hidden="true"><FaCalendarDay /></span>
+          <span className={styles.summaryCopy}>
+            <strong>{loading ? "…" : loadIssues.today ? "—" : todayAppointments.length}</strong>
+            <span>Visits today</span>
+            <small>{loadIssues.today ? "Data unavailable" : "Open appointments"}</small>
+          </span>
+          <FaArrowRight className={styles.summaryArrow} aria-hidden="true" />
+        </Link>
+
+        <Link
+          className={`${styles.summaryItem} ${!loading && !loadIssues.followUps && actionableFollowUpCount > 0 ? styles.summaryDanger : ""}`}
+          href="/pages/staff/follow-ups"
+          aria-label={loadIssues.followUps ? "Follow-up actions unavailable" : `${actionableFollowUpCount} follow-up${actionableFollowUpCount === 1 ? "" : "s"} requiring action`}
+        >
+          <span className={styles.summaryIcon} aria-hidden="true"><FaClock /></span>
+          <span className={styles.summaryCopy}>
+            <strong>{loading ? "…" : loadIssues.followUps ? "—" : actionableFollowUpCount}</strong>
+            <span>Follow-ups requiring action</span>
+            <small>{loadIssues.followUps ? "Data unavailable" : "Open follow-ups"}</small>
+          </span>
+          <FaArrowRight className={styles.summaryArrow} aria-hidden="true" />
+        </Link>
+      </nav>
+
+      <section className={`${styles.workspaceSection} ${styles.todaySection}`} aria-labelledby="today-clinic-title" aria-busy={loading}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h2 id="today-clinic-title">Today&apos;s Clinic</h2>
+            <p>{loading ? "Loading today's schedule…" : loadIssues.today ? "Schedule data is currently unavailable." : `${todayAppointments.length} visit${todayAppointments.length === 1 ? "" : "s"} scheduled for ${formatClinicDate()}.`}</p>
           </div>
+          <Link className={styles.sectionLink} href="/pages/staff/appointments">View full schedule <FaArrowRight aria-hidden="true" /></Link>
+        </div>
 
-          {actionError && <div className={styles.actionError} role="alert">{actionError}</div>}
-
-          <div className={styles.dashboardGrid}>
-            <div className={styles.attentionColumn}>
-              <Section
-                title="Needs attention"
-                description="Appointment requests awaiting staff review."
-                action={
-                  <div className={styles.sectionActions}>
-                    <StatusBadge tone="warning">{pendingRequests.length} pending</StatusBadge>
-                    <Link className={styles.workspaceLink} href="/pages/staff/requests">View all requests</Link>
-                  </div>
-                }
-              >
-                {pendingRequests.length === 0 ? (
-                  <div className={styles.compactEmpty}>No appointment requests awaiting review.</div>
-                ) : (
-                  <div className={styles.list}>
-                    {pendingRequests.slice(0, 5).map((appt) => renderAppointmentRow(appt, "request"))}
-                  </div>
-                )}
-              </Section>
-            </div>
-
-            <div className={styles.todayColumn}>
-              <Section
-                title="Today's clinic"
-                description="Approved visits in scheduled order."
-                action={
-                  <div className={styles.sectionActions}>
-                    {sortedToday.length > 0 && <StatusBadge tone="success">{sortedToday.length} visits</StatusBadge>}
-                    <Link className={styles.workspaceLink} href="/pages/staff/appointments">View today's appointments</Link>
-                  </div>
-                }
-              >
-                {sortedToday.length === 0 ? (
-                  <div className={styles.compactEmpty}>No appointments scheduled today.</div>
-                ) : (
-                  <div className={styles.list}>
-                    {sortedToday.slice(0, 6).map((appt) => renderAppointmentRow(appt, "today"))}
-                  </div>
-                )}
-              </Section>
-            </div>
-
-            <div className={styles.followUpColumn}>
-              <Section
-                title="Follow-ups requiring action"
-                description="Overdue and due-today follow-ups requiring staff action."
-                action={
-                  <div className={styles.sectionActions}>
-                    {actionableFollowUps.length > 0 && <StatusBadge tone="info">{actionableFollowUps.length} requiring action</StatusBadge>}
-                    <Link className={styles.workspaceLink} href="/pages/staff/follow-ups">View follow-ups</Link>
-                  </div>
-                }
-              >
-                {actionableFollowUps.length === 0 ? (
-                  <div className={styles.compactEmpty}>No follow-ups currently require action.</div>
-                ) : (
-                  <div className={styles.list}>
-                    {actionableFollowUps.slice(0, 6).map((item) => {
-                      const timing = getFollowUpTiming(item);
-                      const canComplete = canCompleteFollowUp(item);
-                      const isUpdating = updatingFollowUpId === item.id;
-
-                      return (
-                        <div key={item.id} className={styles.row}>
-                          <div className={styles.rowMain}>
-                            <div className={styles.rowPrimary}>
-                              {item.patient_name || (item.patient_id ? `Patient #${item.patient_id}` : "Patient details unavailable")}
-                            </div>
-                            <div className={styles.rowSecondary}>
-                              <span>{item.doctor_name || "Assigned doctor"}</span>
-                              <span className={styles.separator}>•</span>
-                              <span>{formatDate(item.follow_up_date)}</span>
-                            </div>
-                          </div>
-
-                          <div className={styles.rowActions}>
-                            <StatusBadge tone={timing === "Overdue" ? "danger" : "warning"}>{timing}</StatusBadge>
-                            {canComplete && (
-                              <button
-                                className={styles.primaryButton}
-                                type="button"
-                                onClick={() => completeFollowUp(item.id)}
-                                disabled={isUpdating}
-                              >
-                                {isUpdating ? "Updating..." : "Complete"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Section>
-            </div>
+        {loading ? (
+          <div className={styles.skeletonList} aria-label="Loading today's clinic">
+            {[0, 1, 2].map((item) => <div className={styles.skeletonRow} key={item} />)}
           </div>
-        </>
+        ) : loadIssues.today ? (
+          <div className={styles.inlineError} role="alert">
+            <strong>Today&apos;s clinic is unavailable.</strong>
+            <span>{loadIssues.today}</span>
+          </div>
+        ) : todayAppointments.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div>
+              <strong>No appointments scheduled for today.</strong>
+              <span>The clinic schedule is clear for the current date.</span>
+            </div>
+            <Link href="/pages/staff/appointments">View upcoming appointments</Link>
+          </div>
+        ) : (
+          <div className={styles.scheduleList} role="list">
+            {todayAppointments.slice(0, 5).map((appt) => (
+              <article className={styles.scheduleRow} key={appt.id} role="listitem">
+                <div className={styles.timeBlock}>
+                  <strong>{formatTime(appt.time) || "TBD"}</strong>
+                  {appt.end_time && <span>to {formatTime(appt.end_time)}</span>}
+                </div>
+                <div className={styles.patientBlock}>
+                  <strong>{appt.patient_name || "Patient details unavailable"}</strong>
+                  <span>{getRequestDescriptor(appt)}</span>
+                </div>
+                <div className={styles.providerBlock}>
+                  <span className={styles.mobileLabel}>Provider</span>
+                  <strong>{appt.doctor_name || "Doctor not assigned"}</strong>
+                </div>
+                <div className={styles.statusBlock}>
+                  <StatusBadge tone={getStatusTone(appt.status)}>{normalizeStatus(appt.status)}</StatusBadge>
+                </div>
+                <Link
+                  className={styles.rowLink}
+                  href={`/pages/staff/appointments?appointment=${appt.id}`}
+                  aria-label={`Open appointment for ${appt.patient_name || "patient"}`}
+                >
+                  Open <FaArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={`${styles.workspaceSection} ${styles.actionSection}`} aria-labelledby="action-queue-title" aria-busy={loading}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h2 id="action-queue-title">Action Queue</h2>
+            <p>{loading ? "Loading work that needs attention…" : actionQueueUnavailable ? "Some action data is currently unavailable." : `${actionQueueCount} item${actionQueueCount === 1 ? "" : "s"} require attention.`}</p>
+          </div>
+          <div className={styles.sectionLinks}>
+            <Link className={styles.sectionLink} href="/pages/staff/follow-ups">Follow-ups</Link>
+            <Link className={styles.sectionLink} href="/pages/staff/requests">Appointment requests</Link>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className={styles.skeletonList} aria-label="Loading action queue">
+            {[0, 1, 2].map((item) => <div className={styles.skeletonRow} key={item} />)}
+          </div>
+        ) : (
+          <div className={styles.actionList}>
+            {loadIssues.followUps && (
+              <div className={styles.inlineError} role="alert">
+                <strong>Follow-up actions are unavailable.</strong>
+                <span>{loadIssues.followUps}</span>
+              </div>
+            )}
+            {loadIssues.requests && (
+              <div className={styles.inlineError} role="alert">
+                <strong>Appointment requests are unavailable.</strong>
+                <span>{loadIssues.requests}</span>
+              </div>
+            )}
+
+            {!loadIssues.followUps && visibleOverdueFollowUps.map((item) => (
+              <article className={`${styles.actionRow} ${styles.overdueRow}`} key={`follow-up-${item.id}`}>
+                <div className={styles.actionCategory}>Follow-up</div>
+                <div className={styles.actionMain}>
+                  <strong>{item.patient_name || (item.patient_id ? `Patient #${item.patient_id}` : "Patient details unavailable")}</strong>
+                  <span>{item.appointment_services || "Follow-up care"}</span>
+                  <small>{item.doctor_name ? `Assigned to ${item.doctor_name}` : "Assigned staff unavailable"}</small>
+                </div>
+                <div className={styles.actionTiming}>
+                  <StatusBadge tone="danger">Overdue</StatusBadge>
+                  <span>Due {formatDate(item.follow_up_date)}</span>
+                </div>
+                <Link
+                  className={styles.rowLink}
+                  href={`/pages/staff/follow-ups?followUp=${item.id}`}
+                  aria-label={`Open overdue follow-up for ${item.patient_name || "patient"}`}
+                >
+                  Open follow-up <FaArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+
+            {!loadIssues.followUps && visibleDueTodayFollowUps.map((item) => (
+              <article className={`${styles.actionRow} ${styles.dueRow}`} key={`follow-up-${item.id}`}>
+                <div className={styles.actionCategory}>Follow-up</div>
+                <div className={styles.actionMain}>
+                  <strong>{item.patient_name || (item.patient_id ? `Patient #${item.patient_id}` : "Patient details unavailable")}</strong>
+                  <span>{item.appointment_services || "Follow-up care"}</span>
+                  <small>{item.doctor_name ? `Assigned to ${item.doctor_name}` : "Assigned staff unavailable"}</small>
+                </div>
+                <div className={styles.actionTiming}>
+                  <StatusBadge tone="warning">Due today</StatusBadge>
+                  <span>{formatDate(item.follow_up_date)}</span>
+                </div>
+                <Link
+                  className={styles.rowLink}
+                  href={`/pages/staff/follow-ups?followUp=${item.id}`}
+                  aria-label={`Open follow-up due today for ${item.patient_name || "patient"}`}
+                >
+                  Open follow-up <FaArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+
+            {!loadIssues.requests && visiblePendingRequests.map((appt) => (
+              <article className={styles.actionRow} key={`request-${appt.id}`}>
+                <div className={styles.actionCategory}>Appointment request</div>
+                <div className={styles.actionMain}>
+                  <strong>{appt.patient_name || "Patient details unavailable"}</strong>
+                  <span>{getRequestDescriptor(appt)}</span>
+                  <small>{getRequestAssignmentLine(appt)}</small>
+                </div>
+                <div className={styles.actionTiming}>
+                  <StatusBadge tone="warning">Pending review</StatusBadge>
+                </div>
+                <Link
+                  className={styles.rowLink}
+                  href={`/pages/staff/requests?request=${appt.id}`}
+                  aria-label={`Review appointment request for ${appt.patient_name || "patient"}`}
+                >
+                  Review request <FaArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+
+            {!actionQueueUnavailable && actionQueueCount === 0 && (
+              <div className={styles.successState}>
+                <strong>You&apos;re all caught up</strong>
+                <span>No appointment requests or follow-ups currently require action.</span>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {!loading && !loadIssues.announcements && importantAnnouncement && (
+        <aside className={styles.announcementStrip} aria-label="Important clinic announcement">
+          <span className={styles.announcementIcon} aria-hidden="true"><FaBullhorn /></span>
+          <div className={styles.announcementCopy}>
+            <span>Important clinic update</span>
+            <strong>{importantAnnouncement.title}</strong>
+            <small>{importantAnnouncement.category} · {importantAnnouncement.priority}</small>
+          </div>
+          <Link href="/pages/staff/announcements">View announcement <FaArrowRight aria-hidden="true" /></Link>
+        </aside>
       )}
     </PageShell>
   );
