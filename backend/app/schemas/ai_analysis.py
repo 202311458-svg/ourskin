@@ -48,6 +48,16 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class DermatologyClinicalContext(StrictModel):
+    body_site: str | None = Field(default=None, max_length=120)
+    duration: str | None = Field(default=None, max_length=120)
+    symptoms: list[str] = Field(default_factory=list, max_length=12)
+    progression: str | None = Field(default=None, max_length=120)
+    appointment_concern: str | None = Field(default=None, max_length=1000)
+    booked_service_id: int | None = Field(default=None, gt=0)
+    booked_service_name: str | None = Field(default=None, max_length=160)
+
+
 class ImageQualityAssessment(StrictModel):
     usable: bool
     issues: list[str] = Field(default_factory=list, max_length=20)
@@ -93,6 +103,30 @@ class MedicationSuggestion(StrictModel):
     role: str = Field(min_length=1, max_length=1000)
     considerations: list[str] = Field(default_factory=list, max_length=20)
     requires_more_context: bool = False
+
+
+class ProviderDermatologyResult(StrictModel):
+    status: AIAnalysisStatus
+    primary_condition_code: str | None = Field(default=None, max_length=64)
+    primary_condition_display: str | None = Field(default=None, max_length=160)
+    evidence_strength: EvidenceStrength | None = None
+    visual_findings: list[VisualFinding] = Field(default_factory=list, max_length=50)
+    differentials: list[DifferentialCandidate] = Field(default_factory=list, max_length=10)
+    severity: SeverityAssessment
+    red_flags: list[str] = Field(default_factory=list, max_length=20)
+    limitations: list[str] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_status_fields(self):
+        if self.status == AIAnalysisStatus.COMPLETED:
+            if not self.primary_condition_code:
+                raise ValueError("Completed provider results require a primary condition")
+            if self.evidence_strength is None:
+                raise ValueError("Completed provider results require evidence strength")
+        if self.status in {AIAnalysisStatus.OUT_OF_SCOPE, AIAnalysisStatus.INSUFFICIENT_IMAGE}:
+            if self.primary_condition_code is not None:
+                raise ValueError("Out-of-scope or insufficient-image results cannot assert a primary condition")
+        return self
 
 
 class AIAnalysisResult(StrictModel):

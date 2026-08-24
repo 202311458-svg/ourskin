@@ -37,8 +37,12 @@ class Settings(BaseModel):
     google_client_id: str | None = None
     google_onboarding_token_expire_minutes: int = Field(default=15, ge=5, le=60)
     clinic_timezone: str = "Asia/Manila"
+    ai_provider: Literal["openai"] = "openai"
+    openai_api_key: SecretStr | None = None
+    ai_model_id: str = "gpt-5.6-sol"
+    ai_request_timeout_seconds: int = Field(default=60, ge=10, le=180)
 
-    @field_validator("database_url", "jwt_issuer", "jwt_audience")
+    @field_validator("database_url", "jwt_issuer", "jwt_audience", "ai_model_id")
     @classmethod
     def require_non_empty_value(cls, value: str) -> str:
         cleaned = value.strip()
@@ -81,6 +85,7 @@ class Settings(BaseModel):
             for origin in raw_origins.split(",")
             if origin.strip()
         )
+        openai_api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
 
         return cls(
             environment=os.getenv("ENVIRONMENT", "development").strip().lower(),
@@ -96,6 +101,10 @@ class Settings(BaseModel):
                 "GOOGLE_ONBOARDING_TOKEN_EXPIRE_MINUTES", "15"
             ),
             clinic_timezone=os.getenv("CLINIC_TIMEZONE", "Asia/Manila"),
+            ai_provider=os.getenv("AI_PROVIDER", "openai").strip().lower(),
+            openai_api_key=openai_api_key or None,
+            ai_model_id=os.getenv("AI_MODEL_ID", "gpt-5.6-sol").strip(),
+            ai_request_timeout_seconds=os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60"),
         )
 
 
