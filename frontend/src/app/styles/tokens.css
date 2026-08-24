@@ -176,3 +176,42 @@ body.darkMode {
   --portal-header-text: var(--nav-text);
   --portal-header-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
 }
+
+/*
+ * AI clinical support must use the same theme as the Doctor Portal rather than
+ * maintaining an independent charcoal/teal palette. Both AI CSS modules expose
+ * the same local custom properties, so the portal shell can bridge them to the
+ * shared semantic tokens here. The higher-specificity selector and !important
+ * intentionally win over the module-local fallback values and OS color-scheme
+ * media queries.
+ */
+[data-portal-role="doctor"] main {
+  --ai-bg: var(--color-page) !important;
+  --ai-panel: var(--color-surface) !important;
+  --ai-panel-soft: var(--color-surface-subtle) !important;
+  --ai-border: var(--color-border) !important;
+  --ai-border-strong: var(--color-border-strong) !important;
+  --ai-text: var(--color-text-strong) !important;
+  --ai-muted: var(--color-text-secondary) !important;
+  --ai-accent: var(--color-brand-600) !important;
+  --ai-accent-soft: var(--color-selected) !important;
+  --ai-success: var(--color-success) !important;
+  --ai-success-soft: var(--color-success-bg) !important;
+  --ai-warning: var(--color-warning) !important;
+  --ai-warning-soft: var(--color-warning-bg) !important;
+  --ai-danger: var(--color-danger) !important;
+  --ai-danger-soft: var(--color-danger-bg) !important;
+}
+
+body.darkMode [data-portal-role="doctor"] main {
+  --ai-accent: var(--color-focus) !important;
+}
+
+/* AI forms should follow the same input surface as every other doctor form. */
+body.darkMode [data-portal-role="doctor"] main input,
+body.darkMode [data-portal-role="doctor"] main select,
+body.darkMode [data-portal-role="doctor"] main textarea {
+  background: var(--color-input) !important;
+  color: var(--color-text-strong) !important;
+  border-color: var(--color-border-strong) !important;
+}
