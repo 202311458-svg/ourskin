@@ -20,9 +20,19 @@ Keep limitations explicit and concise. Do not provide hidden reasoning or chain-
 class OpenAIProgressAnalysisProvider:
     provider_name = "openai"
 
-    def __init__(self, *, api_key: str, model_id: str, timeout_seconds: int = 60, client=None):
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model_id: str,
+        timeout_seconds: int = 60,
+        max_retries: int = 2,
+        client=None,
+    ):
         if not api_key.strip():
-            raise AIProviderConfigurationError("OPENAI_API_KEY is required for progress analysis")
+            raise AIProviderConfigurationError(
+                "OPENAI_API_KEY is required for progress analysis"
+            )
         self.model_id = model_id
         if client is not None:
             self._client = client
@@ -30,8 +40,14 @@ class OpenAIProgressAnalysisProvider:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise AIProviderConfigurationError("The OpenAI Python SDK is not installed") from exc
-        self._client = OpenAI(api_key=api_key, timeout=timeout_seconds)
+            raise AIProviderConfigurationError(
+                "The OpenAI Python SDK is not installed"
+            ) from exc
+        self._client = OpenAI(
+            api_key=api_key,
+            timeout=timeout_seconds,
+            max_retries=max_retries,
+        )
 
     @staticmethod
     def _context_text(context: ProgressClinicalContext) -> str:
@@ -40,13 +56,18 @@ class OpenAIProgressAnalysisProvider:
             "booked_service": context.booked_service_name,
             "current_body_site": context.body_site,
             "reference_body_site": context.reference_body_site,
-            "reference_procedure_or_treatment": context.reference_procedure_or_treatment,
+            "reference_procedure_or_treatment": (
+                context.reference_procedure_or_treatment
+            ),
             "days_since_procedure": context.days_since_procedure,
             "reference_capture_view": context.reference_capture_view.value,
             "current_capture_view": context.current_capture_view.value,
             "doctor_observation": context.doctor_observation,
         }
-        return "\n".join(f"{key}: {value if value not in (None, '') else 'not provided'}" for key, value in values.items())
+        return "\n".join(
+            f"{key}: {value if value not in (None, '') else 'not provided'}"
+            for key, value in values.items()
+        )
 
     def analyze_progress(
         self,
@@ -57,16 +78,22 @@ class OpenAIProgressAnalysisProvider:
         context: ProgressClinicalContext,
     ) -> ProviderProgressResult:
         if current_content_type not in {"image/jpeg", "image/png", "image/webp"}:
-            raise AIProviderError("Unsupported current image content type for progress inference")
+            raise AIProviderError(
+                "Unsupported current image content type for progress inference"
+            )
         if not reference_image_url.startswith("https://"):
-            raise AIProviderError("Reference image requires a temporary HTTPS signed URL")
+            raise AIProviderError(
+                "Reference image requires a temporary HTTPS signed URL"
+            )
 
         encoded = base64.b64encode(current_image_bytes).decode("ascii")
         current_data_url = f"data:{current_content_type};base64,{encoded}"
         user_text = (
-            "Compare the reference and current images for visible recovery or treatment progress.\n\n"
+            "Compare the reference and current images for visible recovery "
+            "or treatment progress.\n\n"
             f"CONTEXT\n{self._context_text(context)}\n\n"
-            "The first image is REFERENCE. The second image is CURRENT. Return structured physician decision support only."
+            "The first image is REFERENCE. The second image is CURRENT. "
+            "Return structured physician decision support only."
         )
 
         try:
@@ -78,8 +105,16 @@ class OpenAIProgressAnalysisProvider:
                         "role": "user",
                         "content": [
                             {"type": "input_text", "text": user_text},
-                            {"type": "input_image", "image_url": reference_image_url, "detail": "high"},
-                            {"type": "input_image", "image_url": current_data_url, "detail": "high"},
+                            {
+                                "type": "input_image",
+                                "image_url": reference_image_url,
+                                "detail": "high",
+                            },
+                            {
+                                "type": "input_image",
+                                "image_url": current_data_url,
+                                "detail": "high",
+                            },
                         ],
                     }
                 ],

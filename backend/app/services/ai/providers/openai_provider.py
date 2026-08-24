@@ -24,9 +24,19 @@ Keep limitations explicit and concise."""
 class OpenAIVisionAnalysisProvider:
     provider_name = "openai"
 
-    def __init__(self, *, api_key: str, model_id: str, timeout_seconds: int = 60, client=None):
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model_id: str,
+        timeout_seconds: int = 60,
+        max_retries: int = 2,
+        client=None,
+    ):
         if not api_key.strip():
-            raise AIProviderConfigurationError("OPENAI_API_KEY is required for the OpenAI AI provider")
+            raise AIProviderConfigurationError(
+                "OPENAI_API_KEY is required for the OpenAI AI provider"
+            )
         self.model_id = model_id
         if client is not None:
             self._client = client
@@ -34,16 +44,27 @@ class OpenAIVisionAnalysisProvider:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise AIProviderConfigurationError("The OpenAI Python SDK is not installed") from exc
-        self._client = OpenAI(api_key=api_key, timeout=timeout_seconds)
+            raise AIProviderConfigurationError(
+                "The OpenAI Python SDK is not installed"
+            ) from exc
+        self._client = OpenAI(
+            api_key=api_key,
+            timeout=timeout_seconds,
+            max_retries=max_retries,
+        )
 
     @staticmethod
     def _taxonomy_text(taxonomy: Sequence[TaxonomyCondition]) -> str:
         lines = []
         for condition in taxonomy:
-            severity = "severity-supported" if condition.severity_assessment_supported else "severity-not-supported"
+            severity = (
+                "severity-supported"
+                if condition.severity_assessment_supported
+                else "severity-not-supported"
+            )
             lines.append(
-                f"- {condition.code}: {condition.display_name} | {condition.support_level} | {severity}"
+                f"- {condition.code}: {condition.display_name} | "
+                f"{condition.support_level} | {severity}"
             )
         return "\n".join(lines)
 
@@ -58,7 +79,9 @@ class OpenAIVisionAnalysisProvider:
             "doctor_observation": context.doctor_observation,
             "booked_service": context.booked_service_name,
         }
-        return "\n".join(f"{key}: {value or 'not provided'}" for key, value in values.items())
+        return "\n".join(
+            f"{key}: {value or 'not provided'}" for key, value in values.items()
+        )
 
     def analyze_dermatology(
         self,
@@ -69,7 +92,9 @@ class OpenAIVisionAnalysisProvider:
         taxonomy: Sequence[TaxonomyCondition],
     ) -> ProviderDermatologyResult:
         if content_type not in {"image/jpeg", "image/png", "image/webp"}:
-            raise AIProviderError("Unsupported image content type for vision inference")
+            raise AIProviderError(
+                "Unsupported image content type for vision inference"
+            )
         if not taxonomy:
             raise AIProviderError("Dermatology taxonomy is empty")
 
@@ -79,7 +104,8 @@ class OpenAIVisionAnalysisProvider:
             "Assess this dermatology image using the exact taxonomy below.\n\n"
             f"CLINICAL CONTEXT\n{self._context_text(context)}\n\n"
             f"ALLOWED TAXONOMY\n{self._taxonomy_text(taxonomy)}\n\n"
-            "Return structured decision support only. Do not add medication or service recommendations."
+            "Return structured decision support only. "
+            "Do not add medication or service recommendations."
         )
 
         try:
@@ -91,7 +117,11 @@ class OpenAIVisionAnalysisProvider:
                         "role": "user",
                         "content": [
                             {"type": "input_text", "text": user_text},
-                            {"type": "input_image", "image_url": data_url, "detail": "high"},
+                            {
+                                "type": "input_image",
+                                "image_url": data_url,
+                                "detail": "high",
+                            },
                         ],
                     }
                 ],

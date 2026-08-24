@@ -26,7 +26,12 @@ JWT_ALGORITHM = "HS256"
 
 
 class Settings(BaseModel):
-    environment: Literal["development", "test", "staging", "production"] = "development"
+    environment: Literal[
+        "development",
+        "test",
+        "staging",
+        "production",
+    ] = "development"
     database_url: str
     secret_key: SecretStr
     access_token_expire_minutes: int = Field(default=60, ge=5, le=1440)
@@ -35,19 +40,41 @@ class Settings(BaseModel):
     frontend_url: str | None = None
     cors_origins: tuple[str, ...] = ()
     google_client_id: str | None = None
-    google_onboarding_token_expire_minutes: int = Field(default=15, ge=5, le=60)
+    google_onboarding_token_expire_minutes: int = Field(
+        default=15,
+        ge=5,
+        le=60,
+    )
     clinic_timezone: str = "Asia/Manila"
+
     ai_provider: Literal["openai"] = "openai"
     openai_api_key: SecretStr | None = None
     ai_model_id: str = "gpt-5.6-sol"
-    ai_request_timeout_seconds: int = Field(default=60, ge=10, le=180)
+    ai_request_timeout_seconds: int = Field(
+        default=60,
+        ge=10,
+        le=180,
+    )
+    ai_max_retries: int = Field(default=2, ge=0, le=5)
+    ai_orphan_asset_retention_days: int = Field(
+        default=7,
+        ge=1,
+        le=365,
+    )
 
-    @field_validator("database_url", "jwt_issuer", "jwt_audience", "ai_model_id")
+    @field_validator(
+        "database_url",
+        "jwt_issuer",
+        "jwt_audience",
+        "ai_model_id",
+    )
     @classmethod
     def require_non_empty_value(cls, value: str) -> str:
         cleaned = value.strip()
         if not cleaned:
-            raise ValueError("required configuration value must not be empty")
+            raise ValueError(
+                "required configuration value must not be empty"
+            )
         return cleaned
 
     @field_validator("clinic_timezone")
@@ -57,7 +84,9 @@ class Settings(BaseModel):
         try:
             ZoneInfo(cleaned)
         except (ZoneInfoNotFoundError, ValueError):
-            raise ValueError("CLINIC_TIMEZONE must be a valid IANA timezone")
+            raise ValueError(
+                "CLINIC_TIMEZONE must be a valid IANA timezone"
+            )
         return cleaned
 
     @field_validator("secret_key")
@@ -72,8 +101,13 @@ class Settings(BaseModel):
             "development",
         }
 
-        if len(secret.encode("utf-8")) < 32 or secret.lower() in known_weak_values:
-            raise ValueError("SECRET_KEY must be a strong value of at least 32 bytes")
+        if (
+            len(secret.encode("utf-8")) < 32
+            or secret.lower() in known_weak_values
+        ):
+            raise ValueError(
+                "SECRET_KEY must be a strong value of at least 32 bytes"
+            )
 
         return value
 
@@ -88,23 +122,47 @@ class Settings(BaseModel):
         openai_api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
 
         return cls(
-            environment=os.getenv("ENVIRONMENT", "development").strip().lower(),
+            environment=os.getenv(
+                "ENVIRONMENT",
+                "development",
+            ).strip().lower(),
             database_url=os.getenv("DATABASE_URL", ""),
             secret_key=os.getenv("SECRET_KEY", ""),
-            access_token_expire_minutes=os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"),
+            access_token_expire_minutes=os.getenv(
+                "ACCESS_TOKEN_EXPIRE_MINUTES",
+                "60",
+            ),
             jwt_issuer=os.getenv("JWT_ISSUER", "os-coms"),
             jwt_audience=os.getenv("JWT_AUDIENCE", "os-coms-api"),
             frontend_url=os.getenv("FRONTEND_URL") or None,
             cors_origins=origins,
             google_client_id=os.getenv("GOOGLE_CLIENT_ID") or None,
             google_onboarding_token_expire_minutes=os.getenv(
-                "GOOGLE_ONBOARDING_TOKEN_EXPIRE_MINUTES", "15"
+                "GOOGLE_ONBOARDING_TOKEN_EXPIRE_MINUTES",
+                "15",
             ),
-            clinic_timezone=os.getenv("CLINIC_TIMEZONE", "Asia/Manila"),
-            ai_provider=os.getenv("AI_PROVIDER", "openai").strip().lower(),
+            clinic_timezone=os.getenv(
+                "CLINIC_TIMEZONE",
+                "Asia/Manila",
+            ),
+            ai_provider=os.getenv(
+                "AI_PROVIDER",
+                "openai",
+            ).strip().lower(),
             openai_api_key=openai_api_key or None,
-            ai_model_id=os.getenv("AI_MODEL_ID", "gpt-5.6-sol").strip(),
-            ai_request_timeout_seconds=os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60"),
+            ai_model_id=os.getenv(
+                "AI_MODEL_ID",
+                "gpt-5.6-sol",
+            ).strip(),
+            ai_request_timeout_seconds=os.getenv(
+                "AI_REQUEST_TIMEOUT_SECONDS",
+                "60",
+            ),
+            ai_max_retries=os.getenv("AI_MAX_RETRIES", "2"),
+            ai_orphan_asset_retention_days=os.getenv(
+                "AI_ORPHAN_ASSET_RETENTION_DAYS",
+                "7",
+            ),
         )
 
 

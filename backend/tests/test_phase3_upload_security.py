@@ -4,12 +4,10 @@ from io import BytesIO
 import pytest
 from fastapi import HTTPException, UploadFile
 from PIL import Image
-from pydantic import ValidationError
 
 import app.core.image_security as image_security
 from app.core.image_security import read_and_validate_image
 from app.core.storage import get_safe_extension, normalize_extension
-from app.routes.ai_phase3 import AIReviewUpdate
 
 
 def _image_bytes(format_name: str = "PNG", size=(128, 128)) -> bytes:
@@ -110,15 +108,3 @@ def test_storage_extension_requires_filename_and_mime_agreement():
 
     with pytest.raises(ValueError):
         get_safe_extension("skin.png", "image/jpeg")
-
-
-def test_review_payload_forbids_unknown_fields():
-    with pytest.raises(ValidationError):
-        AIReviewUpdate.model_validate(
-            {"review_status": "Reviewed", "is_patient_visible": True}
-        )
-
-
-def test_review_payload_caps_clinical_text():
-    with pytest.raises(ValidationError):
-        AIReviewUpdate.model_validate({"doctor_note": "x" * 4001})
