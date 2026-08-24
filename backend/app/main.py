@@ -1,17 +1,29 @@
 import logging
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db import get_db
+from app.models import (
+    appointment,
+    clinic_unavailable_date,
+    diagnosis_report,
+    doctor_schedule,
+    doctor_service,
+    follow_up,
+    notification,
+    service,
+    skin_analysis,
+    user,
+)
+from app.models.appointment_log import AppointmentLog
 from app.routes import (
     admin,
     admin_ai_phase6,
-    ai_analysis,
     ai_phase3,
     ai_progress_phase5,
     announcements,
@@ -30,20 +42,7 @@ from app.routes import (
     staff_schedules_phase9,
     users,
 )
-from app.models import (
-    appointment,
-    clinic_unavailable_date,
-    diagnosis_report,
-    doctor_schedule,
-    doctor_service,
-    follow_up,
-    notification,
-    service,
-    skin_analysis,
-    user,
-)
 from app.routes.doctor import router as doctor_router
-from app.models.appointment_log import AppointmentLog
 
 
 logger = logging.getLogger(__name__)
@@ -109,13 +108,12 @@ app.include_router(auth_phase2.router)
 app.include_router(auth_phase10.router)
 app.include_router(auth.router)
 app.include_router(users.router)
-# M5 progress routes are registered before M4 analysis routes so the shared
-# appointment-analysis list can keep recovery runs out of the diagnosis workspace.
+
+# M5 progress owns the filtered appointment-analysis list plus longitudinal
+# baseline/comparison endpoints. M4's structured analysis route owns new inference.
 app.include_router(ai_progress_phase5.router)
-# Phase 4 AI routes expose the structured clinical pipeline while retaining
-# legacy route registration behind them for historical compatibility.
 app.include_router(ai_phase3.router)
-app.include_router(ai_analysis.router)
+
 # Phase 9 appointment guards take precedence over the legacy appointment router
 # for clinic-time-sensitive and bounded list endpoints while reusing the legacy
 # transactional create/assignment paths through hardened shared helpers.
@@ -123,16 +121,19 @@ app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(announcements.router)
-# M6 provides the versioned AI monitor/evaluation endpoints. The legacy admin AI
-# logs remain registered behind it for historical compatibility.
+
+# M6 provides the versioned AI monitor/evaluation endpoints. The older admin
+# endpoint remains available only for historical records.
 app.include_router(admin_ai_phase6.router)
 app.include_router(admin.router)
+
 # Phase 9 staff schedule guards use the same clinic clock and batch schedule
 # display users while the legacy transactional create/update routes are reused.
 app.include_router(staff_schedules_phase9.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)
 app.include_router(booking.router)
+
 # M4 doctor AI routes own the enhanced appointment payload and AI-linked report
 # completion before the older compatibility guards and doctor router.
 app.include_router(doctor_ai_phase4.router)
