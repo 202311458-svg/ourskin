@@ -41,6 +41,10 @@ class AIAnalysisRun(Base):
             "review_status IN ('PENDING_REVIEW', 'REVIEWED')",
             name="ck_ai_analysis_runs_review_status",
         ),
+        CheckConstraint(
+            "progress_trend IS NULL OR progress_trend IN ('IMPROVING', 'STABLE', 'POSSIBLE_WORSENING', 'MIXED', 'UNABLE_TO_COMPARE')",
+            name="ck_ai_analysis_runs_progress_trend",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -104,6 +108,10 @@ class AIAnalysisRun(Base):
     medication_suggestions = Column(JSON, nullable=False, default=list)
     medication_knowledge_version = Column(String(80), nullable=True)
     medication_guidance = Column(Text, nullable=True)
+    progress_trend = Column(String(32), nullable=True, index=True)
+    progress_summary = Column(Text, nullable=True)
+    comparison_reliable = Column(Boolean, nullable=True)
+    comparison_findings = Column(JSON, nullable=False, default=list)
     red_flags = Column(JSON, nullable=False, default=list)
     limitations = Column(JSON, nullable=False, default=list)
 

@@ -5,6 +5,7 @@ import {
   FaCalendarCheck,
   FaCalendarPlus,
   FaChartBar,
+  FaChartLine,
   FaClipboardList,
   FaFileMedicalAlt,
   FaHistory,
@@ -98,6 +99,7 @@ export const portalNavigation: Record<PortalRole, PortalNavGroup[]> = {
         { label: "Follow-ups", href: "/pages/doctor/follow-ups", icon: <FaUserClock /> },
         { label: "Patient records", href: "/pages/doctor/patient-records", icon: <FaNotesMedical /> },
         { label: "AI analysis", href: "/pages/doctor/ai-analysis", icon: <FaRobot /> },
+        { label: "AI progress", href: "/pages/doctor/ai-progress", icon: <FaChartLine /> },
       ],
     },
     {

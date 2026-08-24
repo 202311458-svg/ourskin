@@ -8,8 +8,39 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, auth_phase2, auth_phase10, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, staff_schedules_phase9, booking, staff_follow_ups, announcements, notifications, doctor_phase1, doctor_ai_phase4
-from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
+from app.routes import (
+    admin,
+    ai_analysis,
+    ai_phase3,
+    ai_progress_phase5,
+    announcements,
+    appointments,
+    appointments_phase9,
+    auth,
+    auth_phase10,
+    auth_phase2,
+    booking,
+    doctor_ai_phase4,
+    doctor_phase1,
+    notifications,
+    patients,
+    staff_follow_ups,
+    staff_schedules,
+    staff_schedules_phase9,
+    users,
+)
+from app.models import (
+    appointment,
+    clinic_unavailable_date,
+    diagnosis_report,
+    doctor_schedule,
+    doctor_service,
+    follow_up,
+    notification,
+    service,
+    skin_analysis,
+    user,
+)
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
 
@@ -77,7 +108,10 @@ app.include_router(auth_phase2.router)
 app.include_router(auth_phase10.router)
 app.include_router(auth.router)
 app.include_router(users.router)
-# Phase 4 AI routes now expose the structured clinical pipeline while retaining
+# M5 progress routes are registered before M4 analysis routes so the shared
+# appointment-analysis list can keep recovery runs out of the diagnosis workspace.
+app.include_router(ai_progress_phase5.router)
+# Phase 4 AI routes expose the structured clinical pipeline while retaining
 # legacy route registration behind them for historical compatibility.
 app.include_router(ai_phase3.router)
 app.include_router(ai_analysis.router)
