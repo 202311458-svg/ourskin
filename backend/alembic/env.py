@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db import Base
 from app.models import (  # noqa: F401
     ai_analysis_run,
+    ai_clinical_evaluation,
     ai_image_asset,
     announcement,
     appointment,

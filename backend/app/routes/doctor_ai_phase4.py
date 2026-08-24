@@ -9,6 +9,7 @@ from app.core.authorization import doctor_appointments_query, get_doctor_appoint
 from app.core.security import get_current_user
 from app.db import get_db
 from app.models.ai_analysis_run import AIAnalysisRun
+from app.models.ai_clinical_evaluation import AIClinicalEvaluation
 from app.models.appointment import AppointmentModel
 from app.models.diagnosis_report import DiagnosisReport
 from app.models.skin_analysis import SkinAnalysis
@@ -17,6 +18,7 @@ from app.routes import doctor as doctor_routes
 from app.routes.ai_phase3 import serialize_ai_run
 from app.routes.doctor_phase1 import ensure_appointment_has_started
 from app.schemas.diagnosis_report import DiagnosisReportCreate
+from app.services.ai.clinical_evaluation import create_evaluation_snapshot
 
 
 router = APIRouter(prefix="/doctor", tags=["Doctor Portal"])
@@ -50,6 +52,26 @@ def _serialize_report_m4(report: DiagnosisReport) -> dict:
     return data
 
 
+def _serialize_evaluation(item: AIClinicalEvaluation | None) -> dict | None:
+    if item is None:
+        return None
+    return {
+        "id": item.id,
+        "ai_analysis_run_id": item.ai_analysis_run_id,
+        "diagnosis_agreement": item.diagnosis_agreement,
+        "evaluation_basis": item.evaluation_basis,
+        "ai_primary_condition_code": item.ai_primary_condition_code,
+        "ai_primary_condition_display": item.ai_primary_condition_display,
+        "doctor_final_diagnosis": item.doctor_final_diagnosis,
+        "matched_differential_code": item.matched_differential_code,
+        "matched_differential_display": item.matched_differential_display,
+        "medication_suggestions_present": item.medication_suggestions_present,
+        "medication_suggestion_used": item.medication_suggestion_used,
+        "medication_matches": item.medication_matches or [],
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+    }
+
+
 def _get_owned_run(
     db: Session,
     *,
@@ -69,6 +91,11 @@ def _get_owned_run(
     )
     if run is None:
         raise HTTPException(status_code=404, detail="Selected AI analysis run not found")
+    if run.analysis_mode != "DERMATOLOGY_ASSESSMENT":
+        raise HTTPException(
+            status_code=400,
+            detail="Recovery/progress runs cannot be used as the final diagnosis analysis.",
+        )
     return run
 
 
@@ -164,7 +191,10 @@ def complete_appointment_with_ai_report_m4(
     else:
         selected_run = (
             db.query(AIAnalysisRun)
-            .filter(AIAnalysisRun.appointment_id == appointment_id)
+            .filter(
+                AIAnalysisRun.appointment_id == appointment_id,
+                AIAnalysisRun.analysis_mode == "DERMATOLOGY_ASSESSMENT",
+            )
             .order_by(AIAnalysisRun.created_at.desc())
             .first()
         )
@@ -197,6 +227,18 @@ def complete_appointment_with_ai_report_m4(
     if not report.doctor_final_diagnosis:
         raise HTTPException(status_code=400, detail="Doctor final diagnosis is required")
 
+    db.add(report)
+    db.flush()
+
+    evaluation = None
+    if selected_run:
+        evaluation = create_evaluation_snapshot(
+            db,
+            run=selected_run,
+            report=report,
+            doctor_id=current_user.id,
+        )
+
     reviewed_at = datetime.now(timezone.utc)
     appointment.status = "Completed"
     appointment.cancel_reason = None
@@ -215,7 +257,6 @@ def complete_appointment_with_ai_report_m4(
         # Keep the compatibility mirror visible for legacy patient/history routes.
         selected_legacy.is_patient_visible = True
 
-    db.add(report)
     doctor_routes.create_appointment_log(
         db=db,
         appointment_id=appointment.id,
@@ -233,6 +274,8 @@ def complete_appointment_with_ai_report_m4(
         db.refresh(selected_run)
     if selected_legacy:
         db.refresh(selected_legacy)
+    if evaluation:
+        db.refresh(evaluation)
 
     linked_analysis = None
     if selected_run:
@@ -246,6 +289,7 @@ def complete_appointment_with_ai_report_m4(
         "appointment": _serialize_appointment_m4(appointment),
         "report": _serialize_report_m4(report),
         "linked_analysis": linked_analysis,
+        "ai_evaluation": _serialize_evaluation(evaluation),
     }
 
 
@@ -290,6 +334,16 @@ def get_diagnosis_report_by_appointment_m4(
             linked_analysis = doctor_routes.serialize_analysis(legacy)
             linked_analysis["kind"] = "legacy"
 
+    evaluation = None
+    if report.ai_analysis_run_id:
+        evaluation = (
+            db.query(AIClinicalEvaluation)
+            .filter(
+                AIClinicalEvaluation.ai_analysis_run_id == report.ai_analysis_run_id
+            )
+            .first()
+        )
+
     serialized_report = _serialize_report_m4(report)
     return {
         "appointment_id": appointment.id,
@@ -304,4 +358,5 @@ def get_diagnosis_report_by_appointment_m4(
         "follow_up_plan": report.follow_up_plan,
         "next_visit_date": str(report.next_visit_date) if report.next_visit_date else None,
         "linked_analysis": linked_analysis,
+        "ai_evaluation": _serialize_evaluation(evaluation),
     }

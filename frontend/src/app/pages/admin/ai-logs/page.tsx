@@ -1,578 +1,526 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   FaBrain,
-  FaNotesMedical,
+  FaChartLine,
+  FaClipboardCheck,
+  FaFlask,
   FaSearch,
-  FaStethoscope,
   FaTimes,
-  FaUserMd,
 } from "react-icons/fa";
 
 import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
-import { AdminAiLog, getAdminAiLogs } from "@/lib/admin-api";
-import styles from "./page.module.css";
+import {
+  getAiEvaluationSummary,
+  getAiMonitor,
+  type AiEvaluationSummary,
+  type AiMonitorRun,
+} from "@/lib/admin-ai-api";
+import styles from "./m6.module.css";
 
-type SeverityFilter = "all" | "mild" | "moderate" | "severe" | "unspecified";
-type ReviewFilter = "all" | "pending" | "reviewed" | "completed";
-
-function normalizeText(value?: string | null) {
-  return (value || "").trim().toLowerCase();
-}
-
-function titleCase(value?: string | null) {
-  const cleaned = (value || "").trim();
-
-  if (!cleaned) return "N/A";
-
-  return cleaned
-    .split(/\s+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+const pretty = (value?: string | null) =>
+  (value || "—")
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
 
-function formatDate(value?: string | null) {
-  if (!value) return "N/A";
+const formatDate = (value?: string | null) => {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+};
 
-  const date = new Date(value);
+const formatPercent = (value?: number | null) =>
+  value === null || value === undefined ? "—" : `${value.toFixed(1)}%`;
 
-  if (Number.isNaN(date.getTime())) return "N/A";
+const agreementTone = (value?: string | null) => {
+  if (value === "AGREE") return styles.good;
+  if (value === "PARTIAL") return styles.info;
+  if (value === "DISAGREE") return styles.warn;
+  return styles.neutral;
+};
 
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+const modeLabel = (value?: string | null) =>
+  value === "RECOVERY_PROGRESS" ? "Recovery / progress" : "Dermatology assessment";
 
-function formatConfidence(value?: number | null) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return "N/A";
-  }
-
-  if (value <= 1) return `${Math.round(value * 100)}%`;
-
-  return `${Math.round(value)}%`;
-}
-
-function getInitials(name?: string | null) {
-  const source = name || "AI";
-  const parts = source.trim().split(/\s+/).filter(Boolean);
-
-  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-
-  return source.charAt(0).toUpperCase();
-}
-
-function getReviewStatus(log: AdminAiLog) {
-  const status = normalizeText(log.review_status);
-
-  if (status === "completed") return "Completed";
-  if (status === "reviewed") return "Reviewed";
-
-  if (log.diagnosis_report_id || log.doctor_final_diagnosis || log.final_diagnosis) {
-    return "Completed";
-  }
-
-  return "Pending Review";
-}
-
-function getSeverityClass(severity?: string | null) {
-  const cleanSeverity = normalizeText(severity);
-
-  if (cleanSeverity === "severe") return styles.aiSeveritySevere;
-  if (cleanSeverity === "moderate") return styles.aiSeverityModerate;
-  if (cleanSeverity === "mild") return styles.aiSeverityMild;
-
-  return styles.aiSeverityNeutral;
-}
-
-function getReviewClass(status?: string | null) {
-  const cleanStatus = normalizeText(status);
-
-  if (cleanStatus === "completed") return styles.approved;
-  if (cleanStatus === "reviewed") return styles.blueAccentBadge;
-
-  return styles.pending;
-}
-
-function hasFinalReport(log: AdminAiLog) {
-  return Boolean(
-    log.diagnosis_report_id ||
-      log.doctor_final_diagnosis ||
-      log.final_diagnosis ||
-      log.doctor_prescription ||
-      log.prescription
-  );
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function normalizeAiLog(raw: Partial<AdminAiLog>): AdminAiLog {
-  return {
-    id: Number(raw.id),
-    user_id: raw.user_id ?? null,
-    appointment_id: raw.appointment_id ?? null,
-    diagnosis_report_id: raw.diagnosis_report_id ?? null,
-
-    patient_name: raw.patient_name || "Unknown Patient",
-    patient_email: raw.patient_email || "No email available",
-    doctor_name: raw.doctor_name || "Not assigned",
-
-    condition: raw.condition || "No AI result",
-    confidence: raw.confidence ?? null,
-    severity: raw.severity || "Unspecified",
-    recommendation: raw.recommendation || "",
-
-    possible_conditions: raw.possible_conditions || "",
-    key_findings: raw.key_findings || "",
-    treatment_suggestions: raw.treatment_suggestions || "",
-    prescription_suggestions: raw.prescription_suggestions || "",
-    follow_up_suggestions: raw.follow_up_suggestions || "",
-    red_flags: raw.red_flags || "",
-
-    doctor_note: raw.doctor_note || "",
-    review_status: raw.review_status || "Pending Review",
-    reviewed_at: raw.reviewed_at || null,
-
-    final_diagnosis: raw.final_diagnosis || raw.doctor_final_diagnosis || "",
-    doctor_final_diagnosis: raw.doctor_final_diagnosis || raw.final_diagnosis || "",
-    doctor_prescription: raw.doctor_prescription || raw.prescription || "",
-    prescription: raw.prescription || raw.doctor_prescription || "",
-    doctor_notes: raw.doctor_notes || raw.after_appointment_notes || "",
-    after_appointment_notes: raw.after_appointment_notes || raw.doctor_notes || "",
-    follow_up_plan: raw.follow_up_plan || "",
-    next_visit_date: raw.next_visit_date || null,
-
-    created_at: raw.created_at || null,
-  };
-}
-
-function DetailSection({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={styles.detailSectionClean}>
-      <div className={styles.detailSectionTitle}>
-        {icon}
-        <h3>{title}</h3>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
-  const displayValue = value === null || value === undefined || value === "" ? "N/A" : String(value);
-
-  return (
-    <div className={styles.cleanInfoRow}>
-      <span>{label}</span>
-      <strong className={displayValue === "N/A" ? styles.emptyValue : ""}>
-        {displayValue}
-      </strong>
-    </div>
-  );
-}
-
-function TextBlock({ label, value }: { label: string; value?: string | null }) {
-  const displayValue = value?.trim() || "N/A";
-
-  return (
-    <div className={styles.cleanTextBlock}>
-      <span>{label}</span>
-      <p className={displayValue === "N/A" ? styles.emptyValue : ""}>{displayValue}</p>
-    </div>
-  );
-}
-
-export default function AdminAiLogsPage() {
+export default function AdminAiMonitorPage() {
   const router = useRouter();
-
-  const [logs, setLogs] = useState<AdminAiLog[]>([]);
-  const [selectedLog, setSelectedLog] = useState<AdminAiLog | null>(null);
+  const [items, setItems] = useState<AiMonitorRun[]>([]);
+  const [summary, setSummary] = useState<AiEvaluationSummary | null>(null);
+  const [selected, setSelected] = useState<AiMonitorRun | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
+  const [mode, setMode] = useState("ALL");
+  const [reviewStatus, setReviewStatus] = useState("ALL");
+  const [agreement, setAgreement] = useState("ALL");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
 
-  const loadLogs = useCallback(async () => {
+  const load = useCallback(async () => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-
     if (!token || role !== "admin") {
       router.push("/");
       return;
     }
 
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError("");
-
-      const data = await getAdminAiLogs(page, pageSize);
-      setLogs(data.items.map(normalizeAiLog));
-      setTotal(data.total);
-    } catch (loadError: unknown) {
-      setError(getErrorMessage(loadError, "Unable to load AI logs."));
+      const [monitor, metrics] = await Promise.all([
+        getAiMonitor({ page, pageSize, mode, reviewStatus, agreement }),
+        getAiEvaluationSummary(),
+      ]);
+      setItems(monitor.items);
+      setTotal(monitor.total);
+      setSummary(metrics);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load AI audit data."
+      );
     } finally {
       setLoading(false);
     }
-  }, [router, page, pageSize]);
+  }, [agreement, mode, page, pageSize, reviewStatus, router]);
 
   useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+    load();
+  }, [load]);
 
-  const filteredLogs = useMemo(() => {
-    const keyword = search.toLowerCase().trim();
+  useEffect(() => {
+    setPage(1);
+  }, [mode, reviewStatus, agreement]);
 
-    return logs
-      .filter((log) => {
-        const severity = normalizeText(log.severity) || "unspecified";
-        const reviewStatus = normalizeText(getReviewStatus(log));
-
-        const matchesSearch =
-          !keyword ||
-          normalizeText(log.patient_name).includes(keyword) ||
-          normalizeText(log.patient_email).includes(keyword) ||
-          normalizeText(log.doctor_name).includes(keyword) ||
-          normalizeText(log.condition).includes(keyword) ||
-          normalizeText(log.doctor_final_diagnosis).includes(keyword) ||
-          normalizeText(log.final_diagnosis).includes(keyword) ||
-          String(log.appointment_id || "").includes(keyword);
-
-        const matchesSeverity =
-          severityFilter === "all" || severity === severityFilter;
-
-        const matchesReview =
-          reviewFilter === "all" ||
-          (reviewFilter === "pending" && reviewStatus.includes("pending")) ||
-          (reviewFilter === "reviewed" && reviewStatus === "reviewed") ||
-          (reviewFilter === "completed" && reviewStatus === "completed");
-
-        return matchesSearch && matchesSeverity && matchesReview;
-      })
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-
-        return dateB - dateA;
-      });
-  }, [logs, search, severityFilter, reviewFilter]);
-
-  const stats = useMemo(() => {
-    return {
-      total: logs.length,
-      pending: logs.filter((log) => normalizeText(getReviewStatus(log)).includes("pending")).length,
-      reviewed: logs.filter((log) => normalizeText(getReviewStatus(log)) === "reviewed").length,
-      completed: logs.filter((log) => normalizeText(getReviewStatus(log)) === "completed").length,
-      severe: logs.filter((log) => normalizeText(log.severity) === "severe").length,
-    };
-  }, [logs]);
+  const filteredItems = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return items;
+    return items.filter((item) =>
+      [
+        item.patient_name,
+        item.patient_email,
+        item.doctor_name,
+        item.primary_condition_display,
+        item.doctor_final_diagnosis,
+        item.booked_service,
+        item.model_id,
+        String(item.appointment_id),
+        String(item.id),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [items, search]);
 
   return (
     <div className="staffLayout">
       <PortalShell role="admin">
-      <main className={`${styles.aiLogsPage} ${styles.visualPageFix}`}>
-        <PageHeader
-          eyebrow="Clinical Monitoring"
-          title="AI Review Monitor"
-          description="Review AI-assisted skin analysis records without duplicate fields or cluttered card layouts."
-          primaryAction={
-            <button
-              type="button"
-              className={styles.softActionButton}
-              onClick={loadLogs}
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-          }
-        />
+        <main className={styles.page}>
+          <PageHeader
+            eyebrow="AI audit & evaluation"
+            title="AI Review Monitor"
+            description="Monitor versioned AI runs, doctor-linked agreement signals, progress analyses, and model metadata without treating operational agreement as clinical accuracy."
+            primaryAction={
+              <button
+                type="button"
+                className={styles.refreshButton}
+                onClick={load}
+                disabled={loading}
+              >
+                {loading ? "Refreshing…" : "Refresh"}
+              </button>
+            }
+          />
 
-        <div className={styles.statsGrid}>
-          <div className={`${styles.statCard} ${styles.pinkAccent}`}>
-            <span>Total AI Logs</span>
-            <strong>{stats.total}</strong>
-            <p>All AI-assisted cases</p>
-          </div>
+          {error && <div className={styles.error}>{error}</div>}
 
-          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-            <span>Pending Review</span>
-            <strong>{stats.pending}</strong>
-            <p>Needs clinical review</p>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.blueAccent}`}>
-            <span>Reviewed</span>
-            <strong>{stats.reviewed}</strong>
-            <p>Doctor reviewed result</p>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.greenAccent}`}>
-            <span>Completed Reports</span>
-            <strong>{stats.completed}</strong>
-            <p>Linked to diagnosis</p>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.pinkAccent}`}>
-            <span>Severe Cases</span>
-            <strong>{stats.severe}</strong>
-            <p>Higher-priority cases</p>
-          </div>
-        </div>
-
-        <div className={`${styles.adminToolbar} ${styles.toolbarCenteredFix}`}>
-          <div className={styles.searchFieldWrap}>
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search patient, email, doctor, condition, diagnosis, or appointment ID"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className={styles.searchInput}
+          <section className={styles.metricGrid}>
+            <MetricCard
+              icon={<FaBrain />}
+              label="Versioned AI runs"
+              value={summary?.total_runs ?? "—"}
+              note={`${summary?.dermatology_runs ?? 0} dermatology • ${
+                summary?.progress_runs ?? 0
+              } progress`}
             />
-          </div>
+            <MetricCard
+              icon={<FaClipboardCheck />}
+              label="Primary agreement"
+              value={formatPercent(summary?.primary_agreement_rate)}
+              note="Doctor final diagnosis matched AI primary consideration"
+            />
+            <MetricCard
+              icon={<FaChartLine />}
+              label="Primary + differential"
+              value={formatPercent(
+                summary?.primary_or_differential_alignment_rate
+              )}
+              note="Includes final diagnoses matching an AI differential"
+            />
+            <MetricCard
+              icon={<FaFlask />}
+              label="Avg processing"
+              value={
+                summary?.average_latency_ms == null
+                  ? "—"
+                  : `${Math.round(summary.average_latency_ms)} ms`
+              }
+              note={`${summary?.reviewed_runs ?? 0} reviewed • ${
+                summary?.pending_runs ?? 0
+              } pending`}
+            />
+          </section>
 
-          <select
-            value={severityFilter}
-            onChange={(event) =>
-              setSeverityFilter(event.target.value as SeverityFilter)
-            }
-            className={styles.selectInput}
-          >
-            <option value="all">All Severity</option>
-            <option value="mild">Mild</option>
-            <option value="moderate">Moderate</option>
-            <option value="severe">Severe</option>
-            <option value="unspecified">Unspecified</option>
-          </select>
+          <section className={styles.noticePanel}>
+            <strong>Evaluation boundary</strong>
+            <p>
+              {summary?.methodology.clinical_validation ||
+                "Operational agreement is an audit signal, not a clinical validation claim."}
+            </p>
+            {summary?.legacy_records_retained ? (
+              <span>
+                {summary.legacy_records_retained} legacy-only AI record
+                {summary.legacy_records_retained === 1 ? "" : "s"} remain retained
+                outside these versioned metrics.
+              </span>
+            ) : null}
+          </section>
 
-          <select
-            value={reviewFilter}
-            onChange={(event) =>
-              setReviewFilter(event.target.value as ReviewFilter)
-            }
-            className={styles.selectInput}
-          >
-            <option value="all">All Review Status</option>
-            <option value="pending">Pending</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
+          <section className={styles.distributionGrid}>
+            <Distribution
+              title="Doctor agreement"
+              values={summary?.agreement_counts}
+            />
+            <Distribution
+              title="Analysis status"
+              values={summary?.status_counts}
+            />
+            <Distribution
+              title="Service compatibility"
+              values={summary?.compatibility_counts}
+            />
+            <Distribution
+              title="Progress trend"
+              values={summary?.progress_trend_counts}
+            />
+          </section>
 
-        <section className={`${styles.aiCasePanel} ${styles.aiCasePanelFix}`}>
-          {loading ? (
-            <p className={styles.message}>Loading AI logs...</p>
-          ) : error ? (
-            <p className={styles.error}>{error}</p>
-          ) : filteredLogs.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No AI logs found</h3>
-              <p>Try adjusting your filters or search keyword.</p>
+          <section className={styles.panel}>
+            <div className={styles.toolbar}>
+              <div className={styles.searchWrap}>
+                <FaSearch />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search patient, doctor, condition, model, appointment or run"
+                />
+              </div>
+
+              <select value={mode} onChange={(event) => setMode(event.target.value)}>
+                <option value="ALL">All modes</option>
+                <option value="DERMATOLOGY_ASSESSMENT">Dermatology</option>
+                <option value="RECOVERY_PROGRESS">Recovery / progress</option>
+              </select>
+
+              <select
+                value={reviewStatus}
+                onChange={(event) => setReviewStatus(event.target.value)}
+              >
+                <option value="ALL">All review states</option>
+                <option value="PENDING_REVIEW">Pending review</option>
+                <option value="REVIEWED">Reviewed</option>
+              </select>
+
+              <select
+                value={agreement}
+                onChange={(event) => setAgreement(event.target.value)}
+              >
+                <option value="ALL">All agreement states</option>
+                <option value="AGREE">Agree</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="DISAGREE">Disagree</option>
+                <option value="NOT_ASSESSABLE">Not assessable</option>
+              </select>
             </div>
-          ) : (
-            <div className={styles.aiCaseListClean}>
-              {filteredLogs.map((log) => {
-                const reviewStatus = getReviewStatus(log);
-                const finalReportAvailable = hasFinalReport(log);
 
-                return (
-                  <article key={log.id} className={styles.aiCaseCardClean}>
-                    <div className={styles.aiCardCleanHeader}>
-                      <div className={styles.aiPatientIdentity}>
-                        <div className={styles.userAvatarSmall}>
-                          {getInitials(log.patient_name)}
-                        </div>
-                        <div>
-                          <strong>{log.patient_name}</strong>
-                          <span>{log.patient_email}</span>
-                        </div>
+            {loading ? (
+              <div className={styles.empty}>Loading versioned AI runs…</div>
+            ) : filteredItems.length === 0 ? (
+              <div className={styles.empty}>No AI runs match the current filters.</div>
+            ) : (
+              <div className={styles.runList}>
+                {filteredItems.map((item) => (
+                  <article className={styles.runCard} key={item.id}>
+                    <div className={styles.runMain}>
+                      <div className={styles.identity}>
+                        <strong>{item.patient_name}</strong>
+                        <span>{item.patient_email || "No email"}</span>
                       </div>
-
-                      <div className={styles.aiBadgeStackClean}>
-                        <span className={`${styles.statusBadge} ${getReviewClass(reviewStatus)}`}>
-                          {reviewStatus}
-                        </span>
-                        <span className={`${styles.aiSeverityBadge} ${getSeverityClass(log.severity)}`}>
-                          {titleCase(log.severity)}
-                        </span>
+                      <div className={styles.titleBlock}>
+                        <span>{modeLabel(item.analysis_mode)}</span>
+                        <strong>
+                          {item.analysis_mode === "RECOVERY_PROGRESS"
+                            ? pretty(item.progress_trend)
+                            : item.primary_condition_display || pretty(item.status)}
+                        </strong>
+                        <small>
+                          Run #{item.id} • Appointment #{item.appointment_id}
+                        </small>
                       </div>
                     </div>
 
-                    <div className={styles.aiCleanSummary}>
-                      <div className={styles.aiCleanCondition}>
-                        <FaBrain />
-                        <div>
-                          <span>AI Condition</span>
-                          <strong>{log.condition || "No AI result"}</strong>
-                        </div>
-                      </div>
-
-                      <div className={styles.aiCleanMeta}>
-                        <InfoRow label="Confidence" value={formatConfidence(log.confidence)} />
-                        <InfoRow label="Doctor" value={log.doctor_name || "Not assigned"} />
-                        <InfoRow label="Created" value={formatDate(log.created_at)} />
-                        <InfoRow
-                          label="Final Report"
-                          value={finalReportAvailable ? "Available" : "Awaiting report"}
-                        />
-                      </div>
+                    <div className={styles.badges}>
+                      <span className={styles.badge}>{pretty(item.status)}</span>
+                      <span className={styles.badge}>{pretty(item.review_status)}</span>
+                      {item.diagnosis_agreement && (
+                        <span
+                          className={`${styles.badge} ${agreementTone(
+                            item.diagnosis_agreement
+                          )}`}
+                        >
+                          {pretty(item.diagnosis_agreement)}
+                        </span>
+                      )}
                     </div>
 
-                    <div className={styles.aiCleanFooter}>
-                      <span className={styles.caseReference}>Case #{log.id}</span>
+                    <div className={styles.metaGrid}>
+                      <Info label="Doctor" value={item.doctor_name} />
+                      <Info label="Booked service" value={item.booked_service} />
+                      <Info
+                        label="Evidence"
+                        value={pretty(item.evidence_strength)}
+                      />
+                      <Info
+                        label="Compatibility"
+                        value={pretty(item.service_compatibility)}
+                      />
+                      <Info label="Model" value={item.model_id} />
+                      <Info
+                        label="Created"
+                        value={formatDate(item.created_at)}
+                      />
+                    </div>
+
+                    <div className={styles.cardFooter}>
+                      <span>
+                        {item.doctor_final_diagnosis
+                          ? `Doctor: ${item.doctor_final_diagnosis}`
+                          : "No linked final diagnosis yet"}
+                      </span>
                       <button
                         type="button"
-                        className={styles.softActionButton}
-                        onClick={() => setSelectedLog(log)}
+                        className={styles.detailButton}
+                        onClick={() => setSelected(item)}
                       >
-                        View Details
+                        View audit detail
                       </button>
                     </div>
                   </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-        <PaginationControls
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
-      </main>
-      </PortalShell>
+                ))}
+              </div>
+            )}
 
-      {selectedLog && (
-        <div
-          className={`${styles.modalBackdrop} ${styles.adminFocusedBackdrop}`}
-          role="button"
-          tabIndex={0}
-          onClick={() => setSelectedLog(null)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setSelectedLog(null);
-          }}
-        >
-          <div
-            className={`${styles.modalCard} ${styles.cleanDetailModal}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="AI log details"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.cleanModalHeader}>
-              <div className={styles.profileHero}>
-                <div className={styles.profileAvatar}>
-                  {getInitials(selectedLog.patient_name)}
+            <PaginationControls
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPage(1);
+              }}
+            />
+          </section>
+
+          {selected && (
+            <div className={styles.modalBackdrop} onClick={() => setSelected(null)}>
+              <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.modalHeader}>
+                  <div>
+                    <span>AI run #{selected.id}</span>
+                    <h2>{modeLabel(selected.analysis_mode)}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.closeButton}
+                    onClick={() => setSelected(null)}
+                    aria-label="Close"
+                  >
+                    <FaTimes />
+                  </button>
                 </div>
 
-                <div className={styles.profileHeroMain}>
-                  <p className={styles.eyebrow}>AI Log Details</p>
-                  <h2>{selectedLog.patient_name}</h2>
-                  <p>{selectedLog.patient_email}</p>
+                <div className={styles.detailGrid}>
+                  <Detail
+                    label="AI primary"
+                    value={selected.primary_condition_display || "—"}
+                  />
+                  <Detail
+                    label="Doctor final diagnosis"
+                    value={selected.doctor_final_diagnosis || "—"}
+                  />
+                  <Detail
+                    label="Agreement"
+                    value={pretty(selected.diagnosis_agreement)}
+                  />
+                  <Detail
+                    label="Matched differential"
+                    value={selected.matched_differential_display || "—"}
+                  />
+                  <Detail
+                    label="Progress trend"
+                    value={pretty(selected.progress_trend)}
+                  />
+                  <Detail
+                    label="Comparison reliable"
+                    value={
+                      selected.comparison_reliable == null
+                        ? "—"
+                        : selected.comparison_reliable
+                        ? "Yes"
+                        : "No"
+                    }
+                  />
+                  <Detail
+                    label="Medication option used"
+                    value={
+                      selected.medication_suggestion_used == null
+                        ? "Not applicable / not measured"
+                        : selected.medication_suggestion_used
+                        ? "Yes"
+                        : "No"
+                    }
+                  />
+                  <Detail
+                    label="Medication matches"
+                    value={selected.medication_matches?.join(", ") || "—"}
+                  />
+                  <Detail
+                    label="Model"
+                    value={`${selected.model_provider || "—"} / ${
+                      selected.model_id || "—"
+                    }`}
+                  />
+                  <Detail
+                    label="Pipeline"
+                    value={selected.pipeline_version || "—"}
+                  />
+                  <Detail
+                    label="Taxonomy"
+                    value={selected.taxonomy_version || "—"}
+                  />
+                  <Detail
+                    label="Latency"
+                    value={
+                      selected.latency_ms == null
+                        ? "—"
+                        : `${selected.latency_ms} ms`
+                    }
+                  />
+                </div>
 
-                  <div className={styles.profileBadgeRow}>
-                    <span className={`${styles.statusBadge} ${getReviewClass(getReviewStatus(selectedLog))}`}>
-                      {getReviewStatus(selectedLog)}
-                    </span>
-                    <span className={`${styles.aiSeverityBadge} ${getSeverityClass(selectedLog.severity)}`}>
-                      {titleCase(selectedLog.severity)}
-                    </span>
-                  </div>
+                <div className={styles.longDetail}>
+                  <strong>Audit methodology</strong>
+                  <p>
+                    {selected.evaluation_basis
+                      ? "Diagnosis agreement is a deterministic text-match audit signal created when the doctor completes the report. It is not a model-generated score."
+                      : "This run has no doctor-linked diagnosis evaluation yet."}
+                  </p>
+                </div>
+
+                <div className={styles.longDetail}>
+                  <strong>Red flags</strong>
+                  <p>{selected.red_flags?.join(" • ") || "None recorded."}</p>
+                </div>
+
+                <div className={styles.longDetail}>
+                  <strong>Limitations</strong>
+                  <p>{selected.limitations?.join(" • ") || "None recorded."}</p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                className={styles.modalCloseRound}
-                onClick={() => setSelectedLog(null)}
-                aria-label="Close AI log details"
-              >
-                <FaTimes />
-              </button>
             </div>
+          )}
+        </main>
+      </PortalShell>
+    </div>
+  );
+}
 
-            <div className={styles.cleanModalBody}>
-              <DetailSection icon={<FaStethoscope />} title="Case Summary">
-                <div className={styles.cleanInfoGrid}>
-                  <InfoRow label="Condition" value={selectedLog.condition} />
-                  <InfoRow label="Confidence" value={formatConfidence(selectedLog.confidence)} />
-                  <InfoRow label="Severity" value={titleCase(selectedLog.severity)} />
-                  <InfoRow label="Doctor" value={selectedLog.doctor_name} />
-                  <InfoRow label="Created" value={formatDate(selectedLog.created_at)} />
-                  <InfoRow
-                    label="Final Report"
-                    value={hasFinalReport(selectedLog) ? "Available" : "Awaiting report"}
-                  />
-                </div>
-              </DetailSection>
+function MetricCard({
+  icon,
+  label,
+  value,
+  note,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  note: string;
+}) {
+  return (
+    <div className={styles.metricCard}>
+      <div className={styles.metricIcon}>{icon}</div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <p>{note}</p>
+      </div>
+    </div>
+  );
+}
 
-              <DetailSection icon={<FaNotesMedical />} title="AI Decision Support">
-                <div className={styles.cleanTextStack}>
-                  <TextBlock label="Key Findings" value={selectedLog.key_findings} />
-                  <TextBlock label="Treatment Suggestions" value={selectedLog.treatment_suggestions} />
-                  <TextBlock label="Prescription Suggestions" value={selectedLog.prescription_suggestions} />
-                  <TextBlock label="Follow-up Suggestions" value={selectedLog.follow_up_suggestions} />
-                  <TextBlock label="Red Flags" value={selectedLog.red_flags} />
-                </div>
-              </DetailSection>
-
-              <DetailSection icon={<FaUserMd />} title="Doctor Review and Final Report">
-                <div className={styles.cleanTextStack}>
-                  <TextBlock label="Doctor Note" value={selectedLog.doctor_note} />
-                  <TextBlock
-                    label="Final Diagnosis"
-                    value={selectedLog.doctor_final_diagnosis || selectedLog.final_diagnosis}
-                  />
-                  <TextBlock
-                    label="Doctor Prescription"
-                    value={selectedLog.doctor_prescription || selectedLog.prescription}
-                  />
-                  <TextBlock label="After-appointment Notes" value={selectedLog.after_appointment_notes || selectedLog.doctor_notes} />
-                  <TextBlock label="Follow-up Plan" value={selectedLog.follow_up_plan} />
-                  <InfoRow label="Next Visit Date" value={selectedLog.next_visit_date || "N/A"} />
-                </div>
-              </DetailSection>
+function Distribution({
+  title,
+  values,
+}: {
+  title: string;
+  values?: Record<string, number>;
+}) {
+  const entries = Object.entries(values || {});
+  return (
+    <div className={styles.distributionCard}>
+      <strong>{title}</strong>
+      {entries.length === 0 ? (
+        <span className={styles.muted}>No data yet</span>
+      ) : (
+        <div className={styles.distributionList}>
+          {entries.map(([key, value]) => (
+            <div key={key}>
+              <span>{pretty(key)}</span>
+              <strong>{value}</strong>
             </div>
-
-            <div className={styles.cleanModalFooter}>
-              <button
-                type="button"
-                className={styles.softActionButton}
-                onClick={() => setSelectedLog(null)}
-              >
-                Close Details
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className={styles.info}>
+      <span>{label}</span>
+      <strong>{value || "—"}</strong>
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.detail}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

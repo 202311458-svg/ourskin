@@ -1,0 +1,461 @@
+.page {
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+
+.refreshButton,
+.detailButton,
+.closeButton {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.refreshButton,
+.detailButton {
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  background: var(--portal-accent, #be5c8b);
+  color: #fff;
+}
+
+.refreshButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.error {
+  border: 1px solid #efb3b3;
+  background: #fff2f2;
+  color: #8d2424;
+  padding: 13px 15px;
+  border-radius: 12px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricCard,
+.distributionCard,
+.panel,
+.noticePanel {
+  border: 1px solid var(--portal-border, #eadde4);
+  background: var(--portal-surface, #fff);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(80, 42, 62, 0.05);
+}
+
+.metricCard {
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.metricIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: rgba(190, 92, 139, 0.12);
+  color: #a34270;
+  font-size: 18px;
+}
+
+.metricCard span,
+.info span,
+.detail span,
+.titleBlock span,
+.distributionList span,
+.noticePanel span,
+.modalHeader span {
+  color: var(--portal-muted, #746671);
+  font-size: 12px;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 27px;
+  line-height: 1.1;
+  color: var(--portal-text, #322631);
+}
+
+.metricCard p,
+.noticePanel p,
+.longDetail p {
+  margin: 6px 0 0;
+  color: var(--portal-muted, #746671);
+  line-height: 1.5;
+}
+
+.noticePanel {
+  padding: 17px 19px;
+  display: grid;
+  gap: 3px;
+}
+
+.noticePanel > strong {
+  color: var(--portal-text, #322631);
+}
+
+.distributionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.distributionCard {
+  padding: 17px;
+}
+
+.distributionCard > strong {
+  color: var(--portal-text, #322631);
+}
+
+.distributionList {
+  margin-top: 13px;
+  display: grid;
+  gap: 8px;
+}
+
+.distributionList > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--portal-border, #eee4e9);
+}
+
+.distributionList strong {
+  color: var(--portal-text, #322631);
+}
+
+.muted {
+  display: block;
+  margin-top: 12px;
+  color: var(--portal-muted, #746671);
+}
+
+.panel {
+  padding: 18px;
+  min-width: 0;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.8fr) repeat(3, minmax(150px, 0.65fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchWrap svg {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #987b8b;
+}
+
+.searchWrap input,
+.toolbar select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--portal-border, #dfd2d9);
+  border-radius: 11px;
+  background: var(--portal-surface, #fff);
+  color: var(--portal-text, #322631);
+  font: inherit;
+}
+
+.searchWrap input {
+  padding: 0 12px 0 38px;
+}
+
+.toolbar select {
+  padding: 0 11px;
+}
+
+.runList {
+  display: grid;
+  gap: 12px;
+}
+
+.runCard {
+  border: 1px solid var(--portal-border, #eadde4);
+  border-radius: 15px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--portal-surface, #fff) 96%, #f7edf2);
+  display: grid;
+  gap: 14px;
+}
+
+.runMain {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr);
+  gap: 18px;
+}
+
+.identity,
+.titleBlock {
+  display: grid;
+  gap: 3px;
+}
+
+.identity strong,
+.titleBlock strong,
+.info strong,
+.detail strong {
+  color: var(--portal-text, #322631);
+  overflow-wrap: anywhere;
+}
+
+.identity span,
+.titleBlock small {
+  color: var(--portal-muted, #746671);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #f1e8ed;
+  color: #614d58;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.good {
+  background: #e7f6ee;
+  color: #24724a;
+}
+
+.info {
+  background: #e9f1fb;
+  color: #285c91;
+}
+
+.warn {
+  background: #fff0e2;
+  color: #9a5621;
+}
+
+.neutral {
+  background: #f0edf0;
+  color: #665d64;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.info {
+  min-width: 0;
+  border-radius: 11px;
+  padding: 10px 11px;
+}
+
+.info:not(.good):not(.warn):not(.neutral) {
+  background: rgba(116, 102, 113, 0.06);
+  color: inherit;
+}
+
+.info strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--portal-border, #eee4e9);
+  padding-top: 12px;
+}
+
+.cardFooter > span {
+  color: var(--portal-muted, #746671);
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--portal-muted, #746671);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(29, 20, 26, 0.54);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.modal {
+  width: min(920px, 100%);
+  max-height: min(86vh, 900px);
+  overflow: auto;
+  background: var(--portal-surface, #fff);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 26px 80px rgba(31, 14, 25, 0.26);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--portal-border, #eadde4);
+  padding-bottom: 15px;
+}
+
+.modalHeader h2 {
+  margin: 4px 0 0;
+  color: var(--portal-text, #322631);
+}
+
+.closeButton {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(116, 102, 113, 0.08);
+  color: var(--portal-text, #322631);
+  display: grid;
+  place-items: center;
+}
+
+.detailGrid {
+  margin-top: 17px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail {
+  border: 1px solid var(--portal-border, #eadde4);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.detail strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.longDetail {
+  margin-top: 12px;
+  border: 1px solid var(--portal-border, #eadde4);
+  border-radius: 12px;
+  padding: 13px;
+}
+
+.longDetail strong {
+  color: var(--portal-text, #322631);
+}
+
+@media (max-width: 1180px) {
+  .metricGrid,
+  .distributionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .searchWrap {
+    grid-column: 1 / -1;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px;
+  }
+
+  .metricGrid,
+  .distributionGrid,
+  .toolbar,
+  .runMain,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cardFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .detailButton {
+    width: 100%;
+  }
+
+  .modalBackdrop {
+    padding: 10px;
+  }
+
+  .modal {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+:global(html.dark) .metricCard,
+:global(html.dark) .distributionCard,
+:global(html.dark) .panel,
+:global(html.dark) .noticePanel,
+:global(html.dark) .modal,
+:global(html.dark) .runCard {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(html.dark) .error {
+  background: rgba(130, 32, 32, 0.18);
+  border-color: rgba(239, 179, 179, 0.25);
+  color: #ffc6c6;
+}

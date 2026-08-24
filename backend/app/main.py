@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db import get_db
 from app.routes import (
     admin,
+    admin_ai_phase6,
     ai_analysis,
     ai_phase3,
     ai_progress_phase5,
@@ -122,6 +123,9 @@ app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(announcements.router)
+# M6 provides the versioned AI monitor/evaluation endpoints. The legacy admin AI
+# logs remain registered behind it for historical compatibility.
+app.include_router(admin_ai_phase6.router)
 app.include_router(admin.router)
 # Phase 9 staff schedule guards use the same clinic clock and batch schedule
 # display users while the legacy transactional create/update routes are reused.
