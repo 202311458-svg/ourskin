@@ -3,12 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "@/app/styles/ai-progress.module.css";
-import {
-  getDoctorAppointments,
-  getDoctorPatients,
-  type DoctorPatientListItem,
-} from "@/lib/doctor-api";
-import { type M4Appointment } from "@/lib/doctor-ai-api";
+import { getDoctorAppointments } from "@/lib/doctor-api";
+import type { M4Appointment } from "@/lib/doctor-ai-api";
 import {
   analyzeRecoveryProgress,
   getProgressHistory,
@@ -21,599 +17,262 @@ import {
   type ProgressRun,
 } from "@/lib/doctor-progress-api";
 
-const CAPTURE_VIEWS: Array<{ value: CaptureView; label: string }> = [
-  { value: "FRONT", label: "Front" },
-  { value: "LEFT", label: "Left" },
-  { value: "RIGHT", label: "Right" },
-  { value: "CLOSE_UP", label: "Close-up" },
-  { value: "OTHER", label: "Other standardized view" },
-  { value: "UNSPECIFIED", label: "Unspecified" },
+const VIEWS: { value: CaptureView; label: string }[] = [
+  { value: "FRONT", label: "Front" }, { value: "LEFT", label: "Left" },
+  { value: "RIGHT", label: "Right" }, { value: "CLOSE_UP", label: "Close-up" },
+  { value: "OTHER", label: "Other standardized view" }, { value: "UNSPECIFIED", label: "Unspecified" },
 ];
+const EMPTY: ProgressInput = { captureView: "UNSPECIFIED", bodySite: "", procedureOrTreatment: "", daysSinceProcedure: null, doctorObservation: "" };
+type Patient = { id: number; name: string; email: string; visits: M4Appointment[] };
 
-const emptyInput: ProgressInput = {
-  captureView: "UNSPECIFIED",
-  bodySite: "",
-  procedureOrTreatment: "",
-  daysSinceProcedure: null,
-  doctorObservation: "",
+const dt = (a: M4Appointment) => new Date(`${a.date}T${a.time || "00:00:00"}`);
+const canCapture = (a: M4Appointment | null) => !!a && a.status === "Approved" && !Number.isNaN(dt(a).getTime()) && dt(a) <= new Date();
+const pretty = (v?: string | null) => (v || "").toLowerCase().split("_").filter(Boolean).map((p) => p[0].toUpperCase() + p.slice(1)).join(" ");
+const fDate = (v?: string | null) => {
+  if (!v) return "—"; const d = new Date(`${v}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
-
-const blockedStatus = (status?: string | null) => {
-  const value = (status || "").toLowerCase();
-  return value === "declined" || value === "cancelled";
+const fTime = (v?: string | null) => {
+  if (!v) return "—"; const d = new Date(`1970-01-01T${v}`);
+  return Number.isNaN(d.getTime()) ? v : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
-
-const appointmentDateTime = (appointment: M4Appointment) =>
-  new Date(`${appointment.date}T${appointment.time || "00:00:00"}`);
-
-const canCapture = (appointment: M4Appointment | null) => {
-  if (!appointment || appointment.status !== "Approved") return false;
-  const scheduled = appointmentDateTime(appointment);
-  return !Number.isNaN(scheduled.getTime()) && scheduled <= new Date();
+const fDateTime = (v?: string | null) => {
+  if (!v) return "—"; const d = new Date(v); return Number.isNaN(d.getTime()) ? v : d.toLocaleString();
 };
-
-const pretty = (value?: string | null) =>
-  (value || "")
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return "—";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+const buildPatients = (rows: M4Appointment[]) => {
+  const map = new Map<number, Patient>();
+  rows.filter((a) => a.patient_id && !["Declined", "Cancelled"].includes(a.status || "") && ["Approved", "Completed"].includes(a.status || ""))
+    .sort((a, b) => dt(b).getTime() - dt(a).getTime())
+    .forEach((a) => {
+      if (!a.patient_id) return;
+      const existing = map.get(a.patient_id);
+      if (existing) existing.visits.push(a);
+      else map.set(a.patient_id, { id: a.patient_id, name: a.patient_name || "Unnamed patient", email: a.patient_email || "No email", visits: [a] });
+    });
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 };
-
-const buildPatientList = (
-  reportPatients: DoctorPatientListItem[],
-  appointments: M4Appointment[]
-) => {
-  const map = new Map<number, DoctorPatientListItem>();
-  reportPatients.forEach((item) => {
-    if (item.patient?.id) map.set(item.patient.id, item);
-  });
-  appointments.forEach((appointment) => {
-    if (!appointment.patient_id || blockedStatus(appointment.status)) return;
-    if (!map.has(appointment.patient_id)) {
-      map.set(appointment.patient_id, {
-        patient: {
-          id: appointment.patient_id,
-          name: appointment.patient_name,
-          email: appointment.patient_email,
-        },
-        latest_report: null,
-        latest_appointment: appointment,
-        total_reports: 0,
-      });
-    }
-  });
-  return Array.from(map.values()).sort((a, b) =>
-    (a.patient.name || "").localeCompare(b.patient.name || "")
-  );
-};
+const chooseVisit = (v: M4Appointment[]) => v.find(canCapture) || v.find((a) => a.status === "Completed") || v[0] || null;
 
 export default function DoctorAiProgressPage() {
   const router = useRouter();
-  const [patients, setPatients] = useState<DoctorPatientListItem[]>([]);
   const [appointments, setAppointments] = useState<M4Appointment[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
-  const [mode, setMode] = useState<"baseline" | "compare">("compare");
-  const [references, setReferences] = useState<ProgressReferenceOption[]>([]);
-  const [selectedReferenceId, setSelectedReferenceId] = useState<number | null>(null);
+  const [patientId, setPatientId] = useState<number | null>(null);
+  const [appointmentId, setAppointmentId] = useState<number | null>(null);
+  const [mode, setMode] = useState<"compare" | "baseline">("compare");
+  const [refs, setRefs] = useState<ProgressReferenceOption[]>([]);
+  const [refId, setRefId] = useState<number | null>(null);
   const [history, setHistory] = useState<ProgressRun[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
-  const [input, setInput] = useState<ProgressInput>(emptyInput);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [runId, setRunId] = useState<number | null>(null);
+  const [input, setInput] = useState<ProgressInput>(EMPTY);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-    if (!token || role !== "doctor") {
-      router.push("/");
-      return;
-    }
-
-    Promise.all([getDoctorPatients(), getDoctorAppointments("All")])
-      .then(([patientData, appointmentData]) => {
-        const nextAppointments = (Array.isArray(appointmentData) ? appointmentData : []) as M4Appointment[];
-        setAppointments(nextAppointments);
-        setPatients(
-          buildPatientList(Array.isArray(patientData) ? patientData : [], nextAppointments)
-        );
-      })
-      .catch((error) =>
-        setNotice({
-          type: "error",
-          text: error instanceof Error ? error.message : "Failed to load progress workspace.",
-        })
-      )
+    if (!localStorage.getItem("token") || localStorage.getItem("role") !== "doctor") { router.push("/"); return; }
+    getDoctorAppointments("All")
+      .then((data) => setAppointments((Array.isArray(data) ? data : []) as M4Appointment[]))
+      .catch((e) => setNotice({ type: "error", text: e instanceof Error ? e.message : "Failed to load recovery progress workspace." }))
       .finally(() => setLoading(false));
   }, [router]);
 
   useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(selectedFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [selectedFile]);
+    if (!file) { setPreview(null); return; }
+    const url = URL.createObjectURL(file); setPreview(url); return () => URL.revokeObjectURL(url);
+  }, [file]);
 
-  const filteredPatients = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return patients;
-    return patients.filter((item) =>
-      `${item.patient.name || ""} ${item.patient.email || ""}`.toLowerCase().includes(keyword)
-    );
+  const patients = useMemo(() => buildPatients(appointments), [appointments]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase(); if (!q) return patients;
+    return patients.filter((p) => `${p.name} ${p.email} ${p.visits.map((v) => v.services || "").join(" ")}`.toLowerCase().includes(q));
   }, [patients, search]);
+  const patient = patients.find((p) => p.id === patientId) || null;
+  const visits = patient?.visits || [];
+  const appointment = visits.find((v) => v.id === appointmentId) || null;
+  const reference = refs.find((r) => r.run_id === refId) || null;
+  const run = history.find((r) => r.id === runId) || history[0] || null;
 
-  const patientAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (appointment) =>
-            appointment.patient_id === selectedPatientId && !blockedStatus(appointment.status)
-        )
-        .sort((a, b) => appointmentDateTime(b).getTime() - appointmentDateTime(a).getTime()),
-    [appointments, selectedPatientId]
-  );
-
-  const selectedAppointment = useMemo(
-    () => patientAppointments.find((item) => item.id === selectedAppointmentId) || null,
-    [patientAppointments, selectedAppointmentId]
-  );
-
-  const selectedReference = useMemo(
-    () => references.find((item) => item.run_id === selectedReferenceId) || null,
-    [references, selectedReferenceId]
-  );
-
-  const selectedRun = useMemo(
-    () => history.find((item) => item.id === selectedRunId) || history[0] || null,
-    [history, selectedRunId]
-  );
-
-  const refreshProgressData = async (appointmentId: number | null) => {
-    if (!appointmentId) {
-      setReferences([]);
-      setHistory([]);
-      setSelectedReferenceId(null);
-      setSelectedRunId(null);
-      return;
-    }
-    const [referenceData, historyData] = await Promise.all([
-      getProgressReferenceOptions(appointmentId),
-      getProgressHistory(appointmentId),
-    ]);
-    setReferences(Array.isArray(referenceData) ? referenceData : []);
-    setHistory(Array.isArray(historyData) ? historyData : []);
-    if (!selectedReferenceId && referenceData.length > 0) {
-      setSelectedReferenceId(referenceData[0].run_id);
-    }
+  const refresh = async (id: number | null) => {
+    if (!id) { setRefs([]); setHistory([]); setRefId(null); setRunId(null); return; }
+    const [r, h] = await Promise.all([getProgressReferenceOptions(id), getProgressHistory(id)]);
+    setRefs(Array.isArray(r) ? r : []); setHistory(Array.isArray(h) ? h : []);
+    if (!refId && r.length) setRefId(r[0].run_id);
+    if (!runId && h.length) setRunId(h[0].id);
   };
-
+  useEffect(() => { refresh(appointmentId).catch((e) => setNotice({ type: "error", text: e instanceof Error ? e.message : "Failed to load progress history." })); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [appointmentId]);
   useEffect(() => {
-    refreshProgressData(selectedAppointmentId).catch((error) =>
-      setNotice({
-        type: "error",
-        text: error instanceof Error ? error.message : "Failed to load progress history.",
-      })
-    );
-    // selectedReferenceId should not retrigger this load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAppointmentId]);
+    if (!reference) return;
+    setInput((p) => ({ ...p, captureView: reference.capture_view !== "UNSPECIFIED" ? reference.capture_view : p.captureView, bodySite: reference.body_site || p.bodySite, procedureOrTreatment: reference.procedure_or_treatment || p.procedureOrTreatment || appointment?.services || "" }));
+  }, [reference, appointment]);
 
-  useEffect(() => {
-    if (!selectedReference) return;
-    setInput((previous) => ({
-      ...previous,
-      captureView:
-        selectedReference.capture_view !== "UNSPECIFIED"
-          ? selectedReference.capture_view
-          : previous.captureView,
-      bodySite: selectedReference.body_site || previous.bodySite,
-      procedureOrTreatment:
-        selectedReference.procedure_or_treatment ||
-        previous.procedureOrTreatment ||
-        selectedAppointment?.services ||
-        "",
-    }));
-  }, [selectedReference, selectedAppointment]);
-
-  const choosePatient = (patientId: number) => {
-    const visits = appointments
-      .filter((item) => item.patient_id === patientId && !blockedStatus(item.status))
-      .sort((a, b) => appointmentDateTime(b).getTime() - appointmentDateTime(a).getTime());
-    const captureReady = visits.find(canCapture) || visits[0] || null;
-    setSelectedPatientId(patientId);
-    setSelectedAppointmentId(captureReady?.id || null);
-    setSelectedReferenceId(null);
-    setSelectedRunId(null);
-    setSelectedFile(null);
-    setInput({ ...emptyInput, procedureOrTreatment: captureReady?.services || "" });
-    setNotice(null);
+  const selectPatient = (id: number) => {
+    const p = patients.find((x) => x.id === id); const v = p ? chooseVisit(p.visits) : null;
+    setPatientId(id); setAppointmentId(v?.id || null); setRefId(null); setRunId(null); setFile(null);
+    setInput({ ...EMPTY, procedureOrTreatment: v?.services || "" }); setNotice(null);
   };
-
-  const handleAppointmentChange = (value: string) => {
-    const appointmentId = Number(value) || null;
-    const appointment = patientAppointments.find((item) => item.id === appointmentId) || null;
-    setSelectedAppointmentId(appointmentId);
-    setSelectedReferenceId(null);
-    setSelectedFile(null);
-    setInput({ ...emptyInput, procedureOrTreatment: appointment?.services || "" });
-    setNotice(null);
+  const selectVisit = (id: string) => {
+    const value = Number(id) || null; const v = visits.find((x) => x.id === value) || null;
+    setAppointmentId(value); setRefId(null); setRunId(null); setFile(null); setInput({ ...EMPTY, procedureOrTreatment: v?.services || "" }); setNotice(null);
   };
-
-  const handleBaseline = async () => {
-    if (!selectedAppointment || !selectedFile) {
-      setNotice({ type: "error", text: "Select an eligible appointment and baseline image first." });
-      return;
-    }
-    if (!canCapture(selectedAppointment)) {
-      setNotice({ type: "error", text: "Baseline capture is available only after an approved appointment has started." });
-      return;
-    }
-    if (!input.procedureOrTreatment.trim()) {
-      setNotice({ type: "error", text: "Enter the procedure or treatment being tracked." });
-      return;
-    }
-
-    setWorking(true);
-    setNotice(null);
+  const submit = async () => {
+    if (!appointment || !file) { setNotice({ type: "error", text: "Select an eligible visit and current image first." }); return; }
+    if (!canCapture(appointment)) { setNotice({ type: "error", text: "Capture is available only after an approved appointment has started." }); return; }
+    if (!input.procedureOrTreatment.trim()) { setNotice({ type: "error", text: "Enter the procedure or treatment being tracked." }); return; }
+    if (mode === "compare" && !refId) { setNotice({ type: "error", text: "Select an earlier reference capture first." }); return; }
+    setWorking(true); setNotice(null);
     try {
-      const response = await saveProgressBaseline(selectedAppointment.id, selectedFile, input);
-      setSelectedFile(null);
-      await refreshProgressData(selectedAppointment.id);
-      setSelectedRunId(response.progress.id);
-      setNotice({ type: "success", text: response.message });
-    } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "Baseline capture failed." });
-    } finally {
-      setWorking(false);
-    }
+      const response = mode === "baseline"
+        ? await saveProgressBaseline(appointment.id, file, input)
+        : await analyzeRecoveryProgress(appointment.id, refId!, file, input);
+      setFile(null); await refresh(appointment.id); setRunId(response.progress.id); setNotice({ type: "success", text: response.message });
+    } catch (e) { setNotice({ type: "error", text: e instanceof Error ? e.message : "Progress request failed." }); }
+    finally { setWorking(false); }
   };
-
-  const handleCompare = async () => {
-    if (!selectedAppointment || !selectedFile || !selectedReferenceId) {
-      setNotice({ type: "error", text: "Select a current image and an earlier reference capture first." });
-      return;
-    }
-    if (!canCapture(selectedAppointment)) {
-      setNotice({ type: "error", text: "Progress comparison is available only after an approved appointment has started." });
-      return;
-    }
-    if (!input.procedureOrTreatment.trim()) {
-      setNotice({ type: "error", text: "Enter the procedure or treatment being tracked." });
-      return;
-    }
-
-    setWorking(true);
-    setNotice(null);
-    try {
-      const response = await analyzeRecoveryProgress(
-        selectedAppointment.id,
-        selectedReferenceId,
-        selectedFile,
-        input
-      );
-      setSelectedFile(null);
-      await refreshProgressData(selectedAppointment.id);
-      setSelectedRunId(response.progress.id);
-      setNotice({ type: "success", text: response.message });
-    } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "Progress comparison failed." });
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const handleReview = async (runId: number) => {
+  const review = async (id: number) => {
     setWorking(true);
     try {
-      const response = await reviewProgressRun(runId);
-      setHistory((previous) =>
-        previous.map((item) => (item.id === runId ? response.progress : item))
-      );
-      setNotice({ type: "success", text: response.message });
-    } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "Unable to review progress result." });
-    } finally {
-      setWorking(false);
-    }
+      const response = await reviewProgressRun(id);
+      setHistory((items) => items.map((x) => x.id === id ? response.progress : x)); setNotice({ type: "success", text: response.message });
+    } catch (e) { setNotice({ type: "error", text: e instanceof Error ? e.message : "Unable to review result." }); }
+    finally { setWorking(false); }
   };
 
-  if (loading) {
-    return <div className={styles.loading}>Loading recovery progress workspace...</div>;
-  }
-
-  if (!selectedPatientId) {
-    return (
-      <main className={styles.page}>
-        <header className={styles.hero}>
-          <div>
-            <span className={styles.eyebrow}>AI Recovery & Progress</span>
-            <h1>Longitudinal visual follow-up</h1>
-            <p>
-              Save standardized baseline captures and compare later visits without turning image changes into a fake healing percentage.
-            </p>
-          </div>
-          <button className={styles.secondaryButton} onClick={() => router.push("/pages/doctor/ai-analysis")}>
-            Open AI analysis
-          </button>
-        </header>
-
-        {notice && <div className={`${styles.notice} ${styles[notice.type]}`}>{notice.text}</div>}
-
-        <section className={styles.patientPicker}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span className={styles.eyebrow}>Patient selection</span>
-              <h2>Choose a patient to track</h2>
-            </div>
-            <input
-              className={styles.searchInput}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name or email"
-            />
-          </div>
-          <div className={styles.patientGrid}>
-            {filteredPatients.map((item) => (
-              <button key={item.patient.id} className={styles.patientCard} onClick={() => choosePatient(item.patient.id)}>
-                <strong>{item.patient.name || "Unnamed patient"}</strong>
-                <span>{item.patient.email || "No email"}</span>
-              </button>
-            ))}
-            {filteredPatients.length === 0 && <div className={styles.empty}>No patients found.</div>}
-          </div>
-        </section>
-      </main>
-    );
-  }
+  if (loading) return <div className={styles.loadingPage}>Loading recovery progress workspace…</div>;
 
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
-        <div>
-          <span className={styles.eyebrow}>AI Recovery & Progress</span>
-          <h1>{patients.find((item) => item.patient.id === selectedPatientId)?.patient.name || "Patient"}</h1>
-          <p>Compare like-for-like images across visits. The doctor remains responsible for the clinical interpretation.</p>
-        </div>
-        <div className={styles.heroActions}>
-          <button className={styles.secondaryButton} onClick={() => setSelectedPatientId(null)}>Change patient</button>
-          <button className={styles.secondaryButton} onClick={() => router.push("/pages/doctor/ai-analysis")}>AI analysis</button>
-        </div>
+        <div><h1>Recovery progress</h1><p>Save standardized baseline images and compare later visits using visible trends instead of a fabricated healing percentage.</p></div>
+        <div className={styles.heroNote}>Compare like-for-like views. AI supports review; the physician decides what visible changes mean clinically.</div>
       </header>
 
-      {notice && <div className={`${styles.notice} ${styles[notice.type]}`}>{notice.text}</div>}
+      {notice && <div className={`${styles.notice} ${notice.type === "error" ? styles.noticeError : styles.noticeSuccess}`}>{notice.text}</div>}
 
-      <section className={styles.visitBar}>
-        <label>
-          Current visit
-          <select value={selectedAppointmentId || ""} onChange={(event) => handleAppointmentChange(event.target.value)}>
-            <option value="">Select visit</option>
-            {patientAppointments.map((appointment) => (
-              <option key={appointment.id} value={appointment.id}>
-                {appointment.date} · {appointment.services} · {appointment.status}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className={styles.visitMeta}>
-          <span>{selectedAppointment?.services || "No service selected"}</span>
-          <strong>{selectedAppointment ? (canCapture(selectedAppointment) ? "Ready for capture" : selectedAppointment.status) : "—"}</strong>
-        </div>
-      </section>
-
-      <div className={styles.workspaceGrid}>
-        <section className={styles.capturePanel}>
-          <div className={styles.modeTabs}>
-            <button className={mode === "compare" ? styles.activeTab : ""} onClick={() => setMode("compare")}>Compare progress</button>
-            <button className={mode === "baseline" ? styles.activeTab : ""} onClick={() => setMode("baseline")}>Save baseline</button>
+      <div className={styles.layout}>
+        <aside className={styles.patientPanel}>
+          <div className={styles.panelHeader}><div><span className={styles.eyebrow}>Eligible visits</span><h2>Patient and visit</h2></div></div>
+          <input className={styles.searchInput} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, or service" />
+          <div className={styles.patientList}>
+            {filtered.map((p) => {
+              const latest = p.visits[0];
+              return <button key={p.id} type="button" onClick={() => selectPatient(p.id)} className={`${styles.patientItem} ${patientId === p.id ? styles.patientItemActive : ""}`}>
+                <strong>{p.name}</strong><span>{p.email}</span><small>{latest?.services || "Visit"} · {fDate(latest?.date)}</small>
+              </button>;
+            })}
+            {!filtered.length && <div className={styles.empty}>No eligible visits found.</div>}
           </div>
+        </aside>
 
-          <div className={styles.panelHeader}>
-            <div>
-              <span className={styles.eyebrow}>{mode === "baseline" ? "Reference capture" : "Longitudinal comparison"}</span>
-              <h2>{mode === "baseline" ? "Create a standardized baseline" : "Compare against an earlier visit"}</h2>
+        <section className={styles.workspace}>
+          {!patient ? (
+            <div className={styles.emptyLarge}>
+              <h2>Select a patient and visit</h2>
+              <p>Choose an approved or completed visit to save a baseline, compare progress, or review longitudinal history.</p>
+              <div className={styles.emptySteps}><span>1. Select visit</span><span>2. Match capture view</span><span>3. Upload image</span><span>4. Review visible trend</span></div>
             </div>
-          </div>
-
-          {mode === "compare" && (
-            <div className={styles.fieldFull}>
-              <label>Reference capture</label>
-              <select
-                value={selectedReferenceId || ""}
-                onChange={(event) => setSelectedReferenceId(Number(event.target.value) || null)}
-              >
-                <option value="">Select earlier capture</option>
-                {references.map((reference) => (
-                  <option key={reference.run_id} value={reference.run_id}>
-                    {reference.appointment_date || "Earlier visit"} · {reference.service_name || "Visit"} · {pretty(reference.capture_view)} · {pretty(reference.capture_type)}
-                  </option>
-                ))}
-              </select>
-              {references.length === 0 && (
-                <p className={styles.helper}>No earlier AI/baseline image is available. Save a baseline during an eligible visit first.</p>
-              )}
-            </div>
-          )}
-
-          {mode === "compare" && selectedReference && (
-            <div className={styles.referencePreview}>
-              <img src={selectedReference.image_url} alt="Selected reference capture" />
-              <div>
-                <strong>Reference</strong>
-                <span>{selectedReference.appointment_date || "—"}</span>
-                <span>{pretty(selectedReference.capture_view)}</span>
-                <span>{selectedReference.body_site || "Body site not recorded"}</span>
+          ) : <>
+            <div className={styles.patientBanner}>
+              <div><span className={styles.eyebrow}>Current patient</span><h2>{patient.name}</h2><p>{patient.email}</p></div>
+              <div className={styles.visitPicker}><label htmlFor="progress-visit">Target visit</label>
+                <select id="progress-visit" value={appointmentId || ""} onChange={(e) => selectVisit(e.target.value)}>
+                  <option value="">Select eligible visit</option>
+                  {visits.map((v) => <option key={v.id} value={v.id}>{fDate(v.date)} · {fTime(v.time)} · {v.services || "Visit"} · {v.status}</option>)}
+                </select>
               </div>
             </div>
-          )}
 
-          <div className={styles.formGrid}>
-            <label>
-              Procedure / treatment
-              <input
-                value={input.procedureOrTreatment}
-                onChange={(event) => setInput((previous) => ({ ...previous, procedureOrTreatment: event.target.value }))}
-                placeholder="e.g. Chemical peel, blepharoplasty, acne treatment"
-              />
-            </label>
-            <label>
-              Body site
-              <input
-                value={input.bodySite || ""}
-                onChange={(event) => setInput((previous) => ({ ...previous, bodySite: event.target.value }))}
-                placeholder="e.g. face, left cheek"
-              />
-            </label>
-            <label>
-              Capture view
-              <select
-                value={input.captureView}
-                onChange={(event) => setInput((previous) => ({ ...previous, captureView: event.target.value as CaptureView }))}
-              >
-                {CAPTURE_VIEWS.map((view) => <option key={view.value} value={view.value}>{view.label}</option>)}
-              </select>
-            </label>
-            {mode === "compare" && (
-              <label>
-                Days since procedure / treatment
-                <input
-                  type="number"
-                  min={0}
-                  max={3650}
-                  value={input.daysSinceProcedure ?? ""}
-                  onChange={(event) =>
-                    setInput((previous) => ({
-                      ...previous,
-                      daysSinceProcedure: event.target.value === "" ? null : Number(event.target.value),
-                    }))
-                  }
-                  placeholder="Optional"
-                />
-              </label>
-            )}
-            <label className={styles.fieldFull}>
-              Doctor observation
-              <textarea
-                value={input.doctorObservation || ""}
-                onChange={(event) => setInput((previous) => ({ ...previous, doctorObservation: event.target.value }))}
-                placeholder="Optional clinical note; do not include unnecessary identifiers."
-              />
-            </label>
-          </div>
+            {appointment && <section className={styles.contextCard}><div className={styles.contextSummary}>
+              <div><span>Booked service</span><strong>{appointment.services || "Not recorded"}</strong></div>
+              <div><span>Visit date</span><strong>{fDate(appointment.date)} · {fTime(appointment.time)}</strong></div>
+              <div><span>Status</span><strong>{appointment.status || "—"}</strong></div>
+              <div><span>Capture availability</span><strong>{canCapture(appointment) ? "Ready now" : appointment.status === "Completed" ? "History only" : "Not ready"}</strong></div>
+            </div></section>}
 
-          <label className={styles.uploadBox}>
-            {previewUrl ? <img src={previewUrl} alt="Current capture preview" /> : <div><strong>Select current image</strong><span>JPG, PNG, or WEBP · same angle and framing when possible</span></div>}
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} />
-          </label>
-
-          <button
-            className={styles.primaryButton}
-            disabled={working || !selectedFile || !selectedAppointment || (mode === "compare" && !selectedReferenceId)}
-            onClick={mode === "baseline" ? handleBaseline : handleCompare}
-          >
-            {working ? "Processing..." : mode === "baseline" ? "Save baseline capture" : "Compare recovery progress"}
-          </button>
-        </section>
-
-        <section className={styles.resultPanel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span className={styles.eyebrow}>Latest selected record</span>
-              <h2>{selectedRun?.capture_type === "BASELINE" ? "Baseline capture" : "Progress result"}</h2>
-            </div>
-            {selectedRun?.capture_type !== "BASELINE" && selectedRun?.review_status === "PENDING_REVIEW" && (
-              <button className={styles.reviewButton} disabled={working} onClick={() => handleReview(selectedRun.id)}>Mark reviewed</button>
-            )}
-          </div>
-
-          {!selectedRun ? (
-            <div className={styles.empty}>No recovery/progress record yet for this patient.</div>
-          ) : (
-            <>
-              <div className={styles.imageCompare}>
-                {selectedRun.reference_image_url && (
-                  <figure><img src={selectedRun.reference_image_url} alt="Reference visit" /><figcaption>Reference · {selectedRun.reference_appointment_date || "earlier visit"}</figcaption></figure>
-                )}
-                <figure><img src={selectedRun.current_image_url} alt="Current visit" /><figcaption>{selectedRun.capture_type === "BASELINE" ? "Baseline" : "Current"} · {selectedRun.appointment_date || "current visit"}</figcaption></figure>
-              </div>
-
-              {selectedRun.capture_type === "BASELINE" ? (
-                <div className={styles.baselineNote}>
-                  <strong>Reference saved</strong>
-                  <p>This image passed local quality checks and can be selected during a later visit for same-view comparison.</p>
+            <div className={styles.workspaceGrid}>
+              <section className={styles.card}>
+                <div className={styles.modeTabs}>
+                  <button type="button" className={mode === "compare" ? styles.activeTab : ""} onClick={() => setMode("compare")}>Compare progress</button>
+                  <button type="button" className={mode === "baseline" ? styles.activeTab : ""} onClick={() => setMode("baseline")}>Save baseline</button>
                 </div>
-              ) : (
-                <>
-                  <div className={styles.resultSummary}>
-                    <div><span>Visible trend</span><strong>{pretty(selectedRun.progress_trend) || "—"}</strong></div>
-                    <div><span>Comparison</span><strong>{selectedRun.comparison_reliable ? "Reliable enough for visual trend" : "Not reliably comparable"}</strong></div>
-                    <div><span>Review status</span><strong>{pretty(selectedRun.review_status) || "—"}</strong></div>
-                  </div>
-                  <div className={styles.summaryText}>
-                    <h3>AI comparison summary</h3>
-                    <p>{selectedRun.progress_summary || "No summary available."}</p>
-                  </div>
-                  <div className={styles.findingsGrid}>
-                    {(selectedRun.comparison_findings || []).map((finding, index) => (
-                      <article key={`${finding.feature}-${index}`}>
-                        <span className={styles.changeBadge}>{pretty(finding.change)}</span>
-                        <strong>{finding.feature}</strong>
-                        <p>{finding.description}</p>
-                      </article>
-                    ))}
-                    {(selectedRun.comparison_findings || []).length === 0 && <div className={styles.emptySmall}>No structured comparison findings.</div>}
-                  </div>
-                  {(selectedRun.red_flags || []).length > 0 && (
-                    <div className={styles.warningBlock}>
-                      <h3>Visible warning features</h3>
-                      <ul>{selectedRun.red_flags?.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
-                    </div>
-                  )}
-                </>
-              )}
+                <div className={styles.cardHeader}><div><span className={styles.eyebrow}>{mode === "baseline" ? "Reference capture" : "Longitudinal comparison"}</span><h2>{mode === "baseline" ? "Create a standardized baseline" : "Compare with an earlier visit"}</h2></div></div>
 
-              <div className={styles.limitationsBlock}>
-                <h3>Limitations</h3>
-                <ul>{(selectedRun.limitations || []).map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
+                {mode === "compare" && <label className={styles.fieldFull}>Reference capture
+                  <select value={refId || ""} onChange={(e) => setRefId(Number(e.target.value) || null)}>
+                    <option value="">Select earlier capture</option>
+                    {refs.map((r) => <option key={r.run_id} value={r.run_id}>{r.appointment_date || "Earlier visit"} · {r.service_name || "Visit"} · {pretty(r.capture_view)}</option>)}
+                  </select>
+                  {!refs.length && <span className={styles.helper}>No earlier capture is available. Save a baseline during an eligible visit first.</span>}
+                </label>}
+
+                {mode === "compare" && reference && <div className={styles.referencePreview}>
+                  <img src={reference.image_url} alt="Selected reference capture" />
+                  <div><strong>Reference</strong><span>{fDate(reference.appointment_date)}</span><span>{pretty(reference.capture_view)}</span><span>{reference.body_site || "Body site not recorded"}</span></div>
+                </div>}
+
+                <div className={styles.formGrid}>
+                  <label>Procedure / treatment<input value={input.procedureOrTreatment} onChange={(e) => setInput((p) => ({ ...p, procedureOrTreatment: e.target.value }))} placeholder="e.g. Chemical peel, acne treatment" /></label>
+                  <label>Body site<input value={input.bodySite || ""} onChange={(e) => setInput((p) => ({ ...p, bodySite: e.target.value }))} placeholder="e.g. face, left cheek" /></label>
+                  <label>Capture view<select value={input.captureView} onChange={(e) => setInput((p) => ({ ...p, captureView: e.target.value as CaptureView }))}>{VIEWS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}</select></label>
+                  {mode === "compare" && <label>Days since treatment<input type="number" min={0} max={3650} value={input.daysSinceProcedure ?? ""} onChange={(e) => setInput((p) => ({ ...p, daysSinceProcedure: e.target.value === "" ? null : Number(e.target.value) }))} placeholder="Optional" /></label>}
+                  <label className={styles.fieldFull}>Doctor observation<textarea value={input.doctorObservation || ""} onChange={(e) => setInput((p) => ({ ...p, doctorObservation: e.target.value }))} placeholder="Optional clinical observation" /></label>
+                </div>
+
+                <label className={styles.uploadBox}><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                  {preview ? <img src={preview} alt="Current capture preview" /> : <div><strong>Select current image</strong><span>JPG, PNG, or WEBP · match angle and framing when possible</span></div>}
+                </label>
+                <div className={styles.actionRow}><span>{appointment && canCapture(appointment) ? "Ready for capture." : "Choose an approved visit that has already started."}</span>
+                  <button className={styles.primaryButton} disabled={working || !file || !appointment || !canCapture(appointment) || (mode === "compare" && !refId)} onClick={submit}>
+                    {working ? "Processing…" : mode === "baseline" ? "Save baseline" : "Compare progress"}
+                  </button>
+                </div>
+              </section>
+
+              <section className={styles.card}>
+                <div className={styles.cardHeader}><div><span className={styles.eyebrow}>Selected record</span><h2>{run?.capture_type === "BASELINE" ? "Baseline capture" : "Progress result"}</h2></div>
+                  {run?.capture_type !== "BASELINE" && run?.review_status === "PENDING_REVIEW" && <button className={styles.secondaryButton} disabled={working} onClick={() => review(run.id)}>Mark reviewed</button>}
+                </div>
+
+                {!run ? <div className={styles.emptyResult}><h3>No progress record yet</h3><p>Save a baseline or run a comparison to populate this longitudinal result.</p></div> : <>
+                  <div className={styles.imageCompare}>
+                    {run.reference_image_url && <figure><img src={run.reference_image_url} alt="Reference visit" /><figcaption>Reference · {fDate(run.reference_appointment_date)}</figcaption></figure>}
+                    <figure><img src={run.current_image_url} alt="Current visit" /><figcaption>{run.capture_type === "BASELINE" ? "Baseline" : "Current"} · {fDate(run.appointment_date)}</figcaption></figure>
+                  </div>
+
+                  {run.capture_type === "BASELINE" ? <div className={styles.summaryText}><h3>Reference saved</h3><p>This image passed local quality checks and is available for same-view comparison during a later visit.</p></div> : <>
+                    <div className={styles.resultSummary}>
+                      <div><span>Visible trend</span><strong>{pretty(run.progress_trend) || "—"}</strong></div>
+                      <div><span>Comparison</span><strong>{run.comparison_reliable ? "Reliable enough" : "Not reliable"}</strong></div>
+                      <div><span>Review</span><strong>{pretty(run.review_status) || "—"}</strong></div>
+                    </div>
+                    <div className={styles.summaryText}><h3>AI comparison summary</h3><p>{run.progress_summary || "No summary available."}</p></div>
+                    <div className={styles.findingsGrid}>
+                      {(run.comparison_findings || []).map((f, i) => <article key={`${f.feature}-${i}`}><span className={styles.changeBadge}>{pretty(f.change)}</span><strong>{f.feature}</strong><p>{f.description}</p></article>)}
+                      {!(run.comparison_findings || []).length && <div className={styles.emptySmall}>No structured comparison findings.</div>}
+                    </div>
+                    {!!(run.red_flags || []).length && <div className={styles.warningBlock}><h3>Visible warning features</h3><ul>{run.red_flags!.map((x, i) => <li key={`${x}-${i}`}>{x}</li>)}</ul></div>}
+                  </>}
+
+                  <div className={styles.limitationsBlock}><h3>Limitations</h3><ul>{(run.limitations || []).map((x, i) => <li key={`${x}-${i}`}>{x}</li>)}</ul></div>
+                  <div className={styles.metaLine}><span>{fDateTime(run.created_at)}</span>{run.model_id && <span>{run.model_provider} · {run.model_id}</span>}{typeof run.latency_ms === "number" && <span>{run.latency_ms} ms</span>}</div>
+                </>}
+              </section>
+            </div>
+
+            <section className={styles.timelineSection}>
+              <div className={styles.cardHeader}><div><span className={styles.eyebrow}>Longitudinal record</span><h2>Baseline and progress history</h2></div></div>
+              <div className={styles.timeline}>
+                {history.map((r) => <button key={r.id} className={`${styles.timelineItem} ${run?.id === r.id ? styles.timelineActive : ""}`} onClick={() => setRunId(r.id)}>
+                  <span>{r.appointment_date || fDateTime(r.created_at)}</span><strong>{r.capture_type === "BASELINE" ? "Baseline" : pretty(r.progress_trend) || "Comparison"}</strong><small>{pretty(r.current_capture_view)} · {r.service_name || "Visit"}</small>
+                </button>)}
+                {!history.length && <div className={styles.emptySmall}>No progress history yet.</div>}
               </div>
-              <div className={styles.metaLine}>
-                <span>{formatDateTime(selectedRun.created_at)}</span>
-                {selectedRun.model_id && <span>{selectedRun.model_provider} · {selectedRun.model_id}</span>}
-                {typeof selectedRun.latency_ms === "number" && <span>{selectedRun.latency_ms} ms</span>}
-              </div>
-            </>
-          )}
+            </section>
+          </>}
         </section>
       </div>
-
-      <section className={styles.timelineSection}>
-        <div className={styles.sectionHeading}>
-          <div><span className={styles.eyebrow}>Longitudinal record</span><h2>Baseline and progress history</h2></div>
-        </div>
-        <div className={styles.timeline}>
-          {history.map((run) => (
-            <button key={run.id} className={`${styles.timelineItem} ${selectedRun?.id === run.id ? styles.timelineActive : ""}`} onClick={() => setSelectedRunId(run.id)}>
-              <span>{run.appointment_date || formatDateTime(run.created_at)}</span>
-              <strong>{run.capture_type === "BASELINE" ? "Baseline" : pretty(run.progress_trend) || "Comparison"}</strong>
-              <small>{pretty(run.current_capture_view)} · {run.service_name || "Visit"}</small>
-            </button>
-          ))}
-          {history.length === 0 && <div className={styles.empty}>No progress history yet.</div>}
-        </div>
-      </section>
     </main>
   );
 }

@@ -5,7 +5,6 @@ import {
   FaCalendarCheck,
   FaCalendarPlus,
   FaChartBar,
-  FaChartLine,
   FaClipboardList,
   FaFileMedicalAlt,
   FaHistory,
@@ -47,87 +46,225 @@ export const profileRoutes: Record<PortalRole, string | null> = {
 
 export const portalNavigation: Record<PortalRole, PortalNavGroup[]> = {
   admin: [
-    { items: [{ label: "Dashboard", href: "/pages/admin/dashboard", icon: <FaTachometerAlt /> }] },
+    {
+      items: [
+        {
+          label: "Dashboard",
+          href: "/pages/admin/dashboard",
+          icon: <FaTachometerAlt />,
+        },
+      ],
+    },
     {
       label: "Operations",
       items: [
-        { label: "Appointments", href: "/pages/admin/appointments", icon: <FaCalendarCheck /> },
-        { label: "Schedules", href: "/pages/admin/schedules", icon: <FaCalendarAlt /> },
-        { label: "Follow-ups", href: "/pages/admin/follow-ups", icon: <FaUserClock /> },
+        {
+          label: "Appointments",
+          href: "/pages/admin/appointments",
+          icon: <FaCalendarCheck />,
+        },
+        {
+          label: "Schedules",
+          href: "/pages/admin/schedules",
+          icon: <FaCalendarAlt />,
+        },
+        {
+          label: "Follow-ups",
+          href: "/pages/admin/follow-ups",
+          icon: <FaUserClock />,
+        },
       ],
     },
     {
       label: "People",
       items: [
-        { label: "Patients & users", href: "/pages/admin/users", icon: <FaUsersCog /> },
-        { label: "Staff management", href: "/pages/admin/staff-mgmt", icon: <FaUserShield /> },
+        {
+          label: "Patients & users",
+          href: "/pages/admin/users",
+          icon: <FaUsersCog />,
+        },
+        {
+          label: "Staff management",
+          href: "/pages/admin/staff-mgmt",
+          icon: <FaUserShield />,
+        },
       ],
     },
     {
       label: "Oversight",
       items: [
-        { label: "AI review monitor", href: "/pages/admin/ai-logs", icon: <FaRobot /> },
-        { label: "Reports", href: "/pages/admin/reports", icon: <FaChartBar /> },
-        { label: "Audit logs", href: "/pages/admin/audit-logs", icon: <FaClipboardList /> },
-        { label: "Announcements", href: "/pages/admin/announcements", icon: <FaBullhorn /> },
+        {
+          label: "AI review monitor",
+          href: "/pages/admin/ai-logs",
+          icon: <FaRobot />,
+        },
+        {
+          label: "Reports",
+          href: "/pages/admin/reports",
+          icon: <FaChartBar />,
+        },
+        {
+          label: "Audit logs",
+          href: "/pages/admin/audit-logs",
+          icon: <FaClipboardList />,
+        },
+        {
+          label: "Announcements",
+          href: "/pages/admin/announcements",
+          icon: <FaBullhorn />,
+        },
       ],
     },
   ],
   staff: [
-    { items: [{ label: "Dashboard", href: "/pages/staff/dashboard", icon: <FaTachometerAlt /> }] },
+    {
+      items: [
+        {
+          label: "Dashboard",
+          href: "/pages/staff/dashboard",
+          icon: <FaTachometerAlt />,
+        },
+      ],
+    },
     {
       label: "Operations",
       items: [
-        { label: "Appointment requests", href: "/pages/staff/requests", icon: <FaClipboardList /> },
-        { label: "Appointments", href: "/pages/staff/appointments", icon: <FaCalendarCheck /> },
-        { label: "Schedules", href: "/pages/staff/schedules", icon: <FaCalendarAlt /> },
-        { label: "Follow-ups", href: "/pages/staff/follow-ups", icon: <FaUserClock /> },
-        { label: "History", href: "/pages/staff/history", icon: <FaHistory /> },
+        {
+          label: "Appointment requests",
+          href: "/pages/staff/requests",
+          icon: <FaClipboardList />,
+        },
+        {
+          label: "Appointments",
+          href: "/pages/staff/appointments",
+          icon: <FaCalendarCheck />,
+        },
+        {
+          label: "Schedules",
+          href: "/pages/staff/schedules",
+          icon: <FaCalendarAlt />,
+        },
+        {
+          label: "Follow-ups",
+          href: "/pages/staff/follow-ups",
+          icon: <FaUserClock />,
+        },
+        {
+          label: "History",
+          href: "/pages/staff/history",
+          icon: <FaHistory />,
+        },
       ],
     },
     {
       label: "Communication",
-      items: [{ label: "Announcements", href: "/pages/staff/announcements", icon: <FaBullhorn /> }],
+      items: [
+        {
+          label: "Announcements",
+          href: "/pages/staff/announcements",
+          icon: <FaBullhorn />,
+        },
+      ],
     },
   ],
   doctor: [
-    { items: [{ label: "Dashboard", href: "/pages/doctor/dashboard", icon: <FaTachometerAlt /> }] },
+    {
+      items: [
+        {
+          label: "Dashboard",
+          href: "/pages/doctor/dashboard",
+          icon: <FaTachometerAlt />,
+        },
+      ],
+    },
     {
       label: "Clinical work",
       items: [
-        { label: "Appointments", href: "/pages/doctor/appointments", icon: <FaCalendarCheck /> },
-        { label: "Follow-ups", href: "/pages/doctor/follow-ups", icon: <FaUserClock /> },
-        { label: "Patient records", href: "/pages/doctor/patient-records", icon: <FaNotesMedical /> },
-        { label: "AI analysis", href: "/pages/doctor/ai-analysis", icon: <FaRobot /> },
-        { label: "AI progress", href: "/pages/doctor/ai-progress", icon: <FaChartLine /> },
+        {
+          label: "Appointments",
+          href: "/pages/doctor/appointments",
+          icon: <FaCalendarCheck />,
+        },
+        {
+          label: "Follow-ups",
+          href: "/pages/doctor/follow-ups",
+          icon: <FaUserClock />,
+        },
+        {
+          label: "Patient records",
+          href: "/pages/doctor/patient-records",
+          icon: <FaNotesMedical />,
+        },
+        {
+          label: "AI clinical support",
+          href: "/pages/doctor/ai-analysis",
+          icon: <FaRobot />,
+        },
       ],
     },
     {
       label: "Communication",
-      items: [{ label: "Announcements", href: "/pages/doctor/announcements", icon: <FaBullhorn /> }],
+      items: [
+        {
+          label: "Announcements",
+          href: "/pages/doctor/announcements",
+          icon: <FaBullhorn />,
+        },
+      ],
     },
   ],
   patient: [
-    { items: [{ label: "Dashboard", href: "/pages/patient/dashboard", icon: <FaTachometerAlt /> }] },
+    {
+      items: [
+        {
+          label: "Dashboard",
+          href: "/pages/patient/dashboard",
+          icon: <FaTachometerAlt />,
+        },
+      ],
+    },
     {
       label: "My care",
       items: [
-        { label: "Book appointment", href: "/pages/patient/book", icon: <FaCalendarPlus /> },
-        { label: "Appointments", href: "/pages/patient/history", icon: <FaCalendarCheck /> },
-        { label: "Follow-ups", href: "/pages/patient/follow-ups", icon: <FaUserClock /> },
-        { label: "Medical records", href: "/pages/patient/records", icon: <FaFileMedicalAlt /> },
+        {
+          label: "Book appointment",
+          href: "/pages/patient/book",
+          icon: <FaCalendarPlus />,
+        },
+        {
+          label: "Appointments",
+          href: "/pages/patient/history",
+          icon: <FaCalendarCheck />,
+        },
+        {
+          label: "Follow-ups",
+          href: "/pages/patient/follow-ups",
+          icon: <FaUserClock />,
+        },
+        {
+          label: "Medical records",
+          href: "/pages/patient/records",
+          icon: <FaFileMedicalAlt />,
+        },
       ],
     },
     {
       label: "Clinic updates",
       items: [
-        { label: "Announcements", href: "/pages/patient/announcements", icon: <FaBullhorn /> },
+        {
+          label: "Announcements",
+          href: "/pages/patient/announcements",
+          icon: <FaBullhorn />,
+        },
       ],
     },
   ],
 };
 
-export const profileIcons: Record<Exclude<PortalRole, "admin">, ReactNode> = {
+export const profileIcons: Record<
+  Exclude<PortalRole, "admin">,
+  ReactNode
+> = {
   staff: <FaUserShield />,
   doctor: <FaUserMd />,
   patient: <FaUserMd />,

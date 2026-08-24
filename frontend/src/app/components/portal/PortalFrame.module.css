@@ -168,6 +168,30 @@
 .headerButton:hover,
 .mobileButton:hover { background: rgba(138,51,79,.1); color: var(--brand-primary-hover); }
 .mobileButton { display: none; }
+
+.aiModeSwitch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px;
+  border: 1px solid var(--portal-header-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+.aiModeLink {
+  padding: 7px 11px;
+  border-radius: 7px;
+  color: var(--portal-header-text);
+  font-size: .76rem;
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  opacity: .68;
+  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+.aiModeLink:hover { opacity: 1; background: rgba(138,51,79,.1); }
+.aiModeActive { background: rgba(138,51,79,.2); color: var(--portal-header-text); opacity: 1; }
+
 .content {
   min-width: 0;
   width: 100%;
@@ -175,9 +199,11 @@
   margin: 0 auto;
   padding: clamp(18px, 2vw, 26px) var(--content-padding-x);
 }
+.content[data-ai-workspace="true"] {
+  max-width: none;
+  padding: clamp(12px, 1.5vw, 20px) clamp(12px, 1.8vw, 24px);
+}
 
-/* Staff pages already use PageShell for their own spacing. Avoid applying a
-   second horizontal inset here, which made desktop operational pages too narrow. */
 .frame[data-portal-role="staff"] .content {
   max-width: none;
   padding: 0;
@@ -227,6 +253,8 @@
   }
   .mobileButton { display: grid; }
   .headerContext { flex: 1; }
+  .aiModeSwitch { margin-left: 0; }
+  .aiModeLink { padding-inline: 9px; }
   .overlay {
     position: fixed;
     inset: 0;
@@ -252,7 +280,14 @@
   .frame[data-portal-role="staff"] .content { padding: 0; }
 }
 
+@media (max-width: 640px) {
+  .aiModeSwitch { order: 3; width: 100%; justify-content: center; }
+  .header { height: auto; min-height: var(--portal-mobile-header-height); flex-wrap: wrap; padding-block: 7px; }
+  .content[data-ai-workspace="true"] { padding-top: 18px; }
+}
+
 @media (max-width: 520px) {
   .headerRole { display: none; }
   .header { gap: var(--space-2); }
+  .aiModeLink { flex: 1; text-align: center; }
 }
