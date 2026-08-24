@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -18,8 +19,84 @@ ALLOWED_FILENAME_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
+@dataclass(frozen=True)
+class NormalizedImage:
+    data: bytes
+    extension: str
+    content_type: str
+    width: int
+    height: int
+    source_format: str
+    metadata_stripped: bool = True
+
+
 def _bad_image(detail: str) -> HTTPException:
     return HTTPException(status_code=400, detail=detail)
+
+
+def _rgb_image(image: Image.Image) -> Image.Image:
+    if image.mode in {"RGBA", "LA"} or (
+        image.mode == "P" and "transparency" in image.info
+    ):
+        rgba = image.convert("RGBA")
+        background = Image.new("RGB", rgba.size, "white")
+        background.paste(rgba, mask=rgba.getchannel("A"))
+        return background
+    return image.convert("RGB")
+
+
+def normalize_image_for_analysis(data: bytes, extension: str) -> NormalizedImage:
+    """Apply EXIF orientation and re-encode without source metadata.
+
+    The image keeps its original dimensions/aspect ratio. This helper is not a
+    clinical image-quality classifier; it prepares a privacy-safe image asset for
+    storage and later inference stages.
+    """
+
+    normalized_extension = ".jpg" if extension.lower() == ".jpeg" else extension.lower()
+    expected = {
+        ".jpg": ("JPEG", "image/jpeg"),
+        ".png": ("PNG", "image/png"),
+        ".webp": ("WEBP", "image/webp"),
+    }.get(normalized_extension)
+    if expected is None:
+        raise _bad_image("Unsupported image format for analysis.")
+
+    try:
+        with Image.open(BytesIO(data)) as source:
+            source_format = (source.format or "").upper()
+            if source_format != expected[0]:
+                raise _bad_image("Image format changed after validation.")
+
+            source.load()
+            oriented = ImageOps.exif_transpose(source)
+            prepared = _rgb_image(oriented)
+            width, height = prepared.size
+
+            output = BytesIO()
+            if source_format == "JPEG":
+                prepared.save(output, format="JPEG", quality=95, subsampling=0)
+            elif source_format == "PNG":
+                prepared.save(output, format="PNG", compress_level=6)
+            else:
+                prepared.save(output, format="WEBP", quality=95, method=4)
+
+            normalized_bytes = output.getvalue()
+            if not normalized_bytes:
+                raise _bad_image("Image could not be prepared for analysis.")
+
+            return NormalizedImage(
+                data=normalized_bytes,
+                extension=normalized_extension,
+                content_type=expected[1],
+                width=width,
+                height=height,
+                source_format=source_format,
+            )
+    except HTTPException:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise _bad_image("Image file is invalid or corrupted.")
 
 
 async def read_and_validate_image(file: UploadFile) -> tuple[bytes, str, str]:

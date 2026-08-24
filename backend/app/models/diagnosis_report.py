@@ -13,6 +13,16 @@ class DiagnosisReport(Base):
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     skin_analysis_id = Column(Integer, ForeignKey("skin_analysis.id", ondelete="SET NULL"), nullable=True)
+    ai_analysis_run_id = Column(
+        Integer,
+        ForeignKey(
+            "ai_analysis_runs.id",
+            ondelete="SET NULL",
+            name="fk_diagnosis_reports_ai_analysis_run",
+        ),
+        nullable=True,
+        index=True,
+    )
 
     doctor_final_diagnosis = Column(Text, nullable=False)
     doctor_prescription = Column(Text, nullable=True)

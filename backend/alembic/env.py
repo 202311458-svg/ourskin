@@ -8,11 +8,15 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.db import Base
 from app.models import (  # noqa: F401
+    ai_analysis_run,
+    ai_image_asset,
     announcement,
     appointment,
     appointment_log,
     audit_log,
     clinic_unavailable_date,
+    condition_service_mapping,
+    dermatology_condition,
     diagnosis_report,
     doctor_schedule,
     doctor_service,

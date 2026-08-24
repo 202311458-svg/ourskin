@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.core.authorization import get_doctor_appointment_or_404
-from app.core.image_security import read_and_validate_image
+from app.core.image_security import normalize_image_for_analysis, read_and_validate_image
 from app.core.security import get_current_user
 from app.core.storage import delete_temp_file, save_temp_image, upload_skin_bytes_to_supabase
 from app.db import SessionLocal
@@ -75,8 +75,9 @@ async def analyze_skin_image_phase3(
     if existing_analysis:
         raise HTTPException(status_code=400, detail="AI analysis already exists for this consultation.")
 
-    file_bytes, extension, detected_content_type = await read_and_validate_image(file)
-    temp_file_path = save_temp_image(file_bytes, extension)
+    file_bytes, extension, _detected_content_type = await read_and_validate_image(file)
+    normalized_image = normalize_image_for_analysis(file_bytes, extension)
+    temp_file_path = save_temp_image(normalized_image.data, normalized_image.extension)
 
     try:
         from app.ml.predict_skin import predict_skin_condition
@@ -87,10 +88,10 @@ async def analyze_skin_image_phase3(
             raise HTTPException(status_code=400, detail="Appointment is missing a patient record.")
 
         storage_path = upload_skin_bytes_to_supabase(
-            file_bytes=file_bytes,
+            file_bytes=normalized_image.data,
             appointment_id=appointment_id,
-            filename=f"validated{extension}",
-            content_type=detected_content_type,
+            filename=f"sanitized{normalized_image.extension}",
+            content_type=normalized_image.content_type,
             patient_id=patient_id,
         )
 

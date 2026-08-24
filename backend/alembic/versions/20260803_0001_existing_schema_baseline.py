@@ -18,11 +18,15 @@ from app.db import Base
 # Import every model module so Base.metadata contains the complete application
 # schema when Alembic is run without importing the FastAPI application first.
 from app.models import (  # noqa: F401,E402
+    ai_analysis_run,
+    ai_image_asset,
     announcement,
     appointment,
     appointment_log,
     audit_log,
     clinic_unavailable_date,
+    condition_service_mapping,
+    dermatology_condition,
     diagnosis_report,
     doctor_schedule,
     doctor_service,
