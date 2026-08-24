@@ -55,6 +55,7 @@ class OpenAIVisionAnalysisProvider:
             "symptoms": ", ".join(context.symptoms) if context.symptoms else None,
             "progression": context.progression,
             "appointment_concern": context.appointment_concern,
+            "doctor_observation": context.doctor_observation,
             "booked_service": context.booked_service_name,
         }
         return "\n".join(f"{key}: {value or 'not provided'}" for key, value in values.items())

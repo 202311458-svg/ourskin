@@ -2,2774 +2,729 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import coreStyles from "@/app/styles/ai-core.module.css";
-import resultStyles from "@/app/styles/ai-result.module.css";
-import assessmentStyles from "@/app/styles/ai-assessment.module.css";
-import historyStyles from "@/app/styles/ai-history.module.css";
-import { API_BASE_URL } from "@/lib/api";
+import styles from "@/app/styles/ai-clinical.module.css";
 import {
-  analyzeAppointmentSkin,
-  getAppointmentAnalyses,
-  getAppointmentDiagnosisReport,
-  getDoctorAppointments,
   createDoctorFollowUp,
-  getDoctorPatientHistory,
+  getDoctorAppointments,
   getDoctorPatients,
-  type Analysis,
-  type Appointment,
-  type DiagnosisReport,
-  type DoctorPatientHistoryResponse,
   type DoctorPatientListItem,
 } from "@/lib/doctor-api";
+import {
+  analyzeClinicalAppointment,
+  completeClinicalDoctorAssessment,
+  getClinicalAppointmentAnalyses,
+  getClinicalDiagnosisReport,
+  type ClinicalAIAnalysis,
+  type ClinicalAnalysisInput,
+  type M4Appointment,
+  type M4DiagnosisReport,
+  type MedicationSuggestion,
+  type PregnancyStatus,
+} from "@/lib/doctor-ai-api";
 
-type WorkspaceStage = "scan" | "reports" | "history";
-
-type DoctorPrescriptionDraft = {
+type PrescriptionDraft = {
   medication: string;
   usage: string;
   reason: string;
 };
 
-type DoctorAssessmentForm = {
+type AssessmentDraft = {
   finalDiagnosis: string;
   doctorNotes: string;
-  prescriptionItems: DoctorPrescriptionDraft[];
+  prescriptionItems: PrescriptionDraft[];
   followUpPlan: string;
 };
 
-type OptionalFollowUpForm = {
-  followUpDate: string;
-  reason: string;
-  notes: string;
+type VisitRecord = {
+  appointment: M4Appointment;
+  analyses: ClinicalAIAnalysis[];
+  report: M4DiagnosisReport | null;
+  linkedAnalysis: ClinicalAIAnalysis | null;
 };
 
-type TextAssessmentField = "finalDiagnosis" | "doctorNotes" | "followUpPlan";
-type AiSuggestionField = "finalDiagnosis" | "followUpPlan";
-
-type PatientVisitHistoryRecord = {
-  appointment: Appointment;
-  analyses: Analysis[];
-  report: DiagnosisReport | null;
-  linked_analysis?: Analysis | null;
+const emptyContext: ClinicalAnalysisInput = {
+  bodySite: "",
+  duration: "",
+  symptoms: "",
+  progression: "",
+  doctorObservation: "",
+  knownAllergies: "",
+  currentMedications: "",
+  pregnancyStatus: "UNKNOWN",
+  medicationContextReviewed: false,
 };
 
-type CompletedReportHistoryItem =
-  DoctorPatientHistoryResponse["history"][number] & {
-    report: DiagnosisReport;
-  };
-
-type ParsedPrescriptionItem = {
-  medication: string;
-  usage: string;
-  reason: string;
-};
-
-const emptyPrescriptionItem: DoctorPrescriptionDraft = {
-  medication: "",
-  usage: "",
-  reason: "",
-};
-
-const emptyAssessmentForm: DoctorAssessmentForm = {
+const emptyAssessment: AssessmentDraft = {
   finalDiagnosis: "",
   doctorNotes: "",
-  prescriptionItems: [{ ...emptyPrescriptionItem }],
+  prescriptionItems: [{ medication: "", usage: "", reason: "" }],
   followUpPlan: "",
 };
 
-const emptyOptionalFollowUpForm: OptionalFollowUpForm = {
-  followUpDate: "",
-  reason: "",
-  notes: "",
+const blockedStatus = (status?: string | null) => {
+  const value = (status || "").toLowerCase();
+  return value === "declined" || value === "cancelled";
 };
 
-const sortAppointmentsDesc = (items: Appointment[]) => {
-  return [...items].sort((a, b) => {
-    const aDate = new Date(`${a.date}T${a.time || "00:00:00"}`).getTime();
-    const bDate = new Date(`${b.date}T${b.time || "00:00:00"}`).getTime();
+const appointmentDateTime = (appointment: M4Appointment) =>
+  new Date(`${appointment.date}T${appointment.time || "00:00:00"}`);
 
-    return bDate - aDate;
-  });
-};
-
-const getAppointmentDateTime = (appointment: Appointment) => {
-  return new Date(`${appointment.date}T${appointment.time || "00:00:00"}`);
-};
-
-const isBlockedAppointmentStatus = (status?: string | null) => {
-  const normalized = (status || "").trim().toLowerCase();
-
-  return normalized === "declined" || normalized === "cancelled";
-};
-
-const isVisibleAiAppointment = (appointment: Appointment) => {
-  return (
-    Boolean(appointment.patient_id) &&
-    !isBlockedAppointmentStatus(appointment.status)
-  );
-};
-
-const isAiAvailableForAppointment = (appointment: Appointment | null) => {
-  if (!appointment) return false;
-
-  const status = appointment.status?.trim().toLowerCase();
-
-  if (status === "completed") return true;
-  if (status !== "approved") return false;
-
-  const appointmentDateTime = getAppointmentDateTime(appointment);
-  const now = new Date();
-
-  return appointmentDateTime <= now;
-};
-
-const formatAppointmentSchedule = (appointment: Appointment) => {
-  const appointmentDateTime = getAppointmentDateTime(appointment);
-
-  if (Number.isNaN(appointmentDateTime.getTime())) {
-    return `${appointment.date} at ${appointment.time || "the scheduled time"}`;
-  }
-
-  return appointmentDateTime.toLocaleString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
-
-const getAiUnavailableMessage = (appointment: Appointment | null) => {
-  if (!appointment) {
-    return "Please select a valid consultation before running an AI skin analysis.";
-  }
-
-  const status = appointment.status?.trim().toLowerCase();
-
-  if (status === "pending") {
-    return "This appointment is still pending approval. AI skin analysis will become available once the consultation is approved and the scheduled time has started.";
-  }
-
-  if (status === "declined" || status === "cancelled") {
-    return "AI skin analysis is not available for declined or cancelled appointments.";
-  }
-
-  if (status === "approved" && !isAiAvailableForAppointment(appointment)) {
-    return `This consultation is scheduled for ${formatAppointmentSchedule(
-      appointment
-    )}. AI skin analysis can only be used during or after the consultation, once the doctor has seen the patient's concern.`;
-  }
-
-  return "";
-};
-
-const buildEmptyPatientHistory = (
-  patientItem: DoctorPatientListItem | null
-): DoctorPatientHistoryResponse | null => {
-  if (!patientItem) return null;
-
-  return {
-    patient: patientItem.patient,
-    total_reports: patientItem.total_reports || 0,
-    history: [],
-  };
-};
-
-const buildPatientListFromAppointments = (
-  reportPatients: DoctorPatientListItem[],
-  appointments: Appointment[]
-): DoctorPatientListItem[] => {
-  const map = new Map<number, DoctorPatientListItem>();
-
-  reportPatients.forEach((item) => {
-    if (!item.patient?.id) return;
-
-    map.set(item.patient.id, {
-      ...item,
-      latest_report: item.latest_report || null,
-      latest_appointment: item.latest_appointment || null,
-      total_reports: item.total_reports || 0,
-    });
-  });
-
-  const validAppointments = appointments.filter(isVisibleAiAppointment);
-  const sortedAppointments = sortAppointmentsDesc(validAppointments);
-
-  sortedAppointments.forEach((appt) => {
-    if (!appt.patient_id) return;
-
-    const existing = map.get(appt.patient_id);
-
-    if (!existing) {
-      map.set(appt.patient_id, {
-        patient: {
-          id: appt.patient_id,
-          name: appt.patient_name || "Unnamed patient",
-          email: appt.patient_email || null,
-        },
-        latest_report: null,
-        latest_appointment: appt,
-        total_reports: 0,
-      });
-
-      return;
-    }
-
-    if (!existing.latest_appointment) {
-      map.set(appt.patient_id, {
-        ...existing,
-        latest_appointment: appt,
-      });
-    }
-  });
-
-  return Array.from(map.values()).sort((a, b) => {
-    const aDate = a.latest_appointment
-      ? new Date(
-          `${a.latest_appointment.date}T${
-            a.latest_appointment.time || "00:00:00"
-          }`
-        ).getTime()
-      : 0;
-
-    const bDate = b.latest_appointment
-      ? new Date(
-          `${b.latest_appointment.date}T${
-            b.latest_appointment.time || "00:00:00"
-          }`
-        ).getTime()
-      : 0;
-
-    return bDate - aDate;
-  });
-};
-
-const pickBestTargetAppointment = (items: Appointment[]) => {
-  const visibleItems = sortAppointmentsDesc(
-    items.filter((item) => isVisibleAiAppointment(item))
-  );
-
-  if (visibleItems.length === 0) return null;
-
-  const readyApproved = visibleItems.find(
-    (item) => item.status === "Approved" && isAiAvailableForAppointment(item)
-  );
-
-  if (readyApproved) return readyApproved;
-
-  const completed = visibleItems.find((item) => item.status === "Completed");
-
-  if (completed) return completed;
-
-  return visibleItems[0];
-};
-
-const buildImageUrl = (path?: string | null): string | undefined => {
-  if (!path) return undefined;
-
-  const cleanPath = path.replace(/\\/g, "/").trim();
-
-  if (!cleanPath) return undefined;
-
-  if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-    return cleanPath;
-  }
-
-  if (cleanPath.startsWith("/uploads") || cleanPath.startsWith("uploads")) {
-    const normalizedBackendPath = cleanPath.startsWith("/")
-      ? cleanPath
-      : `/${cleanPath}`;
-
-    return `${API_BASE_URL}${normalizedBackendPath}`;
-  }
-
-  return undefined;
+const canAnalyzeAppointment = (appointment: M4Appointment | null) => {
+  if (!appointment || appointment.status !== "Approved") return false;
+  const scheduled = appointmentDateTime(appointment);
+  return !Number.isNaN(scheduled.getTime()) && scheduled <= new Date();
 };
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return "—";
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 };
 
-const getTodayInputDate = () => {
-  const today = new Date();
-  const timezoneOffset = today.getTimezoneOffset() * 60000;
+const prettyToken = (value?: string | null) =>
+  (value || "")
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
-};
-
-const normalizeConfidence = (value?: number | null) => {
-  if (typeof value !== "number") return null;
-
-  return value <= 1 ? Math.round(value * 100) : Math.round(value);
-};
-
-const splitMultilineText = (value?: string | null) => {
+const normalizeStringList = (value?: string[] | string | null) => {
   if (!value) return [];
-
+  if (Array.isArray(value)) return value.filter(Boolean);
   return value
     .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => item.replace(/^-\s*/, ""));
-};
-
-const cleanPrescriptionText = (value?: string | null) => {
-  return (value || "")
-    .replace(/\r/g, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .trim();
-};
-
-const normalizePrescriptionLine = (value: string) => {
-  return value.replace(/^[-•]\s*/, "").replace(/\s+/g, " ").trim();
-};
-
-const stripPrescriptionLabel = (value: string, label: string) => {
-  const expression = new RegExp(`^${label}:\\s*`, "i");
-  return value.replace(expression, "").trim();
-};
-
-const splitPrescriptionList = (value: string) => {
-  return value
-    .split(/\n|;/)
-    .map((item) => normalizePrescriptionLine(item))
-    .filter(Boolean)
-    .map((item) => stripPrescriptionLabel(item, "Medication"));
-};
-
-const getLabelIndex = (text: string, label: string) => {
-  const match = text.match(new RegExp(`\\b${label}:\\s*`, "i"));
-  return match?.index ?? -1;
-};
-
-const extractPrescriptionSection = (text: string, label: string) => {
-  const labels = ["Medication", "Usage", "Reason"];
-  const nextLabels = labels.filter(
-    (item) => item.toLowerCase() !== label.toLowerCase()
-  );
-  const nextPattern = nextLabels.map((item) => `${item}:`).join("|");
-  const expression = new RegExp(
-    `${label}:\\s*([\\s\\S]*?)(?=\\s+(?:${nextPattern})|$)`,
-    "i"
-  );
-
-  return text.match(expression)?.[1]?.trim() || "";
-};
-
-const parsePipePrescriptionLine = (
-  rawLine: string,
-  index: number
-): ParsedPrescriptionItem => {
-  const line = normalizePrescriptionLine(rawLine);
-  const parts = line
-    .split("|")
-    .map((part) => normalizePrescriptionLine(part))
+    .map((item) => item.replace(/^[-•]\s*/, "").trim())
     .filter(Boolean);
-
-  let medication = stripPrescriptionLabel(parts[0] || "", "Medication");
-  let usage = "";
-  let reason = "";
-
-  parts.slice(1).forEach((part) => {
-    if (/^usage:/i.test(part)) {
-      usage = stripPrescriptionLabel(part, "Usage");
-    } else if (/^reason:/i.test(part)) {
-      reason = stripPrescriptionLabel(part, "Reason");
-    }
-  });
-
-  if (!usage && !reason && line) {
-    const usageIndex = getLabelIndex(line, "Usage");
-    const reasonIndex = getLabelIndex(line, "Reason");
-    const firstLabelIndex = [usageIndex, reasonIndex]
-      .filter((value) => value >= 0)
-      .sort((a, b) => a - b)[0];
-
-    if (firstLabelIndex !== undefined) {
-      medication = stripPrescriptionLabel(
-        line.slice(0, firstLabelIndex),
-        "Medication"
-      );
-
-      if (usageIndex >= 0) {
-        const usageMatch = line.slice(usageIndex).match(/^Usage:\s*/i);
-        const usageStart = usageIndex + (usageMatch ? usageMatch[0].length : 0);
-        const usageEnd = reasonIndex > usageIndex ? reasonIndex : line.length;
-        usage = line.slice(usageStart, usageEnd).trim();
-      }
-
-      if (reasonIndex >= 0) {
-        const reasonMatch = line.slice(reasonIndex).match(/^Reason:\s*/i);
-        const reasonStart =
-          reasonIndex + (reasonMatch ? reasonMatch[0].length : 0);
-        reason = line.slice(reasonStart).trim();
-      }
-    }
-  }
-
-  return {
-    medication: medication || `Medication ${index + 1}`,
-    usage,
-    reason,
-  };
 };
 
-const mapDetailsByMedication = (detailText: string, medications: string[]) => {
-  const map = new Map<string, string>();
-  const details = splitPrescriptionList(detailText);
-
-  details.forEach((detail, index) => {
-    const colonIndex = detail.indexOf(":");
-
-    if (colonIndex > 0) {
-      const possibleMedication = detail.slice(0, colonIndex).trim();
-      const value = detail.slice(colonIndex + 1).trim();
-      const matchedMedication = medications.find(
-        (medication) =>
-          medication.toLowerCase() === possibleMedication.toLowerCase()
-      );
-
-      if (matchedMedication && value) {
-        map.set(matchedMedication, value);
-        return;
-      }
-    }
-
-    const medicationByOrder = medications[index];
-
-    if (medicationByOrder && detail) {
-      map.set(medicationByOrder, detail);
-    }
-  });
-
-  return map;
-};
-
-const parsePrescriptionEntries = (
-  value?: string | null
-): ParsedPrescriptionItem[] => {
-  const text = cleanPrescriptionText(value);
-
-  if (!text) return [];
-
-  const normalizedLines = text
-    .split(/\n+/)
-    .map((line) => normalizePrescriptionLine(line))
-    .filter(Boolean);
-
-  const looksLikeAiItemRows =
-    normalizedLines.length > 0 &&
-    normalizedLines.every(
-      (line) =>
-        line.includes("|") ||
-        (!/^Medication:/i.test(line) &&
-          (/\bUsage:/i.test(line) || /\bReason:/i.test(line)))
-    );
-
-  if (looksLikeAiItemRows) {
-    return normalizedLines.map((line, index) =>
-      parsePipePrescriptionLine(line, index)
-    );
-  }
-
-  const medicationSection = extractPrescriptionSection(text, "Medication");
-  const usageSection = extractPrescriptionSection(text, "Usage");
-  const reasonSection = extractPrescriptionSection(text, "Reason");
-
-  if (medicationSection || usageSection || reasonSection) {
-    const medications = splitPrescriptionList(medicationSection || text);
-    const usageMap = mapDetailsByMedication(usageSection, medications);
-    const reasonMap = mapDetailsByMedication(reasonSection, medications);
-
-    return medications.map((medication, index) => ({
-      medication: medication || `Medication ${index + 1}`,
-      usage:
-        usageMap.get(medication) ||
-        (medications.length === 1 ? usageSection : ""),
-      reason:
-        reasonMap.get(medication) ||
-        (medications.length === 1 ? reasonSection : ""),
-    }));
-  }
-
-  return normalizedLines.map((line, index) =>
-    parsePipePrescriptionLine(line, index)
+const analysisTitle = (analysis: ClinicalAIAnalysis | null) => {
+  if (!analysis) return "No AI result";
+  if (analysis.kind === "legacy") return analysis.condition || "Legacy AI result";
+  return (
+    analysis.primary_condition_display ||
+    prettyToken(analysis.status) ||
+    "AI decision-support result"
   );
 };
 
-const parsePrescriptionSuggestions = (value?: string | null) => {
-  return parsePrescriptionEntries(value);
+const chooseVisit = (appointments: M4Appointment[]) => {
+  const visible = appointments
+    .filter((item) => item.patient_id && !blockedStatus(item.status))
+    .sort((a, b) => appointmentDateTime(b).getTime() - appointmentDateTime(a).getTime());
+  return (
+    visible.find((item) => canAnalyzeAppointment(item)) ||
+    visible.find((item) => item.status === "Completed") ||
+    visible[0] ||
+    null
+  );
 };
 
-const buildPrescriptionText = (payload: DoctorAssessmentForm) => {
-  return payload.prescriptionItems
-    .map((item) => {
-      const medication = item.medication.trim();
-      const usage = item.usage.trim();
-      const reason = item.reason.trim();
-
-      if (!medication && !usage && !reason) return "";
-
-      return [
-        medication ? `Medication: ${medication}` : "Medication: —",
-        usage ? `Usage: ${usage}` : "Usage: —",
-        reason ? `Reason: ${reason}` : "Reason: —",
-      ].join(" | ");
-    })
-    .filter(Boolean)
-    .join("\n");
-};
-
-const getStatusBadgeClass = (status: string | undefined) => {
-  switch ((status || "").trim()) {
-    case "Reviewed":
-    case "Completed":
-      return `${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`;
-    case "Approved":
-      return `${coreStyles.statusBadge} ${coreStyles.badgeApproved}`;
-    case "Pending Review":
-    case "Pending":
-      return `${coreStyles.statusBadge} ${coreStyles.badgePending}`;
-    case "Declined":
-    case "Cancelled":
-      return `${coreStyles.statusBadge} ${coreStyles.badgeUrgent}`;
-    default:
-      return `${coreStyles.statusBadge} ${coreStyles.badgePending}`;
-  }
-};
-
-const saveDoctorAssessment = async (
-  appointmentId: number,
-  analysisId: number,
-  payload: DoctorAssessmentForm,
-  nextVisitDate?: string | null
+const buildPatientList = (
+  reportPatients: DoctorPatientListItem[],
+  appointments: M4Appointment[]
 ) => {
-  const token = localStorage.getItem("token");
+  const map = new Map<number, DoctorPatientListItem>();
+  reportPatients.forEach((item) => {
+    if (item.patient?.id) map.set(item.patient.id, item);
+  });
 
-  const response = await fetch(
-    `${API_BASE_URL}/doctor/appointments/${appointmentId}/complete-with-report`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        skin_analysis_id: analysisId,
-        doctor_final_diagnosis: payload.finalDiagnosis.trim(),
-        doctor_prescription: buildPrescriptionText(payload),
-        after_appointment_notes: payload.doctorNotes.trim(),
-        follow_up_plan: payload.followUpPlan.trim(),
-        next_visit_date: nextVisitDate || null,
-      }),
-    }
+  [...appointments]
+    .filter((item) => item.patient_id && !blockedStatus(item.status))
+    .sort((a, b) => appointmentDateTime(b).getTime() - appointmentDateTime(a).getTime())
+    .forEach((appointment) => {
+      if (!appointment.patient_id) return;
+      const existing = map.get(appointment.patient_id);
+      if (!existing) {
+        map.set(appointment.patient_id, {
+          patient: {
+            id: appointment.patient_id,
+            name: appointment.patient_name,
+            email: appointment.patient_email,
+          },
+          latest_report: null,
+          latest_appointment: appointment,
+          total_reports: 0,
+        });
+      } else if (!existing.latest_appointment) {
+        map.set(appointment.patient_id, {
+          ...existing,
+          latest_appointment: appointment,
+        });
+      }
+    });
+
+  return Array.from(map.values()).sort((a, b) =>
+    (a.patient.name || "").localeCompare(b.patient.name || "")
   );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-
-    throw new Error(errorText || "Failed to save doctor clinical assessment.");
-  }
-
-  return response.json().catch(() => null);
 };
 
 function DoctorAiAnalysisContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [initialSelection] = useState(() => {
-    const patientIdParam = searchParams.get("patient_id");
-    const appointmentIdParam = searchParams.get("appointment_id");
-
-    const patientId = patientIdParam ? Number(patientIdParam) : null;
-    const appointmentId = appointmentIdParam ? Number(appointmentIdParam) : null;
-
-    return {
-      patientId: patientId && !Number.isNaN(patientId) ? patientId : null,
-      appointmentId:
-        appointmentId && !Number.isNaN(appointmentId) ? appointmentId : null,
-    };
-  });
+  const initialPatientId = Number(searchParams.get("patient_id") || 0) || null;
+  const initialAppointmentId = Number(searchParams.get("appointment_id") || 0) || null;
 
   const [patients, setPatients] = useState<DoctorPatientListItem[]>([]);
-  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
-    null
-  );
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<
-    number | null
-  >(null);
-  const [patientHistory, setPatientHistory] =
-    useState<DoctorPatientHistoryResponse | null>(null);
-  const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [patientVisitRecords, setPatientVisitRecords] = useState<
-    PatientVisitHistoryRecord[]
-  >([]);
-
-  const [loading, setLoading] = useState(true);
-  const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
-  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
-  const [loadingVisitRecords, setLoadingVisitRecords] = useState(false);
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [savingAssessment, setSavingAssessment] = useState(false);
-
+  const [appointments, setAppointments] = useState<M4Appointment[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(initialPatientId);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(initialAppointmentId);
+  const [analyses, setAnalyses] = useState<ClinicalAIAnalysis[]>([]);
+  const [history, setHistory] = useState<VisitRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<"workspace" | "history">("workspace");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeStage, setActiveStage] = useState<WorkspaceStage>("scan");
-  const [selectedAiModal, setSelectedAiModal] = useState<{
-    title: string;
-    analysis: Analysis;
-  } | null>(null);
-
-  const [assessmentForm, setAssessmentForm] =
-    useState<DoctorAssessmentForm>(emptyAssessmentForm);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [context, setContext] = useState<ClinicalAnalysisInput>(emptyContext);
+  const [assessment, setAssessment] = useState<AssessmentDraft>(emptyAssessment);
   const [scheduleFollowUp, setScheduleFollowUp] = useState(false);
-  const [optionalFollowUpForm, setOptionalFollowUpForm] =
-    useState<OptionalFollowUpForm>(emptyOptionalFollowUpForm);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpReason, setFollowUpReason] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const refreshBase = async () => {
+    const [patientData, appointmentData] = await Promise.all([
+      getDoctorPatients(),
+      getDoctorAppointments("All"),
+    ]);
+    const nextAppointments = (Array.isArray(appointmentData) ? appointmentData : []) as M4Appointment[];
+    setAppointments(nextAppointments);
+    setPatients(buildPatientList(Array.isArray(patientData) ? patientData : [], nextAppointments));
+    return nextAppointments;
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-
     if (!token || role !== "doctor") {
       router.push("/");
       return;
     }
 
-    const loadBaseData = async () => {
-      try {
-        setLoading(true);
-
-        const [patientsData, appointmentsData] = await Promise.all([
-          getDoctorPatients(),
-          getDoctorAppointments("All"),
-        ]);
-
-        const reportPatientList = Array.isArray(patientsData)
-          ? patientsData
-          : [];
-        const appointmentList = Array.isArray(appointmentsData)
-          ? appointmentsData
-          : [];
-
-        const patientList = buildPatientListFromAppointments(
-          reportPatientList,
-          appointmentList
-        );
-
-        setPatients(patientList);
-        setAllAppointments(appointmentList);
-
-        const nextPatientId = initialSelection.patientId;
-
-        if (
-          !nextPatientId ||
-          !patientList.some((item) => item.patient.id === nextPatientId)
-        ) {
-          setSelectedPatientId(null);
-          setSelectedAppointmentId(null);
-          return;
+    refreshBase()
+      .then((nextAppointments) => {
+        if (selectedPatientId) {
+          const patientVisits = nextAppointments.filter(
+            (item) => item.patient_id === selectedPatientId && !blockedStatus(item.status)
+          );
+          const requested = patientVisits.find((item) => item.id === selectedAppointmentId);
+          const fallback = requested || chooseVisit(patientVisits);
+          setSelectedAppointmentId(fallback?.id || null);
         }
-
-        setSelectedPatientId(nextPatientId);
-
-        const matchingAppointments = appointmentList.filter(
-          (appt) =>
-            appt.patient_id === nextPatientId && isVisibleAiAppointment(appt)
-        );
-
-        if (
-          initialSelection.appointmentId &&
-          matchingAppointments.some(
-            (appt) => appt.id === initialSelection.appointmentId
-          )
-        ) {
-          setSelectedAppointmentId(initialSelection.appointmentId);
-          return;
-        }
-
-        const best = pickBestTargetAppointment(matchingAppointments);
-        setSelectedAppointmentId(best ? best.id : null);
-      } catch (error) {
-        console.error("Failed to load AI analysis base data:", error);
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Failed to load AI analysis base data."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadBaseData();
-  }, [router, initialSelection]);
+      })
+      .catch((error) =>
+        setNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to load doctor AI workspace." })
+      )
+      .finally(() => setLoading(false));
+    // Initial selection is intentionally read once from the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   useEffect(() => {
-    if (!selectedPatientId) {
-      setPatientHistory(null);
+    if (!selectedFile) {
+      setPreviewUrl(null);
       return;
     }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
 
-    const selectedPatientFallback =
-      patients.find((item) => item.patient.id === selectedPatientId) || null;
+  const selectedPatient = useMemo(
+    () => patients.find((item) => item.patient.id === selectedPatientId) || null,
+    [patients, selectedPatientId]
+  );
 
-    const emptyHistory = buildEmptyPatientHistory(selectedPatientFallback);
+  const patientVisits = useMemo(
+    () =>
+      appointments
+        .filter((item) => item.patient_id === selectedPatientId && !blockedStatus(item.status))
+        .sort((a, b) => appointmentDateTime(b).getTime() - appointmentDateTime(a).getTime()),
+    [appointments, selectedPatientId]
+  );
 
-    const loadPatientHistory = async () => {
-      try {
-        setLoadingPatientHistory(true);
+  const selectedAppointment = useMemo(
+    () => patientVisits.find((item) => item.id === selectedAppointmentId) || null,
+    [patientVisits, selectedAppointmentId]
+  );
 
-        const data = await getDoctorPatientHistory(selectedPatientId);
-        setPatientHistory(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-
-        if (message && message !== "Patient not found") {
-          console.warn("Patient history unavailable:", message);
-        }
-
-        setPatientHistory(emptyHistory);
-      } finally {
-        setLoadingPatientHistory(false);
-      }
-    };
-
-    loadPatientHistory();
-  }, [selectedPatientId, patients]);
-
-  useEffect(() => {
-    if (!selectedAppointmentId) {
-      setAnalyses([]);
-      return;
-    }
-
-    const loadAppointmentAnalyses = async () => {
-      try {
-        setLoadingAnalyses(true);
-
-        const data = await getAppointmentAnalyses(selectedAppointmentId);
-        setAnalyses(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to load appointment analyses:", error);
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Failed to load appointment analyses."
-        );
-        setAnalyses([]);
-      } finally {
-        setLoadingAnalyses(false);
-      }
-    };
-
-    loadAppointmentAnalyses();
-  }, [selectedAppointmentId]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (selectedPatientId) {
-      params.set("patient_id", String(selectedPatientId));
-    }
-
-    if (selectedAppointmentId) {
-      params.set("appointment_id", String(selectedAppointmentId));
-    }
-
-    const query = params.toString();
-
-    router.replace(
-      query
-        ? `/pages/doctor/ai-analysis?${query}`
-        : `/pages/doctor/ai-analysis`
-    );
-  }, [router, selectedPatientId, selectedAppointmentId]);
-
-  const patientAppointmentsMap = useMemo(() => {
-    const map = new Map<number, Appointment[]>();
-
-    allAppointments.forEach((appt) => {
-      if (!appt.patient_id) return;
-
-      const current = map.get(appt.patient_id) || [];
-      current.push(appt);
-      map.set(appt.patient_id, current);
-    });
-
-    map.forEach((value, key) => {
-      map.set(key, sortAppointmentsDesc(value));
-    });
-
-    return map;
-  }, [allAppointments]);
+  const latestAnalysis = useMemo(
+    () =>
+      [...analyses].sort(
+        (a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime()
+      )[0] || null,
+    [analyses]
+  );
 
   const filteredPatients = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-
     if (!keyword) return patients;
-
-    return patients.filter((item) => {
-      const name = item.patient.name?.toLowerCase() || "";
-      const email = item.patient.email?.toLowerCase() || "";
-
-      return name.includes(keyword) || email.includes(keyword);
-    });
+    return patients.filter((item) =>
+      `${item.patient.name || ""} ${item.patient.email || ""}`.toLowerCase().includes(keyword)
+    );
   }, [patients, searchTerm]);
 
-  const selectedPatient = useMemo(() => {
-    return patients.find((item) => item.patient.id === selectedPatientId) || null;
-  }, [patients, selectedPatientId]);
-
-  const selectedPatientEmptyHistory = useMemo(() => {
-    return buildEmptyPatientHistory(selectedPatient);
-  }, [selectedPatient]);
-
-  const selectedPatientAllVisits = useMemo(() => {
-    if (!selectedPatientId) return [];
-
-    return patientAppointmentsMap.get(selectedPatientId) || [];
-  }, [patientAppointmentsMap, selectedPatientId]);
-
-  const selectedPatientValidVisits = useMemo(() => {
-    return selectedPatientAllVisits.filter(isVisibleAiAppointment);
-  }, [selectedPatientAllVisits]);
-
-  useEffect(() => {
-    if (!selectedPatientId) {
-      setPatientVisitRecords([]);
+  const loadAnalyses = async (appointmentId: number | null) => {
+    if (!appointmentId) {
+      setAnalyses([]);
       return;
     }
+    setLoadingAnalyses(true);
+    try {
+      const data = await getClinicalAppointmentAnalyses(appointmentId);
+      setAnalyses(Array.isArray(data) ? data : []);
+    } finally {
+      setLoadingAnalyses(false);
+    }
+  };
 
-    const patientVisits = (
-      patientAppointmentsMap.get(selectedPatientId) || []
-    ).filter(isVisibleAiAppointment);
-
-    if (patientVisits.length === 0) {
-      setPatientVisitRecords([]);
+  const loadHistory = async (patientId: number | null, sourceAppointments = appointments) => {
+    if (!patientId) {
+      setHistory([]);
       return;
     }
-
-    let cancelled = false;
-
-    const loadPatientVisitRecords = async () => {
-      try {
-        setLoadingVisitRecords(true);
-
-        const records = await Promise.all(
-          patientVisits.map(async (appointment) => {
-            const [analysisResult, reportResult] = await Promise.allSettled([
-              getAppointmentAnalyses(appointment.id),
-              getAppointmentDiagnosisReport(appointment.id),
-            ]);
-
-            const appointmentAnalyses =
-              analysisResult.status === "fulfilled" &&
-              Array.isArray(analysisResult.value)
-                ? analysisResult.value
-                : [];
-
-            const reportResponse =
-              reportResult.status === "fulfilled" ? reportResult.value : null;
-
-            return {
-              appointment,
-              analyses: appointmentAnalyses,
-              report: reportResponse?.report || null,
-              linked_analysis: reportResponse?.linked_analysis || null,
-            };
-          })
-        );
-
-        if (!cancelled) {
-          setPatientVisitRecords(
-            records.sort((a, b) => {
-              const aDate = getAppointmentDateTime(a.appointment).getTime();
-              const bDate = getAppointmentDateTime(b.appointment).getTime();
-
-              return bDate - aDate;
-            })
-          );
-        }
-      } catch (error) {
-        console.warn("Failed to load full patient visit history:", error);
-
-        if (!cancelled) {
-          setPatientVisitRecords([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingVisitRecords(false);
-        }
-      }
-    };
-
-    loadPatientVisitRecords();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedPatientId, patientAppointmentsMap]);
-
-  const targetAppointment = useMemo(() => {
-    return (
-      selectedPatientValidVisits.find(
-        (appt) => appt.id === selectedAppointmentId
-      ) || null
+    const visits = sourceAppointments.filter(
+      (item) => item.patient_id === patientId && !blockedStatus(item.status)
     );
-  }, [selectedPatientValidVisits, selectedAppointmentId]);
-
-  const sortedAnalyses = useMemo(() => {
-    return [...analyses].sort((a, b) => {
-      const aDate = new Date(a.created_at || "").getTime();
-      const bDate = new Date(b.created_at || "").getTime();
-
-      return bDate - aDate;
-    });
-  }, [analyses]);
-
-  const latestAnalysis = useMemo(() => {
-    return sortedAnalyses.length > 0 ? sortedAnalyses[0] : null;
-  }, [sortedAnalyses]);
-
-  const sortedCompletedReports = useMemo(() => {
-    if (!patientHistory?.history) return [];
-
-    return patientHistory.history
-      .filter((item): item is CompletedReportHistoryItem => Boolean(item.report))
-      .sort((a, b) => {
-        const aDate = new Date(
-          `${a.appointment?.date || ""}T${
-            a.appointment?.time || "00:00:00"
-          }`
-        ).getTime();
-
-        const bDate = new Date(
-          `${b.appointment?.date || ""}T${
-            b.appointment?.time || "00:00:00"
-          }`
-        ).getTime();
-
-        return bDate - aDate;
-      });
-  }, [patientHistory]);
-
-  const selectedVisitReport = useMemo(() => {
-    if (!selectedAppointmentId) return null;
-
-    return (
-      sortedCompletedReports.find(
-        (item) => item.appointment?.id === selectedAppointmentId
-      ) || null
-    );
-  }, [sortedCompletedReports, selectedAppointmentId]);
-
-  const sortedPatientVisitHistory = useMemo(() => {
-    const reportMap = new Map<number, DiagnosisReport>();
-    const linkedAnalysisMap = new Map<number, Analysis>();
-
-    patientHistory?.history?.forEach((item) => {
-      if (item.appointment?.id && item.report) {
-        reportMap.set(item.appointment.id, item.report);
-      }
-
-      if (item.appointment?.id && item.linked_analysis) {
-        linkedAnalysisMap.set(item.appointment.id, item.linked_analysis);
-      }
-    });
-
-    return patientVisitRecords
-      .map((record) => {
-        const sortedRecordAnalyses = [...record.analyses].sort((a, b) => {
-          const aDate = new Date(a.created_at || "").getTime();
-          const bDate = new Date(b.created_at || "").getTime();
-
-          return bDate - aDate;
-        });
-
-        const historyReport = reportMap.get(record.appointment.id) || null;
-        const historyLinkedAnalysis =
-          linkedAnalysisMap.get(record.appointment.id) || null;
-
-        const report = record.report || historyReport || null;
-
-        const linkedAnalysis =
-          record.linked_analysis ||
-          historyLinkedAnalysis ||
-          sortedRecordAnalyses.find(
-            (analysis) => report?.skin_analysis_id === analysis.id
-          ) ||
-          sortedRecordAnalyses[0] ||
-          null;
-
+    const records = await Promise.all(
+      visits.map(async (appointment) => {
+        const [analysisResult, reportResult] = await Promise.allSettled([
+          getClinicalAppointmentAnalyses(appointment.id),
+          getClinicalDiagnosisReport(appointment.id),
+        ]);
+        const visitAnalyses = analysisResult.status === "fulfilled" ? analysisResult.value : [];
+        const reportResponse = reportResult.status === "fulfilled" ? reportResult.value : null;
         return {
-          ...record,
-          report,
-          linkedAnalysis,
-          sortedAnalyses: sortedRecordAnalyses,
+          appointment,
+          analyses: visitAnalyses,
+          report: reportResponse?.report || null,
+          linkedAnalysis: reportResponse?.linked_analysis || visitAnalyses[0] || null,
         };
       })
-      .filter((record) => record.report || record.linkedAnalysis)
-      .sort((a, b) => {
-        const aDate = getAppointmentDateTime(a.appointment).getTime();
-        const bDate = getAppointmentDateTime(b.appointment).getTime();
-
-        return bDate - aDate;
-      });
-  }, [patientVisitRecords, patientHistory]);
-
-  const isCompletedTarget = targetAppointment?.status === "Completed";
-  const isApprovedTarget = targetAppointment?.status === "Approved";
-  const aiAvailableForTarget = isAiAvailableForAppointment(targetAppointment);
-  const aiUnavailableMessage = getAiUnavailableMessage(targetAppointment);
-  const todayInputDate = getTodayInputDate();
-
-  const resetWorkspaceDrafts = () => {
-    setSelectedFile(null);
-    setAssessmentForm({
-      ...emptyAssessmentForm,
-      prescriptionItems: [{ ...emptyPrescriptionItem }],
-    });
-    setScheduleFollowUp(false);
-    setOptionalFollowUpForm(emptyOptionalFollowUpForm);
+    );
+    setHistory(
+      records.sort((a, b) => appointmentDateTime(b.appointment).getTime() - appointmentDateTime(a.appointment).getTime())
+    );
   };
 
-  const updateAssessmentField = (field: TextAssessmentField, value: string) => {
-    setAssessmentForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  useEffect(() => {
+    loadAnalyses(selectedAppointmentId).catch((error) =>
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to load AI analyses." })
+    );
+  }, [selectedAppointmentId]);
 
-  const updateOptionalFollowUpField = (
-    field: keyof OptionalFollowUpForm,
-    value: string
-  ) => {
-    setOptionalFollowUpForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  useEffect(() => {
+    loadHistory(selectedPatientId).catch(() => setHistory([]));
+  }, [selectedPatientId, appointments]);
 
-  const openAiResultModal = (title: string, analysis: Analysis) => {
-    setSelectedAiModal({ title, analysis });
-  };
-
-  const closeAiResultModal = () => {
-    setSelectedAiModal(null);
-  };
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedPatientId) params.set("patient_id", String(selectedPatientId));
+    if (selectedAppointmentId) params.set("appointment_id", String(selectedAppointmentId));
+    router.replace(`/pages/doctor/ai-analysis${params.toString() ? `?${params}` : ""}`);
+  }, [router, selectedPatientId, selectedAppointmentId]);
 
   const selectPatient = (patientId: number) => {
+    const visits = appointments.filter(
+      (item) => item.patient_id === patientId && !blockedStatus(item.status)
+    );
     setSelectedPatientId(patientId);
-    setActiveStage("scan");
-    resetWorkspaceDrafts();
-    setSelectedAiModal(null);
-
-    const matchingAppointments = (
-      patientAppointmentsMap.get(patientId) || []
-    ).filter(isVisibleAiAppointment);
-
-    const best = pickBestTargetAppointment(matchingAppointments);
-    setSelectedAppointmentId(best ? best.id : null);
+    setSelectedAppointmentId(chooseVisit(visits)?.id || null);
+    setAssessment(emptyAssessment);
+    setContext(emptyContext);
+    setSelectedFile(null);
+    setNotice(null);
+    setActiveTab("workspace");
   };
 
-  const changePatient = () => {
-    setSelectedPatientId(null);
-    setSelectedAppointmentId(null);
-    setActiveStage("scan");
-    resetWorkspaceDrafts();
-    setSelectedAiModal(null);
+  const handleAnalyze = async () => {
+    if (!selectedAppointment || !selectedFile) {
+      setNotice({ type: "error", text: "Select an eligible visit and a skin image first." });
+      return;
+    }
+    if (!canAnalyzeAppointment(selectedAppointment)) {
+      setNotice({ type: "error", text: "AI analysis is available only after an approved appointment has started." });
+      return;
+    }
 
-    router.replace("/pages/doctor/ai-analysis");
-  };
-
-  const handleAppointmentChange = (value: string) => {
-    const nextAppointmentId = value ? Number(value) : null;
-
-    setSelectedAppointmentId(nextAppointmentId);
-    setActiveStage("scan");
-    resetWorkspaceDrafts();
-  };
-
-  const handleUploadAnalysis = async () => {
+    setUploading(true);
+    setNotice(null);
     try {
-      if (!selectedAppointmentId) {
-        alert("Please select a target visit first.");
-        return;
-      }
-
-      if (!targetAppointment || !aiAvailableForTarget) {
-        alert(
-          aiUnavailableMessage ||
-            "AI skin analysis is not available for this visit yet."
-        );
-        return;
-      }
-
-      if (!selectedFile) {
-        alert("Please select a skin image first.");
-        return;
-      }
-
-      setUploading(true);
-
-      await analyzeAppointmentSkin(selectedAppointmentId, selectedFile, "");
-
+      await analyzeClinicalAppointment(selectedAppointment.id, selectedFile, context);
       setSelectedFile(null);
-
-      const analysisData = await getAppointmentAnalyses(selectedAppointmentId);
-      setAnalyses(Array.isArray(analysisData) ? analysisData : []);
-
-      if (selectedPatientId) {
-        if (selectedPatient?.total_reports) {
-          try {
-            const historyData = await getDoctorPatientHistory(selectedPatientId);
-            setPatientHistory(historyData);
-          } catch {
-            setPatientHistory(selectedPatientEmptyHistory);
-          }
-        } else {
-          setPatientHistory(selectedPatientEmptyHistory);
-        }
-      }
-
-      setActiveStage("scan");
-      alert(
-        "AI analysis completed. The result is now pending until the doctor completes the assessment."
-      );
+      await loadAnalyses(selectedAppointment.id);
+      await loadHistory(selectedPatientId);
+      setNotice({ type: "success", text: "Structured AI decision-support analysis completed." });
     } catch (error) {
-      console.error("Failed to analyze image:", error);
-      alert(error instanceof Error ? error.message : "Failed to analyze image.");
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "AI analysis failed." });
     } finally {
       setUploading(false);
     }
   };
 
-  const getPrescriptionSuggestionItems = () => {
-    if (!latestAnalysis) return [];
-
-    return parsePrescriptionSuggestions(latestAnalysis.prescription_suggestions);
-  };
-
-  const applyFullPrescriptionSuggestion = () => {
-    const items = getPrescriptionSuggestionItems();
-
-    if (items.length === 0) {
-      alert("No AI prescription suggestion is available.");
-      return;
-    }
-
-    setAssessmentForm((prev) => ({
-      ...prev,
-      prescriptionItems: items.map((item) => ({
-        medication: item.medication || "",
-        usage: item.usage || "",
-        reason: item.reason || "",
-      })),
-    }));
-  };
-
-  const updatePrescriptionItem = (
-    index: number,
-    field: keyof DoctorPrescriptionDraft,
-    value: string
-  ) => {
-    setAssessmentForm((prev) => {
-      const nextItems = [...prev.prescriptionItems];
-
-      nextItems[index] = {
-        ...nextItems[index],
-        [field]: value,
+  const addMedicationSuggestion = (suggestion: MedicationSuggestion) => {
+    setAssessment((previous) => {
+      const duplicate = previous.prescriptionItems.some(
+        (item) => item.medication.trim().toLowerCase() === suggestion.name_or_class.toLowerCase()
+      );
+      if (duplicate) return previous;
+      const blankOnly =
+        previous.prescriptionItems.length === 1 &&
+        !previous.prescriptionItems[0].medication &&
+        !previous.prescriptionItems[0].usage &&
+        !previous.prescriptionItems[0].reason;
+      const item = {
+        medication: suggestion.name_or_class,
+        usage: "",
+        reason: suggestion.role,
       };
-
       return {
-        ...prev,
-        prescriptionItems: nextItems,
+        ...previous,
+        prescriptionItems: blankOnly ? [item] : [...previous.prescriptionItems, item],
       };
     });
   };
 
-  const addPrescriptionItem = () => {
-    setAssessmentForm((prev) => ({
-      ...prev,
-      prescriptionItems: [...prev.prescriptionItems, { ...emptyPrescriptionItem }],
+  const updatePrescription = (index: number, field: keyof PrescriptionDraft, value: string) => {
+    setAssessment((previous) => ({
+      ...previous,
+      prescriptionItems: previous.prescriptionItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
     }));
   };
 
-  const removePrescriptionItem = (index: number) => {
-    setAssessmentForm((prev) => {
-      if (prev.prescriptionItems.length === 1) {
-        return {
-          ...prev,
-          prescriptionItems: [{ ...emptyPrescriptionItem }],
-        };
-      }
-
-      return {
-        ...prev,
-        prescriptionItems: prev.prescriptionItems.filter(
-          (_, itemIndex) => itemIndex !== index
-        ),
-      };
-    });
-  };
-
-  const getAiSuggestionForField = (field: AiSuggestionField) => {
-    if (!latestAnalysis) return "";
-
-    switch (field) {
-      case "finalDiagnosis":
-        return latestAnalysis.condition || latestAnalysis.possible_conditions || "";
-
-      case "followUpPlan":
-        return latestAnalysis.follow_up_suggestions || "";
-
-      default:
-        return "";
-    }
-  };
-
-  const applyAiSuggestionForField = (field: AiSuggestionField) => {
-    const suggestion = getAiSuggestionForField(field);
-
-    if (!suggestion.trim()) {
-      alert("No AI suggestion is available for this field.");
-      return;
-    }
-
-    updateAssessmentField(field, suggestion);
-  };
-
-  const renderUseAiSuggestionButton = (
-    field: AiSuggestionField,
-    label = "Use AI"
-  ) => {
-    const suggestion = getAiSuggestionForField(field);
-
-    return (
-      <button
-        type="button"
-        className={assessmentStyles.aiSuggestionButton}
-        onClick={() => applyAiSuggestionForField(field)}
-        disabled={!suggestion.trim()}
-      >
-        {label}
-      </button>
-    );
-  };
-
-  const handleSaveDoctorAssessment = async () => {
-    try {
-      if (!selectedAppointmentId) {
-        alert("Please select a target visit first.");
-        return;
-      }
-
-      if (!latestAnalysis) {
-        alert("Please run an AI analysis before saving the doctor assessment.");
-        return;
-      }
-
-      if (!assessmentForm.finalDiagnosis.trim()) {
-        alert("Please enter the doctor final diagnosis.");
-        return;
-      }
-
-      const hasPrescription = assessmentForm.prescriptionItems.some(
+  const buildPrescriptionText = () =>
+    assessment.prescriptionItems
+      .filter((item) => item.medication.trim() || item.usage.trim() || item.reason.trim())
+      .map(
         (item) =>
-          item.medication.trim() || item.usage.trim() || item.reason.trim()
-      );
+          `Medication: ${item.medication.trim() || "—"} | Usage: ${item.usage.trim() || "—"} | Reason: ${item.reason.trim() || "—"}`
+      )
+      .join("\n");
 
-      if (!hasPrescription) {
-        alert("Please enter at least one doctor prescription item.");
-        return;
-      }
+  const handleSaveAssessment = async () => {
+    if (!selectedAppointment || !latestAnalysis) {
+      setNotice({ type: "error", text: "Run or select an AI analysis before completing this visit." });
+      return;
+    }
+    if (!assessment.finalDiagnosis.trim()) {
+      setNotice({ type: "error", text: "Doctor final diagnosis is required." });
+      return;
+    }
+    if (scheduleFollowUp && !followUpDate) {
+      setNotice({ type: "error", text: "Choose a follow-up date or turn off follow-up scheduling." });
+      return;
+    }
 
-      if (scheduleFollowUp && !optionalFollowUpForm.followUpDate) {
-        alert("Please select a follow-up date or uncheck Schedule Follow-Up.");
-        return;
-      }
+    setSaving(true);
+    setNotice(null);
+    try {
+      await completeClinicalDoctorAssessment(selectedAppointment.id, {
+        ai_analysis_run_id: latestAnalysis.kind === "clinical_run" ? latestAnalysis.id : null,
+        skin_analysis_id: latestAnalysis.kind === "legacy" ? latestAnalysis.id : null,
+        doctor_final_diagnosis: assessment.finalDiagnosis.trim(),
+        doctor_prescription: buildPrescriptionText(),
+        after_appointment_notes: assessment.doctorNotes.trim(),
+        follow_up_plan: assessment.followUpPlan.trim(),
+        next_visit_date: scheduleFollowUp ? followUpDate : null,
+      });
 
-      if (scheduleFollowUp && optionalFollowUpForm.followUpDate < todayInputDate) {
-        alert("Please select today or a future date for the follow-up.");
-        return;
-      }
-
-      setSavingAssessment(true);
-
-      await saveDoctorAssessment(
-        selectedAppointmentId,
-        latestAnalysis.id,
-        assessmentForm,
-        scheduleFollowUp ? optionalFollowUpForm.followUpDate : null
-      );
-
-      if (scheduleFollowUp) {
+      if (scheduleFollowUp && followUpDate) {
         await createDoctorFollowUp({
-          appointment_id: selectedAppointmentId,
-          follow_up_date: optionalFollowUpForm.followUpDate,
-          reason:
-            optionalFollowUpForm.reason.trim() ||
-            assessmentForm.followUpPlan.trim() ||
-            "Follow-up consultation",
-          notes: optionalFollowUpForm.notes.trim(),
+          appointment_id: selectedAppointment.id,
+          follow_up_date: followUpDate,
+          reason: followUpReason.trim() || assessment.followUpPlan.trim() || "Follow-up consultation",
+          notes: assessment.doctorNotes.trim(),
         });
       }
 
-      if (selectedPatientId) {
-        try {
-          const historyData = await getDoctorPatientHistory(selectedPatientId);
-          setPatientHistory(historyData);
-        } catch {
-          setPatientHistory(selectedPatientEmptyHistory);
-        }
-      }
-
-      setScheduleFollowUp(false);
-      setOptionalFollowUpForm(emptyOptionalFollowUpForm);
-      setActiveStage("history");
-      alert(
-        scheduleFollowUp
-          ? "Doctor assessment saved successfully and follow-up scheduled."
-          : "Doctor assessment saved successfully. The completed record is now available in History."
-      );
+      const nextAppointments = await refreshBase();
+      await loadHistory(selectedPatientId, nextAppointments);
+      await loadAnalyses(selectedAppointment.id);
+      setActiveTab("history");
+      setNotice({ type: "success", text: "Doctor assessment saved. The visit is now complete." });
     } catch (error) {
-      console.error("Failed to save doctor assessment:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to save doctor assessment."
-      );
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to save doctor assessment." });
     } finally {
-      setSavingAssessment(false);
+      setSaving(false);
     }
   };
 
-  const openPatientRecord = () => {
-    if (!selectedPatientId) return;
-
-    router.push(`/pages/doctor/patient-records?patient_id=${selectedPatientId}`);
-  };
-
-  const getPatientListMeta = (patientId: number) => {
-    const visits = patientAppointmentsMap.get(patientId) || [];
-    const latestVisit =
-      visits.find((appt) => isVisibleAiAppointment(appt)) || visits[0];
-
-    if (!latestVisit) {
-      return {
-        label: "No Visits",
-        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
-        latestVisitText: "No visit yet",
-      };
-    }
-
-    if (latestVisit.status === "Completed") {
-      return {
-        label: "Completed",
-        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`,
-        latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
-      };
-    }
-
-    if (latestVisit.status === "Approved") {
-      const isAvailable = isAiAvailableForAppointment(latestVisit);
-
-      return {
-        label: isAvailable ? "Ready for Review" : "Scheduled",
-        badgeClass: isAvailable
-          ? `${coreStyles.statusBadge} ${coreStyles.badgeApproved}`
-          : `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
-        latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
-      };
-    }
-
-    if (latestVisit.status === "Pending") {
-      return {
-        label: "Pending Approval",
-        badgeClass: `${coreStyles.statusBadge} ${coreStyles.badgePending}`,
-        latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
-      };
-    }
-
-    return {
-      label: latestVisit.status || "Not Available",
-      badgeClass: getStatusBadgeClass(latestVisit.status),
-      latestVisitText: `${latestVisit.date} • ${latestVisit.services}`,
-    };
-  };
-
-  const renderAiReadOnlyResult = () => {
-    if (loadingAnalyses) {
-      return <div className={coreStyles.emptyState}>Loading AI results...</div>;
-    }
-
-    if (!latestAnalysis) {
-      return (
-        <div className={coreStyles.emptyState}>
-          No AI result yet. Upload a skin image to generate the first analysis.
-        </div>
-      );
-    }
-
-    const confidenceValue = normalizeConfidence(latestAnalysis.confidence);
-
-    const prescriptionItems = parsePrescriptionSuggestions(
-      latestAnalysis.prescription_suggestions
-    );
-
-    const followUpItems = splitMultilineText(
-      latestAnalysis.follow_up_suggestions
-    );
-
-    const redFlagItems = splitMultilineText(latestAnalysis.red_flags);
-
-    const latestImageUrl = buildImageUrl(
-      latestAnalysis.image_url || latestAnalysis.image_path
-    );
-
-    return (
-      <div className={resultStyles.aiResultCard}>
-        <div className={resultStyles.aiResultHeader}>
-          <div>
-            <p className={coreStyles.eyebrow}>AI Generated Result</p>
-            <h3 className={resultStyles.resultTitle}>
-              {latestAnalysis.condition || "Unknown condition"}
-            </h3>
-            <p className={resultStyles.resultMeta}>
-              Generated {formatDateTime(latestAnalysis.created_at)}
-            </p>
-          </div>
-
-          <div className={resultStyles.resultBadgeStack}>
-            <span className={resultStyles.aiOnlyBadge}>Read-only AI output</span>
-            <span className={resultStyles.confidenceBadge}>
-              Confidence:{" "}
-              {confidenceValue !== null ? `${confidenceValue}%` : "—"}
-            </span>
-          </div>
-        </div>
-
-        <div className={resultStyles.aiResultGrid}>
-          <div className={resultStyles.imagePanel}>
-            {latestImageUrl ? (
-              <img
-                src={latestImageUrl}
-                alt="AI skin analysis result"
-                className={resultStyles.analysisImage}
-              />
-            ) : (
-              <div className={resultStyles.imagePlaceholder}>
-                No image available. Check if the backend returned image_url.
-              </div>
-            )}
-          </div>
-
-          <div className={resultStyles.aiSummaryGrid}>
-            <div className={resultStyles.summaryCard}>
-              <span className={coreStyles.infoLabel}>Possible Condition</span>
-              <strong>{latestAnalysis.possible_conditions || "—"}</strong>
-            </div>
-
-            <div className={resultStyles.summaryCard}>
-              <span className={coreStyles.infoLabel}>AI Severity</span>
-              <strong>{latestAnalysis.severity || "—"}</strong>
-            </div>
-
-            <div className={resultStyles.summaryCardWide}>
-              <span className={coreStyles.infoLabel}>Key Findings</span>
-              <p>{latestAnalysis.key_findings || "No findings available."}</p>
-            </div>
-
-            <div className={resultStyles.summaryCardWide}>
-              <span className={coreStyles.infoLabel}>AI Recommendation</span>
-              <p>
-                {latestAnalysis.recommendation ||
-                  "Further clinical review is recommended."}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className={resultStyles.detailSectionGrid}>
-          <section className={resultStyles.detailBlock}>
-            <div className={resultStyles.blockHeader}>
-              <h4>Prescription Suggestions</h4>
-              <p>Medication, usage, and reason are separated for review.</p>
-            </div>
-
-            {prescriptionItems.length === 0 ? (
-              <div className={coreStyles.emptyStateSmall}>
-                No prescription suggestions available.
-              </div>
-            ) : (
-              <div className={resultStyles.medicationStack}>
-                {prescriptionItems.map((item, index) => (
-                  <div
-                    key={`${item.medication}-${index}`}
-                    className={resultStyles.medicationCard}
-                  >
-                    <strong>{item.medication}</strong>
-
-                    <div className={resultStyles.medicationRow}>
-                      <span>Usage</span>
-                      <p>{item.usage || "—"}</p>
-                    </div>
-
-                    <div className={resultStyles.medicationRow}>
-                      <span>Reason</span>
-                      <p>{item.reason || "—"}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className={resultStyles.detailBlock}>
-            <div className={resultStyles.blockHeader}>
-              <h4>Follow-up Suggestions</h4>
-              <p>For doctor review before including in the final report.</p>
-            </div>
-
-            {followUpItems.length === 0 ? (
-              <div className={coreStyles.emptyStateSmall}>
-                No follow-up suggestions available.
-              </div>
-            ) : (
-              <div className={resultStyles.softList}>
-                {followUpItems.map((item, index) => (
-                  <div key={`${item}-${index}`} className={resultStyles.softListItem}>
-                    {item}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className={`${resultStyles.detailBlock} ${resultStyles.warningBlock}`}>
-            <div className={resultStyles.blockHeader}>
-              <h4>Red Flags</h4>
-              <p>Items that need extra attention during clinical review.</p>
-            </div>
-
-            {redFlagItems.length === 0 ? (
-              <div className={coreStyles.emptyStateSmall}>No red flags noted.</div>
-            ) : (
-              <div className={resultStyles.warningList}>
-                {redFlagItems.map((item, index) => (
-                  <div key={`${item}-${index}`} className={resultStyles.warningItem}>
-                    {item}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDoctorAssessmentForm = () => {
-    if (!latestAnalysis || selectedVisitReport) {
-      return null;
-    }
-
-    const prescriptionSuggestionItems = getPrescriptionSuggestionItems();
-
-    return (
-      <section className={coreStyles.workflowCard}>
-        <div className={coreStyles.cardHeader}>
-          <div>
-            <p className={coreStyles.eyebrow}>Doctor Assessment</p>
-            <h2>Complete Doctor Assessment</h2>
-            <p>
-              Complete the official doctor record. AI suggestions are shown only
-              as reference and must be reviewed before use.
-            </p>
-          </div>
-        </div>
-
-        <div className={assessmentStyles.aiReferencePanel}>
-          <div className={assessmentStyles.aiReferenceHeader}>
-            <div>
-              <span>AI Reference Summary</span>
-              <p>
-                This section is for review only. The saved patient record will
-                use the doctor’s final entries below.
-              </p>
-            </div>
-          </div>
-
-          <div className={assessmentStyles.aiReferenceGrid}>
-            <div className={assessmentStyles.aiReferenceCard}>
-              <span>Possible Condition</span>
-              <strong>
-                {latestAnalysis.condition ||
-                  latestAnalysis.possible_conditions ||
-                  "—"}
-              </strong>
-            </div>
-
-            <div className={assessmentStyles.aiReferenceCard}>
-              <span>AI Severity</span>
-              <strong>{latestAnalysis.severity || "—"}</strong>
-            </div>
-
-            <div className={assessmentStyles.aiReferenceCardWide}>
-              <span>Key Findings</span>
-              <p>
-                {latestAnalysis.key_findings ||
-                  "No AI key findings available."}
-              </p>
-            </div>
-
-            <div className={assessmentStyles.aiReferenceCardWide}>
-              <span>AI Recommendation</span>
-              <p>
-                {latestAnalysis.recommendation ||
-                  "No AI recommendation available."}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className={assessmentStyles.assessmentForm}>
-          <div className={assessmentStyles.formGroupFull}>
-            <div className={assessmentStyles.fieldHeader}>
-              <label htmlFor="finalDiagnosis">Doctor Final Diagnosis</label>
-              {renderUseAiSuggestionButton("finalDiagnosis", "Use AI Diagnosis")}
-            </div>
-
-            <input
-              id="finalDiagnosis"
-              value={assessmentForm.finalDiagnosis}
-              onChange={(e) =>
-                updateAssessmentField("finalDiagnosis", e.target.value)
-              }
-              placeholder="Example: Acne"
-            />
-          </div>
-
-          <div className={assessmentStyles.prescriptionBox}>
-            <div className={assessmentStyles.prescriptionHeader}>
-              <div>
-                <h3>Doctor Prescription</h3>
-                <p>
-                  Add the final prescription exactly as it should appear in the
-                  patient record.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className={assessmentStyles.aiSuggestionButton}
-                onClick={applyFullPrescriptionSuggestion}
-                disabled={prescriptionSuggestionItems.length === 0}
-              >
-                Use AI Prescription
-              </button>
-            </div>
-
-            {prescriptionSuggestionItems.length > 0 && (
-              <div className={assessmentStyles.prescriptionSuggestionPanel}>
-                <span>AI Prescription Suggestions</span>
-
-                <div className={assessmentStyles.prescriptionSuggestionGrid}>
-                  {prescriptionSuggestionItems.map((item, index) => (
-                    <div
-                      key={`${item.medication}-${index}`}
-                      className={assessmentStyles.prescriptionSuggestionCard}
-                    >
-                      <strong>{item.medication}</strong>
-
-                      <div>
-                        <span>Usage</span>
-                        <p>{item.usage || "—"}</p>
-                      </div>
-
-                      <div>
-                        <span>Reason</span>
-                        <p>{item.reason || "—"}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className={assessmentStyles.prescriptionEditorList}>
-              {assessmentForm.prescriptionItems.map((item, index) => (
-                <div key={index} className={assessmentStyles.prescriptionEditorCard}>
-                  <div className={assessmentStyles.prescriptionEditorHeader}>
-                    <h4>Prescription Item {index + 1}</h4>
-
-                    <button
-                      type="button"
-                      className={assessmentStyles.removePrescriptionButton}
-                      onClick={() => removePrescriptionItem(index)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className={assessmentStyles.formGroupFull}>
-                    <label htmlFor={`medication-${index}`}>Medication</label>
-                    <input
-                      id={`medication-${index}`}
-                      value={item.medication}
-                      onChange={(e) =>
-                        updatePrescriptionItem(
-                          index,
-                          "medication",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Example: Adapalene 0.1% gel"
-                    />
-                  </div>
-
-                  <div className={assessmentStyles.formGroupFull}>
-                    <label htmlFor={`usage-${index}`}>Usage</label>
-                    <textarea
-                      id={`usage-${index}`}
-                      value={item.usage}
-                      onChange={(e) =>
-                        updatePrescriptionItem(index, "usage", e.target.value)
-                      }
-                      placeholder="Example: Apply a thin layer once nightly"
-                    />
-                  </div>
-
-                  <div className={assessmentStyles.formGroupFull}>
-                    <label htmlFor={`reason-${index}`}>Reason</label>
-                    <textarea
-                      id={`reason-${index}`}
-                      value={item.reason}
-                      onChange={(e) =>
-                        updatePrescriptionItem(index, "reason", e.target.value)
-                      }
-                      placeholder="Example: Helps unclog pores and prevent new acne lesions"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className={coreStyles.secondaryButton}
-              onClick={addPrescriptionItem}
-            >
-              Add Another Prescription
-            </button>
-          </div>
-
-          <div className={assessmentStyles.formGroupFull}>
-            <label htmlFor="doctorNotes">Doctor Notes</label>
-
-            <textarea
-              id="doctorNotes"
-              value={assessmentForm.doctorNotes}
-              onChange={(e) =>
-                updateAssessmentField("doctorNotes", e.target.value)
-              }
-              placeholder="Example: Moderate acne with visible inflammation on affected areas"
-            />
-
-            <small className={assessmentStyles.formHint}>
-              Enter the doctor’s own clinical notes. AI findings should only be
-              used as reference.
-            </small>
-          </div>
-
-          <div className={assessmentStyles.formGroupFull}>
-            <div className={assessmentStyles.fieldHeader}>
-              <label htmlFor="followUpPlan">Follow-up Plan</label>
-              {renderUseAiSuggestionButton("followUpPlan", "Use AI Follow-up")}
-            </div>
-
-            <textarea
-              id="followUpPlan"
-              value={assessmentForm.followUpPlan}
-              onChange={(e) =>
-                updateAssessmentField("followUpPlan", e.target.value)
-              }
-              placeholder="Example: Review in 2 to 4 weeks depending on response"
-            />
-          </div>
-
-          <div
-            className={`${assessmentStyles.prescriptionBox} ${assessmentStyles.optionalFollowUpBox}`}
-          >
-            <div className={assessmentStyles.prescriptionHeader}>
-              <div>
-                <h3>Optional Follow-Up Schedule</h3>
-                <p>
-                  Enable this only when the patient needs another visit. The
-                  selected appointment is linked automatically.
-                </p>
-              </div>
-            </div>
-
-            <label
-              htmlFor="scheduleFollowUp"
-              className={`${assessmentStyles.followUpCheckboxRow} ${
-                scheduleFollowUp ? assessmentStyles.followUpCheckboxRowActive : ""
-              }`}
-            >
-              <div>
-                <strong className={assessmentStyles.followUpCheckboxText}>
-                  Schedule a follow-up for this patient
-                </strong>
-                <span className={assessmentStyles.followUpCheckboxHint}>
-                  Adds this patient to the Follow-Ups page and doctor dashboard.
-                </span>
-              </div>
-
-              <input
-                id="scheduleFollowUp"
-                type="checkbox"
-                checked={scheduleFollowUp}
-                className={assessmentStyles.followUpCheckbox}
-                onChange={(e) => {
-                  setScheduleFollowUp(e.target.checked);
-
-                  if (!e.target.checked) {
-                    setOptionalFollowUpForm(emptyOptionalFollowUpForm);
-                  }
-                }}
-              />
-            </label>
-
-            {scheduleFollowUp && (
-              <div
-                className={`${assessmentStyles.prescriptionEditorCard} ${assessmentStyles.followUpEditorGrid}`}
-              >
-                <div className={assessmentStyles.formGroupFull}>
-                  <label htmlFor="followUpDate">Follow-Up Date</label>
-                  <input
-                    id="followUpDate"
-                    type="date"
-                    min={todayInputDate}
-                    value={optionalFollowUpForm.followUpDate}
-                    onChange={(e) =>
-                      updateOptionalFollowUpField("followUpDate", e.target.value)
-                    }
-                  />
-                  <small className={assessmentStyles.formHint}>
-                    Past dates are disabled. Choose today or a future date.
-                  </small>
-                </div>
-
-                <div className={assessmentStyles.formGroupFull}>
-                  <label htmlFor="followUpReason">Reason</label>
-                  <input
-                    id="followUpReason"
-                    value={optionalFollowUpForm.reason}
-                    onChange={(e) =>
-                      updateOptionalFollowUpField("reason", e.target.value)
-                    }
-                    placeholder="Example: Review skin progress after treatment"
-                  />
-                </div>
-
-                <div className={assessmentStyles.formGroupFull}>
-                  <label htmlFor="followUpNotes">Notes</label>
-                  <textarea
-                    id="followUpNotes"
-                    value={optionalFollowUpForm.notes}
-                    onChange={(e) =>
-                      updateOptionalFollowUpField("notes", e.target.value)
-                    }
-                    placeholder="Optional notes for the next consultation"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className={assessmentStyles.formActions}>
-            <button
-              type="button"
-              className={coreStyles.primaryButton}
-              onClick={handleSaveDoctorAssessment}
-              disabled={savingAssessment || isCompletedTarget}
-            >
-              {savingAssessment
-                ? "Saving assessment..."
-                : "Save Doctor Assessment"}
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  };
-
-  const renderScanStage = () => {
-    if (loadingPatientHistory && isCompletedTarget) {
-      return (
-        <section className={coreStyles.workflowCard}>
-          <div className={coreStyles.emptyState}>Checking completed case...</div>
-        </section>
-      );
-    }
-
-    if (selectedVisitReport || isCompletedTarget) {
-      return (
-        <div className={coreStyles.scanStack}>
-          <section className={coreStyles.workflowCard}>
-            <div className={coreStyles.cardHeader}>
-              <div>
-                <p className={coreStyles.eyebrow}>Completed Case</p>
-                <h2>This Consultation Is Already Completed</h2>
-                <p>
-                  The AI analysis and doctor assessment for this consultation
-                  have already been saved. Please review the completed record in
-                  History.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className={coreStyles.secondaryButton}
-                onClick={() => setActiveStage("history")}
-              >
-                View in History
-              </button>
-            </div>
-          </section>
-        </div>
-      );
-    }
-
-    return (
-      <div className={coreStyles.scanStack}>
-        <div className={coreStyles.scanUploadCenter}>
-          <section className={coreStyles.workflowCard}>
-            <div className={coreStyles.cardHeader}>
-              <div>
-                <p className={coreStyles.eyebrow}>Step 1</p>
-                <h2>Upload Skin Image</h2>
-                <p>
-                  Upload the patient image for the selected approved visit. The
-                  AI result will appear below after processing.
-                </p>
-              </div>
-            </div>
-
-            {!targetAppointment ? (
-              <div className={coreStyles.emptyState}>
-                No consultation is available for this patient yet.
-              </div>
-            ) : !aiAvailableForTarget || !isApprovedTarget ? (
-              <div className={coreStyles.emptyState}>
-                <strong>AI Skin Analysis Unavailable</strong>
-                <p>{aiUnavailableMessage}</p>
-              </div>
-            ) : (
-              <>
-                <label className={coreStyles.dropZone} htmlFor="skin_file">
-                  <input
-                    id="skin_file"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setSelectedFile(file);
-                    }}
-                  />
-
-                  <span className={coreStyles.dropIcon}>＋</span>
-                  <strong>
-                    {selectedFile
-                      ? selectedFile.name
-                      : "Choose or drop skin image"}
-                  </strong>
-                  <small>Accepted formats: JPG, PNG, WEBP</small>
-                </label>
-
-                <button
-                  className={coreStyles.primaryButton}
-                  onClick={handleUploadAnalysis}
-                  disabled={
-                    uploading ||
-                    !selectedFile ||
-                    !isApprovedTarget ||
-                    !aiAvailableForTarget
-                  }
-                >
-                  {uploading ? "Analyzing image..." : "Run AI Analysis"}
-                </button>
-              </>
-            )}
-          </section>
-        </div>
-
-        <section className={coreStyles.workflowCard}>
-          <div className={coreStyles.cardHeader}>
-            <div>
-              <p className={coreStyles.eyebrow}>Pending Case</p>
-              <h2>Latest AI Result</h2>
-              <p>
-                This AI-generated result stays here until the doctor completes
-                the assessment below.
-              </p>
-            </div>
-          </div>
-
-          {renderAiReadOnlyResult()}
-        </section>
-
-        {renderDoctorAssessmentForm()}
-      </div>
-    );
-  };
-
-  const renderReportsStage = () => {
-    if (loadingPatientHistory) {
-      return (
-        <div className={coreStyles.emptyState}>Loading completed reports...</div>
-      );
-    }
-
-    if (sortedCompletedReports.length === 0) {
-      return (
-        <section className={coreStyles.workflowCard}>
-          <div className={coreStyles.emptyState}>
-            No completed reports found for this patient yet.
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <section className={coreStyles.workflowCard}>
-        <div className={coreStyles.cardHeader}>
-          <div>
-            <p className={coreStyles.eyebrow}>Patient Record</p>
-            <h2>All Completed Reports</h2>
-            <p>Review the patient’s completed diagnosis history.</p>
-          </div>
-        </div>
-
-        <div className={historyStyles.reportGrid}>
-          {sortedCompletedReports.map((item) => {
-            const report = item.report;
-
-            const prescriptionItems = parsePrescriptionEntries(
-              report.doctor_prescription
-            );
-
-            return (
-              <article key={report.id} className={historyStyles.historyCard}>
-                <div className={historyStyles.historyHeader}>
-                  <div>
-                    <strong>
-                      {item.appointment?.date || "Unknown date"} •{" "}
-                      {item.appointment?.services || "Consultation"}
-                    </strong>
-                    <span>Doctor: {item.doctor?.name || "Unknown"}</span>
-                  </div>
-
-                  <span
-                    className={`${coreStyles.statusBadge} ${coreStyles.badgeCompleted}`}
-                  >
-                    Completed
-                  </span>
-                </div>
-
-                <div className={historyStyles.historyBody}>
-                  <p>
-                    <b>Diagnosis:</b> {report.doctor_final_diagnosis || "—"}
-                  </p>
-
-                  <div className={historyStyles.historyPrescriptionBox}>
-                    <h4>Prescription</h4>
-
-                    {prescriptionItems.length === 0 ? (
-                      <div className={coreStyles.emptyStateSmall}>
-                        No prescription saved for this report.
-                      </div>
-                    ) : (
-                      <div className={resultStyles.medicationStack}>
-                        {prescriptionItems.map((prescription, index) => (
-                          <div
-                            key={`${prescription.medication}-${index}`}
-                            className={resultStyles.medicationCard}
-                          >
-                            <strong>{prescription.medication}</strong>
-
-                            <div className={resultStyles.medicationRow}>
-                              <span>Usage</span>
-                              <p>{prescription.usage || "—"}</p>
-                            </div>
-
-                            <div className={resultStyles.medicationRow}>
-                              <span>Reason</span>
-                              <p>{prescription.reason || "—"}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <p>
-                    <b>Follow-up:</b> {report.follow_up_plan || "—"}
-                  </p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    );
-  };
-
-  const looksLikeAiGeneratedDoctorNote = (value?: string | null) => {
-    const text = (value || "").trim().toLowerCase();
-
-    if (!text) return false;
-
-    const aiMarkers = [
-      "severity:",
-      "red flags:",
-      "patient instructions:",
-      "ai recommendation",
-      "needs doctor review",
-      "possible conditions",
-    ];
-
-    return aiMarkers.some((marker) => text.includes(marker));
-  };
-
-  const getDoctorOnlyNote = (value?: string | null) => {
-    const text = (value || "").trim();
-
-    if (!text) return "—";
-
-    if (looksLikeAiGeneratedDoctorNote(text)) {
-      return "No separate doctor notes were saved for this visit.";
-    }
-
-    return text;
-  };
-
-
-const renderHistoryStage = () => {
-  if (loadingPatientHistory || loadingVisitRecords) {
-    return (
-      <section className={coreStyles.workflowCard}>
-        <div className={coreStyles.emptyState}>Loading medical history...</div>
-      </section>
-    );
-  }
-
-  if (sortedPatientVisitHistory.length === 0) {
-    return (
-      <section className={coreStyles.workflowCard}>
-        <div className={coreStyles.emptyState}>
-          No completed medical history or AI analysis history yet.
-        </div>
-      </section>
-    );
+  if (loading) {
+    return <div className={styles.loadingPage}>Loading AI clinical workspace…</div>;
   }
 
   return (
-    <section className={coreStyles.workflowCard}>
-      <div className={coreStyles.cardHeader}>
+    <main className={styles.page}>
+      <header className={styles.hero}>
         <div>
-          <p className={coreStyles.eyebrow}>Medical History</p>
-          <h2>All Patient Doctor Records</h2>
+          <span className={styles.eyebrow}>Doctor Clinical Decision Support</span>
+          <h1>AI Analysis</h1>
           <p>
-            Doctor diagnosis, prescriptions, notes, and follow-up plans are
-            shown first. AI results are kept separate and can be opened when
-            needed.
+            Review image-based findings, service compatibility, and medication options before recording your own diagnosis and plan.
           </p>
         </div>
-      </div>
+        <div className={styles.heroNote}>AI supports clinical review. It does not replace physician judgment.</div>
+      </header>
 
-      <div className={historyStyles.medicalHistoryList}>
-        {sortedPatientVisitHistory.map((item) => {
-          const linkedAnalysis = item.linkedAnalysis;
-          const report = item.report;
+      {notice && (
+        <div className={`${styles.notice} ${notice.type === "error" ? styles.noticeError : styles.noticeSuccess}`}>
+          {notice.text}
+        </div>
+      )}
 
-          const prescriptionItems = parsePrescriptionEntries(
-            report?.doctor_prescription
-          );
+      <div className={styles.layout}>
+        <aside className={styles.patientPanel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <span className={styles.eyebrow}>Patients</span>
+              <h2>Select a patient</h2>
+            </div>
+          </div>
+          <input
+            className={styles.searchInput}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search name or email"
+          />
+          <div className={styles.patientList}>
+            {filteredPatients.map((item) => (
+              <button
+                key={item.patient.id}
+                type="button"
+                onClick={() => selectPatient(item.patient.id)}
+                className={`${styles.patientItem} ${selectedPatientId === item.patient.id ? styles.patientItemActive : ""}`}
+              >
+                <strong>{item.patient.name || "Unnamed patient"}</strong>
+                <span>{item.patient.email || "No email"}</span>
+              </button>
+            ))}
+            {filteredPatients.length === 0 && <div className={styles.empty}>No matching patients.</div>}
+          </div>
+        </aside>
 
-          const recordKey = `${item.appointment.id}-${
-            report?.id || linkedAnalysis?.id || "record"
-          }`;
-
-          const appointmentTitle = `${
-            item.appointment.date || "Unknown date"
-          } • ${item.appointment.services || "Consultation"}`;
-
-          return (
-            <article key={recordKey} className={historyStyles.medicalHistoryCard}>
-              <div className={historyStyles.medicalHistoryTop}>
+        <section className={styles.workspace}>
+          {!selectedPatient ? (
+            <div className={styles.emptyLarge}>
+              <h2>Select a patient to begin</h2>
+              <p>The workspace will show their eligible visits, AI results, and completed history.</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.patientBanner}>
                 <div>
-                  <p className={historyStyles.historyDate}>
-                    {item.appointment.date || "Unknown date"}
-                  </p>
-
-                  <h3>{item.appointment.services || "Consultation"}</h3>
-
-                  <span>Status: {item.appointment.status || "—"}</span>
+                  <span className={styles.eyebrow}>Current Patient</span>
+                  <h2>{selectedPatient.patient.name}</h2>
+                  <p>{selectedPatient.patient.email}</p>
                 </div>
-
-                <div className={resultStyles.resultBadgeStack}>
-                  <span
-                    className={
-                      report
-                        ? historyStyles.reportSavedBadge
-                        : resultStyles.aiResultOnlyBadge
-                    }
+                <div className={styles.visitPicker}>
+                  <label htmlFor="visit">Target visit</label>
+                  <select
+                    id="visit"
+                    value={selectedAppointmentId || ""}
+                    onChange={(event) => {
+                      setSelectedAppointmentId(Number(event.target.value) || null);
+                      setSelectedFile(null);
+                      setAssessment(emptyAssessment);
+                      setNotice(null);
+                    }}
                   >
-                    {report ? "Doctor Report Saved" : "AI Result Only"}
-                  </span>
-
-                  {linkedAnalysis && (
-                    <button
-                      type="button"
-                      className={coreStyles.secondaryButton}
-                      onClick={() =>
-                        openAiResultModal(appointmentTitle, linkedAnalysis)
-                      }
-                    >
-                      View AI Result
-                    </button>
-                  )}
+                    <option value="">Select visit</option>
+                    {patientVisits.map((visit) => (
+                      <option key={visit.id} value={visit.id}>
+                        {visit.date} • {visit.services} • {visit.status}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {report ? (
-                <div className={historyStyles.medicalHistoryDetails}>
-                  <div className={historyStyles.historyInfoGrid}>
-                    <div className={historyStyles.historyInfoBox}>
-                      <span>Doctor Final Diagnosis</span>
-                      <strong>{report.doctor_final_diagnosis || "—"}</strong>
-                    </div>
-                  </div>
+              <div className={styles.tabs}>
+                <button className={activeTab === "workspace" ? styles.tabActive : styles.tab} onClick={() => setActiveTab("workspace")}>
+                  AI Workspace
+                </button>
+                <button className={activeTab === "history" ? styles.tabActive : styles.tab} onClick={() => setActiveTab("history")}>
+                  History
+                </button>
+              </div>
 
-                  <div className={historyStyles.historyPrescriptionBox}>
-                    <h4>Doctor Prescription</h4>
-
-                    {prescriptionItems.length === 0 ? (
-                      <div className={coreStyles.emptyStateSmall}>
-                        No doctor prescription was saved for this visit.
+              {activeTab === "workspace" ? (
+                <>
+                  {selectedAppointment && (
+                    <section className={styles.contextCard}>
+                      <div className={styles.contextSummary}>
+                        <div><span>Booked service</span><strong>{selectedAppointment.services}</strong></div>
+                        <div><span>Appointment concern</span><strong>{selectedAppointment.concern || "Not provided"}</strong></div>
+                        <div><span>Status</span><strong>{selectedAppointment.status}</strong></div>
+                        <div><span>Patient age</span><strong>{selectedAppointment.patient_age_label || selectedAppointment.patient_age || "—"}</strong></div>
                       </div>
-                    ) : (
-                      <div className={resultStyles.medicationStack}>
-                        {prescriptionItems.map((prescription, index) => (
-                          <div
-                            key={`${prescription.medication}-${index}`}
-                            className={resultStyles.medicationCard}
-                          >
-                            <strong>{prescription.medication}</strong>
+                    </section>
+                  )}
 
-                            <div className={resultStyles.medicationRow}>
-                              <span>Usage</span>
-                              <p>{prescription.usage || "—"}</p>
-                            </div>
+                  {selectedAppointment?.status !== "Completed" && (
+                    <section className={styles.card}>
+                      <div className={styles.cardHeader}>
+                        <div><span className={styles.eyebrow}>Clinical context</span><h2>Prepare the analysis</h2></div>
+                        <span className={styles.muted}>Optional context improves relevance; patient identity is not sent to the vision provider.</span>
+                      </div>
 
-                            <div className={resultStyles.medicationRow}>
-                              <span>Reason</span>
-                              <p>{prescription.reason || "—"}</p>
-                            </div>
+                      <div className={styles.formGrid}>
+                        <label>Body site<input value={context.bodySite || ""} onChange={(e) => setContext((p) => ({ ...p, bodySite: e.target.value }))} placeholder="e.g. face, left forearm" /></label>
+                        <label>Duration<input value={context.duration || ""} onChange={(e) => setContext((p) => ({ ...p, duration: e.target.value }))} placeholder="e.g. 3 weeks" /></label>
+                        <label>Symptoms<input value={context.symptoms || ""} onChange={(e) => setContext((p) => ({ ...p, symptoms: e.target.value }))} placeholder="itching, pain, burning" /></label>
+                        <label>Progression<select value={context.progression || ""} onChange={(e) => setContext((p) => ({ ...p, progression: e.target.value }))}><option value="">Not provided</option><option value="stable">Stable</option><option value="improving">Improving</option><option value="worsening">Worsening</option><option value="spreading">Spreading</option></select></label>
+                        <label className={styles.fullField}>Doctor observation<textarea value={context.doctorObservation || ""} onChange={(e) => setContext((p) => ({ ...p, doctorObservation: e.target.value }))} placeholder="Short visual/clinical observation before AI review" /></label>
+                      </div>
+
+                      <div className={styles.safetyBox}>
+                        <div className={styles.safetyHeader}><div><strong>Medication safety context</strong><p>Used locally for physician-facing medication suggestions.</p></div></div>
+                        <div className={styles.formGrid}>
+                          <label>Known allergies<input value={context.knownAllergies || ""} onChange={(e) => setContext((p) => ({ ...p, knownAllergies: e.target.value }))} placeholder="comma-separated, if known" /></label>
+                          <label>Current medications<input value={context.currentMedications || ""} onChange={(e) => setContext((p) => ({ ...p, currentMedications: e.target.value }))} placeholder="comma-separated, if known" /></label>
+                          <label>Pregnancy / breastfeeding<select value={context.pregnancyStatus || "UNKNOWN"} onChange={(e) => setContext((p) => ({ ...p, pregnancyStatus: e.target.value as PregnancyStatus }))}><option value="UNKNOWN">Unknown / not reviewed</option><option value="NOT_APPLICABLE">Not applicable</option><option value="NOT_PREGNANT">Not pregnant</option><option value="PREGNANT">Pregnant</option><option value="BREASTFEEDING">Breastfeeding</option></select></label>
+                          <label className={styles.checkboxLabel}><input type="checkbox" checked={Boolean(context.medicationContextReviewed)} onChange={(e) => setContext((p) => ({ ...p, medicationContextReviewed: e.target.checked }))} /><span>I reviewed the available medication-safety context.</span></label>
+                        </div>
+                      </div>
+
+                      <div className={styles.uploadGrid}>
+                        <label className={styles.uploadBox}>
+                          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} />
+                          {previewUrl ? <img src={previewUrl} alt="Selected skin image preview" /> : <div><strong>Choose a skin image</strong><span>JPG, PNG, or WEBP • max 8 MB</span></div>}
+                        </label>
+                        <div className={styles.uploadActions}>
+                          <p>{canAnalyzeAppointment(selectedAppointment) ? "Ready for analysis." : "Analysis becomes available after the approved appointment starts."}</p>
+                          <button className={styles.primaryButton} disabled={!selectedFile || !canAnalyzeAppointment(selectedAppointment) || uploading} onClick={handleAnalyze}>
+                            {uploading ? "Analyzing…" : "Run AI analysis"}
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  <section className={styles.card}>
+                    <div className={styles.cardHeader}><div><span className={styles.eyebrow}>AI decision support</span><h2>Latest structured result</h2></div>{latestAnalysis && <span className={styles.runMeta}>{formatDateTime(latestAnalysis.created_at)}</span>}</div>
+                    {loadingAnalyses ? <div className={styles.empty}>Loading AI result…</div> : <AnalysisResult analysis={latestAnalysis} onAddMedication={addMedicationSuggestion} />}
+                  </section>
+
+                  {latestAnalysis && selectedAppointment?.status === "Approved" && (
+                    <section className={styles.card}>
+                      <div className={styles.cardHeader}><div><span className={styles.eyebrow}>Physician record</span><h2>Doctor final assessment</h2></div><span className={styles.muted}>Only your entries become the final clinical report.</span></div>
+                      <div className={styles.formGrid}>
+                        <label className={styles.fullField}>Final diagnosis<div className={styles.inlineAction}><input value={assessment.finalDiagnosis} onChange={(e) => setAssessment((p) => ({ ...p, finalDiagnosis: e.target.value }))} placeholder="Doctor-confirmed diagnosis" /><button type="button" className={styles.secondaryButton} disabled={!latestAnalysis.primary_condition_display} onClick={() => setAssessment((p) => ({ ...p, finalDiagnosis: latestAnalysis.primary_condition_display || p.finalDiagnosis }))}>Use as consideration</button></div></label>
+                        <label className={styles.fullField}>Doctor notes<textarea value={assessment.doctorNotes} onChange={(e) => setAssessment((p) => ({ ...p, doctorNotes: e.target.value }))} placeholder="Clinical findings and reasoning for the official record" /></label>
+                      </div>
+
+                      <div className={styles.prescriptionSection}>
+                        <div className={styles.sectionHeading}><div><strong>Prescription / treatment plan</strong><p>AI medication options only prefill the medication name and rationale. You set instructions.</p></div><button type="button" className={styles.secondaryButton} onClick={() => setAssessment((p) => ({ ...p, prescriptionItems: [...p.prescriptionItems, { medication: "", usage: "", reason: "" }] }))}>Add item</button></div>
+                        {assessment.prescriptionItems.map((item, index) => (
+                          <div className={styles.prescriptionRow} key={index}>
+                            <input value={item.medication} onChange={(e) => updatePrescription(index, "medication", e.target.value)} placeholder="Medication / treatment" />
+                            <input value={item.usage} onChange={(e) => updatePrescription(index, "usage", e.target.value)} placeholder="Doctor instructions" />
+                            <input value={item.reason} onChange={(e) => updatePrescription(index, "reason", e.target.value)} placeholder="Clinical rationale" />
+                            <button type="button" className={styles.iconButton} onClick={() => setAssessment((p) => ({ ...p, prescriptionItems: p.prescriptionItems.length === 1 ? [{ medication: "", usage: "", reason: "" }] : p.prescriptionItems.filter((_, i) => i !== index) }))}>Remove</button>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
 
-                  <div className={historyStyles.historyFollowUpBox}>
-                    <span>Doctor Notes</span>
-                    <p>{getDoctorOnlyNote(report.after_appointment_notes)}</p>
-                  </div>
-
-                  <div className={historyStyles.historyFollowUpBox}>
-                    <span>Follow-up Plan</span>
-                    <p>{report.follow_up_plan || "—"}</p>
-                  </div>
-
-                  {report.next_visit_date && (
-                    <div className={historyStyles.historyFollowUpBox}>
-                      <span>Next Visit Date</span>
-                      <p>{report.next_visit_date}</p>
-                    </div>
+                      <label className={styles.fullField}>Follow-up plan<textarea value={assessment.followUpPlan} onChange={(e) => setAssessment((p) => ({ ...p, followUpPlan: e.target.value }))} placeholder="Monitoring, return precautions, or next clinical step" /></label>
+                      <div className={styles.followUpBox}>
+                        <label className={styles.checkboxLabel}><input type="checkbox" checked={scheduleFollowUp} onChange={(e) => setScheduleFollowUp(e.target.checked)} /><span>Schedule a follow-up visit</span></label>
+                        {scheduleFollowUp && <div className={styles.formGrid}><label>Follow-up date<input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} /></label><label>Reason<input value={followUpReason} onChange={(e) => setFollowUpReason(e.target.value)} placeholder="Optional reason" /></label></div>}
+                      </div>
+                      <div className={styles.saveRow}><button className={styles.primaryButton} disabled={saving} onClick={handleSaveAssessment}>{saving ? "Saving…" : "Complete visit with doctor assessment"}</button></div>
+                    </section>
                   )}
-                </div>
+                </>
               ) : (
-                <div className={resultStyles.warningBlock}>
-                  <strong>No doctor final report saved yet.</strong>
-                  <p>
-                    This visit has an AI analysis result, but the doctor has not
-                    saved the final diagnosis, prescription, notes, and follow-up
-                    plan yet.
-                  </p>
-                </div>
+                <HistoryView records={history} />
               )}
-            </article>
-          );
-        })}
+            </>
+          )}
+        </section>
       </div>
-    </section>
+    </main>
   );
-};
+}
 
+function AnalysisResult({ analysis, onAddMedication }: { analysis: ClinicalAIAnalysis | null; onAddMedication: (item: MedicationSuggestion) => void }) {
+  if (!analysis) return <div className={styles.empty}>No AI result for this visit yet.</div>;
 
-
-  
-  const renderAiResultPanel = (
-  linkedAnalysis: Analysis | null | undefined,
-  confidenceValue: number | null
-) => {
-  if (!linkedAnalysis) {
+  if (analysis.kind === "legacy") {
     return (
-      <div className={coreStyles.emptyStateSmall}>
-        No linked AI result was saved for this visit.
+      <div className={styles.legacyBox}>
+        <div className={styles.resultHeader}><div><span className={styles.legacyBadge}>Historical legacy AI</span><h3>{analysis.condition || "Legacy result"}</h3></div><span>{formatDateTime(analysis.created_at)}</span></div>
+        <p>{analysis.key_findings || analysis.recommendation || "Historical AI result retained for continuity."}</p>
+        <div className={styles.warningCallout}>Legacy results may include old confidence/severity logic. Use them as historical reference only.</div>
       </div>
     );
   }
 
-
-  
-  const prescriptionItems = parsePrescriptionSuggestions(
-    linkedAnalysis.prescription_suggestions
-  );
-
-  const followUpItems = splitMultilineText(
-    linkedAnalysis.follow_up_suggestions
-  );
-
-  const redFlagItems = splitMultilineText(linkedAnalysis.red_flags);
-
-  const modalImageUrl = buildImageUrl(
-    linkedAnalysis.image_url || linkedAnalysis.image_path
-  );
+  const qualityIssues = analysis.image_quality?.issues || [];
+  const redFlags = normalizeStringList(analysis.red_flags);
+  const imageUrl = analysis.image_url || analysis.image_path || null;
 
   return (
-    <div className={resultStyles.aiModalContent}>
-      <div className={resultStyles.aiModalResultGrid}>
-        {modalImageUrl ? (
-          <div className={resultStyles.aiModalImagePanel}>
-            <img
-              src={modalImageUrl}
-              alt="AI skin analysis"
-              className={resultStyles.aiModalImage}
-            />
-          </div>
-        ) : (
-          <div className={resultStyles.aiModalImageUnavailable}>
-            Image is unavailable. Check if the backend returned image_url.
-          </div>
-        )}
+    <div className={styles.resultStack}>
+      <div className={styles.resultHeader}>
+        <div><span className={`${styles.statusBadge} ${styles[`status${analysis.status || "FAILED"}`] || ""}`}>{prettyToken(analysis.status)}</span><h3>{analysisTitle(analysis)}</h3><p>{analysis.evidence_strength ? `${prettyToken(analysis.evidence_strength)} evidence` : "No evidence strength assigned"}</p></div>
+        <div className={styles.resultHeaderMeta}><span>{analysis.model_id || "Model not recorded"}</span><span>{analysis.latency_ms != null ? `${analysis.latency_ms} ms` : "—"}</span></div>
+      </div>
 
-        <div className={resultStyles.aiModalSummaryGrid}>
-          <div className={resultStyles.aiModalInfoCard}>
-            <span>AI Condition</span>
-            <strong>{linkedAnalysis.condition || "—"}</strong>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCard}>
-            <span>Confidence</span>
-            <strong>
-              {confidenceValue !== null
-                ? `${confidenceValue}% confidence`
-                : "Confidence unavailable"}
-            </strong>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCard}>
-            <span>AI Severity</span>
-            <strong>{linkedAnalysis.severity || "—"}</strong>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCard}>
-            <span>Generated</span>
-            <strong>{formatDateTime(linkedAnalysis.created_at)}</strong>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCardWide}>
-            <span>Possible Conditions</span>
-            <p>{linkedAnalysis.possible_conditions || "—"}</p>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCardWide}>
-            <span>Key Findings</span>
-            <p>{linkedAnalysis.key_findings || "—"}</p>
-          </div>
-
-          <div className={resultStyles.aiModalInfoCardWide}>
-            <span>AI Recommendation</span>
-            <p>
-              {linkedAnalysis.recommendation ||
-                "No AI recommendation recorded."}
-            </p>
-          </div>
+      <div className={styles.resultTopGrid}>
+        <div className={styles.imageCard}>{imageUrl ? <img src={imageUrl} alt="Analyzed dermatology image" /> : <div className={styles.empty}>Image unavailable</div>}<div className={styles.qualityLine}><strong>Image quality:</strong> {analysis.image_quality?.usable ? "usable" : "retake recommended"}{qualityIssues.length > 0 && <span> • {qualityIssues.map(prettyToken).join(", ")}</span>}</div></div>
+        <div className={styles.summaryGrid}>
+          <div className={styles.metricCard}><span>Primary consideration</span><strong>{analysis.primary_condition_display || "No supported match"}</strong></div>
+          <div className={styles.metricCard}><span>Evidence strength</span><strong>{prettyToken(analysis.evidence_strength) || "—"}</strong></div>
+          <div className={styles.metricCard}><span>Apparent severity</span><strong>{analysis.severity_assessment?.assessable ? prettyToken(analysis.severity_assessment.level) : "Not reliably assessable"}</strong><p>{analysis.severity_assessment?.reason}</p></div>
+          <div className={styles.metricCard}><span>Booked service</span><strong>{analysis.booked_service_name || "—"}</strong></div>
         </div>
       </div>
 
-      <section className={resultStyles.aiModalSection}>
-        <h4>AI Prescription Suggestions</h4>
+      <section className={styles.resultSection}><div className={styles.sectionHeading}><div><strong>Visual findings</strong><p>Observable features returned by the image-analysis layer.</p></div></div>{analysis.visual_findings?.length ? <div className={styles.findingGrid}>{analysis.visual_findings.map((item, index) => <div className={styles.findingCard} key={`${item.finding}-${index}`}><strong>{item.finding}</strong>{item.location && <span>{item.location}</span>}<p>{item.description || ""}</p></div>)}</div> : <div className={styles.empty}>No structured visual findings.</div>}</section>
 
-        {prescriptionItems.length === 0 ? (
-          <div className={coreStyles.emptyStateSmall}>
-            No AI prescription suggestions saved.
-          </div>
-        ) : (
-          <div className={resultStyles.aiModalPrescriptionGrid}>
-            {prescriptionItems.map((item, index) => (
-              <div
-                key={`${item.medication}-${index}`}
-                className={resultStyles.aiModalPrescriptionCard}
-              >
-                <strong>{item.medication}</strong>
+      <section className={styles.resultSection}><div className={styles.sectionHeading}><div><strong>Differential considerations</strong><p>Alternatives remain possibilities, not confirmed diagnoses.</p></div></div>{analysis.differentials?.length ? <div className={styles.differentialList}>{analysis.differentials.map((item) => <div key={item.condition_code}><div><strong>{item.display_name}</strong><span>{prettyToken(item.evidence_strength)}</span></div><p>{item.reason}</p></div>)}</div> : <div className={styles.empty}>No additional differential returned.</div>}</section>
 
-                <div>
-                  <span>Usage</span>
-                  <p>{item.usage || "—"}</p>
-                </div>
+      <section className={`${styles.resultSection} ${styles.compatibilitySection}`}><div className={styles.sectionHeading}><div><strong>Booked-service compatibility</strong><p>{analysis.compatibility_reason || "No compatibility assessment available."}</p></div><span className={styles.compatibilityBadge}>{prettyToken(analysis.service_compatibility) || "Not assessed"}</span></div>{analysis.service_recommendations?.length ? <div className={styles.serviceGrid}>{analysis.service_recommendations.map((item) => <div className={styles.serviceCard} key={`${item.service_id}-${item.relationship_type}`}><span>{prettyToken(item.relationship_type)}</span><strong>{item.service_name}</strong><p>{item.reason}</p></div>)}</div> : null}</section>
 
-                <div>
-                  <span>Reason</span>
-                  <p>{item.reason || "—"}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <section className={styles.resultSection}><div className={styles.sectionHeading}><div><strong>Medication options for doctor review</strong><p>{analysis.medication_guidance || "No medication guidance available."}</p></div></div>{analysis.medication_suggestions?.length ? <div className={styles.medicationGrid}>{analysis.medication_suggestions.map((item) => <div className={styles.medicationCard} key={item.name_or_class}><div><strong>{item.name_or_class}</strong>{item.requires_more_context && <span className={styles.contextNeeded}>More context needed</span>}</div><p>{item.role}</p>{item.considerations?.length > 0 && <ul>{item.considerations.map((note) => <li key={note}>{note}</li>)}</ul>}<button type="button" className={styles.secondaryButton} onClick={() => onAddMedication(item)}>Add to prescription draft</button></div>)}</div> : <div className={styles.empty}>No medication options generated for this result.</div>}</section>
 
-      <div className={resultStyles.aiModalBottomGrid}>
-        <section className={resultStyles.aiModalSection}>
-          <h4>AI Follow-up Suggestions</h4>
-
-          {followUpItems.length === 0 ? (
-            <p>—</p>
-          ) : (
-            <div className={resultStyles.aiModalSoftList}>
-              {followUpItems.map((item, index) => (
-                <div
-                  key={`${item}-${index}`}
-                  className={resultStyles.aiModalSoftListItem}
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className={`${resultStyles.aiModalSection} ${resultStyles.aiModalWarning}`}>
-          <h4>AI Red Flags</h4>
-
-          {redFlagItems.length === 0 ? (
-            <p>—</p>
-          ) : (
-            <div className={resultStyles.aiModalWarningList}>
-              {redFlagItems.map((item, index) => (
-                <div
-                  key={`${item}-${index}`}
-                  className={resultStyles.aiModalWarningItem}
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+      {redFlags.length > 0 && <section className={`${styles.resultSection} ${styles.redFlagSection}`}><strong>Visible warning features</strong><ul>{redFlags.map((item) => <li key={item}>{item}</li>)}</ul></section>}
+      {analysis.limitations?.length ? <section className={styles.limitations}><strong>Limitations</strong><ul>{analysis.limitations.map((item) => <li key={item}>{item}</li>)}</ul></section> : null}
     </div>
   );
-};
+}
+
+function HistoryView({ records }: { records: VisitRecord[] }) {
+  const meaningful = records.filter((item) => item.report || item.analyses.length > 0);
+  if (meaningful.length === 0) return <div className={styles.emptyLarge}><h2>No AI history yet</h2><p>Completed reports and prior AI runs will appear here.</p></div>;
 
   return (
-    <>
-      <main className={coreStyles.pageShell}>
-        <section className={coreStyles.pageHeader}>
-          <div>
-            <h1>AI Skin Analysis</h1>
-            <p>
-              Run AI scans, complete doctor assessment, review final reports, and
-              maintain patient medical history.
-            </p>
+    <div className={styles.historyList}>
+      {meaningful.map((record) => (
+        <article className={styles.historyCard} key={record.appointment.id}>
+          <div className={styles.historyHeader}><div><span>{record.appointment.date} • {record.appointment.services}</span><h3>{record.report?.doctor_final_diagnosis || analysisTitle(record.linkedAnalysis)}</h3></div><span className={styles.statusBadge}>{record.appointment.status}</span></div>
+          <div className={styles.historyGrid}>
+            <div><span>Doctor final diagnosis</span><strong>{record.report?.doctor_final_diagnosis || "Not completed"}</strong></div>
+            <div><span>Linked AI consideration</span><strong>{analysisTitle(record.linkedAnalysis)}</strong></div>
+            <div><span>AI runs</span><strong>{record.analyses.length}</strong></div>
+            <div><span>Report updated</span><strong>{formatDateTime(record.report?.updated_at)}</strong></div>
           </div>
-        </section>
-
-        {loading ? (
-          <section className={coreStyles.workflowCard}>
-            <div className={coreStyles.emptyState}>
-              Loading AI analysis workspace...
-            </div>
-          </section>
-        ) : !selectedPatient ? (
-          <section className={coreStyles.patientPickerShell}>
-            <div className={coreStyles.patientPickerCard}>
-              <div className={coreStyles.patientPickerHeader}>
-                <div>
-                  <h2>Patients</h2>
-                  <p>
-                    Search and select a patient to open the clinical AI analysis
-                    workspace.
-                  </p>
-                </div>
-              </div>
-
-              <div className={coreStyles.searchBox}>
-                <label htmlFor="patient_search">Search Patient</label>
-                <input
-                  id="patient_search"
-                  type="text"
-                  placeholder="Search by name or email"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className={coreStyles.patientListPicker}>
-                {filteredPatients.length === 0 ? (
-                  <div className={coreStyles.emptyStateSmall}>
-                    No patient matched your search.
-                  </div>
-                ) : (
-                  filteredPatients.map((item) => {
-                    const meta = getPatientListMeta(item.patient.id);
-
-                    return (
-                      <button
-                        key={item.patient.id}
-                        type="button"
-                        className={coreStyles.patientItem}
-                        onClick={() => selectPatient(item.patient.id)}
-                      >
-                        <div className={coreStyles.patientItemTop}>
-                          <div>
-                            <strong>
-                              {item.patient.name || "Unnamed patient"}
-                            </strong>
-                            <span>
-                              {item.latest_report?.doctor_final_diagnosis ||
-                                "No diagnosis yet"}
-                            </span>
-                          </div>
-
-                          <span className={meta.badgeClass}>{meta.label}</span>
-                        </div>
-
-                        <div className={coreStyles.patientItemFooter}>
-                          <span>{meta.latestVisitText}</span>
-                          <span>
-                            {item.total_reports} report
-                            {item.total_reports > 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className={coreStyles.selectedPatientShell}>
-            <section className={coreStyles.patientSummaryCard}>
-              <div className={coreStyles.patientIdentity}>
-                <div className={coreStyles.avatarCircle}>
-                  {(selectedPatient.patient.name || "P")
-                    .slice(0, 1)
-                    .toUpperCase()}
-                </div>
-
-                <div>
-                  <h2>{selectedPatient.patient.name || "Unnamed patient"}</h2>
-                  <p>{selectedPatient.patient.email || "No email available"}</p>
-                </div>
-              </div>
-
-              <div className={coreStyles.patientHeaderActions}>
-                <button
-                  type="button"
-                  className={coreStyles.secondaryButton}
-                  onClick={changePatient}
-                >
-                  Change Patient
-                </button>
-
-                <button
-                  type="button"
-                  className={coreStyles.secondaryButton}
-                  onClick={openPatientRecord}
-                >
-                  Open Patient Record
-                </button>
-              </div>
-
-              <div className={coreStyles.summaryMetrics}>
-                <div>
-                  <span className={coreStyles.infoLabel}>Reports</span>
-                  <strong>{selectedPatient.total_reports}</strong>
-                </div>
-
-                <div>
-                  <span className={coreStyles.infoLabel}>Latest Diagnosis</span>
-                  <strong>
-                    {selectedPatient.latest_report?.doctor_final_diagnosis ||
-                      "—"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span className={coreStyles.infoLabel}>Latest Visit</span>
-                  <strong>
-                    {selectedPatientAllVisits[0]
-                      ? `${selectedPatientAllVisits[0].date} • ${selectedPatientAllVisits[0].services}`
-                      : "No visit yet"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span className={coreStyles.infoLabel}>Selected Visit</span>
-                  <strong>
-                    {targetAppointment
-                      ? `${targetAppointment.date} • ${targetAppointment.services}`
-                      : "No valid visit"}
-                  </strong>
-                </div>
-              </div>
-
-              <div className={coreStyles.visitSelector}>
-                <label htmlFor="appointment_selector">Visit to Review</label>
-                <select
-                  id="appointment_selector"
-                  value={selectedAppointmentId ?? ""}
-                  onChange={(e) => handleAppointmentChange(e.target.value)}
-                  disabled={selectedPatientValidVisits.length === 0}
-                >
-                  <option value="">Select visit</option>
-                  {selectedPatientValidVisits.map((appt) => (
-                    <option key={appt.id} value={appt.id}>
-                      {appt.date} • {appt.time || "No time"} • {appt.services} • {appt.status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </section>
-
-            <section className={coreStyles.stepperCard}>
-              <button
-                type="button"
-                className={`${coreStyles.stepButton} ${
-                  activeStage === "scan" ? coreStyles.stepButtonActive : ""
-                }`}
-                onClick={() => setActiveStage("scan")}
-              >
-                <span>1</span>
-                AI Scan
-              </button>
-
-              <button
-                type="button"
-                className={`${coreStyles.stepButton} ${
-                  activeStage === "reports" ? coreStyles.stepButtonActive : ""
-                }`}
-                onClick={() => setActiveStage("reports")}
-              >
-                <span>2</span>
-                Final Reports
-              </button>
-
-              <button
-                type="button"
-                className={`${coreStyles.stepButton} ${
-                  activeStage === "history" ? coreStyles.stepButtonActive : ""
-                }`}
-                onClick={() => setActiveStage("history")}
-              >
-                <span>3</span>
-                History
-              </button>
-            </section>
-
-            {isCompletedTarget && (
-              <div className={coreStyles.readOnlyBanner}>
-                This selected visit is completed. You may review the AI result
-                and final doctor report in read-only mode.
-              </div>
-            )}
-
-            {activeStage === "scan" && renderScanStage()}
-            {activeStage === "reports" && renderReportsStage()}
-            {activeStage === "history" && renderHistoryStage()}
-          </section>
-        )}
-      </main>
-
-     {selectedAiModal && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="AI skin analysis result"
-    onClick={closeAiResultModal}
-    className={resultStyles.aiModalOverlay}
-  >
-    <section
-      onClick={(event) => event.stopPropagation()}
-      className={resultStyles.aiModalShell}
-    >
-      <div className={resultStyles.aiModalHeader}>
-        <div>
-          <p className={coreStyles.eyebrow}>Supporting AI Result</p>
-          <h2>{selectedAiModal.title}</h2>
-          <p>
-            This AI result is for reference only. The doctor’s final diagnosis
-            and prescription remain the official clinical record.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className={resultStyles.aiModalCloseButton}
-          onClick={closeAiResultModal}
-        >
-          Close
-        </button>
-      </div>
-
-      <div className={resultStyles.aiModalBody}>
-        {renderAiResultPanel(
-          selectedAiModal.analysis,
-          normalizeConfidence(selectedAiModal.analysis.confidence)
-        )}
-      </div>
-    </section>
-  </div>
-)}
-    </>
+          {record.report?.doctor_prescription && <div className={styles.historyText}><span>Doctor prescription / plan</span><pre>{record.report.doctor_prescription}</pre></div>}
+          {record.report?.follow_up_plan && <div className={styles.historyText}><span>Follow-up plan</span><p>{record.report.follow_up_plan}</p></div>}
+        </article>
+      ))}
+    </div>
   );
 }
 
 export default function DoctorAiAnalysisPage() {
   return (
-    <Suspense
-      fallback={
-      <main
-          className={coreStyles.pageFallback}
-        >
-          Loading AI analysis...
-        </main>
-      }
-    >
+    <Suspense fallback={<div className={styles.loadingPage}>Loading AI clinical workspace…</div>}>
       <DoctorAiAnalysisContent />
     </Suspense>
   );

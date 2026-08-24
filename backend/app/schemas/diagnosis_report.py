@@ -1,10 +1,14 @@
-from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class DiagnosisReportCreate(BaseModel):
-    skin_analysis_id: Optional[int] = None
+    model_config = ConfigDict(extra="forbid")
+
+    skin_analysis_id: Optional[int] = Field(default=None, gt=0)
+    ai_analysis_run_id: Optional[int] = Field(default=None, gt=0)
     doctor_final_diagnosis: str
     doctor_prescription: Optional[str] = None
     after_appointment_notes: Optional[str] = None
@@ -13,7 +17,10 @@ class DiagnosisReportCreate(BaseModel):
 
 
 class DiagnosisReportUpdate(BaseModel):
-    skin_analysis_id: Optional[int] = None
+    model_config = ConfigDict(extra="forbid")
+
+    skin_analysis_id: Optional[int] = Field(default=None, gt=0)
+    ai_analysis_run_id: Optional[int] = Field(default=None, gt=0)
     doctor_final_diagnosis: Optional[str] = None
     doctor_prescription: Optional[str] = None
     after_appointment_notes: Optional[str] = None
@@ -27,6 +34,7 @@ class DiagnosisReportOut(BaseModel):
     patient_id: Optional[int]
     doctor_id: Optional[int]
     skin_analysis_id: Optional[int]
+    ai_analysis_run_id: Optional[int]
     doctor_final_diagnosis: str
     doctor_prescription: Optional[str]
     after_appointment_notes: Optional[str]
@@ -35,5 +43,4 @@ class DiagnosisReportOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

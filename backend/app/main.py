@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db import get_db
-from app.routes import auth, auth_phase2, auth_phase10, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, staff_schedules_phase9, booking, staff_follow_ups, announcements, notifications, doctor_phase1
+from app.routes import auth, auth_phase2, auth_phase10, users, ai_analysis, ai_phase3, appointments, appointments_phase9, patients, admin, staff_schedules, staff_schedules_phase9, booking, staff_follow_ups, announcements, notifications, doctor_phase1, doctor_ai_phase4
 from app.models import user, appointment, skin_analysis, follow_up, diagnosis_report, doctor_schedule, clinic_unavailable_date, service, doctor_service, notification
 from app.routes.doctor import router as doctor_router
 from app.models.appointment_log import AppointmentLog
@@ -77,7 +77,8 @@ app.include_router(auth_phase2.router)
 app.include_router(auth_phase10.router)
 app.include_router(auth.router)
 app.include_router(users.router)
-# Phase 3 AI routes take precedence over legacy upload/review implementations.
+# Phase 4 AI routes now expose the structured clinical pipeline while retaining
+# legacy route registration behind them for historical compatibility.
 app.include_router(ai_phase3.router)
 app.include_router(ai_analysis.router)
 # Phase 9 appointment guards take precedence over the legacy appointment router
@@ -94,8 +95,9 @@ app.include_router(staff_schedules_phase9.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)
 app.include_router(booking.router)
-# Register the phase-1 compatibility guards before the legacy doctor router so
-# duplicate paths resolve to the guarded implementations.
+# M4 doctor AI routes own the enhanced appointment payload and AI-linked report
+# completion before the older compatibility guards and doctor router.
+app.include_router(doctor_ai_phase4.router)
 app.include_router(doctor_phase1.router)
 app.include_router(doctor_router)
 app.include_router(notifications.router)
