@@ -44,12 +44,42 @@ class AIAnalysisRun(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, index=True)
-    image_asset_id = Column(Integer, ForeignKey("ai_image_assets.id", ondelete="RESTRICT"), nullable=False, index=True)
-    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    reference_run_id = Column(Integer, ForeignKey("ai_analysis_runs.id", ondelete="SET NULL"), nullable=True, index=True)
-    legacy_skin_analysis_id = Column(Integer, ForeignKey("skin_analysis.id", ondelete="SET NULL"), nullable=True, index=True)
-    primary_condition_id = Column(Integer, ForeignKey("dermatology_conditions.id", ondelete="SET NULL"), nullable=True, index=True)
+    appointment_id = Column(
+        Integer,
+        ForeignKey("appointments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    image_asset_id = Column(
+        Integer,
+        ForeignKey("ai_image_assets.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    created_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reference_run_id = Column(
+        Integer,
+        ForeignKey("ai_analysis_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    legacy_skin_analysis_id = Column(
+        Integer,
+        ForeignKey("skin_analysis.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    primary_condition_id = Column(
+        Integer,
+        ForeignKey("dermatology_conditions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     analysis_mode = Column(String(40), nullable=False, index=True)
     status = Column(String(40), nullable=False, index=True)
@@ -72,12 +102,29 @@ class AIAnalysisRun(Base):
     compatibility_reason = Column(Text, nullable=True)
     service_recommendations = Column(JSON, nullable=False, default=list)
     medication_suggestions = Column(JSON, nullable=False, default=list)
+    medication_knowledge_version = Column(String(80), nullable=True)
+    medication_guidance = Column(Text, nullable=True)
     red_flags = Column(JSON, nullable=False, default=list)
     limitations = Column(JSON, nullable=False, default=list)
 
-    review_status = Column(String(24), nullable=False, default="PENDING_REVIEW", index=True)
+    review_status = Column(
+        String(24),
+        nullable=False,
+        default="PENDING_REVIEW",
+        index=True,
+    )
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    reviewed_by_doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    reviewed_by_doctor_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     is_patient_visible = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
     completed_at = Column(DateTime(timezone=True), nullable=True)

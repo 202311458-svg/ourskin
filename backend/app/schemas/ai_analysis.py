@@ -44,6 +44,14 @@ class ConditionSupportLevel(str, Enum):
     FLAG_ONLY = "FLAG_ONLY"
 
 
+class PregnancyStatus(str, Enum):
+    UNKNOWN = "UNKNOWN"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    NOT_PREGNANT = "NOT_PREGNANT"
+    PREGNANT = "PREGNANT"
+    BREASTFEEDING = "BREASTFEEDING"
+
+
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -56,6 +64,14 @@ class DermatologyClinicalContext(StrictModel):
     appointment_concern: str | None = Field(default=None, max_length=1000)
     booked_service_id: int | None = Field(default=None, gt=0)
     booked_service_name: str | None = Field(default=None, max_length=160)
+
+
+class MedicationClinicalContext(StrictModel):
+    age_years: int | None = Field(default=None, ge=0, le=130)
+    known_allergies: list[str] = Field(default_factory=list, max_length=20)
+    current_medications: list[str] = Field(default_factory=list, max_length=30)
+    pregnancy_status: PregnancyStatus = PregnancyStatus.UNKNOWN
+    reviewed_by_doctor: bool = False
 
 
 class ImageQualityAssessment(StrictModel):
@@ -123,9 +139,14 @@ class ProviderDermatologyResult(StrictModel):
                 raise ValueError("Completed provider results require a primary condition")
             if self.evidence_strength is None:
                 raise ValueError("Completed provider results require evidence strength")
-        if self.status in {AIAnalysisStatus.OUT_OF_SCOPE, AIAnalysisStatus.INSUFFICIENT_IMAGE}:
+        if self.status in {
+            AIAnalysisStatus.OUT_OF_SCOPE,
+            AIAnalysisStatus.INSUFFICIENT_IMAGE,
+        }:
             if self.primary_condition_code is not None:
-                raise ValueError("Out-of-scope or insufficient-image results cannot assert a primary condition")
+                raise ValueError(
+                    "Out-of-scope or insufficient-image results cannot assert a primary condition"
+                )
         return self
 
 
@@ -145,8 +166,16 @@ class AIAnalysisResult(StrictModel):
     booked_service_name: str | None = Field(default=None, max_length=160)
     service_compatibility: ServiceCompatibilityStatus | None = None
     compatibility_reason: str | None = Field(default=None, max_length=1600)
-    service_recommendations: list[ServiceRecommendation] = Field(default_factory=list, max_length=10)
-    medication_suggestions: list[MedicationSuggestion] = Field(default_factory=list, max_length=20)
+    service_recommendations: list[ServiceRecommendation] = Field(
+        default_factory=list,
+        max_length=10,
+    )
+    medication_suggestions: list[MedicationSuggestion] = Field(
+        default_factory=list,
+        max_length=20,
+    )
+    medication_knowledge_version: str | None = Field(default=None, max_length=80)
+    medication_guidance: str | None = Field(default=None, max_length=2000)
     red_flags: list[str] = Field(default_factory=list, max_length=20)
     limitations: list[str] = Field(default_factory=list, max_length=20)
 
@@ -159,6 +188,9 @@ class AIAnalysisResult(StrictModel):
                 raise ValueError("Completed analyses require a primary condition")
             if self.evidence_strength is None:
                 raise ValueError("Completed analyses require evidence strength")
-        if self.status == AIAnalysisStatus.INSUFFICIENT_IMAGE and self.image_quality.usable:
+        if (
+            self.status == AIAnalysisStatus.INSUFFICIENT_IMAGE
+            and self.image_quality.usable
+        ):
             raise ValueError("Insufficient-image analyses must mark the image unusable")
         return self

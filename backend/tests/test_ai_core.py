@@ -16,7 +16,9 @@ from app.schemas.ai_analysis import (
 from app.services.ai.contracts import AIResultValidationError, TaxonomyCondition
 from app.services.ai.dermatology_analysis_service import DermatologyAnalysisService
 from app.services.ai.image_quality import ImageQualityService
+from app.services.ai.medication_suggestions import MedicationSuggestionOutcome
 from app.services.ai.providers.openai_provider import OpenAIVisionAnalysisProvider
+from app.services.ai.service_compatibility import ServiceCompatibilityOutcome
 from app.services.ai.validator import ClinicalResultValidator
 
 
@@ -120,6 +122,16 @@ class _FakeProvider:
         )
 
 
+class _NoopCompatibilityService:
+    def evaluate(self, **_kwargs):
+        return ServiceCompatibilityOutcome(None, None, [])
+
+
+class _NoopMedicationService:
+    def suggest(self, **_kwargs):
+        return MedicationSuggestionOutcome([], "Not exercised by this core test.")
+
+
 def test_analysis_service_skips_provider_when_quality_fails():
     provider = _FakeProvider()
     service = DermatologyAnalysisService(provider=provider, taxonomy_service=_FakeTaxonomyService())
@@ -136,7 +148,12 @@ def test_analysis_service_skips_provider_when_quality_fails():
 
 def test_analysis_service_returns_validated_structured_result():
     provider = _FakeProvider()
-    service = DermatologyAnalysisService(provider=provider, taxonomy_service=_FakeTaxonomyService())
+    service = DermatologyAnalysisService(
+        provider=provider,
+        taxonomy_service=_FakeTaxonomyService(),
+        service_compatibility_service=_NoopCompatibilityService(),
+        medication_suggestion_service=_NoopMedicationService(),
+    )
     execution = service.analyze(
         db=None,
         image_bytes=_pattern_image(),
