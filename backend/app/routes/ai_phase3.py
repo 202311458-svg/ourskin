@@ -16,6 +16,7 @@ from app.models.ai_analysis_run import AIAnalysisRun
 from app.models.ai_image_asset import AIImageAsset
 from app.models.appointment import AppointmentModel
 from app.models.dermatology_condition import DermatologyCondition
+from app.models.skin_analysis import SkinAnalysis
 from app.models.user import User
 from app.schemas.ai_analysis import (
     DermatologyClinicalContext,
@@ -52,6 +53,66 @@ def _split_csv(value: str | None, max_items: int) -> list[str]:
         return []
     items = [item.strip() for item in value.split(",") if item.strip()]
     return list(dict.fromkeys(items))[:max_items]
+
+
+def _legacy_support_fields(result) -> dict[str, str]:
+    primary = result.primary_condition_display or "No supported primary condition"
+    differential_names = [item.display_name for item in result.differentials]
+    possible_conditions = "\n".join([primary, *differential_names])
+
+    finding_lines = []
+    for item in result.visual_findings:
+        detail = item.finding
+        if item.location:
+            detail += f" ({item.location})"
+        if item.description:
+            detail += f": {item.description}"
+        finding_lines.append(f"- {detail}")
+
+    service_lines = [
+        (
+            f"- {item.service_name} [{item.relationship_type}]: "
+            f"{item.reason or 'Doctor review required.'}"
+        )
+        for item in result.service_recommendations
+    ]
+    medication_lines = [
+        (
+            f"- {item.name_or_class} | Usage: Doctor to determine | "
+            f"Reason: {item.role}"
+        )
+        for item in result.medication_suggestions
+    ]
+    red_flag_lines = [f"- {item}" for item in result.red_flags]
+
+    severity = "Not Assessable"
+    if result.severity.assessable and result.severity.level is not None:
+        severity = result.severity.level.value.title()
+
+    recommendation = (
+        result.compatibility_reason
+        or result.medication_guidance
+        or "Doctor review is required before final diagnosis or treatment."
+    )
+
+    return {
+        "condition": primary,
+        "severity": severity,
+        "recommendation": recommendation,
+        "possible_conditions": possible_conditions,
+        "key_findings": "\n".join(finding_lines)
+        or "No structured visual findings were returned.",
+        "treatment_suggestions": "\n".join(service_lines)
+        or "No clinic service recommendation was generated.",
+        "prescription_suggestions": "\n".join(medication_lines)
+        or result.medication_guidance
+        or "No medication options were generated.",
+        "follow_up_suggestions": (
+            "Doctor to determine follow-up based on the final clinical assessment."
+        ),
+        "red_flags": "\n".join(red_flag_lines)
+        or "No AI-visible warning features were returned.",
+    }
 
 
 @router.post("/analyze/{appointment_id}")
@@ -232,6 +293,37 @@ async def analyze_skin_image(
             completed_at=now,
         )
         db.add(run)
+        db.flush()
+
+        # Compatibility projection only: older dashboard/history endpoints still
+        # consume SkinAnalysis. AIAnalysisRun remains the source of truth.
+        legacy_fields = _legacy_support_fields(result)
+        legacy = SkinAnalysis(
+            user_id=user.id,
+            uploaded_by_id=user.id,
+            appointment_id=appointment_id,
+            image_path=storage_path,
+            condition=legacy_fields["condition"],
+            confidence=0.0,
+            severity=legacy_fields["severity"],
+            recommendation=legacy_fields["recommendation"],
+            doctor_note=clinical_context.doctor_observation,
+            review_status="Pending Review",
+            reviewed_at=None,
+            reviewed_by_doctor_id=None,
+            doctor_signed_off_at=None,
+            is_patient_visible=False,
+            possible_conditions=legacy_fields["possible_conditions"],
+            key_findings=legacy_fields["key_findings"],
+            treatment_suggestions=legacy_fields["treatment_suggestions"],
+            prescription_suggestions=legacy_fields["prescription_suggestions"],
+            follow_up_suggestions=legacy_fields["follow_up_suggestions"],
+            red_flags=legacy_fields["red_flags"],
+        )
+        db.add(legacy)
+        db.flush()
+        run.legacy_skin_analysis_id = legacy.id
+
         db.commit()
     except Exception:
         db.rollback()

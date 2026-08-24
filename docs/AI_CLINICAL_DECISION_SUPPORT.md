@@ -102,7 +102,11 @@ A dermatologist-reviewed validation set is required before making clinical perfo
 
 The old local five-class TensorFlow/Keras classifier and duplicate AI execution routes have been removed from the active codebase.
 
-The `SkinAnalysis` database model remains only for historical compatibility with records created before the versioned AI system. New AI analyses do not create new `SkinAnalysis` mirror rows. Existing diagnosis reports and historical records that reference legacy `SkinAnalysis` rows remain readable.
+The `SkinAnalysis` database model remains for historical compatibility and as a temporary non-inference projection for older dashboard/history consumers. `AIAnalysisRun` is the source of truth for all new AI work.
+
+New dermatology analyses still create a compatibility `SkinAnalysis` row so older portal endpoints do not lose cases during migration. That row does not run the legacy classifier, does not contain a calibrated confidence value, and does not generate AI dosing. It should be removed only after every remaining legacy consumer has been migrated to `AIAnalysisRun`.
+
+Existing diagnosis reports and historical records that reference legacy `SkinAnalysis` rows remain readable.
 
 ## Deployment and maintenance
 
