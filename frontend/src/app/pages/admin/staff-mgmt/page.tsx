@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
-import PortalShell from "@/app/components/PortalShell";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
-import { API_BASE_URL } from "@/lib/api";
+import {
+  AdminStaffRecord,
+  AdminVerifiedUserOption,
+  addAdminStaffFromUser,
+  getAdminStaff,
+  getAdminVerifiedUsers,
+  updateAdminStaff,
+  updateAdminStaffStatus,
+} from "@/lib/admin-management-api";
 import styles from "./page.module.css";
 
 type StaffUser = {
@@ -22,26 +28,6 @@ type StaffUser = {
   created_at?: string;
 };
 
-type StaffApiResponse = {
-  id?: number | string;
-  full_name?: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  status?: string;
-  department?: string | null;
-  phone?: string | null;
-  contact?: string | null;
-  profile_image?: string | null;
-  created_at?: string;
-};
-
-type UserOption = {
-  id: number;
-  name: string;
-  email: string;
-};
-
 type EditStaffForm = {
   id: number | null;
   full_name: string;
@@ -56,14 +42,7 @@ type ConfirmAction = {
   member: StaffUser;
 } | null;
 
-type ApiErrorResponse = {
-  detail?: string;
-  message?: string;
-};
-
-const API_BASE = API_BASE_URL;
-
-function normalizeStaff(raw: StaffApiResponse): StaffUser {
+function normalizeStaff(raw: AdminStaffRecord): StaffUser {
   return {
     id: Number(raw.id),
     full_name: raw.full_name || raw.name || "Unnamed User",
@@ -79,22 +58,8 @@ function normalizeStaff(raw: StaffApiResponse): StaffUser {
   };
 }
 
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function getApiErrorMessage(data: ApiErrorResponse | null, fallback: string) {
-  if (data?.detail) return data.detail;
-  if (data?.message) return data.message;
   return fallback;
 }
 
@@ -114,10 +79,8 @@ function formatDate(value?: string) {
 }
 
 export default function StaffManagementPage() {
-  const router = useRouter();
-
   const [staff, setStaff] = useState<StaffUser[]>([]);
-  const [users, setUsers] = useState<UserOption[]>([]);
+  const [users, setUsers] = useState<AdminVerifiedUserOption[]>([]);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -141,50 +104,37 @@ export default function StaffManagementPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
-    if (!token || role !== "admin") {
-      router.push("/");
-      return;
-    }
+    let cancelled = false;
 
     async function loadData() {
       try {
         setLoading(true);
         setError("");
 
-        const staffRes = await fetch(`${API_BASE}/admin/staff`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [staffData, usersData] = await Promise.all([
+          getAdminStaff(),
+          getAdminVerifiedUsers(),
+        ]);
 
-        const staffData = await safeJson<
-          StaffApiResponse[] & ApiErrorResponse
-        >(staffRes);
-
-        if (!staffRes.ok) {
-          throw new Error(
-            getApiErrorMessage(staffData, "Unable to load staff records")
-          );
-        }
+        if (cancelled) return;
 
         setStaff(Array.isArray(staffData) ? staffData.map(normalizeStaff) : []);
-
-        const usersRes = await fetch(`${API_BASE}/admin/verified-users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const usersData = await safeJson<UserOption[]>(usersRes);
         setUsers(Array.isArray(usersData) ? usersData : []);
       } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, "Unable to load admin records"));
+        if (!cancelled) {
+          setError(getErrorMessage(loadError, "Unable to load admin records"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    loadData();
-  }, [router]);
+    void loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredStaff = useMemo(() => {
     const keyword = search.toLowerCase().trim();
@@ -250,31 +200,11 @@ export default function StaffManagementPage() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-
     try {
       setActionLoading(true);
 
-      const res = await fetch(`${API_BASE}/admin/staff/from-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: selectedUser,
-          role: "staff",
-        }),
-      });
-
-      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
-
-      if (!res.ok) {
-        alert(getApiErrorMessage(data, "Failed to add staff"));
-        return;
-      }
-
-      if (data) setStaff((prev) => [normalizeStaff(data), ...prev]);
+      const data = await addAdminStaffFromUser(selectedUser, "staff");
+      setStaff((prev) => [normalizeStaff(data), ...prev]);
 
       setSelectedUser(null);
       setShowAddModal(false);
@@ -286,8 +216,6 @@ export default function StaffManagementPage() {
   }
 
   async function handleUpdateStaff() {
-    const token = localStorage.getItem("token");
-
     if (!editForm.id) {
       alert("Missing staff ID.");
       return;
@@ -315,37 +243,12 @@ export default function StaffManagementPage() {
     try {
       setActionLoading(true);
 
-      const res = await fetch(`${API_BASE}/admin/staff/${editForm.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
-
-      if (!res.ok) {
-        alert(getApiErrorMessage(data, "Update failed"));
-        return;
-      }
-
-      const updatedStaff = data ? normalizeStaff(data) : null;
+      const data = await updateAdminStaff(editForm.id, payload);
+      const updatedStaff = normalizeStaff(data);
 
       setStaff((prev) =>
         prev.map((member) =>
-          member.id === editForm.id
-            ? updatedStaff || {
-                ...member,
-                full_name: payload.full_name,
-                name: payload.name,
-                role: payload.role,
-                department: payload.department || "",
-                phone: payload.phone || "",
-                contact: payload.contact || "",
-              }
-            : member
+          member.id === editForm.id ? updatedStaff : member
         )
       );
 
@@ -373,40 +276,20 @@ export default function StaffManagementPage() {
   async function confirmStatusChange() {
     if (!confirmAction) return;
 
-    const token = localStorage.getItem("token");
     const newStatus = confirmAction.type === "deactivate" ? "Inactive" : "Active";
 
     try {
       setActionLoading(true);
 
-      const res = await fetch(
-        `${API_BASE}/admin/staff/${confirmAction.member.id}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
+      const data = await updateAdminStaffStatus(
+        confirmAction.member.id,
+        newStatus
       );
-
-      const data = await safeJson<StaffApiResponse & ApiErrorResponse>(res);
-
-      if (!res.ok) {
-        alert(
-          getApiErrorMessage(data, `Failed to ${confirmAction.type} account`)
-        );
-        return;
-      }
-
-      const updatedStaff = data ? normalizeStaff(data) : null;
+      const updatedStaff = normalizeStaff(data);
 
       setStaff((prev) =>
         prev.map((member) =>
-          member.id === confirmAction.member.id
-            ? updatedStaff || { ...member, status: newStatus }
-            : member
+          member.id === confirmAction.member.id ? updatedStaff : member
         )
       );
 
@@ -424,436 +307,432 @@ export default function StaffManagementPage() {
   }
 
   return (
-    <div className="staffLayout">
-      <PortalShell role="admin">
-      <main className={styles.staffMgmtPage}>
-        <PageHeader
-          title="Staff Management"
-          description="Manage internal users, roles, and account access."
-          primaryAction={
-            <button
-              type="button"
-              className={styles.addButton}
-              onClick={() => {
-                setSelectedUser(null);
-                setShowAddModal(true);
-              }}
-            >
-              + Add Staff
-            </button>
-          }
+    <main className={styles.staffMgmtPage}>
+      <PageHeader
+        title="Staff Management"
+        description="Manage internal users, roles, and account access."
+        primaryAction={
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => {
+              setSelectedUser(null);
+              setShowAddModal(true);
+            }}
+          >
+            + Add Staff
+          </button>
+        }
+      />
+
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span>Total Staff</span>
+          <strong>{stats.total}</strong>
+        </div>
+        <div className={`${styles.statCard} ${styles.greenAccent}`}>
+          <span>Active</span>
+          <strong>{stats.active}</strong>
+        </div>
+        <div className={`${styles.statCard} ${styles.blueAccent}`}>
+          <span>Admins</span>
+          <strong>{stats.admins}</strong>
+        </div>
+        <div className={`${styles.statCard} ${styles.orangeAccent}`}>
+          <span>Inactive</span>
+          <strong>{stats.inactive}</strong>
+        </div>
+      </div>
+
+      <div className={styles.filtersRow}>
+        <input
+          type="text"
+          placeholder="Search by name, email, or department"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className={styles.searchInput}
         />
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>Total Staff</span>
-            <strong>{stats.total}</strong>
+        <select
+          value={roleFilter}
+          onChange={(event) => setRoleFilter(event.target.value)}
+          className={styles.selectInput}
+        >
+          <option value="all">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+          <option value="doctor">Doctor</option>
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className={styles.selectInput}
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      <section className={styles.tableCard}>
+        {loading ? (
+          <p className={styles.message}>Loading staff records...</p>
+        ) : error ? (
+          <p className={styles.error}>{error}</p>
+        ) : filteredStaff.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h3>No staff records found</h3>
+            <p>Try adjusting the search or filters.</p>
           </div>
-          <div className={`${styles.statCard} ${styles.greenAccent}`}>
-            <span>Active</span>
-            <strong>{stats.active}</strong>
-          </div>
-          <div className={`${styles.statCard} ${styles.blueAccent}`}>
-            <span>Admins</span>
-            <strong>{stats.admins}</strong>
-          </div>
-          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-            <span>Inactive</span>
-            <strong>{stats.inactive}</strong>
-          </div>
-        </div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Staff</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
 
-        <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Search by name, email, or department"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className={styles.searchInput}
-          />
-
-          <select
-            value={roleFilter}
-            onChange={(event) => setRoleFilter(event.target.value)}
-            className={styles.selectInput}
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-            <option value="doctor">Doctor</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className={styles.selectInput}
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-
-        <section className={styles.tableCard}>
-          {loading ? (
-            <p className={styles.message}>Loading staff records...</p>
-          ) : error ? (
-            <p className={styles.error}>{error}</p>
-          ) : filteredStaff.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No staff records found</h3>
-              <p>Try adjusting the search or filters.</p>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Staff</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredStaff.map((member) => (
-                  <tr key={member.id}>
-                    <td>
-                      <div className={styles.staffCell}>
-                        <Image
-                          src={member.profile_image || "/default-avatar.png"}
-                          alt={member.full_name}
-                          width={42}
-                          height={42}
-                          className={styles.avatar}
-                        />
-                        <div>
-                          <strong>{member.full_name}</strong>
-                          <p>{member.email}</p>
-                        </div>
+            <tbody>
+              {filteredStaff.map((member) => (
+                <tr key={member.id}>
+                  <td>
+                    <div className={styles.staffCell}>
+                      <Image
+                        src={member.profile_image || "/default-avatar.png"}
+                        alt={member.full_name}
+                        width={42}
+                        height={42}
+                        className={styles.avatar}
+                      />
+                      <div>
+                        <strong>{member.full_name}</strong>
+                        <p>{member.email}</p>
                       </div>
-                    </td>
-                    <td>{capitalizeFirst(member.role)}</td>
-                    <td>{member.department || "N/A"}</td>
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${
-                          member.status.toLowerCase() === "active"
-                            ? styles.active
-                            : styles.inactive
-                        }`}
+                    </div>
+                  </td>
+                  <td>{capitalizeFirst(member.role)}</td>
+                  <td>{member.department || "N/A"}</td>
+                  <td>
+                    <span
+                      className={`${styles.statusBadge} ${
+                        member.status.toLowerCase() === "active"
+                          ? styles.active
+                          : styles.inactive
+                      }`}
+                    >
+                      {capitalizeFirst(member.status)}
+                    </span>
+                  </td>
+                  <td>{formatDate(member.created_at)}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => handleView(member)}
                       >
-                        {capitalizeFirst(member.status)}
-                      </span>
-                    </td>
-                    <td>{formatDate(member.created_at)}</td>
-                    <td>
-                      <div className={styles.actions}>
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.editBtn}
+                        onClick={() => handleEdit(member)}
+                      >
+                        Edit
+                      </button>
+                      {member.status.toLowerCase() === "active" ? (
                         <button
                           type="button"
-                          className={styles.viewBtn}
-                          onClick={() => handleView(member)}
+                          className={styles.deactivateBtn}
+                          onClick={() =>
+                            requestStatusChange(member, "deactivate")
+                          }
                         >
-                          View
+                          Deactivate
                         </button>
+                      ) : (
                         <button
                           type="button"
-                          className={styles.editBtn}
-                          onClick={() => handleEdit(member)}
+                          className={styles.deactivateBtn}
+                          onClick={() =>
+                            requestStatusChange(member, "reactivate")
+                          }
                         >
-                          Edit
+                          Reactivate
                         </button>
-                        {member.status.toLowerCase() === "active" ? (
-                          <button
-                            type="button"
-                            className={styles.deactivateBtn}
-                            onClick={() =>
-                              requestStatusChange(member, "deactivate")
-                            }
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className={styles.deactivateBtn}
-                            onClick={() =>
-                              requestStatusChange(member, "reactivate")
-                            }
-                          >
-                            Reactivate
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {showAddModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard}>
+            <h3>Add Staff</h3>
+            <p>Select a verified user to promote to staff.</p>
+
+            <div className={styles.selectBox}>
+              <select
+                value={selectedUser || ""}
+                onChange={(event) =>
+                  setSelectedUser(
+                    event.target.value ? Number(event.target.value) : null
+                  )
+                }
+              >
+                <option value="">Select user</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              </select>
+            </div>
 
-        {showAddModal && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalCard}>
-              <h3>Add Staff</h3>
-              <p>Select a verified user to promote to staff.</p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.dangerConfirmBtn}
+                onClick={handleAddStaff}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Adding..." : "Confirm"}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setShowAddModal(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className={styles.selectBox}>
-                <select
-                  value={selectedUser || ""}
-                  onChange={(event) =>
-                    setSelectedUser(
-                      event.target.value ? Number(event.target.value) : null
-                    )
-                  }
-                >
-                  <option value="">Select user</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))}
-                </select>
+      {showViewModal && selectedStaff && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCardLarge}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2>Staff Details</h2>
+                <p>Review staff account information and access status.</p>
               </div>
+              <button
+                type="button"
+                className={styles.topCloseButton}
+                onClick={() => setShowViewModal(false)}
+              >
+                Close
+              </button>
+            </div>
 
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.dangerConfirmBtn}
-                  onClick={handleAddStaff}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Adding..." : "Confirm"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={() => setShowAddModal(false)}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
+            <div className={styles.profileSection}>
+              <Image
+                src={selectedStaff.profile_image || "/default-avatar.png"}
+                alt={selectedStaff.full_name}
+                width={44}
+                height={44}
+                className={styles.avatar}
+              />
+              <div className={styles.profileInfo}>
+                <h3>{selectedStaff.full_name}</h3>
+                <p>{selectedStaff.email}</p>
+              </div>
+            </div>
+
+            <div className={styles.profileGrid}>
+              <div>
+                <strong>Role</strong>
+                <p>{capitalizeFirst(selectedStaff.role)}</p>
+              </div>
+              <div>
+                <strong>Status</strong>
+                <p>{capitalizeFirst(selectedStaff.status)}</p>
+              </div>
+              <div>
+                <strong>Department</strong>
+                <p>{selectedStaff.department || "N/A"}</p>
+              </div>
+              <div>
+                <strong>Contact</strong>
+                <p>{selectedStaff.phone || selectedStaff.contact || "N/A"}</p>
+              </div>
+              <div>
+                <strong>Created</strong>
+                <p>{formatDate(selectedStaff.created_at)}</p>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showViewModal && selectedStaff && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalCardLarge}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>Staff Details</h2>
-                  <p>Review staff account information and access status.</p>
-                </div>
-                <button
-                  type="button"
-                  className={styles.topCloseButton}
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-
-              <div className={styles.profileSection}>
-                <Image
-                  src={selectedStaff.profile_image || "/default-avatar.png"}
-                  alt={selectedStaff.full_name}
-                  width={44}
-                  height={44}
-                  className={styles.avatar}
-                />
-                <div className={styles.profileInfo}>
-                  <h3>{selectedStaff.full_name}</h3>
-                  <p>{selectedStaff.email}</p>
-                </div>
-              </div>
-
-              <div className={styles.profileGrid}>
-                <div>
-                  <strong>Role</strong>
-                  <p>{capitalizeFirst(selectedStaff.role)}</p>
-                </div>
-                <div>
-                  <strong>Status</strong>
-                  <p>{capitalizeFirst(selectedStaff.status)}</p>
-                </div>
-                <div>
-                  <strong>Department</strong>
-                  <p>{selectedStaff.department || "N/A"}</p>
-                </div>
-                <div>
-                  <strong>Contact</strong>
-                  <p>{selectedStaff.phone || selectedStaff.contact || "N/A"}</p>
-                </div>
-                <div>
-                  <strong>Created</strong>
-                  <p>{formatDate(selectedStaff.created_at)}</p>
-                </div>
+      {showEditModal && selectedStaff && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCardLarge}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2>Edit Staff</h2>
+                <p>Update internal user profile and role information.</p>
               </div>
             </div>
-          </div>
-        )}
 
-        {showEditModal && selectedStaff && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalCardLarge}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>Edit Staff</h2>
-                  <p>Update internal user profile and role information.</p>
-                </div>
-              </div>
+            <div className={styles.editGrid}>
+              <label htmlFor="full_name">Full Name</label>
+              <input
+                id="full_name"
+                value={editForm.full_name}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    full_name: event.target.value,
+                  }))
+                }
+              />
 
-              <div className={styles.editGrid}>
-                <label htmlFor="full_name">Full Name</label>
-                <input
-                  id="full_name"
-                  value={editForm.full_name}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      full_name: event.target.value,
-                    }))
-                  }
-                />
+              <label htmlFor="email">Email</label>
+              <input id="email" value={editForm.email} disabled />
 
-                <label htmlFor="email">Email</label>
-                <input id="email" value={editForm.email} disabled />
+              <label htmlFor="role">Role</label>
+              <select
+                id="role"
+                value={editForm.role}
+                onChange={(event) =>
+                  setEditForm((prev) => ({ ...prev, role: event.target.value }))
+                }
+              >
+                <option value="admin">Admin</option>
+                <option value="staff">Staff</option>
+                <option value="doctor">Doctor</option>
+              </select>
 
-                <label htmlFor="role">Role</label>
-                <select
-                  id="role"
-                  value={editForm.role}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({ ...prev, role: event.target.value }))
-                  }
-                >
-                  <option value="admin">Admin</option>
-                  <option value="staff">Staff</option>
-                  <option value="doctor">Doctor</option>
-                </select>
+              <label htmlFor="department">Department</label>
+              <input
+                id="department"
+                value={editForm.department}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    department: event.target.value,
+                  }))
+                }
+              />
 
-                <label htmlFor="department">Department</label>
-                <input
-                  id="department"
-                  value={editForm.department}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      department: event.target.value,
-                    }))
-                  }
-                />
+              <label htmlFor="phone">Phone</label>
+              <input
+                id="phone"
+                value={editForm.phone}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    phone: event.target.value,
+                  }))
+                }
+              />
+            </div>
 
-                <label htmlFor="phone">Phone</label>
-                <input
-                  id="phone"
-                  value={editForm.phone}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      phone: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.dangerConfirmBtn}
-                  onClick={handleUpdateStaff}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={closeEditModal}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.dangerConfirmBtn}
+                onClick={handleUpdateStaff}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={closeEditModal}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {confirmAction && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.confirmCard}>
-              <div className={styles.confirmTop}>
-                <div
-                  className={`${styles.confirmIcon} ${
-                    confirmAction.type === "deactivate"
-                      ? styles.warningIcon
-                      : styles.successIcon
-                  }`}
-                >
-                  !
-                </div>
-                <div>
-                  <p className={styles.confirmEyebrow}>Confirm Status Change</p>
-                  <h2>
-                    {confirmAction.type === "deactivate"
-                      ? "Deactivate staff account?"
-                      : "Reactivate staff account?"}
-                  </h2>
-                </div>
+      {confirmAction && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.confirmCard}>
+            <div className={styles.confirmTop}>
+              <div
+                className={`${styles.confirmIcon} ${
+                  confirmAction.type === "deactivate"
+                    ? styles.warningIcon
+                    : styles.successIcon
+                }`}
+              >
+                !
               </div>
-
-              <p className={styles.confirmText}>
-                This will update the account status for {" "}
-                {confirmAction.member.full_name}.
-              </p>
-
-              <div className={styles.confirmUserBox}>
-                <div>
-                  <span>Name</span>
-                  <strong>{confirmAction.member.full_name}</strong>
-                </div>
-                <div>
-                  <span>Email</span>
-                  <strong>{confirmAction.member.email}</strong>
-                </div>
-              </div>
-
-              <div className={styles.confirmActions}>
-                <button
-                  type="button"
-                  className={styles.cancelConfirmBtn}
-                  onClick={() => setConfirmAction(null)}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={
-                    confirmAction.type === "deactivate"
-                      ? styles.dangerConfirmBtn
-                      : styles.successConfirmBtn
-                  }
-                  onClick={confirmStatusChange}
-                  disabled={actionLoading}
-                >
-                  {actionLoading
-                    ? "Updating..."
-                    : confirmAction.type === "deactivate"
-                    ? "Deactivate"
-                    : "Reactivate"}
-                </button>
+              <div>
+                <p className={styles.confirmEyebrow}>Confirm Status Change</p>
+                <h2>
+                  {confirmAction.type === "deactivate"
+                    ? "Deactivate staff account?"
+                    : "Reactivate staff account?"}
+                </h2>
               </div>
             </div>
+
+            <p className={styles.confirmText}>
+              This will update the account status for{" "}
+              {confirmAction.member.full_name}.
+            </p>
+
+            <div className={styles.confirmUserBox}>
+              <div>
+                <span>Name</span>
+                <strong>{confirmAction.member.full_name}</strong>
+              </div>
+              <div>
+                <span>Email</span>
+                <strong>{confirmAction.member.email}</strong>
+              </div>
+            </div>
+
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.cancelConfirmBtn}
+                onClick={() => setConfirmAction(null)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={
+                  confirmAction.type === "deactivate"
+                    ? styles.dangerConfirmBtn
+                    : styles.successConfirmBtn
+                }
+                onClick={confirmStatusChange}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? "Updating..."
+                  : confirmAction.type === "deactivate"
+                  ? "Deactivate"
+                  : "Reactivate"}
+              </button>
+            </div>
           </div>
-        )}
-      </main>
-      </PortalShell>
-    </div>
+        </div>
+      )}
+    </main>
   );
 }

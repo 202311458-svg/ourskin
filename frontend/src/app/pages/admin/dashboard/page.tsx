@@ -2,45 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "@/lib/api";
-import PageShell from "@/app/components/portal/ui/PageShell"
+import PageShell from "@/app/components/portal/ui/PageShell";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
 import Section from "@/app/components/portal/ui/Section";
 import StatCard from "@/app/components/portal/ui/StatCard";
-import StatusBadge from "@/app/components/portal/ui/StatusBadge";
 import EmptyState from "@/app/components/portal/ui/EmptyState";
+import {
+  AdminDashboardStats,
+  AdminFollowUp,
+  getAdminDashboard,
+  getAdminFollowUps,
+  updateAdminFollowUp,
+} from "@/lib/admin-api";
 import styles from "./page.module.css";
-
-type AdminDashboardStats = {
-  total_users: number;
-  total_patients: number;
-  total_staff: number;
-  total_doctors: number;
-  total_appointments: number;
-  pending_appointments: number;
-  approved_appointments: number;
-  total_ai_logs: number;
-};
-
-type AdminFollowUp = {
-  id: number;
-  appointment_id: number;
-  appointment_services?: string | null;
-  appointment_date?: string | null;
-  appointment_time?: string | null;
-  appointment_status?: string | null;
-  patient_id: number;
-  patient_name?: string | null;
-  patient_email?: string | null;
-  doctor_id: number;
-  doctor_name?: string | null;
-  follow_up_date: string;
-  reason: string;
-  notes?: string | null;
-  status: string;
-  created_at?: string | null;
-};
 
 const EMPTY_STATS: AdminDashboardStats = {
   total_users: 0,
@@ -157,63 +131,46 @@ function uniqueFollowUpsById(followUps: AdminFollowUp[]) {
 }
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
-
   const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
   const [followUps, setFollowUps] = useState<AdminFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingFollowUpId, setUpdatingFollowUpId] = useState<number | null>(null);
 
-  const loadDashboard = useCallback(
-    async (showLoader = true) => {
-      const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
+  const loadDashboard = useCallback(async (showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
+      setError("");
 
-      if (!token || role !== "admin") {
-        router.push("/");
-        return;
-      }
+      const [dashboardData, followUpData] = await Promise.all([
+        getAdminDashboard(),
+        getAdminFollowUps(),
+      ]);
 
-      try {
-        if (showLoader) setLoading(true);
-        setError("");
+      setStats({
+        ...EMPTY_STATS,
+        ...(dashboardData || {}),
+      });
 
-        const [dashboardData, followUpData] = await Promise.all([
-          fetch(`${API_BASE_URL}/admin/dashboard`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((res) => res.json()),
-          fetch(`${API_BASE_URL}/staff/follow-ups`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((res) => res.json()),
-        ]);
-
-        setStats({
-          ...EMPTY_STATS,
-          ...(dashboardData || {}),
-        });
-
-        setFollowUps(
-          uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : [])
-        );
-      } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, "Unable to load dashboard."));
-      } finally {
-        if (showLoader) setLoading(false);
-      }
-    },
-    [router]
-  );
+      setFollowUps(
+        uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : [])
+      );
+    } catch (loadError: unknown) {
+      setError(getErrorMessage(loadError, "Unable to load dashboard."));
+    } finally {
+      if (showLoader) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       if (document.hidden) return;
       if (updatingFollowUpId !== null) return;
-      loadDashboard(false);
+      void loadDashboard(false);
     }, 10000);
 
     return () => window.clearInterval(intervalId);
@@ -245,19 +202,6 @@ export default function AdminDashboardPage() {
     });
   }, [followUps]);
 
-  const activeFollowUps = useMemo(() => {
-    return sortedFollowUps.filter(
-      (item) => (item.status || "").toLowerCase() !== "completed"
-    );
-  }, [sortedFollowUps]);
-
-  const dueFollowUps = useMemo(() => {
-    return sortedFollowUps.filter((item) => {
-      const timing = getFollowUpTiming(item);
-      return timing === "Due Today" || timing === "Overdue";
-    });
-  }, [sortedFollowUps]);
-
   async function markFollowUpCompleted(followUpId: number) {
     const selectedFollowUp = followUps.find((item) => item.id === followUpId);
 
@@ -274,20 +218,9 @@ export default function AdminDashboardPage() {
     try {
       setUpdatingFollowUpId(followUpId);
 
-      const res = await fetch(`${API_BASE_URL}/staff/follow-ups/${followUpId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ status: "Completed" }),
+      const result = await updateAdminFollowUp(followUpId, {
+        status: "Completed",
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result?.detail || "Unable to mark this follow-up as completed.");
-      }
 
       setFollowUps((prev) =>
         uniqueFollowUpsById(

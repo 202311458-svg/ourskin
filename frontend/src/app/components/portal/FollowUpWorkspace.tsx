@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
 import Section from "@/app/components/portal/ui/Section";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
@@ -51,7 +50,6 @@ const date = (v?: string | null) =>
     : "Not available";
 
 export default function FollowUpWorkspace({ role }: { role: Role }) {
-  const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [filter, setFilter] = useState<Filter>("attention");
   const [query, setQuery] = useState("");
@@ -63,19 +61,11 @@ export default function FollowUpWorkspace({ role }: { role: Role }) {
   const list = role === "doctor" ? "/doctor/follow-ups" : "/staff/follow-ups";
 
   const load = useCallback(async (showLoader = true) => {
-    const token = localStorage.getItem("token");
-    if (!token) return router.replace("/");
-
     try {
       if (showLoader) setLoading(true);
       setError("");
 
-      const res = await fetch(`${API_BASE_URL}${list}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.detail || "Unable to load follow-ups.");
-
+      const body = await apiFetch<Item[]>(list);
       setItems(Array.isArray(body) ? body : []);
       setLastUpdated(new Date());
     } catch (e) {
@@ -83,7 +73,7 @@ export default function FollowUpWorkspace({ role }: { role: Role }) {
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [list, router]);
+  }, [list]);
 
   useEffect(() => {
     void load();
@@ -140,25 +130,17 @@ export default function FollowUpWorkspace({ role }: { role: Role }) {
   );
 
   const complete = async (x: Item) => {
-    const token = localStorage.getItem("token");
-    if (!token) return router.replace("/");
-
     const endpoint = role === "doctor" ? `/doctor/follow-ups/${x.id}` : `/staff/follow-ups/${x.id}`;
 
     try {
       setUpdating(x.id);
       setError("");
 
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      await apiFetch(endpoint, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Completed" }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.detail || "Unable to complete follow-up.");
 
       await load(false);
     } catch (e) {
