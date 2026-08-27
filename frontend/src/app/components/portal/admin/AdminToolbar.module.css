@@ -1,0 +1,89 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.controls :global(input),
+.controls :global(select) {
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-input);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.controls :global(input[type="search"]),
+.controls :global(input[type="text"]) {
+  flex: 1 1 280px;
+  min-width: min(100%, 220px);
+}
+
+.controls :global(select) {
+  flex: 0 1 210px;
+  min-width: 150px;
+}
+
+.controls :global(input:focus-visible),
+.controls :global(select:focus-visible) {
+  border-color: var(--color-focus);
+  outline: 3px solid color-mix(in srgb, var(--color-focus) 24%, transparent);
+  outline-offset: 1px;
+}
+
+.trailing,
+.actions,
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trailing {
+  flex: 0 0 auto;
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .toolbar,
+  .trailing {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .controls,
+  .actions {
+    width: 100%;
+  }
+
+  .controls :global(input[type="search"]),
+  .controls :global(input[type="text"]),
+  .controls :global(select) {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}

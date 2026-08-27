@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
+import AdminDataTable from "@/app/components/portal/admin/AdminDataTable";
+import AdminDialog from "@/app/components/portal/admin/AdminDialog";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import AdminToolbar from "@/app/components/portal/admin/AdminToolbar";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import StatCard from "@/app/components/portal/ui/StatCard";
+import StatusBadge from "@/app/components/portal/ui/StatusBadge";
 import {
   AdminStaffRecord,
   AdminVerifiedUserOption,
@@ -70,11 +78,8 @@ function capitalizeFirst(value?: string) {
 
 function formatDate(value?: string) {
   if (!value) return "N/A";
-
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "N/A";
-
   return date.toLocaleDateString();
 }
 
@@ -88,6 +93,7 @@ export default function StaffManagementPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -110,14 +116,11 @@ export default function StaffManagementPage() {
       try {
         setLoading(true);
         setError("");
-
         const [staffData, usersData] = await Promise.all([
           getAdminStaff(),
           getAdminVerifiedUsers(),
         ]);
-
         if (cancelled) return;
-
         setStaff(Array.isArray(staffData) ? staffData.map(normalizeStaff) : []);
         setUsers(Array.isArray(usersData) ? usersData : []);
       } catch (loadError: unknown) {
@@ -130,7 +133,6 @@ export default function StaffManagementPage() {
     }
 
     void loadData();
-
     return () => {
       cancelled = true;
     };
@@ -145,33 +147,30 @@ export default function StaffManagementPage() {
         member.full_name.toLowerCase().includes(keyword) ||
         member.email.toLowerCase().includes(keyword) ||
         (member.department || "").toLowerCase().includes(keyword);
-
-      const matchesRole =
-        roleFilter === "all" || member.role.toLowerCase() === roleFilter;
-
-      const matchesStatus =
-        statusFilter === "all" || member.status.toLowerCase() === statusFilter;
-
+      const matchesRole = roleFilter === "all" || member.role.toLowerCase() === roleFilter;
+      const matchesStatus = statusFilter === "all" || member.status.toLowerCase() === statusFilter;
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [staff, search, roleFilter, statusFilter]);
 
-  const stats = useMemo(() => {
-    return {
-      total: staff.length,
-      active: staff.filter((item) => item.status.toLowerCase() === "active")
-        .length,
-      admins: staff.filter((item) => item.role.toLowerCase() === "admin")
-        .length,
-      inactive: staff.filter((item) => item.status.toLowerCase() !== "active")
-        .length,
-    };
-  }, [staff]);
+  const stats = useMemo(() => ({
+    total: staff.length,
+    active: staff.filter((item) => item.status.toLowerCase() === "active").length,
+    admins: staff.filter((item) => item.role.toLowerCase() === "admin").length,
+    inactive: staff.filter((item) => item.status.toLowerCase() !== "active").length,
+  }), [staff]);
 
-  function closeEditModal() {
+  function openAddModal() {
+    setSelectedUser(null);
+    setActionError("");
+    setShowAddModal(true);
+  }
+
+  function closeAddModal() {
     if (actionLoading) return;
-    setShowEditModal(false);
-    setSelectedStaff(null);
+    setShowAddModal(false);
+    setSelectedUser(null);
+    setActionError("");
   }
 
   function handleView(member: StaffUser) {
@@ -180,8 +179,7 @@ export default function StaffManagementPage() {
   }
 
   function handleEdit(member: StaffUser) {
-    const normalized = normalizeStaff(member);
-
+    const normalized = member;
     setSelectedStaff(normalized);
     setEditForm({
       id: normalized.id,
@@ -191,25 +189,32 @@ export default function StaffManagementPage() {
       department: normalized.department || "",
       phone: normalized.phone || normalized.contact || "",
     });
+    setActionError("");
     setShowEditModal(true);
+  }
+
+  function closeEditModal() {
+    if (actionLoading) return;
+    setShowEditModal(false);
+    setSelectedStaff(null);
+    setActionError("");
   }
 
   async function handleAddStaff() {
     if (!selectedUser) {
-      alert("Please select a verified user first.");
+      setActionError("Please select a verified user first.");
       return;
     }
 
     try {
       setActionLoading(true);
-
+      setActionError("");
       const data = await addAdminStaffFromUser(selectedUser, "staff");
       setStaff((prev) => [normalizeStaff(data), ...prev]);
-
       setSelectedUser(null);
       setShowAddModal(false);
     } catch (addError: unknown) {
-      alert(getErrorMessage(addError, "Something went wrong while adding staff."));
+      setActionError(getErrorMessage(addError, "Something went wrong while adding staff."));
     } finally {
       setActionLoading(false);
     }
@@ -217,17 +222,15 @@ export default function StaffManagementPage() {
 
   async function handleUpdateStaff() {
     if (!editForm.id) {
-      alert("Missing staff ID.");
+      setActionError("Missing staff ID.");
       return;
     }
-
     if (!editForm.full_name.trim()) {
-      alert("Full name is required.");
+      setActionError("Full name is required.");
       return;
     }
-
     if (!editForm.role.trim()) {
-      alert("Role is required.");
+      setActionError("Role is required.");
       return;
     }
 
@@ -242,497 +245,239 @@ export default function StaffManagementPage() {
 
     try {
       setActionLoading(true);
-
+      setActionError("");
       const data = await updateAdminStaff(editForm.id, payload);
       const updatedStaff = normalizeStaff(data);
-
-      setStaff((prev) =>
-        prev.map((member) =>
-          member.id === editForm.id ? updatedStaff : member
-        )
-      );
-
+      setStaff((prev) => prev.map((member) => member.id === editForm.id ? updatedStaff : member));
       setShowEditModal(false);
       setSelectedStaff(null);
     } catch (updateError: unknown) {
-      alert(
-        getErrorMessage(
-          updateError,
-          "Something went wrong while updating staff."
-        )
-      );
+      setActionError(getErrorMessage(updateError, "Something went wrong while updating staff."));
     } finally {
       setActionLoading(false);
     }
   }
 
-  function requestStatusChange(
-    member: StaffUser,
-    type: "deactivate" | "reactivate"
-  ) {
+  function requestStatusChange(member: StaffUser, type: "deactivate" | "reactivate") {
+    setActionError("");
     setConfirmAction({ type, member });
   }
 
   async function confirmStatusChange() {
     if (!confirmAction) return;
-
     const newStatus = confirmAction.type === "deactivate" ? "Inactive" : "Active";
 
     try {
       setActionLoading(true);
-
-      const data = await updateAdminStaffStatus(
-        confirmAction.member.id,
-        newStatus
-      );
+      setActionError("");
+      const data = await updateAdminStaffStatus(confirmAction.member.id, newStatus);
       const updatedStaff = normalizeStaff(data);
-
-      setStaff((prev) =>
-        prev.map((member) =>
-          member.id === confirmAction.member.id ? updatedStaff : member
-        )
-      );
-
+      setStaff((prev) => prev.map((member) => member.id === confirmAction.member.id ? updatedStaff : member));
       setConfirmAction(null);
     } catch (statusError: unknown) {
-      alert(
-        getErrorMessage(
-          statusError,
-          "Something went wrong while updating account status."
-        )
-      );
+      setActionError(getErrorMessage(statusError, "Something went wrong while updating account status."));
     } finally {
       setActionLoading(false);
     }
   }
 
   return (
-    <main className={styles.staffMgmtPage}>
+    <PageShell>
       <PageHeader
+        eyebrow="Internal access"
         title="Staff Management"
-        description="Manage internal users, roles, and account access."
-        primaryAction={
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => {
-              setSelectedUser(null);
-              setShowAddModal(true);
-            }}
-          >
-            + Add Staff
-          </button>
-        }
+        description="Manage internal users, roles, departments, and account access."
+        primaryAction={<AdminActionButton tone="primary" onClick={openAddModal}>+ Add staff</AdminActionButton>}
       />
 
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span>Total Staff</span>
-          <strong>{stats.total}</strong>
-        </div>
-        <div className={`${styles.statCard} ${styles.greenAccent}`}>
-          <span>Active</span>
-          <strong>{stats.active}</strong>
-        </div>
-        <div className={`${styles.statCard} ${styles.blueAccent}`}>
-          <span>Admins</span>
-          <strong>{stats.admins}</strong>
-        </div>
-        <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-          <span>Inactive</span>
-          <strong>{stats.inactive}</strong>
-        </div>
-      </div>
+      <AdminStatsGrid compact>
+        <StatCard label="Internal users" value={stats.total} hint="Admin, staff, and doctor accounts" />
+        <StatCard label="Active" value={stats.active} hint="Accounts currently allowed to sign in" tone="success" />
+        <StatCard label="Admins" value={stats.admins} hint="Accounts with administrator role" tone="info" />
+        <StatCard label="Inactive" value={stats.inactive} hint="Accounts with access disabled" tone="warning" />
+      </AdminStatsGrid>
 
-      <div className={styles.filtersRow}>
-        <input
-          type="text"
-          placeholder="Search by name, email, or department"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className={styles.searchInput}
-        />
-
-        <select
-          value={roleFilter}
-          onChange={(event) => setRoleFilter(event.target.value)}
-          className={styles.selectInput}
-        >
-          <option value="all">All Roles</option>
+      <AdminToolbar meta={`${filteredStaff.length} shown`}>
+        <input type="search" aria-label="Search staff" placeholder="Search name, email, or department" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Filter staff by role">
+          <option value="all">All roles</option>
           <option value="admin">Admin</option>
           <option value="staff">Staff</option>
           <option value="doctor">Doctor</option>
         </select>
-
-        <select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-          className={styles.selectInput}
-        >
-          <option value="all">All Status</option>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter staff by status">
+          <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-      </div>
+      </AdminToolbar>
 
-      <section className={styles.tableCard}>
-        {loading ? (
-          <p className={styles.message}>Loading staff records...</p>
-        ) : error ? (
-          <p className={styles.error}>{error}</p>
-        ) : filteredStaff.length === 0 ? (
-          <div className={styles.emptyState}>
-            <h3>No staff records found</h3>
-            <p>Try adjusting the search or filters.</p>
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Staff</th>
-                <th>Role</th>
-                <th>Department</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
+      <AdminDataTable
+        title="Internal user directory"
+        description="Role, department, status, and account actions for clinic users."
+        loading={loading}
+        loadingText="Loading staff records…"
+        error={error}
+        empty={!loading && !error && filteredStaff.length === 0}
+        emptyTitle="No staff records match this view."
+        emptyDescription="Try adjusting the search or filters."
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Staff</th>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredStaff.map((member) => (
+              <tr key={member.id}>
+                <td>
+                  <div className={styles.staffCell}>
+                    <Image src={member.profile_image || "/default-avatar.png"} alt={member.full_name} width={42} height={42} className={styles.avatar} />
+                    <div>
+                      <strong>{member.full_name}</strong>
+                      <p>{member.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td><StatusBadge tone={member.role.toLowerCase() === "admin" ? "danger" : member.role.toLowerCase() === "doctor" ? "info" : "warning"}>{capitalizeFirst(member.role)}</StatusBadge></td>
+                <td>{member.department || "N/A"}</td>
+                <td><StatusBadge tone={member.status.toLowerCase() === "active" ? "success" : "neutral"}>{capitalizeFirst(member.status)}</StatusBadge></td>
+                <td>{formatDate(member.created_at)}</td>
+                <td>
+                  <div className={styles.actions}>
+                    <AdminActionButton onClick={() => handleView(member)}>View</AdminActionButton>
+                    <AdminActionButton onClick={() => handleEdit(member)}>Edit</AdminActionButton>
+                    {member.status.toLowerCase() === "active" ? (
+                      <AdminActionButton tone="danger" onClick={() => requestStatusChange(member, "deactivate")}>Deactivate</AdminActionButton>
+                    ) : (
+                      <AdminActionButton tone="success" onClick={() => requestStatusChange(member, "reactivate")}>Reactivate</AdminActionButton>
+                    )}
+                  </div>
+                </td>
               </tr>
-            </thead>
+            ))}
+          </tbody>
+        </table>
+      </AdminDataTable>
 
-            <tbody>
-              {filteredStaff.map((member) => (
-                <tr key={member.id}>
-                  <td>
-                    <div className={styles.staffCell}>
-                      <Image
-                        src={member.profile_image || "/default-avatar.png"}
-                        alt={member.full_name}
-                        width={42}
-                        height={42}
-                        className={styles.avatar}
-                      />
-                      <div>
-                        <strong>{member.full_name}</strong>
-                        <p>{member.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>{capitalizeFirst(member.role)}</td>
-                  <td>{member.department || "N/A"}</td>
-                  <td>
-                    <span
-                      className={`${styles.statusBadge} ${
-                        member.status.toLowerCase() === "active"
-                          ? styles.active
-                          : styles.inactive
-                      }`}
-                    >
-                      {capitalizeFirst(member.status)}
-                    </span>
-                  </td>
-                  <td>{formatDate(member.created_at)}</td>
-                  <td>
-                    <div className={styles.actions}>
-                      <button
-                        type="button"
-                        className={styles.viewBtn}
-                        onClick={() => handleView(member)}
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.editBtn}
-                        onClick={() => handleEdit(member)}
-                      >
-                        Edit
-                      </button>
-                      {member.status.toLowerCase() === "active" ? (
-                        <button
-                          type="button"
-                          className={styles.deactivateBtn}
-                          onClick={() =>
-                            requestStatusChange(member, "deactivate")
-                          }
-                        >
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.deactivateBtn}
-                          onClick={() =>
-                            requestStatusChange(member, "reactivate")
-                          }
-                        >
-                          Reactivate
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {showAddModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCard}>
-            <h3>Add Staff</h3>
-            <p>Select a verified user to promote to staff.</p>
-
-            <div className={styles.selectBox}>
-              <select
-                value={selectedUser || ""}
-                onChange={(event) =>
-                  setSelectedUser(
-                    event.target.value ? Number(event.target.value) : null
-                  )
-                }
-              >
-                <option value="">Select user</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.dangerConfirmBtn}
-                onClick={handleAddStaff}
-                disabled={actionLoading}
-              >
-                {actionLoading ? "Adding..." : "Confirm"}
-              </button>
-              <button
-                type="button"
-                className={styles.cancelBtn}
-                onClick={() => setShowAddModal(false)}
-                disabled={actionLoading}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <AdminDialog
+        open={showAddModal}
+        onClose={closeAddModal}
+        title="Add staff"
+        description="Select a verified user to promote to an internal staff account."
+        size="sm"
+        footer={
+          <>
+            <AdminActionButton onClick={closeAddModal} disabled={actionLoading}>Cancel</AdminActionButton>
+            <AdminActionButton tone="primary" onClick={handleAddStaff} disabled={actionLoading}>{actionLoading ? "Adding…" : "Add staff"}</AdminActionButton>
+          </>
+        }
+      >
+        {actionError ? <div className={styles.dialogError} role="alert">{actionError}</div> : null}
+        <div className={styles.formStack}>
+          <label htmlFor="admin-add-staff-user">Verified user</label>
+          <select id="admin-add-staff-user" value={selectedUser || ""} onChange={(event) => setSelectedUser(event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Select user</option>
+            {users.map((user) => <option key={user.id} value={user.id}>{user.name} ({user.email})</option>)}
+          </select>
         </div>
-      )}
+      </AdminDialog>
 
-      {showViewModal && selectedStaff && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCardLarge}>
-            <div className={styles.modalHeader}>
-              <div>
-                <h2>Staff Details</h2>
-                <p>Review staff account information and access status.</p>
-              </div>
-              <button
-                type="button"
-                className={styles.topCloseButton}
-                onClick={() => setShowViewModal(false)}
-              >
-                Close
-              </button>
-            </div>
-
+      <AdminDialog
+        open={showViewModal && Boolean(selectedStaff)}
+        onClose={() => setShowViewModal(false)}
+        title="Staff details"
+        description="Review staff account information and access status."
+        size="lg"
+        footer={<AdminActionButton onClick={() => setShowViewModal(false)}>Close</AdminActionButton>}
+      >
+        {selectedStaff ? (
+          <>
             <div className={styles.profileSection}>
-              <Image
-                src={selectedStaff.profile_image || "/default-avatar.png"}
-                alt={selectedStaff.full_name}
-                width={44}
-                height={44}
-                className={styles.avatar}
-              />
+              <Image src={selectedStaff.profile_image || "/default-avatar.png"} alt={selectedStaff.full_name} width={52} height={52} className={styles.avatar} />
               <div className={styles.profileInfo}>
                 <h3>{selectedStaff.full_name}</h3>
                 <p>{selectedStaff.email}</p>
               </div>
             </div>
-
             <div className={styles.profileGrid}>
-              <div>
-                <strong>Role</strong>
-                <p>{capitalizeFirst(selectedStaff.role)}</p>
-              </div>
-              <div>
-                <strong>Status</strong>
-                <p>{capitalizeFirst(selectedStaff.status)}</p>
-              </div>
-              <div>
-                <strong>Department</strong>
-                <p>{selectedStaff.department || "N/A"}</p>
-              </div>
-              <div>
-                <strong>Contact</strong>
-                <p>{selectedStaff.phone || selectedStaff.contact || "N/A"}</p>
-              </div>
-              <div>
-                <strong>Created</strong>
-                <p>{formatDate(selectedStaff.created_at)}</p>
-              </div>
+              <div><span>Role</span><strong>{capitalizeFirst(selectedStaff.role)}</strong></div>
+              <div><span>Status</span><strong>{capitalizeFirst(selectedStaff.status)}</strong></div>
+              <div><span>Department</span><strong>{selectedStaff.department || "N/A"}</strong></div>
+              <div><span>Contact</span><strong>{selectedStaff.phone || selectedStaff.contact || "N/A"}</strong></div>
+              <div><span>Created</span><strong>{formatDate(selectedStaff.created_at)}</strong></div>
             </div>
-          </div>
+          </>
+        ) : null}
+      </AdminDialog>
+
+      <AdminDialog
+        open={showEditModal && Boolean(selectedStaff)}
+        onClose={closeEditModal}
+        title="Edit staff"
+        description="Update internal user profile and role information."
+        size="lg"
+        footer={
+          <>
+            <AdminActionButton onClick={closeEditModal} disabled={actionLoading}>Cancel</AdminActionButton>
+            <AdminActionButton tone="primary" onClick={handleUpdateStaff} disabled={actionLoading}>{actionLoading ? "Saving…" : "Save changes"}</AdminActionButton>
+          </>
+        }
+      >
+        {actionError ? <div className={styles.dialogError} role="alert">{actionError}</div> : null}
+        <div className={styles.editGrid}>
+          <label htmlFor="full_name">Full name</label>
+          <input id="full_name" value={editForm.full_name} onChange={(event) => setEditForm((prev) => ({ ...prev, full_name: event.target.value }))} />
+          <label htmlFor="email">Email</label>
+          <input id="email" value={editForm.email} disabled />
+          <label htmlFor="role">Role</label>
+          <select id="role" value={editForm.role} onChange={(event) => setEditForm((prev) => ({ ...prev, role: event.target.value }))}>
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+            <option value="doctor">Doctor</option>
+          </select>
+          <label htmlFor="department">Department</label>
+          <input id="department" value={editForm.department} onChange={(event) => setEditForm((prev) => ({ ...prev, department: event.target.value }))} />
+          <label htmlFor="phone">Phone</label>
+          <input id="phone" value={editForm.phone} onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))} />
         </div>
-      )}
+      </AdminDialog>
 
-      {showEditModal && selectedStaff && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCardLarge}>
-            <div className={styles.modalHeader}>
-              <div>
-                <h2>Edit Staff</h2>
-                <p>Update internal user profile and role information.</p>
-              </div>
-            </div>
-
-            <div className={styles.editGrid}>
-              <label htmlFor="full_name">Full Name</label>
-              <input
-                id="full_name"
-                value={editForm.full_name}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    full_name: event.target.value,
-                  }))
-                }
-              />
-
-              <label htmlFor="email">Email</label>
-              <input id="email" value={editForm.email} disabled />
-
-              <label htmlFor="role">Role</label>
-              <select
-                id="role"
-                value={editForm.role}
-                onChange={(event) =>
-                  setEditForm((prev) => ({ ...prev, role: event.target.value }))
-                }
-              >
-                <option value="admin">Admin</option>
-                <option value="staff">Staff</option>
-                <option value="doctor">Doctor</option>
-              </select>
-
-              <label htmlFor="department">Department</label>
-              <input
-                id="department"
-                value={editForm.department}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    department: event.target.value,
-                  }))
-                }
-              />
-
-              <label htmlFor="phone">Phone</label>
-              <input
-                id="phone"
-                value={editForm.phone}
-                onChange={(event) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    phone: event.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.dangerConfirmBtn}
-                onClick={handleUpdateStaff}
-                disabled={actionLoading}
-              >
-                {actionLoading ? "Saving..." : "Save Changes"}
-              </button>
-              <button
-                type="button"
-                className={styles.cancelBtn}
-                onClick={closeEditModal}
-                disabled={actionLoading}
-              >
-                Cancel
-              </button>
-            </div>
+      <AdminDialog
+        open={Boolean(confirmAction)}
+        onClose={() => {
+          if (!actionLoading) {
+            setConfirmAction(null);
+            setActionError("");
+          }
+        }}
+        eyebrow="Confirm status change"
+        title={confirmAction?.type === "deactivate" ? "Deactivate staff account?" : "Reactivate staff account?"}
+        description={confirmAction ? `This will update access for ${confirmAction.member.full_name}.` : undefined}
+        size="sm"
+        footer={
+          <>
+            <AdminActionButton onClick={() => setConfirmAction(null)} disabled={actionLoading}>Cancel</AdminActionButton>
+            <AdminActionButton tone={confirmAction?.type === "deactivate" ? "danger" : "success"} onClick={confirmStatusChange} disabled={actionLoading}>
+              {actionLoading ? "Updating…" : confirmAction?.type === "deactivate" ? "Deactivate" : "Reactivate"}
+            </AdminActionButton>
+          </>
+        }
+      >
+        {actionError ? <div className={styles.dialogError} role="alert">{actionError}</div> : null}
+        {confirmAction ? (
+          <div className={styles.confirmUserBox}>
+            <div><span>Name</span><strong>{confirmAction.member.full_name}</strong></div>
+            <div><span>Email</span><strong>{confirmAction.member.email}</strong></div>
           </div>
-        </div>
-      )}
-
-      {confirmAction && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.confirmCard}>
-            <div className={styles.confirmTop}>
-              <div
-                className={`${styles.confirmIcon} ${
-                  confirmAction.type === "deactivate"
-                    ? styles.warningIcon
-                    : styles.successIcon
-                }`}
-              >
-                !
-              </div>
-              <div>
-                <p className={styles.confirmEyebrow}>Confirm Status Change</p>
-                <h2>
-                  {confirmAction.type === "deactivate"
-                    ? "Deactivate staff account?"
-                    : "Reactivate staff account?"}
-                </h2>
-              </div>
-            </div>
-
-            <p className={styles.confirmText}>
-              This will update the account status for{" "}
-              {confirmAction.member.full_name}.
-            </p>
-
-            <div className={styles.confirmUserBox}>
-              <div>
-                <span>Name</span>
-                <strong>{confirmAction.member.full_name}</strong>
-              </div>
-              <div>
-                <span>Email</span>
-                <strong>{confirmAction.member.email}</strong>
-              </div>
-            </div>
-
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.cancelConfirmBtn}
-                onClick={() => setConfirmAction(null)}
-                disabled={actionLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={
-                  confirmAction.type === "deactivate"
-                    ? styles.dangerConfirmBtn
-                    : styles.successConfirmBtn
-                }
-                onClick={confirmStatusChange}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? "Updating..."
-                  : confirmAction.type === "deactivate"
-                  ? "Deactivate"
-                  : "Reactivate"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+        ) : null}
+      </AdminDialog>
+    </PageShell>
   );
 }

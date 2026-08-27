@@ -1,12 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
+import AdminDataTable from "@/app/components/portal/admin/AdminDataTable";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import EmptyState from "@/app/components/portal/ui/EmptyState";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import Section from "@/app/components/portal/ui/Section";
+import StatCard from "@/app/components/portal/ui/StatCard";
 import {
   AdminReportsData,
   getAdminReports,
 } from "@/lib/admin-management-api";
-import styles from "./page.module.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -105,250 +111,171 @@ export default function AdminReportsPage() {
   }, [reports]);
 
   return (
-    <main className={styles.reportsPage}>
-      <div className={styles.container}>
-        <PageHeader
-          title="Reports"
-          description="Review appointment trends, AI screening activity, user growth, and doctor workload without exposing restricted medical details."
-          primaryAction={
-            <button
-              type="button"
-              className={styles.refreshButton}
-              onClick={loadReports}
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-          }
-        />
+    <PageShell>
+      <PageHeader
+        eyebrow="Operational reporting"
+        title="Reports"
+        description="Review appointment trends, AI screening activity, user growth, and doctor workload without exposing restricted medical details."
+        primaryAction={
+          <AdminActionButton tone="secondary" onClick={loadReports} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </AdminActionButton>
+        }
+      />
 
-        {loading ? (
-          <div className={styles.message}>Loading reports...</div>
-        ) : error ? (
-          <div className={styles.error}>{error}</div>
-        ) : !reports ? (
-          <div className={styles.message}>No report data available.</div>
-        ) : (
-          <>
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <span>Latest Month Appointments</span>
-                <strong>{overview.totalAppointments}</strong>
-              </div>
+      {loading ? (
+        <EmptyState title="Loading reports…" />
+      ) : error ? (
+        <EmptyState title="Unable to load reports" description={error} />
+      ) : !reports ? (
+        <EmptyState title="No report data available." />
+      ) : (
+        <>
+          <AdminStatsGrid>
+            <StatCard label="Latest month appointments" value={overview.totalAppointments} hint="Appointment volume in the latest reporting month" />
+            <StatCard label="Completed appointments" value={overview.completed} hint="Completed records across the reporting set" tone="success" />
+            <StatCard label="Cancelled appointments" value={overview.cancelled} hint="Cancelled records across the reporting set" tone="warning" />
+            <StatCard label="AI cases" value={overview.totalAiCases} hint="Cases represented in AI condition summaries" tone="info" />
+            <StatCard label="Users" value={overview.totalUsers} hint="Accounts represented in user-growth data" />
+          </AdminStatsGrid>
 
-              <div className={`${styles.statCard} ${styles.greenAccent}`}>
-                <span>Completed Appointments</span>
-                <strong>{overview.completed}</strong>
-              </div>
+          <AdminDataTable
+            title="Monthly appointment summary"
+            description="Appointment volume and status movement by month."
+            empty={reports.monthly_appointments.length === 0}
+            emptyTitle="No monthly appointment data yet."
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Total</th>
+                  <th>Pending</th>
+                  <th>Approved</th>
+                  <th>Completed</th>
+                  <th>Cancelled</th>
+                  <th>Declined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.monthly_appointments.map((item) => (
+                  <tr key={item.month}>
+                    <td>{item.month}</td>
+                    <td>{item.total}</td>
+                    <td>{item.pending}</td>
+                    <td>{item.approved}</td>
+                    <td>{item.completed}</td>
+                    <td>{item.cancelled}</td>
+                    <td>{item.declined}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </AdminDataTable>
 
-              <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-                <span>Cancelled Appointments</span>
-                <strong>{overview.cancelled}</strong>
-              </div>
+          <Section
+            title="Completed vs cancelled"
+            description="A concise view of appointment outcomes across the reporting set."
+          >
+            <AdminStatsGrid compact>
+              <StatCard label="Completed" value={reports.completed_vs_cancelled.completed} tone="success" />
+              <StatCard label="Cancelled" value={reports.completed_vs_cancelled.cancelled} tone="warning" />
+              <StatCard label="Completion rate" value={formatPercent(reports.completed_vs_cancelled.completion_rate)} tone="success" />
+              <StatCard label="Cancellation rate" value={formatPercent(reports.completed_vs_cancelled.cancellation_rate)} tone="warning" />
+            </AdminStatsGrid>
+          </Section>
 
-              <div className={`${styles.statCard} ${styles.blueAccent}`}>
-                <span>Total AI Cases</span>
-                <strong>{overview.totalAiCases}</strong>
-              </div>
+          <AdminDataTable
+            title="User growth"
+            description="Users grouped by role, status, and verification."
+            empty={reports.user_growth.length === 0}
+            emptyTitle="No user-growth data yet."
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Total</th>
+                  <th>Active</th>
+                  <th>Inactive</th>
+                  <th>Verified</th>
+                  <th>Unverified</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.user_growth.map((item) => (
+                  <tr key={item.role}>
+                    <td>{capitalize(item.role)}</td>
+                    <td>{item.total}</td>
+                    <td>{item.active}</td>
+                    <td>{item.inactive}</td>
+                    <td>{item.verified}</td>
+                    <td>{item.unverified}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </AdminDataTable>
 
-              <div className={`${styles.statCard} ${styles.pinkAccent}`}>
-                <span>Total Users</span>
-                <strong>{overview.totalUsers}</strong>
-              </div>
-            </div>
+          <AdminDataTable
+            title="AI condition summary"
+            description="Common AI screening outputs and confidence movement."
+            empty={reports.ai_condition_summary.length === 0}
+            emptyTitle="No AI condition summary data yet."
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Condition</th>
+                  <th>Cases</th>
+                  <th>Average confidence</th>
+                  <th>Common severity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.ai_condition_summary.map((item) => (
+                  <tr key={item.condition}>
+                    <td>{item.condition || "N/A"}</td>
+                    <td>{item.cases}</td>
+                    <td>{formatConfidence(item.average_confidence)}</td>
+                    <td>{capitalize(item.common_severity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </AdminDataTable>
 
-            <section className={styles.reportCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <h2>Monthly Appointment Summary</h2>
-                  <p>Shows appointment volume and status movement per month.</p>
-                </div>
-              </div>
-
-              <div className={styles.tableWrapper}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Month</th>
-                      <th>Total</th>
-                      <th>Pending</th>
-                      <th>Approved</th>
-                      <th>Completed</th>
-                      <th>Cancelled</th>
-                      <th>Declined</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {reports.monthly_appointments.map((item) => (
-                      <tr key={item.month}>
-                        <td data-label="Month">{item.month}</td>
-                        <td data-label="Total">{item.total}</td>
-                        <td data-label="Pending">{item.pending}</td>
-                        <td data-label="Approved">{item.approved}</td>
-                        <td data-label="Completed">{item.completed}</td>
-                        <td data-label="Cancelled">{item.cancelled}</td>
-                        <td data-label="Declined">{item.declined}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <div className={styles.twoColumnGrid}>
-              <section className={styles.reportCard}>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <h2>Completed vs Cancelled Appointments</h2>
-                    <p>
-                      Compares successful appointments against cancelled
-                      bookings.
-                    </p>
-                  </div>
-                </div>
-
-                <div className={styles.rateGrid}>
-                  <div>
-                    <span>Completed</span>
-                    <strong>{reports.completed_vs_cancelled.completed}</strong>
-                  </div>
-                  <div>
-                    <span>Cancelled</span>
-                    <strong>{reports.completed_vs_cancelled.cancelled}</strong>
-                  </div>
-                  <div>
-                    <span>Completion Rate</span>
-                    <strong>
-                      {formatPercent(
-                        reports.completed_vs_cancelled.completion_rate
-                      )}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Cancellation Rate</span>
-                    <strong>
-                      {formatPercent(
-                        reports.completed_vs_cancelled.cancellation_rate
-                      )}
-                    </strong>
-                  </div>
-                </div>
-              </section>
-
-              <section className={styles.reportCard}>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <h2>User Growth</h2>
-                    <p>Summarises users by role, status, and verification.</p>
-                  </div>
-                </div>
-
-                <div className={styles.tableWrapper}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Role</th>
-                        <th>Total</th>
-                        <th>Active</th>
-                        <th>Inactive</th>
-                        <th>Verified</th>
-                        <th>Unverified</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {reports.user_growth.map((item) => (
-                        <tr key={item.role}>
-                          <td data-label="Role">{capitalize(item.role)}</td>
-                          <td data-label="Total">{item.total}</td>
-                          <td data-label="Active">{item.active}</td>
-                          <td data-label="Inactive">{item.inactive}</td>
-                          <td data-label="Verified">{item.verified}</td>
-                          <td data-label="Unverified">{item.unverified}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </div>
-
-            <section className={styles.reportCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <h2>AI Condition Summary</h2>
-                  <p>
-                    Shows common AI screening results and confidence movement.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.tableWrapper}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Condition</th>
-                      <th>Cases</th>
-                      <th>Average Confidence</th>
-                      <th>Common Severity</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {reports.ai_condition_summary.map((item) => (
-                      <tr key={item.condition}>
-                        <td data-label="Condition">{item.condition || "N/A"}</td>
-                        <td data-label="Cases">{item.cases}</td>
-                        <td data-label="Average Confidence">{formatConfidence(item.average_confidence)}</td>
-                        <td data-label="Common Severity">{capitalize(item.common_severity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className={styles.reportCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <h2>Doctor Activity</h2>
-                  <p>
-                    Tracks workload, completed appointments, and AI review
-                    activity by doctor.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.tableWrapper}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Doctor</th>
-                      <th>Assigned</th>
-                      <th>Completed</th>
-                      <th>Pending AI Reviews</th>
-                      <th>Reviewed AI Cases</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {reports.doctor_activity.map((item) => (
-                      <tr key={item.doctor_name}>
-                        <td data-label="Doctor">{item.doctor_name || "Unassigned"}</td>
-                        <td data-label="Assigned">{item.assigned_appointments}</td>
-                        <td data-label="Completed">{item.completed_appointments}</td>
-                        <td data-label="Pending AI Reviews">{item.pending_ai_reviews}</td>
-                        <td data-label="Reviewed AI Cases">{item.reviewed_ai_cases}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </>
-        )}
-      </div>
-    </main>
+          <AdminDataTable
+            title="Doctor activity"
+            description="Workload, completed appointments, and AI review activity by doctor."
+            empty={reports.doctor_activity.length === 0}
+            emptyTitle="No doctor activity data yet."
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Doctor</th>
+                  <th>Assigned</th>
+                  <th>Completed</th>
+                  <th>Pending AI reviews</th>
+                  <th>Reviewed AI cases</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.doctor_activity.map((item) => (
+                  <tr key={item.doctor_name}>
+                    <td>{item.doctor_name || "Unassigned"}</td>
+                    <td>{item.assigned_appointments}</td>
+                    <td>{item.completed_appointments}</td>
+                    <td>{item.pending_ai_reviews}</td>
+                    <td>{item.reviewed_ai_cases}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </AdminDataTable>
+        </>
+      )}
+    </PageShell>
   );
 }

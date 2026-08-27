@@ -12,8 +12,19 @@
   box-sizing: border-box;
 }
 
+/* Admin already receives width and padding from PortalFrame.content. */
+:global([data-portal-role="admin"]) .pageShell {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
 @media (max-width: 920px) {
   .pageShell {
     padding: var(--space-5) var(--space-4);
+  }
+
+  :global([data-portal-role="admin"]) .pageShell {
+    padding: 0;
   }
 }

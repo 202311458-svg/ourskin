@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import PaginationControls from "@/app/components/PaginationControls";
-import PortalShell from "@/app/components/PortalShell";
+import AdminDataTable from "@/app/components/portal/admin/AdminDataTable";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import AdminToolbar from "@/app/components/portal/admin/AdminToolbar";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import StatCard from "@/app/components/portal/ui/StatCard";
+import StatusBadge from "@/app/components/portal/ui/StatusBadge";
 import { AuditLog, getAdminAuditLogs } from "@/lib/admin-api";
 import styles from "./page.module.css";
 
@@ -75,15 +79,13 @@ function getActionType(action: string) {
   return "system";
 }
 
-function getActionClass(action: string) {
+function getActionTone(action: string): "success" | "info" | "warning" | "danger" | "neutral" {
   const actionType = getActionType(action);
-
-  if (actionType === "create") return styles.create;
-  if (actionType === "update") return styles.update;
-  if (actionType === "status") return styles.status;
-  if (actionType === "danger") return styles.danger;
-
-  return styles.system;
+  if (actionType === "create") return "success";
+  if (actionType === "update") return "info";
+  if (actionType === "status") return "warning";
+  if (actionType === "danger") return "danger";
+  return "neutral";
 }
 
 function formatDateTime(value?: string | null) {
@@ -103,8 +105,6 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function AuditLogsPage() {
-  const router = useRouter();
-
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,13 +116,7 @@ export default function AuditLogsPage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
-    if (!token || role !== "admin") {
-      router.push("/");
-      return;
-    }
+    let cancelled = false;
 
     async function loadAuditLogs() {
       try {
@@ -130,17 +124,23 @@ export default function AuditLogsPage() {
         setError("");
 
         const data = await getAdminAuditLogs(page, pageSize);
+        if (cancelled) return;
         setLogs(data.items);
         setTotal(data.total);
       } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, "Unable to load audit logs"));
+        if (!cancelled) {
+          setError(getErrorMessage(loadError, "Unable to load audit logs"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    loadAuditLogs();
-  }, [router, page, pageSize]);
+    void loadAuditLogs();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize]);
 
   const enhancedLogs = useMemo(() => {
     return logs.map((log) => ({
@@ -165,11 +165,8 @@ export default function AuditLogsPage() {
         (log.actor_name || "").toLowerCase().includes(keyword) ||
         (log.target_name || "").toLowerCase().includes(keyword);
 
-      const matchesModule =
-        moduleFilter === "all" || moduleName === moduleFilter;
-
-      const matchesAction =
-        actionFilter === "all" || actionType === actionFilter;
+      const matchesModule = moduleFilter === "all" || moduleName === moduleFilter;
+      const matchesAction = actionFilter === "all" || actionType === actionFilter;
 
       return matchesSearch && matchesModule && matchesAction;
     });
@@ -178,158 +175,108 @@ export default function AuditLogsPage() {
   const stats = useMemo(() => {
     return {
       total: enhancedLogs.length,
-      account: enhancedLogs.filter(
-        (log) => log.module === "Account Management"
-      ).length,
-      appointment: enhancedLogs.filter((log) => log.module === "Appointments")
-        .length,
-      medical: enhancedLogs.filter((log) => log.module === "Medical Records")
-        .length,
+      account: enhancedLogs.filter((log) => log.module === "Account Management").length,
+      appointment: enhancedLogs.filter((log) => log.module === "Appointments").length,
+      medical: enhancedLogs.filter((log) => log.module === "Medical Records").length,
     };
   }, [enhancedLogs]);
 
   return (
-    <div className="staffLayout">
-      <PortalShell role="admin">
-      <main className={styles.auditLogsPage}>
-        <PageHeader title="Audit Logs" description="Review system activity, admin actions, and important account changes." />
+    <PageShell>
+      <PageHeader
+        eyebrow="Security & accountability"
+        title="Audit Logs"
+        description="Review system activity, admin actions, and important account changes."
+      />
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>Total Logs</span>
-            <strong>{stats.total}</strong>
-          </div>
+      <AdminStatsGrid compact>
+        <StatCard label="Logs on this page" value={stats.total} hint={`${total} total audit records`} />
+        <StatCard label="Account actions" value={stats.account} hint="Account-related records on this page" tone="success" />
+        <StatCard label="Appointment actions" value={stats.appointment} hint="Appointment-related records on this page" tone="info" />
+        <StatCard label="Medical actions" value={stats.medical} hint="Clinical/AI-related records on this page" tone="warning" />
+      </AdminStatsGrid>
 
-          <div className={`${styles.statCard} ${styles.greenAccent}`}>
-            <span>Account Actions</span>
-            <strong>{stats.account}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.blueAccent}`}>
-            <span>Appointment Actions</span>
-            <strong>{stats.appointment}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-            <span>Medical Actions</span>
-            <strong>{stats.medical}</strong>
-          </div>
-        </div>
-
-        <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Search by action, description, actor ID, or target ID"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className={styles.searchInput}
-          />
-
-          <select
-            value={moduleFilter}
-            onChange={(event) => setModuleFilter(event.target.value)}
-            className={styles.selectInput}
-          >
-            <option value="all">All Modules</option>
-            <option value="Account Management">Account Management</option>
-            <option value="Appointments">Appointments</option>
-            <option value="Medical Records">Medical Records</option>
-            <option value="System">System</option>
-          </select>
-
-          <select
-            value={actionFilter}
-            onChange={(event) => setActionFilter(event.target.value)}
-            className={styles.selectInput}
-          >
-            <option value="all">All Actions</option>
-            <option value="create">Create / Promote</option>
-            <option value="update">Update / Edit</option>
-            <option value="status">Status Change</option>
-            <option value="danger">Remove / Delete</option>
-            <option value="system">System</option>
-          </select>
-        </div>
-
-        <section className={styles.tableCard}>
-          {loading ? (
-            <p className={styles.message}>Loading audit logs...</p>
-          ) : error ? (
-            <p className={styles.error}>{error}</p>
-          ) : filteredLogs.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No audit logs found</h3>
-              <p>
-                Once admins update accounts, appointments, or system records,
-                the activities will appear here.
-              </p>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Action</th>
-                  <th>Module</th>
-                  <th>Description</th>
-                  <th>Performed By</th>
-                  <th>Target</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className={styles.dateCell}>
-                      {formatDateTime(log.created_at)}
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.actionBadge} ${getActionClass(
-                          log.action || ""
-                        )}`}
-                      >
-                        {formatAction(log.action || "System")}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={styles.moduleBadge}>{log.module}</span>
-                    </td>
-                    <td className={styles.descriptionCell}>
-                      {log.description || "No description provided"}
-                    </td>
-                    <td>
-                      <div className={styles.personCell}>
-                        <strong>{log.actor_name || "System"}</strong>
-                        <span>{log.actor_id ? `ID: ${log.actor_id}` : "No ID"}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.personCell}>
-                        <strong>{log.target_name || "N/A"}</strong>
-                        <span>
-                          {log.target_id ? `ID: ${log.target_id}` : "No target ID"}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-        <PaginationControls
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
+      <AdminToolbar meta={`${filteredLogs.length} shown on this page`}>
+        <input
+          type="search"
+          aria-label="Search audit logs"
+          placeholder="Search action, description, actor, or target"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
         />
-      </main>
-      </PortalShell>
-    </div>
+        <select value={moduleFilter} onChange={(event) => setModuleFilter(event.target.value)} aria-label="Filter audit logs by module">
+          <option value="all">All modules</option>
+          <option value="Account Management">Account Management</option>
+          <option value="Appointments">Appointments</option>
+          <option value="Medical Records">Medical Records</option>
+          <option value="System">System</option>
+        </select>
+        <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} aria-label="Filter audit logs by action type">
+          <option value="all">All actions</option>
+          <option value="create">Create / Promote</option>
+          <option value="update">Update / Edit</option>
+          <option value="status">Status Change</option>
+          <option value="danger">Remove / Delete</option>
+          <option value="system">System</option>
+        </select>
+      </AdminToolbar>
+
+      <AdminDataTable
+        title="Activity history"
+        description="Sensitive administrative actions recorded by the backend audit trail."
+        loading={loading}
+        loadingText="Loading audit logs…"
+        error={error}
+        empty={!loading && !error && filteredLogs.length === 0}
+        emptyTitle="No audit logs match this view."
+        emptyDescription="Try changing the search or filters."
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Date & time</th>
+              <th>Action</th>
+              <th>Module</th>
+              <th>Description</th>
+              <th>Performed by</th>
+              <th>Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredLogs.map((log) => (
+              <tr key={log.id}>
+                <td className={styles.dateCell}>{formatDateTime(log.created_at)}</td>
+                <td><StatusBadge tone={getActionTone(log.action || "")}>{formatAction(log.action || "System")}</StatusBadge></td>
+                <td><StatusBadge tone="info">{log.module}</StatusBadge></td>
+                <td className={styles.descriptionCell}>{log.description || "No description provided"}</td>
+                <td>
+                  <div className={styles.personCell}>
+                    <strong>{log.actor_name || "System"}</strong>
+                    <span>{log.actor_id ? `ID: ${log.actor_id}` : "No ID"}</span>
+                  </div>
+                </td>
+                <td>
+                  <div className={styles.personCell}>
+                    <strong>{log.target_name || "N/A"}</strong>
+                    <span>{log.target_id ? `ID: ${log.target_id}` : "No target ID"}</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </AdminDataTable>
+
+      <PaginationControls
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
+    </PageShell>
   );
 }

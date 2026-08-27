@@ -2,6 +2,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-1);
   min-height: 28px;
   padding: 4px 10px;
   border: 1px solid transparent;
@@ -13,9 +14,9 @@
 }
 
 .neutral {
-  background: linear-gradient(90deg, rgba(138, 51, 79, 0.08), transparent);
-  border-color: rgba(138, 51, 79, 0.14);
-  color: var(--color-brand-700);
+  background: var(--color-neutral-bg);
+  border-color: color-mix(in srgb, var(--color-border-strong) 70%, transparent);
+  color: var(--color-text-secondary);
 }
 
 .success {

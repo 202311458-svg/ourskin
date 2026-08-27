@@ -49,6 +49,10 @@
   flex-shrink: 0;
 }
 
+:global([data-portal-role="admin"]) .header {
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   .header {
     flex-direction: column;
