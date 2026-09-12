@@ -25,6 +25,7 @@ from app.routes import (
     admin,
     admin_ai_phase6,
     admin_data_phase3,
+    admin_schedules_phase5,
     ai_phase3,
     ai_progress_phase5,
     announcements,
@@ -40,6 +41,7 @@ from app.routes import (
     patients,
     staff_follow_ups,
     staff_schedules,
+    staff_schedules_phase5,
     staff_schedules_phase9,
     users,
 )
@@ -127,13 +129,20 @@ app.include_router(announcements.router)
 # authoritative summary counts without replacing legacy compatibility routes.
 app.include_router(admin_data_phase3.router)
 
+# Phase 5 adds Admin schedule filtering/summary data without changing Staff list
+# contracts. The transactional schedule guards below protect linked/history data.
+app.include_router(admin_schedules_phase5.router)
+
 # M6 provides the versioned AI monitor/evaluation endpoints. The older admin
 # endpoint remains available only for historical records.
 app.include_router(admin_ai_phase6.router)
 app.include_router(admin.router)
 
-# Phase 9 staff schedule guards use the same clinic clock and batch schedule
-# display users while the legacy transactional create/update routes are reused.
+# Phase 5 schedule guards take precedence for edit/delete operations that could
+# invalidate linked appointments or historical availability records. Phase 9
+# continues to own the bounded list endpoint and clinic-time patch used by legacy
+# transactional create/update validation.
+app.include_router(staff_schedules_phase5.router)
 app.include_router(staff_schedules_phase9.router)
 app.include_router(staff_schedules.router)
 app.include_router(staff_follow_ups.router)

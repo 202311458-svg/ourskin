@@ -1,1050 +1,564 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import PortalShell from "@/app/components/PortalShell";
+import PaginationControls from "@/app/components/PaginationControls";
+import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
+import AdminDataTable from "@/app/components/portal/admin/AdminDataTable";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import AdminToolbar from "@/app/components/portal/admin/AdminToolbar";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import Section from "@/app/components/portal/ui/Section";
+import StatCard from "@/app/components/portal/ui/StatCard";
+import StatusBadge from "@/app/components/portal/ui/StatusBadge";
+import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
 import {
-  AdminDoctor,
-  AdminService,
-  ClinicUnavailableDate,
-  DoctorSchedule,
+  type AdminDoctor,
+  type AdminService,
+  type ClinicUnavailableDate,
+  type ClinicUnavailableDatePayload,
+  type DoctorSchedulePayload,
   createAdminClinicUnavailableDate,
   createAdminDoctorSchedule,
   deleteAdminClinicUnavailableDate,
   deleteAdminDoctorSchedule,
   getAdminClinicUnavailableDates,
-  getAdminDoctorSchedules,
   getAdminDoctors,
   getAdminServices,
   updateAdminClinicUnavailableDate,
   updateAdminDoctorSchedule,
 } from "@/lib/admin-api";
+import {
+  queryAdminSchedules,
+  type AdminScheduleRecord,
+  type AdminScheduleScope,
+  type AdminScheduleSummary,
+} from "@/lib/admin-schedules-api";
+import ClinicClosureDialog from "./components/ClinicClosureDialog";
+import ScheduleDeleteDialog, { type DeleteTarget } from "./components/ScheduleDeleteDialog";
+import ScheduleEditorDialog from "./components/ScheduleEditorDialog";
+import {
+  CLINIC_END_TIME,
+  CLINIC_START_TIME,
+  SCHEDULE_INTERVAL_MINUTES,
+  formatDate,
+  formatTime,
+  getScheduleStatus,
+  isPastDate,
+  isPastSchedule,
+} from "./schedule-utils";
 import styles from "./page.module.css";
 
-type ScheduleForm = {
-  id: number | null;
-  doctor_id: string;
-  services: string[];
-  schedule_date: string;
-  start_time: string;
-  end_time: string;
-  is_available: boolean;
-  consultation_mode: "In-Person" | "Online Consultation";
-  unavailable_reason: string;
-  schedule_note: string;
+const EMPTY_SUMMARY: AdminScheduleSummary = {
+  total: 0,
+  upcoming_available: 0,
+  unavailable: 0,
+  past: 0,
+  closures: 0,
 };
 
-type ClosureForm = {
-  id: number | null;
-  closure_date: string;
-  reason: string;
-  note: string;
-};
-
-const EMPTY_SCHEDULE_FORM: ScheduleForm = {
-  id: null,
-  doctor_id: "",
-  services: [],
-  schedule_date: "",
-  start_time: "10:00",
-  end_time: "11:00",
-  is_available: true,
-  consultation_mode: "In-Person",
-  unavailable_reason: "",
-  schedule_note: "",
-};
-
-const EMPTY_CLOSURE_FORM: ClosureForm = {
-  id: null,
-  closure_date: "",
-  reason: "Holiday",
-  note: "",
-};
-
-const TIME_OPTIONS = [
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-  "19:00",
-];
-
-const UNAVAILABLE_REASONS = [
-  "Holiday",
-  "Doctor Leave",
-  "Clinic Event",
-  "Emergency Closure",
-  "Maintenance",
-  "Other",
-];
-
-function getTodayInputDate() {
-  const today = new Date();
-  const timezoneOffset = today.getTimezoneOffset() * 60000;
-
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
-}
-
-function isPastDate(dateString?: string | null) {
-  if (!dateString) return false;
-  return dateString < getTodayInputDate();
-}
-
-function isSunday(dateString?: string | null) {
-  if (!dateString) return false;
-
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return false;
-
-  return date.getDay() === 0;
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "No date";
-
-  const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "";
-
-  const [hourText, minuteText] = value.split(":");
-  const hour = Number(hourText);
-  const minute = Number(minuteText);
-
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
-
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+type Feedback = { tone: "success" | "warning"; message: string } | null;
 
 function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function getScheduleStatusClass(schedule: DoctorSchedule) {
-  if (!schedule.is_available) return styles.cancelled;
-  if (isPastDate(schedule.schedule_date)) return styles.neutral;
-
-  return styles.approved;
-}
-
-function getScheduleStatusText(schedule: DoctorSchedule) {
-  if (!schedule.is_available) return "Unavailable";
-  if (isPastDate(schedule.schedule_date)) return "Past";
-
-  return "Available";
+  return error instanceof Error ? error.message : fallback;
 }
 
 export default function AdminSchedulesPage() {
-  const router = useRouter();
-
   const [doctors, setDoctors] = useState<AdminDoctor[]>([]);
   const [services, setServices] = useState<AdminService[]>([]);
-  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
   const [closures, setClosures] = useState<ClinicUnavailableDate[]>([]);
+  const [schedules, setSchedules] = useState<AdminScheduleRecord[]>([]);
+  const [summary, setSummary] = useState<AdminScheduleSummary>(EMPTY_SUMMARY);
 
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [referenceLoading, setReferenceLoading] = useState(true);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [referenceError, setReferenceError] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
+  const [operationError, setOperationError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
   const [doctorFilter, setDoctorFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
+  const [scope, setScope] = useState<AdminScheduleScope>("upcoming");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [scheduleForm, setScheduleForm] =
-    useState<ScheduleForm>(EMPTY_SCHEDULE_FORM);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<AdminScheduleRecord | null>(null);
+  const [closureDialogOpen, setClosureDialogOpen] = useState(false);
+  const [selectedClosure, setSelectedClosure] = useState<ClinicUnavailableDate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
-  const [showClosureModal, setShowClosureModal] = useState(false);
-  const [closureForm, setClosureForm] = useState<ClosureForm>(EMPTY_CLOSURE_FORM);
-
-  const loadData = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
-    if (!token || role !== "admin") {
-      router.push("/");
-      return;
-    }
-
+  const loadReferenceData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError("");
-
-      const [doctorData, serviceData, scheduleData, closureData] =
-        await Promise.all([
-          getAdminDoctors(),
-          getAdminServices(),
-          getAdminDoctorSchedules(),
-          getAdminClinicUnavailableDates(),
-        ]);
-
+      setReferenceLoading(true);
+      setReferenceError("");
+      const [doctorData, serviceData, closureData] = await Promise.all([
+        getAdminDoctors(),
+        getAdminServices(),
+        getAdminClinicUnavailableDates(),
+      ]);
       setDoctors(Array.isArray(doctorData) ? doctorData : []);
       setServices(Array.isArray(serviceData) ? serviceData : []);
-      setSchedules(Array.isArray(scheduleData) ? scheduleData : []);
       setClosures(Array.isArray(closureData) ? closureData : []);
-    } catch (loadError) {
-      setError(getErrorMessage(loadError, "Unable to load schedules."));
+    } catch (error) {
+      setReferenceError(getErrorMessage(error, "Unable to load schedule reference data."));
     } finally {
-      setLoading(false);
+      setReferenceLoading(false);
     }
-  }, [router]);
+  }, []);
+
+  const loadSchedules = useCallback(async () => {
+    try {
+      setScheduleLoading(true);
+      setScheduleError("");
+      const data = await queryAdminSchedules({
+        page,
+        pageSize,
+        search: debouncedSearch,
+        doctorId: doctorFilter === "all" ? null : Number(doctorFilter),
+        scheduleDate: dateFilter,
+        scope,
+      });
+
+      if (page > data.total_pages && data.total_pages > 0) {
+        setPage(data.total_pages);
+        return;
+      }
+
+      setSchedules(data.items);
+      setSummary(data.summary);
+      setTotal(data.total);
+    } catch (error) {
+      setScheduleError(getErrorMessage(error, "Unable to load doctor schedules."));
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [dateFilter, debouncedSearch, doctorFilter, page, pageSize, scope]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void loadReferenceData();
+  }, [loadReferenceData]);
 
-  const filteredSchedules = useMemo(() => {
-    const keyword = search.toLowerCase().trim();
+  useEffect(() => {
+    void loadSchedules();
+  }, [loadSchedules]);
 
-    return schedules.filter((schedule) => {
-      const matchesSearch =
-        !keyword ||
-        (schedule.doctor_name || "").toLowerCase().includes(keyword) ||
-        (schedule.services || "").toLowerCase().includes(keyword) ||
-        (schedule.consultation_mode || "").toLowerCase().includes(keyword) ||
-        (schedule.schedule_note || "").toLowerCase().includes(keyword);
-
-      const matchesDate = !dateFilter || schedule.schedule_date === dateFilter;
-
-      const matchesDoctor =
-        doctorFilter === "all" || String(schedule.doctor_id) === doctorFilter;
-
-      return matchesSearch && matchesDate && matchesDoctor;
+  const orderedClosures = useMemo(() => {
+    return [...closures].sort((a, b) => {
+      const aPast = isPastDate(a.closure_date);
+      const bPast = isPastDate(b.closure_date);
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      return aPast
+        ? b.closure_date.localeCompare(a.closure_date)
+        : a.closure_date.localeCompare(b.closure_date);
     });
-  }, [schedules, search, dateFilter, doctorFilter]);
+  }, [closures]);
 
-  const stats = useMemo(() => {
-    return {
-      total: schedules.length,
-      upcoming: schedules.filter(
-        (schedule) => schedule.is_available && !isPastDate(schedule.schedule_date)
-      ).length,
-      unavailable: schedules.filter((schedule) => !schedule.is_available).length,
-      closures: closures.length,
-    };
-  }, [schedules, closures]);
-
-  function openCreateScheduleModal() {
-    setScheduleForm({
-      ...EMPTY_SCHEDULE_FORM,
-      schedule_date: getTodayInputDate(),
-    });
-    setShowScheduleModal(true);
+  function resetOperationState() {
+    setOperationError("");
+    setFeedback(null);
   }
 
-  function openEditScheduleModal(schedule: DoctorSchedule) {
-    setScheduleForm({
-      id: schedule.id,
-      doctor_id: String(schedule.doctor_id),
-      services: schedule.services
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-      schedule_date: schedule.schedule_date,
-      start_time: schedule.start_time,
-      end_time: schedule.end_time,
-      is_available: schedule.is_available,
-      consultation_mode:
-        schedule.consultation_mode === "Online Consultation"
-          ? "Online Consultation"
-          : "In-Person",
-      unavailable_reason: schedule.unavailable_reason || "",
-      schedule_note: schedule.schedule_note || "",
-    });
-    setShowScheduleModal(true);
+  function openCreateSchedule() {
+    resetOperationState();
+    setSelectedSchedule(null);
+    setScheduleDialogOpen(true);
   }
 
-  function closeScheduleModal() {
-    if (actionLoading) return;
-    setShowScheduleModal(false);
-    setScheduleForm(EMPTY_SCHEDULE_FORM);
+  function openEditSchedule(schedule: AdminScheduleRecord) {
+    resetOperationState();
+    setSelectedSchedule(schedule);
+    setScheduleDialogOpen(true);
   }
 
-  function openCreateClosureModal() {
-    setClosureForm({
-      ...EMPTY_CLOSURE_FORM,
-      closure_date: getTodayInputDate(),
-    });
-    setShowClosureModal(true);
+  function openCreateClosure() {
+    resetOperationState();
+    setSelectedClosure(null);
+    setClosureDialogOpen(true);
   }
 
-  function openEditClosureModal(item: ClinicUnavailableDate) {
-    setClosureForm({
-      id: item.id,
-      closure_date: item.closure_date,
-      reason: item.reason,
-      note: item.note || "",
-    });
-    setShowClosureModal(true);
+  function openEditClosure(closure: ClinicUnavailableDate) {
+    resetOperationState();
+    setSelectedClosure(closure);
+    setClosureDialogOpen(true);
   }
 
-  function closeClosureModal() {
-    if (actionLoading) return;
-    setShowClosureModal(false);
-    setClosureForm(EMPTY_CLOSURE_FORM);
-  }
-
-  function toggleService(serviceName: string) {
-    setScheduleForm((prev) => {
-      const exists = prev.services.includes(serviceName);
-
-      return {
-        ...prev,
-        services: exists
-          ? prev.services.filter((item) => item !== serviceName)
-          : [...prev.services, serviceName],
-      };
-    });
-  }
-
-  async function handleSaveSchedule() {
-    if (!scheduleForm.doctor_id) {
-      alert("Please select a doctor.");
-      return;
-    }
-
-    if (scheduleForm.services.length === 0) {
-      alert("Please select at least one service.");
-      return;
-    }
-
-    if (!scheduleForm.schedule_date) {
-      alert("Please select a schedule date.");
-      return;
-    }
-
-    if (isSunday(scheduleForm.schedule_date)) {
-      alert("Sundays are unavailable for scheduling.");
-      return;
-    }
-
-    if (scheduleForm.start_time >= scheduleForm.end_time) {
-      alert("End time must be later than start time.");
-      return;
-    }
-
-    if (!scheduleForm.is_available && !scheduleForm.unavailable_reason) {
-      alert("Please select a reason for marking this schedule unavailable.");
-      return;
-    }
-
-    const payload = {
-      doctor_id: Number(scheduleForm.doctor_id),
-      services: scheduleForm.services.join(", "),
-      schedule_date: scheduleForm.schedule_date,
-      start_time: scheduleForm.start_time,
-      end_time: scheduleForm.end_time,
-      is_available: scheduleForm.is_available,
-      consultation_mode: scheduleForm.consultation_mode,
-      unavailable_reason: scheduleForm.is_available
-        ? null
-        : scheduleForm.unavailable_reason,
-      schedule_note: scheduleForm.schedule_note.trim() || null,
-    };
-
+  async function saveSchedule(scheduleId: number | null, payload: DoctorSchedulePayload) {
     try {
-      setActionLoading(true);
-
-      if (scheduleForm.id) {
-        const updated = await updateAdminDoctorSchedule(scheduleForm.id, payload);
-        setSchedules((prev) =>
-          prev.map((item) => (item.id === updated.id ? updated : item))
-        );
+      setBusy(true);
+      setOperationError("");
+      if (scheduleId) {
+        await updateAdminDoctorSchedule(scheduleId, payload);
+        setFeedback({ tone: "success", message: "Doctor schedule updated." });
       } else {
-        const created = await createAdminDoctorSchedule(payload);
-        setSchedules((prev) => [created, ...prev]);
+        await createAdminDoctorSchedule(payload);
+        setFeedback({ tone: "success", message: "Doctor schedule created." });
       }
-
-      closeScheduleModal();
-      await loadData();
-    } catch (saveError) {
-      alert(getErrorMessage(saveError, "Unable to save schedule."));
+      setScheduleDialogOpen(false);
+      setSelectedSchedule(null);
+      await loadSchedules();
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "Unable to save doctor schedule."));
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   }
 
-  async function handleDeleteSchedule(schedule: DoctorSchedule) {
-    if (
-      !confirm(
-        `Delete the schedule for ${schedule.doctor_name} on ${formatDate(
-          schedule.schedule_date
-        )}?`
-      )
-    ) {
-      return;
-    }
-
+  async function saveClosure(closureId: number | null, payload: ClinicUnavailableDatePayload) {
     try {
-      setActionLoading(true);
-      await deleteAdminDoctorSchedule(schedule.id);
-      setSchedules((prev) => prev.filter((item) => item.id !== schedule.id));
-    } catch (deleteError) {
-      alert(getErrorMessage(deleteError, "Unable to delete schedule."));
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  async function handleSaveClosure() {
-    if (!closureForm.closure_date) {
-      alert("Please select a closure date.");
-      return;
-    }
-
-    if (isSunday(closureForm.closure_date)) {
-      alert("Sundays are already unavailable by default.");
-      return;
-    }
-
-    if (!closureForm.reason.trim()) {
-      alert("Please select a closure reason.");
-      return;
-    }
-
-    const payload = {
-      closure_date: closureForm.closure_date,
-      reason: closureForm.reason.trim(),
-      note: closureForm.note.trim() || null,
-    };
-
-    try {
-      setActionLoading(true);
-
-      if (closureForm.id) {
-        const updated = await updateAdminClinicUnavailableDate(
-          closureForm.id,
-          payload
-        );
-        setClosures((prev) =>
-          prev.map((item) => (item.id === updated.id ? updated : item))
-        );
+      setBusy(true);
+      setOperationError("");
+      if (closureId) {
+        await updateAdminClinicUnavailableDate(closureId, payload);
+        setFeedback({ tone: "success", message: "Clinic unavailable date updated." });
       } else {
-        const created = await createAdminClinicUnavailableDate(payload);
-        setClosures((prev) => [created, ...prev]);
+        await createAdminClinicUnavailableDate(payload);
+        setFeedback({ tone: "success", message: "Clinic unavailable date created." });
       }
-
-      closeClosureModal();
-      await loadData();
-    } catch (saveError) {
-      alert(getErrorMessage(saveError, "Unable to save unavailable date."));
+      setClosureDialogOpen(false);
+      setSelectedClosure(null);
+      await Promise.all([loadReferenceData(), loadSchedules()]);
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "Unable to save clinic unavailable date."));
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   }
 
-  async function handleDeleteClosure(item: ClinicUnavailableDate) {
-    if (!confirm(`Remove clinic unavailable date on ${formatDate(item.closure_date)}?`)) {
-      return;
-    }
-
+  async function confirmDelete(target: DeleteTarget) {
     try {
-      setActionLoading(true);
-      await deleteAdminClinicUnavailableDate(item.id);
-      setClosures((prev) => prev.filter((closure) => closure.id !== item.id));
-    } catch (deleteError) {
-      alert(getErrorMessage(deleteError, "Unable to delete unavailable date."));
+      setBusy(true);
+      setOperationError("");
+      if (target.kind === "schedule") {
+        await deleteAdminDoctorSchedule(target.item.id);
+        setFeedback({ tone: "success", message: "Doctor schedule deleted." });
+        await loadSchedules();
+      } else {
+        await deleteAdminClinicUnavailableDate(target.item.id);
+        setFeedback({ tone: "success", message: "Clinic unavailable date removed." });
+        await Promise.all([loadReferenceData(), loadSchedules()]);
+      }
+      setDeleteTarget(null);
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "Unable to delete the selected record."));
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   }
+
+  const referenceReady = !referenceLoading && !referenceError;
 
   return (
-    <div className="staffLayout">
-      <PortalShell role="admin">
-      <main className={styles.schedulesPage}>
-        <PageHeader
-          title="Schedules"
-          description="Manage doctor schedules, consultation modes, service coverage, and clinic unavailable dates."
-          primaryAction={
-            <>
-              <button
-                type="button"
-                className={styles.secondaryAction}
-                onClick={openCreateClosureModal}
-              >
-                + Unavailable Date
-              </button>
+    <PageShell>
+      <PageHeader
+        eyebrow="Admin availability"
+        title="Schedules"
+        description="Manage doctor availability, service coverage, consultation modes, and clinic-wide unavailable dates without losing appointment history."
+        secondaryAction={
+          <AdminActionButton onClick={openCreateClosure} disabled={!referenceReady}>
+            + Unavailable date
+          </AdminActionButton>
+        }
+        primaryAction={
+          <AdminActionButton tone="primary" onClick={openCreateSchedule} disabled={!referenceReady}>
+            + New schedule
+          </AdminActionButton>
+        }
+      />
 
-              <button
-                type="button"
-                className={styles.addButton}
-                onClick={openCreateScheduleModal}
-              >
-                + New Schedule
-              </button>
-            </>
-          }
+      {feedback ? (
+        <div className={`${styles.feedback} ${styles[feedback.tone]}`} role="status">
+          {feedback.message}
+        </div>
+      ) : null}
+
+      {referenceError ? (
+        <div className={styles.pageError} role="alert">
+          <span>{referenceError}</span>
+          <AdminActionButton onClick={() => void loadReferenceData()}>Retry</AdminActionButton>
+        </div>
+      ) : null}
+
+      <AdminStatsGrid>
+        <StatCard label="Total schedules" value={summary.total} hint="All retained schedule records" />
+        <StatCard label="Upcoming available" value={summary.upcoming_available} hint="Available schedules that have not started" tone="success" />
+        <StatCard label="Unavailable" value={summary.unavailable} hint="Doctor schedules not accepting bookings" tone="warning" />
+        <StatCard label="Clinic closures" value={closures.length || summary.closures} hint="Clinic-wide unavailable dates" tone="info" />
+      </AdminStatsGrid>
+
+      <Section title="Scheduling policy" description="The Admin workflow follows the same clinic rules enforced by booking and Staff scheduling.">
+        <div className={styles.policyGrid}>
+          <Policy label="Clinic hours" value={`${formatTime(CLINIC_START_TIME)} – ${formatTime(CLINIC_END_TIME)}`} />
+          <Policy label="Time interval" value={`${SCHEDULE_INTERVAL_MINUTES} minutes`} />
+          <Policy label="Weekly closure" value="Sundays" />
+          <Policy label="Daily assignment" value="One doctor schedule per date" />
+        </div>
+      </Section>
+
+      <AdminToolbar meta={`${total} matching schedule${total === 1 ? "" : "s"}`}>
+        <input
+          type="search"
+          aria-label="Search doctor schedules"
+          placeholder="Search doctor, service, mode, note, or unavailable reason"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
+        <select
+          aria-label="Filter schedules by doctor"
+          value={doctorFilter}
+          onChange={(event) => {
+            setDoctorFilter(event.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All doctors</option>
+          {doctors.map((doctor) => (
+            <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter schedules by status"
+          value={scope}
+          onChange={(event) => {
+            setScope(event.target.value as AdminScheduleScope);
+            setPage(1);
+          }}
+        >
+          <option value="upcoming">Upcoming available</option>
+          <option value="unavailable">Unavailable</option>
+          <option value="past">Past history</option>
+          <option value="all">All schedules</option>
+        </select>
+        <input
+          type="date"
+          aria-label="Filter schedules by exact date"
+          value={dateFilter}
+          onChange={(event) => {
+            setDateFilter(event.target.value);
+            setPage(1);
+          }}
+        />
+        {dateFilter ? (
+          <AdminActionButton tone="ghost" onClick={() => setDateFilter("")}>Clear date</AdminActionButton>
+        ) : null}
+      </AdminToolbar>
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>Total Schedules</span>
-            <strong>{stats.total}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.greenAccent}`}>
-            <span>Upcoming Available</span>
-            <strong>{stats.upcoming}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-            <span>Unavailable Schedules</span>
-            <strong>{stats.unavailable}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.pinkAccent}`}>
-            <span>Clinic Closures</span>
-            <strong>{stats.closures}</strong>
-          </div>
-        </div>
-
-        <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Search by doctor, service, mode, or note"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className={styles.searchInput}
-          />
-
-          <select
-            className={styles.selectInput}
-            value={doctorFilter}
-            onChange={(event) => setDoctorFilter(event.target.value)}
-          >
-            <option value="all">All Doctors</option>
-            {doctors.map((doctor) => (
-              <option key={doctor.id} value={doctor.id}>
-                {doctor.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="date"
-            className={styles.searchInput}
-            value={dateFilter}
-            onChange={(event) => setDateFilter(event.target.value)}
-          />
-
-          {dateFilter ? (
-            <button
-              type="button"
-              className={styles.secondaryAction}
-              onClick={() => setDateFilter("")}
-            >
-              Clear Date
-            </button>
-          ) : null}
-        </div>
-
-        <section className={styles.tableCard}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2>Doctor Schedule List</h2>
-              <p>
-                Past schedules are locked from editing to protect appointment
-                history.
-              </p>
-            </div>
-          </div>
-
-          {loading ? (
-            <p className={styles.message}>Loading schedules...</p>
-          ) : error ? (
-            <p className={styles.error}>{error}</p>
-          ) : filteredSchedules.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No schedules found</h3>
-              <p>Try changing your filters or add a doctor schedule.</p>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Doctor</th>
-                  <th>Time</th>
-                  <th>Services</th>
-                  <th>Mode</th>
-                  <th>Status</th>
-                  <th>Created By</th>
-                  <th>Actions</th>
+      <AdminDataTable
+        title="Doctor schedules"
+        description="Booking-critical fields are protected after an appointment links to a schedule. Past schedules are retained as history."
+        loading={scheduleLoading}
+        loadingText="Loading doctor schedules…"
+        error={scheduleError}
+        empty={!scheduleLoading && !scheduleError && schedules.length === 0}
+        emptyTitle="No schedules match this view."
+        emptyDescription="Change the filters or create a new doctor schedule."
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Date & time</th>
+              <th>Doctor</th>
+              <th>Services</th>
+              <th>Mode</th>
+              <th>Bookings</th>
+              <th>Status</th>
+              <th>Created by</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedules.map((schedule) => {
+              const status = getScheduleStatus(schedule);
+              const past = isPastSchedule(schedule.schedule_date, schedule.start_time);
+              const linked = schedule.linked_appointments > 0;
+              return (
+                <tr key={schedule.id}>
+                  <td>
+                    <span className={styles.tableStack}>
+                      <strong>{formatDate(schedule.schedule_date)}</strong>
+                      <small>{formatTime(schedule.start_time)} – {formatTime(schedule.end_time)}</small>
+                    </span>
+                  </td>
+                  <td>
+                    <span className={styles.tableStack}>
+                      <strong>{schedule.doctor_name}</strong>
+                      {schedule.schedule_note ? <small>{schedule.schedule_note}</small> : null}
+                    </span>
+                  </td>
+                  <td><span className={styles.serviceText}>{schedule.services}</span></td>
+                  <td>{schedule.consultation_mode}</td>
+                  <td>
+                    <StatusBadge tone={linked ? "info" : "neutral"}>
+                      {schedule.linked_appointments} linked
+                    </StatusBadge>
+                  </td>
+                  <td>
+                    <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                    {!schedule.is_available && schedule.unavailable_reason ? (
+                      <span className={styles.statusReason}>{schedule.unavailable_reason}</span>
+                    ) : null}
+                  </td>
+                  <td>{schedule.created_by_staff_name || "N/A"}</td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <AdminActionButton
+                        onClick={() => openEditSchedule(schedule)}
+                        disabled={past || busy}
+                        title={past ? "Past schedules are locked" : linked ? "Booking-critical fields will be locked" : undefined}
+                      >
+                        {past ? "Locked" : "Edit"}
+                      </AdminActionButton>
+                      <AdminActionButton
+                        tone="danger"
+                        onClick={() => {
+                          resetOperationState();
+                          setDeleteTarget({ kind: "schedule", item: schedule });
+                        }}
+                        disabled={past || linked || busy}
+                        title={past ? "Past schedules are retained" : linked ? "Linked schedules cannot be deleted" : undefined}
+                      >
+                        Delete
+                      </AdminActionButton>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
+              );
+            })}
+          </tbody>
+        </table>
+      </AdminDataTable>
 
-              <tbody>
-                {filteredSchedules.map((schedule) => {
-                  const past = isPastDate(schedule.schedule_date);
+      <PaginationControls
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
 
-                  return (
-                    <tr key={schedule.id}>
-                      <td>{formatDate(schedule.schedule_date)}</td>
-                      <td>
-                        <strong>{schedule.doctor_name}</strong>
-                      </td>
-                      <td>
-                        {formatTime(schedule.start_time)} -{" "}
-                        {formatTime(schedule.end_time)}
-                      </td>
-                      <td>{schedule.services}</td>
-                      <td>{schedule.consultation_mode}</td>
-                      <td>
-                        <span
-                          className={`${styles.statusBadge} ${getScheduleStatusClass(
-                            schedule
-                          )}`}
-                        >
-                          {getScheduleStatusText(schedule)}
-                        </span>
-                      </td>
-                      <td>{schedule.created_by_staff_name || "N/A"}</td>
-                      <td>
-                        <div className={styles.actionButtons}>
-                          <button
-                            type="button"
-                            className={styles.secondaryAction}
-                            disabled={past}
-                            onClick={() => openEditScheduleModal(schedule)}
-                          >
-                            {past ? "Locked" : "Edit"}
-                          </button>
-
-                          <button
-                            type="button"
-                            className={styles.cancelAppointmentBtn}
-                            disabled={past || actionLoading}
-                            onClick={() => handleDeleteSchedule(schedule)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </section>
-
-        <section className={styles.tableCard}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2>Clinic Unavailable Dates</h2>
-              <p>
-                These dates block schedule creation for the whole clinic.
-              </p>
-            </div>
-          </div>
-
-          {closures.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h3>No unavailable dates</h3>
-              <p>Clinic closure dates will appear here.</p>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Reason</th>
-                  <th>Note</th>
-                  <th>Created By</th>
-                  <th>Actions</th>
+      <AdminDataTable
+        title="Clinic unavailable dates"
+        description="Clinic-wide closures prevent new doctor schedules on the selected date. Past closure records remain visible for operational history."
+        loading={referenceLoading}
+        loadingText="Loading clinic unavailable dates…"
+        error={referenceError}
+        empty={!referenceLoading && !referenceError && orderedClosures.length === 0}
+        emptyTitle="No clinic unavailable dates."
+        emptyDescription="Use Unavailable date when the whole clinic should not accept schedules."
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Reason</th>
+              <th>Note</th>
+              <th>Status</th>
+              <th>Created by</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orderedClosures.map((closure) => {
+              const past = isPastDate(closure.closure_date);
+              return (
+                <tr key={closure.id}>
+                  <td><strong>{formatDate(closure.closure_date)}</strong></td>
+                  <td>{closure.reason}</td>
+                  <td>{closure.note || "N/A"}</td>
+                  <td><StatusBadge tone={past ? "neutral" : "warning"}>{past ? "Past" : "Upcoming"}</StatusBadge></td>
+                  <td>{closure.created_by_staff_name || "N/A"}</td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <AdminActionButton
+                        onClick={() => openEditClosure(closure)}
+                        disabled={past || busy}
+                      >
+                        {past ? "Locked" : "Edit"}
+                      </AdminActionButton>
+                      <AdminActionButton
+                        tone="danger"
+                        onClick={() => {
+                          resetOperationState();
+                          setDeleteTarget({ kind: "closure", item: closure });
+                        }}
+                        disabled={past || busy}
+                        title={past ? "Past closures are retained" : undefined}
+                      >
+                        Delete
+                      </AdminActionButton>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
+              );
+            })}
+          </tbody>
+        </table>
+      </AdminDataTable>
 
-              <tbody>
-                {closures.map((item) => {
-                  const past = isPastDate(item.closure_date);
+      <ScheduleEditorDialog
+        open={scheduleDialogOpen}
+        schedule={selectedSchedule}
+        doctors={doctors}
+        services={services}
+        busy={busy}
+        error={operationError}
+        onClose={() => {
+          if (!busy) {
+            setScheduleDialogOpen(false);
+            setSelectedSchedule(null);
+            setOperationError("");
+          }
+        }}
+        onSave={saveSchedule}
+      />
 
-                  return (
-                    <tr key={item.id}>
-                      <td>{formatDate(item.closure_date)}</td>
-                      <td>{item.reason}</td>
-                      <td>{item.note || "N/A"}</td>
-                      <td>{item.created_by_staff_name || "N/A"}</td>
-                      <td>
-                        <div className={styles.actionButtons}>
-                          <button
-                            type="button"
-                            className={styles.secondaryAction}
-                            disabled={past}
-                            onClick={() => openEditClosureModal(item)}
-                          >
-                            {past ? "Locked" : "Edit"}
-                          </button>
+      <ClinicClosureDialog
+        open={closureDialogOpen}
+        closure={selectedClosure}
+        busy={busy}
+        error={operationError}
+        onClose={() => {
+          if (!busy) {
+            setClosureDialogOpen(false);
+            setSelectedClosure(null);
+            setOperationError("");
+          }
+        }}
+        onSave={saveClosure}
+      />
 
-                          <button
-                            type="button"
-                            className={styles.cancelAppointmentBtn}
-                            disabled={past || actionLoading}
-                            onClick={() => handleDeleteClosure(item)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </section>
+      <ScheduleDeleteDialog
+        target={deleteTarget}
+        busy={busy}
+        error={operationError}
+        onClose={() => {
+          if (!busy) {
+            setDeleteTarget(null);
+            setOperationError("");
+          }
+        }}
+        onConfirm={confirmDelete}
+      />
+    </PageShell>
+  );
+}
 
-        {showScheduleModal && (
-          <div className={styles.modalBackdrop}>
-            <div className={`${styles.modalCard} ${styles.modalLarge}`}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>
-                    {scheduleForm.id ? "Edit Doctor Schedule" : "Create Doctor Schedule"}
-                  </h2>
-                  <p>
-                    Schedules must use whole-hour slots between 10:00 AM and
-                    7:00 PM. Sundays and past times are blocked by the backend.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={closeScheduleModal}
-                  disabled={actionLoading}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <div className={styles.formGrid}>
-                  <label className={styles.formGroup}>
-                    <span>Doctor</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.doctor_id}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          doctor_id: event.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Select doctor</option>
-                      {doctors.map((doctor) => (
-                        <option key={doctor.id} value={doctor.id}>
-                          {doctor.name}
-                          {doctor.specialty ? ` • ${doctor.specialty}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Date</span>
-                    <input
-                      className={styles.searchInput}
-                      type="date"
-                      min={getTodayInputDate()}
-                      value={scheduleForm.schedule_date}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          schedule_date: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Start Time</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.start_time}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          start_time: event.target.value,
-                        }))
-                      }
-                    >
-                      {TIME_OPTIONS.slice(0, -1).map((time) => (
-                        <option key={time} value={time}>
-                          {formatTime(time)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>End Time</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.end_time}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          end_time: event.target.value,
-                        }))
-                      }
-                    >
-                      {TIME_OPTIONS.slice(1).map((time) => (
-                        <option key={time} value={time}>
-                          {formatTime(time)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Consultation Mode</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.consultation_mode}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          consultation_mode: event.target
-                            .value as ScheduleForm["consultation_mode"],
-                        }))
-                      }
-                    >
-                      <option value="In-Person">In-Person</option>
-                      <option value="Online Consultation">
-                        Online Consultation
-                      </option>
-                    </select>
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Availability</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.is_available ? "available" : "unavailable"}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          is_available: event.target.value === "available",
-                        }))
-                      }
-                    >
-                      <option value="available">Available</option>
-                      <option value="unavailable">Unavailable</option>
-                    </select>
-                  </label>
-                </div>
-
-                {!scheduleForm.is_available && (
-                  <label className={styles.formGroup}>
-                    <span>Unavailable Reason</span>
-                    <select
-                      className={styles.selectInput}
-                      value={scheduleForm.unavailable_reason}
-                      onChange={(event) =>
-                        setScheduleForm((prev) => ({
-                          ...prev,
-                          unavailable_reason: event.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Select reason</option>
-                      {UNAVAILABLE_REASONS.map((reason) => (
-                        <option key={reason} value={reason}>
-                          {reason}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                <section className={styles.detailSection}>
-                  <h3>Services</h3>
-                  <div className={styles.badgeRow}>
-                    {services.map((service) => (
-                      <label key={service.id} className={styles.checkboxRow}>
-                        <input
-                          type="checkbox"
-                          checked={scheduleForm.services.includes(service.name)}
-                          onChange={() => toggleService(service.name)}
-                        />
-                        <span>{service.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
-
-                <label className={styles.formGroup}>
-                  <span>Schedule Note</span>
-                  <textarea
-                    className={styles.textArea}
-                    rows={4}
-                    value={scheduleForm.schedule_note}
-                    onChange={(event) =>
-                      setScheduleForm((prev) => ({
-                        ...prev,
-                        schedule_note: event.target.value,
-                      }))
-                    }
-                    placeholder="Optional internal note"
-                  />
-                </label>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={closeScheduleModal}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.approveBtn}
-                  onClick={handleSaveSchedule}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Saving..." : "Save Schedule"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showClosureModal && (
-          <div className={styles.modalBackdrop}>
-            <div className={styles.modalCard}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>
-                    {closureForm.id
-                      ? "Edit Unavailable Date"
-                      : "Create Unavailable Date"}
-                  </h2>
-                  <p>
-                    Mark a whole clinic date unavailable. Remove doctor schedules
-                    first before closing a scheduled date.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={closeClosureModal}
-                  disabled={actionLoading}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <div className={styles.formGrid}>
-                  <label className={styles.formGroup}>
-                    <span>Date</span>
-                    <input
-                      className={styles.searchInput}
-                      type="date"
-                      min={getTodayInputDate()}
-                      value={closureForm.closure_date}
-                      onChange={(event) =>
-                        setClosureForm((prev) => ({
-                          ...prev,
-                          closure_date: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Reason</span>
-                    <select
-                      className={styles.selectInput}
-                      value={closureForm.reason}
-                      onChange={(event) =>
-                        setClosureForm((prev) => ({
-                          ...prev,
-                          reason: event.target.value,
-                        }))
-                      }
-                    >
-                      {UNAVAILABLE_REASONS.map((reason) => (
-                        <option key={reason} value={reason}>
-                          {reason}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <label className={styles.formGroup}>
-                  <span>Note</span>
-                  <textarea
-                    className={styles.textArea}
-                    rows={4}
-                    value={closureForm.note}
-                    onChange={(event) =>
-                      setClosureForm((prev) => ({
-                        ...prev,
-                        note: event.target.value,
-                      }))
-                    }
-                    placeholder="Optional note"
-                  />
-                </label>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={closeClosureModal}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.approveBtn}
-                  onClick={handleSaveClosure}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Saving..." : "Save Unavailable Date"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-      </PortalShell>
+function Policy({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.policyItem}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
