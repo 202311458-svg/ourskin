@@ -290,3 +290,6 @@ export default function StaffManagementPage() {
   );
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
