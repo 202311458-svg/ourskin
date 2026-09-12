@@ -30,6 +30,10 @@ jobs:
         working-directory: frontend
         run: npm install --package-lock-only --ignore-scripts --save-dev "eslint-config-next@16.3.4"
 
+      - name: Refresh vulnerable transitive browser mapping
+        working-directory: frontend
+        run: npm update --package-lock-only --ignore-scripts baseline-browser-mapping
+
       - name: Upload generated package metadata
         uses: actions/upload-artifact@v4
         with:
@@ -42,4 +46,4 @@ jobs:
 
       - name: Audit generated production dependency tree
         working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev
