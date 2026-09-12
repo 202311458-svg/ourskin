@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { AdminAppointment, AdminUser, AuditLog } from "@/lib/admin-api";
 import type { AiMonitorRun } from "@/lib/admin-ai-api";
+import type { AccountControls } from "@/lib/admin-management-api";
 
 export type AdminDataPage<T, TSummary = never> = {
   total: number;
@@ -11,12 +12,16 @@ export type AdminDataPage<T, TSummary = never> = {
   summary: TSummary;
 };
 
+export type AdminManagedUser = AdminUser & AccountControls;
+
 export type AdminUserSummary = {
   total: number;
   patients: number;
   internal: number;
   verified: number;
   minors: number;
+  active: number;
+  inactive: number;
 };
 
 export type AdminAppointmentSummary = {
@@ -54,6 +59,7 @@ export async function queryAdminUsers(params: {
   role?: string;
   verification?: string;
   patientType?: string;
+  status?: string;
 }) {
   const search = new URLSearchParams({
     page: String(params.page || 1),
@@ -63,8 +69,9 @@ export async function queryAdminUsers(params: {
   addOptional(search, "role", params.role);
   addOptional(search, "verification", params.verification);
   addOptional(search, "patient_type", params.patientType);
+  addOptional(search, "status", params.status);
 
-  return apiFetch<AdminDataPage<AdminUser, AdminUserSummary>>(
+  return apiFetch<AdminDataPage<AdminManagedUser, AdminUserSummary>>(
     `/admin/users/query?${search.toString()}`
   );
 }

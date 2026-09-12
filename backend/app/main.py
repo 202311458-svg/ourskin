@@ -23,6 +23,7 @@ from app.models import (
 from app.models.appointment_log import AppointmentLog
 from app.routes import (
     admin,
+    admin_accounts_phase6,
     admin_ai_phase6,
     admin_data_phase3,
     admin_schedules_phase5,
@@ -124,6 +125,11 @@ app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(announcements.router)
+
+# Phase 6 Admin account routes own user/internal-account search plus lifecycle
+# mutations. They are registered before Phase 3/legacy Admin routes so protected
+# role/status transitions cannot be bypassed through older duplicate paths.
+app.include_router(admin_accounts_phase6.router)
 
 # Phase 3 Admin data routes provide server-side search/filter pagination and
 # authoritative summary counts without replacing legacy compatibility routes.

@@ -1,6 +1,14 @@
 import { apiFetch } from "@/lib/api";
 
-export type AdminStaffRecord = {
+export type AccountControls = {
+  is_current_user?: boolean;
+  can_deactivate?: boolean;
+  can_reactivate?: boolean;
+  can_change_role?: boolean;
+  protection_reason?: string | null;
+};
+
+export type AdminStaffRecord = AccountControls & {
   id?: number | string;
   full_name?: string;
   name?: string;
@@ -11,6 +19,9 @@ export type AdminStaffRecord = {
   phone?: string | null;
   contact?: string | null;
   profile_image?: string | null;
+  specialty?: string | null;
+  availability?: string | null;
+  bio?: string | null;
   created_at?: string;
 };
 
@@ -18,6 +29,26 @@ export type AdminVerifiedUserOption = {
   id: number;
   name: string;
   email: string;
+  contact?: string | null;
+  note?: string | null;
+};
+
+export type AdminStaffSummary = {
+  total: number;
+  active: number;
+  inactive: number;
+  admins: number;
+  staff: number;
+  doctors: number;
+};
+
+export type AdminStaffPage = {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  summary: AdminStaffSummary;
+  items: AdminStaffRecord[];
 };
 
 export type AdminStaffUpdatePayload = {
@@ -27,6 +58,7 @@ export type AdminStaffUpdatePayload = {
   department: string | null;
   phone: string | null;
   contact: string | null;
+  specialty?: string | null;
 };
 
 export type MonthlyAppointmentSummary = {
@@ -79,12 +111,32 @@ export type AdminReportsData = {
   doctor_activity: DoctorActivity[];
 };
 
-export function getAdminStaff() {
-  return apiFetch<AdminStaffRecord[]>("/admin/staff");
+function addOptional(params: URLSearchParams, key: string, value?: string) {
+  const clean = value?.trim();
+  if (clean && clean.toLowerCase() !== "all") params.set(key, clean);
 }
 
-export function getAdminVerifiedUsers() {
-  return apiFetch<AdminVerifiedUserOption[]>("/admin/verified-users");
+export function queryAdminStaff(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+}) {
+  const query = new URLSearchParams({
+    page: String(params.page || 1),
+    page_size: String(params.pageSize || 25),
+  });
+  addOptional(query, "search", params.search);
+  addOptional(query, "role", params.role);
+  addOptional(query, "status", params.status);
+  return apiFetch<AdminStaffPage>(`/admin/staff/query?${query.toString()}`);
+}
+
+export function queryAdminStaffCandidates(search?: string) {
+  const query = new URLSearchParams({ limit: "20" });
+  addOptional(query, "search", search);
+  return apiFetch<AdminVerifiedUserOption[]>(`/admin/staff/candidates/query?${query.toString()}`);
 }
 
 export function addAdminStaffFromUser(userId: number, role = "staff") {
@@ -95,10 +147,7 @@ export function addAdminStaffFromUser(userId: number, role = "staff") {
   });
 }
 
-export function updateAdminStaff(
-  staffId: number,
-  payload: AdminStaffUpdatePayload
-) {
+export function updateAdminStaff(staffId: number, payload: AdminStaffUpdatePayload) {
   return apiFetch<AdminStaffRecord>(`/admin/staff/${staffId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -108,6 +157,14 @@ export function updateAdminStaff(
 
 export function updateAdminStaffStatus(staffId: number, status: string) {
   return apiFetch<AdminStaffRecord>(`/admin/staff/${staffId}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function updateAdminUserStatus<T = unknown>(userId: number, status: string) {
+  return apiFetch<T>(`/admin/users/${userId}/status`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
