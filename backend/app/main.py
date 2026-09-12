@@ -26,6 +26,7 @@ from app.routes import (
     admin_accounts_phase6,
     admin_ai_phase6,
     admin_data_phase3,
+    admin_oversight_phase7,
     admin_schedules_phase5,
     ai_phase3,
     ai_progress_phase5,
@@ -130,6 +131,10 @@ app.include_router(announcements.router)
 # mutations. They are registered before Phase 3/legacy Admin routes so protected
 # role/status transitions cannot be bypassed through older duplicate paths.
 app.include_router(admin_accounts_phase6.router)
+
+# Phase 7 oversight routes own AI-monitor queries, audit-log forensics, and
+# versioned operational reports before older compatibility implementations.
+app.include_router(admin_oversight_phase7.router)
 
 # Phase 3 Admin data routes provide server-side search/filter pagination and
 # authoritative summary counts without replacing legacy compatibility routes.

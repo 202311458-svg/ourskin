@@ -1,52 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import {
-  FaBrain,
-  FaChartLine,
-  FaClipboardCheck,
-  FaFlask,
-  FaSearch,
-  FaTimes,
-} from "react-icons/fa";
-
+import { useCallback, useEffect, useState } from "react";
 import PaginationControls from "@/app/components/PaginationControls";
+import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import AdminToolbar from "@/app/components/portal/admin/AdminToolbar";
+import EmptyState from "@/app/components/portal/ui/EmptyState";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import Section from "@/app/components/portal/ui/Section";
+import StatCard from "@/app/components/portal/ui/StatCard";
 import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
-import {
-  getAiEvaluationSummary,
-  type AiEvaluationSummary,
-  type AiMonitorRun,
-} from "@/lib/admin-ai-api";
-import { queryAiMonitor } from "@/lib/admin-data-api";
+import { getAiEvaluationSummary, type AiEvaluationSummary, type AiMonitorRun } from "@/lib/admin-ai-api";
+import { queryOversightAi } from "@/lib/admin-oversight-api";
+import AiDistributions from "./components/AiDistributions";
+import AiRunCard from "./components/AiRunCard";
+import AiRunDetailDialog from "./components/AiRunDetailDialog";
+import { formatPercent } from "./ai-utils";
 import styles from "./m6.module.css";
-
-const pretty = (value?: string | null) =>
-  (value || "—")
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
-const formatDate = (value?: string | null) => {
-  if (!value) return "—";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
-};
-
-const formatPercent = (value?: number | null) =>
-  value === null || value === undefined ? "—" : `${value.toFixed(1)}%`;
-
-const agreementTone = (value?: string | null) => {
-  if (value === "AGREE") return styles.good;
-  if (value === "PARTIAL") return styles.info;
-  if (value === "DISAGREE") return styles.warn;
-  return styles.neutral;
-};
-
-const modeLabel = (value?: string | null) =>
-  value === "RECOVERY_PROGRESS" ? "Recovery / progress" : "Dermatology assessment";
 
 export default function AdminAiMonitorPage() {
   const [items, setItems] = useState<AiMonitorRun[]>([]);
@@ -58,457 +29,76 @@ export default function AdminAiMonitorPage() {
   const [mode, setMode] = useState("ALL");
   const [reviewStatus, setReviewStatus] = useState("ALL");
   const [agreement, setAgreement] = useState("ALL");
+  const [runStatus, setRunStatus] = useState("ALL");
+  const [model, setModel] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
   const debouncedSearch = useDebouncedValue(search, 300);
+  const debouncedModel = useDebouncedValue(model, 300);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const [monitor, metrics] = await Promise.all([
-        queryAiMonitor({
-          page,
-          pageSize,
-          search: debouncedSearch,
-          mode,
-          reviewStatus,
-          agreement,
-        }),
+        queryOversightAi({ page, pageSize, search: debouncedSearch, mode, reviewStatus, agreement, runStatus, model: debouncedModel, dateFrom, dateTo }),
         getAiEvaluationSummary(),
       ]);
       setItems(monitor.items);
       setTotal(monitor.total);
       setSummary(metrics);
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Unable to load AI audit data."
-      );
+      setError(loadError instanceof Error ? loadError.message : "Unable to load AI oversight data.");
     } finally {
       setLoading(false);
     }
-  }, [agreement, debouncedSearch, mode, page, pageSize, reviewStatus]);
+  }, [agreement, dateFrom, dateTo, debouncedModel, debouncedSearch, mode, page, pageSize, reviewStatus, runStatus]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
+
+  const resetFilters = () => {
+    setSearch(""); setMode("ALL"); setReviewStatus("ALL"); setAgreement("ALL"); setRunStatus("ALL"); setModel(""); setDateFrom(""); setDateTo(""); setPage(1);
+  };
 
   return (
-    <main className={styles.page}>
-      <PageHeader
-        eyebrow="AI audit & evaluation"
-        title="AI Review Monitor"
-        description="Monitor versioned AI runs, doctor-linked agreement signals, progress analyses, and model metadata without treating operational agreement as clinical accuracy."
-        primaryAction={
-          <button
-            type="button"
-            className={styles.refreshButton}
-            onClick={load}
-            disabled={loading}
-          >
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
-        }
-      />
+    <PageShell>
+      <PageHeader eyebrow="AI audit & evaluation" title="AI Review Monitor" description="Monitor versioned AI runs, review status, model metadata, and doctor-linked agreement signals without treating operational agreement as clinical accuracy." primaryAction={<AdminActionButton tone="secondary" onClick={load} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</AdminActionButton>} />
 
-      {error && <div className={styles.error}>{error}</div>}
+      <AdminStatsGrid>
+        <StatCard label="Versioned AI runs" value={summary?.total_runs ?? 0} hint={`${summary?.dermatology_runs ?? 0} dermatology · ${summary?.progress_runs ?? 0} progress`} />
+        <StatCard label="Pending review" value={summary?.pending_runs ?? 0} hint="Runs awaiting doctor review" tone="warning" />
+        <StatCard label="Primary agreement" value={formatPercent(summary?.primary_agreement_rate)} hint="Doctor diagnosis matched AI primary consideration" tone="success" />
+        <StatCard label="Primary + differential" value={formatPercent(summary?.primary_or_differential_alignment_rate)} hint="Operational text-match alignment" tone="info" />
+        <StatCard label="Legacy-only AI rows" value={summary?.legacy_records_retained ?? 0} hint="Retained outside versioned metrics" />
+      </AdminStatsGrid>
 
-      <section className={styles.metricGrid}>
-        <MetricCard
-          icon={<FaBrain />}
-          label="Versioned AI runs"
-          value={summary?.total_runs ?? "—"}
-          note={`${summary?.dermatology_runs ?? 0} dermatology • ${
-            summary?.progress_runs ?? 0
-          } progress`}
-        />
-        <MetricCard
-          icon={<FaClipboardCheck />}
-          label="Primary agreement"
-          value={formatPercent(summary?.primary_agreement_rate)}
-          note="Doctor final diagnosis matched AI primary consideration"
-        />
-        <MetricCard
-          icon={<FaChartLine />}
-          label="Primary + differential"
-          value={formatPercent(
-            summary?.primary_or_differential_alignment_rate
-          )}
-          note="Includes final diagnoses matching an AI differential"
-        />
-        <MetricCard
-          icon={<FaFlask />}
-          label="Avg processing"
-          value={
-            summary?.average_latency_ms == null
-              ? "—"
-              : `${Math.round(summary.average_latency_ms)} ms`
-          }
-          note={`${summary?.reviewed_runs ?? 0} reviewed • ${
-            summary?.pending_runs ?? 0
-          } pending`}
-        />
-      </section>
+      <Section title="Evaluation boundary" description={summary?.methodology.clinical_validation || "Operational agreement is an audit signal, not a clinical validation claim."}>
+        <p className={styles.boundaryText}>Medication-option uptake is also a literal audit match, not a judgment of treatment appropriateness or efficacy.</p>
+      </Section>
 
-      <section className={styles.noticePanel}>
-        <strong>Evaluation boundary</strong>
-        <p>
-          {summary?.methodology.clinical_validation ||
-            "Operational agreement is an audit signal, not a clinical validation claim."}
-        </p>
-        {summary?.legacy_records_retained ? (
-          <span>
-            {summary.legacy_records_retained} legacy-only AI record
-            {summary.legacy_records_retained === 1 ? "" : "s"} remain retained
-            outside these versioned metrics.
-          </span>
-        ) : null}
-      </section>
+      <AiDistributions agreement={summary?.agreement_counts} status={summary?.status_counts} evidence={summary?.evidence_counts} models={summary?.model_counts} />
 
-      <section className={styles.distributionGrid}>
-        <Distribution
-          title="Doctor agreement"
-          values={summary?.agreement_counts}
-        />
-        <Distribution
-          title="Analysis status"
-          values={summary?.status_counts}
-        />
-        <Distribution
-          title="Service compatibility"
-          values={summary?.compatibility_counts}
-        />
-        <Distribution
-          title="Progress trend"
-          values={summary?.progress_trend_counts}
-        />
-      </section>
+      <AdminToolbar meta={`${total} matching run${total === 1 ? "" : "s"}`}>
+        <input type="search" aria-label="Search AI runs" placeholder="Search patient, doctor, condition, model, appointment or run" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        <select value={mode} onChange={(e) => { setMode(e.target.value); setPage(1); }} aria-label="Filter by analysis mode"><option value="ALL">All modes</option><option value="DERMATOLOGY_ASSESSMENT">Dermatology</option><option value="SERVICE_COMPATIBILITY">Service compatibility</option><option value="RECOVERY_PROGRESS">Recovery / progress</option></select>
+        <select value={reviewStatus} onChange={(e) => { setReviewStatus(e.target.value); setPage(1); }} aria-label="Filter by review status"><option value="ALL">All review states</option><option value="PENDING_REVIEW">Pending review</option><option value="REVIEWED">Reviewed</option></select>
+        <select value={agreement} onChange={(e) => { setAgreement(e.target.value); setPage(1); }} aria-label="Filter by agreement"><option value="ALL">All agreement states</option><option value="AGREE">Agree</option><option value="PARTIAL">Partial</option><option value="DISAGREE">Disagree</option><option value="NOT_ASSESSABLE">Not assessable</option></select>
+        <select value={runStatus} onChange={(e) => { setRunStatus(e.target.value); setPage(1); }} aria-label="Filter by run status"><option value="ALL">All run statuses</option><option value="COMPLETED">Completed</option><option value="UNCERTAIN">Uncertain</option><option value="INSUFFICIENT_IMAGE">Insufficient image</option><option value="OUT_OF_SCOPE">Out of scope</option><option value="REQUIRES_DIRECT_REVIEW">Direct review required</option><option value="FAILED">Failed</option></select>
+        <input type="search" aria-label="Filter AI runs by model" placeholder="Model/provider" value={model} onChange={(e) => { setModel(e.target.value); setPage(1); }} />
+        <input type="date" aria-label="AI runs from date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
+        <input type="date" aria-label="AI runs to date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
+        <AdminActionButton onClick={resetFilters}>Clear filters</AdminActionButton>
+      </AdminToolbar>
 
-      <section className={styles.panel}>
-        <div className={styles.toolbar}>
-          <div className={styles.searchWrap}>
-            <FaSearch />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Search patient, doctor, condition, model, appointment or run"
-            />
-          </div>
+      <Section title="Versioned run history" description="Read-only operational audit records. Clinical review and diagnosis remain in the Doctor Portal.">
+        {error ? <div className={styles.error} role="alert">{error}</div> : loading ? <EmptyState title="Loading versioned AI runs…" /> : items.length === 0 ? <EmptyState title="No AI runs match this view." description="Try changing the filters or date range." /> : <div className={styles.runList}>{items.map((item) => <AiRunCard key={item.id} item={item} onOpen={() => setSelected(item)} />)}</div>}
+        <PaginationControls total={total} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
+      </Section>
 
-          <select
-            value={mode}
-            onChange={(event) => {
-              setMode(event.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="ALL">All modes</option>
-            <option value="DERMATOLOGY_ASSESSMENT">Dermatology</option>
-            <option value="RECOVERY_PROGRESS">Recovery / progress</option>
-          </select>
-
-          <select
-            value={reviewStatus}
-            onChange={(event) => {
-              setReviewStatus(event.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="ALL">All review states</option>
-            <option value="PENDING_REVIEW">Pending review</option>
-            <option value="REVIEWED">Reviewed</option>
-          </select>
-
-          <select
-            value={agreement}
-            onChange={(event) => {
-              setAgreement(event.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="ALL">All agreement states</option>
-            <option value="AGREE">Agree</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="DISAGREE">Disagree</option>
-            <option value="NOT_ASSESSABLE">Not assessable</option>
-          </select>
-        </div>
-
-        <div className={styles.resultMeta}>
-          {total} matching run{total === 1 ? "" : "s"}
-        </div>
-
-        {loading ? (
-          <div className={styles.empty}>Loading versioned AI runs…</div>
-        ) : items.length === 0 ? (
-          <div className={styles.empty}>No AI runs match the current filters.</div>
-        ) : (
-          <div className={styles.runList}>
-            {items.map((item) => (
-              <article className={styles.runCard} key={item.id}>
-                <div className={styles.runMain}>
-                  <div className={styles.identity}>
-                    <strong>{item.patient_name}</strong>
-                    <span>{item.patient_email || "No email"}</span>
-                  </div>
-                  <div className={styles.titleBlock}>
-                    <span>{modeLabel(item.analysis_mode)}</span>
-                    <strong>
-                      {item.analysis_mode === "RECOVERY_PROGRESS"
-                        ? pretty(item.progress_trend)
-                        : item.primary_condition_display || pretty(item.status)}
-                    </strong>
-                    <small>
-                      Run #{item.id} • Appointment #{item.appointment_id}
-                    </small>
-                  </div>
-                </div>
-
-                <div className={styles.badges}>
-                  <span className={styles.badge}>{pretty(item.status)}</span>
-                  <span className={styles.badge}>{pretty(item.review_status)}</span>
-                  {item.diagnosis_agreement && (
-                    <span
-                      className={`${styles.badge} ${agreementTone(
-                        item.diagnosis_agreement
-                      )}`}
-                    >
-                      {pretty(item.diagnosis_agreement)}
-                    </span>
-                  )}
-                </div>
-
-                <div className={styles.metaGrid}>
-                  <Info label="Doctor" value={item.doctor_name} />
-                  <Info label="Booked service" value={item.booked_service} />
-                  <Info
-                    label="Evidence"
-                    value={pretty(item.evidence_strength)}
-                  />
-                  <Info
-                    label="Compatibility"
-                    value={pretty(item.service_compatibility)}
-                  />
-                  <Info label="Model" value={item.model_id} />
-                  <Info
-                    label="Created"
-                    value={formatDate(item.created_at)}
-                  />
-                </div>
-
-                <div className={styles.cardFooter}>
-                  <span>
-                    {item.doctor_final_diagnosis
-                      ? `Doctor: ${item.doctor_final_diagnosis}`
-                      : "No linked final diagnosis yet"}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.detailButton}
-                    onClick={() => setSelected(item)}
-                  >
-                    View audit detail
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-
-        <PaginationControls
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(value) => {
-            setPageSize(value);
-            setPage(1);
-          }}
-        />
-      </section>
-
-      {selected && (
-        <div className={styles.modalBackdrop} onClick={() => setSelected(null)}>
-          <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div>
-                <span>AI run #{selected.id}</span>
-                <h2>{modeLabel(selected.analysis_mode)}</h2>
-              </div>
-              <button
-                type="button"
-                className={styles.closeButton}
-                onClick={() => setSelected(null)}
-                aria-label="Close"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className={styles.detailGrid}>
-              <Detail
-                label="AI primary"
-                value={selected.primary_condition_display || "—"}
-              />
-              <Detail
-                label="Doctor final diagnosis"
-                value={selected.doctor_final_diagnosis || "—"}
-              />
-              <Detail
-                label="Agreement"
-                value={pretty(selected.diagnosis_agreement)}
-              />
-              <Detail
-                label="Matched differential"
-                value={selected.matched_differential_display || "—"}
-              />
-              <Detail
-                label="Progress trend"
-                value={pretty(selected.progress_trend)}
-              />
-              <Detail
-                label="Comparison reliable"
-                value={
-                  selected.comparison_reliable == null
-                    ? "—"
-                    : selected.comparison_reliable
-                    ? "Yes"
-                    : "No"
-                }
-              />
-              <Detail
-                label="Medication option used"
-                value={
-                  selected.medication_suggestion_used == null
-                    ? "Not applicable / not measured"
-                    : selected.medication_suggestion_used
-                    ? "Yes"
-                    : "No"
-                }
-              />
-              <Detail
-                label="Medication matches"
-                value={selected.medication_matches?.join(", ") || "—"}
-              />
-              <Detail
-                label="Model"
-                value={`${selected.model_provider || "—"} / ${
-                  selected.model_id || "—"
-                }`}
-              />
-              <Detail
-                label="Pipeline"
-                value={selected.pipeline_version || "—"}
-              />
-              <Detail
-                label="Taxonomy"
-                value={selected.taxonomy_version || "—"}
-              />
-              <Detail
-                label="Latency"
-                value={
-                  selected.latency_ms == null
-                    ? "—"
-                    : `${selected.latency_ms} ms`
-                }
-              />
-            </div>
-
-            <div className={styles.longDetail}>
-              <strong>Audit methodology</strong>
-              <p>
-                {selected.evaluation_basis
-                  ? "Diagnosis agreement is a deterministic text-match audit signal created when the doctor completes the report. It is not a model-generated score."
-                  : "This run has no doctor-linked diagnosis evaluation yet."}
-              </p>
-            </div>
-
-            <div className={styles.longDetail}>
-              <strong>Red flags</strong>
-              <p>{selected.red_flags?.join(" • ") || "None recorded."}</p>
-            </div>
-
-            <div className={styles.longDetail}>
-              <strong>Limitations</strong>
-              <p>{selected.limitations?.join(" • ") || "None recorded."}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
-  );
-}
-
-function MetricCard({
-  icon,
-  label,
-  value,
-  note,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  note: string;
-}) {
-  return (
-    <div className={styles.metricCard}>
-      <div className={styles.metricIcon}>{icon}</div>
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <p>{note}</p>
-      </div>
-    </div>
-  );
-}
-
-function Distribution({
-  title,
-  values,
-}: {
-  title: string;
-  values?: Record<string, number>;
-}) {
-  const entries = Object.entries(values || {});
-  return (
-    <div className={styles.distributionCard}>
-      <strong>{title}</strong>
-      {entries.length === 0 ? (
-        <span className={styles.muted}>No data yet</span>
-      ) : (
-        <div className={styles.distributionList}>
-          {entries.map(([key, value]) => (
-            <div key={key}>
-              <span>{pretty(key)}</span>
-              <strong>{value}</strong>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Info({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className={styles.info}>
-      <span>{label}</span>
-      <strong>{value || "—"}</strong>
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.detail}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+      <AiRunDetailDialog item={selected} onClose={() => setSelected(null)} />
+    </PageShell>
   );
 }

@@ -1,26 +1,16 @@
-.dateCell {
-  white-space: nowrap;
-  color: var(--color-text-secondary);
-}
-
-.descriptionCell {
-  min-width: 260px;
-  color: var(--color-text);
-  line-height: var(--line-height-base);
-}
-
-.personCell {
-  display: grid;
-  gap: 2px;
-  min-width: 140px;
-}
-
-.personCell strong {
-  color: var(--color-text-strong);
-  font-size: var(--font-size-sm);
-}
-
-.personCell span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
+.dateCell { white-space: nowrap; }
+.descriptionCell { min-width: 280px; max-width: 520px; line-height: var(--line-height-base); }
+.personCell { display: grid; gap: var(--space-1); min-width: 150px; }
+.personCell span { color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.detailBody { display: grid; gap: var(--space-4); }
+.badgeRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.detailGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.detailGrid > div { min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface-subtle); }
+.detailGrid span, .detailGrid small { display: block; color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.detailGrid strong { display: block; margin: var(--space-1) 0; overflow-wrap: anywhere; }
+.descriptionBox, .jsonBlock { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.descriptionBox p, .jsonBlock p { margin: var(--space-2) 0 0; color: var(--color-text-muted); }
+.jsonGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.jsonBlock { min-width: 0; }
+.jsonBlock pre { margin: var(--space-2) 0 0; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--font-size-xs); color: var(--color-text); background: var(--color-surface-subtle); padding: var(--space-3); border-radius: var(--radius-sm); }
+@media (max-width: 900px) { .detailGrid, .jsonGrid { grid-template-columns: 1fr; } }
