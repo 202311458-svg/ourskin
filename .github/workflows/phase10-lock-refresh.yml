@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh-frontend-lock:
@@ -34,16 +34,18 @@ jobs:
         working-directory: frontend
         run: npm update --package-lock-only --ignore-scripts baseline-browser-mapping
 
-      - name: Upload generated package metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase10-frontend-package-lock
-          path: |
-            frontend/package.json
-            frontend/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Audit generated production dependency tree
         working-directory: frontend
         run: npm audit --omit=dev
+
+      - name: Commit generated package metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package.json frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Package metadata is already current."
+            exit 0
+          fi
+          git commit -m "update secure frontend dependencies"
+          git push
