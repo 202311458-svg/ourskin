@@ -1,0 +1,45 @@
+name: Phase 10 frontend lock refresh
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-frontend-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Refresh Next.js dependency lock
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts "next@^16.3.4"
+
+      - name: Align Next.js ESLint configuration
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts --save-dev "eslint-config-next@16.3.4"
+
+      - name: Upload generated package metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase10-frontend-package-lock
+          path: |
+            frontend/package.json
+            frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Audit generated production dependency tree
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
