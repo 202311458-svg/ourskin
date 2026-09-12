@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import PaginationControls from "@/app/components/PaginationControls";
 import PortalShell from "@/app/components/PortalShell";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
+import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
 import {
   AdminAppointment,
   AdminFollowUp,
@@ -12,13 +13,16 @@ import {
   AssignableDoctor,
   AssignableSlot,
   assignInitialEvaluationSchedule,
-  getAdminAppointments,
   getAdminFollowUps,
   getAssignableInitialEvaluationDoctors,
   getAssignableInitialEvaluationSlots,
   updateAdminFollowUp,
   updateAppointmentStatus as saveAppointmentStatus,
 } from "@/lib/admin-api";
+import {
+  queryAdminAppointments,
+  type AdminAppointmentSummary,
+} from "@/lib/admin-data-api";
 import styles from "./page.module.css";
 import PageHeader from "@/app/components/portal/ui/PageHeader";
 
@@ -213,6 +217,8 @@ export default function AdminAppointmentsPage() {
   const router = useRouter();
 
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
+  const [appointmentSummary, setAppointmentSummary] =
+    useState<AdminAppointmentSummary | null>(null);
   const [followUps, setFollowUps] = useState<AdminFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -225,6 +231,7 @@ export default function AdminAppointmentsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const [selectedAppointment, setSelectedAppointment] =
     useState<AdminAppointment | null>(null);
@@ -267,13 +274,17 @@ export default function AdminAppointmentsPage() {
         setError("");
 
         const [appointmentData, followUpData] = await Promise.all([
-          getAdminAppointments(page, pageSize),
+          queryAdminAppointments({
+            page,
+            pageSize,
+            search: debouncedSearch,
+            status: statusFilter,
+          }),
           getAdminFollowUps(),
         ]);
 
-        setAppointments(
-          uniqueAppointmentsById(appointmentData.items)
-        );
+        setAppointments(uniqueAppointmentsById(appointmentData.items));
+        setAppointmentSummary(appointmentData.summary);
         setTotal(appointmentData.total);
         setFollowUps(uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : []));
       } catch (loadError: unknown) {
@@ -288,7 +299,7 @@ export default function AdminAppointmentsPage() {
         if (showLoader) setLoading(false);
       }
     },
-    [router, page, pageSize]
+    [debouncedSearch, page, pageSize, router, statusFilter]
   );
 
   useEffect(() => {
@@ -391,30 +402,6 @@ useEffect(() => {
   };
 }, [showAssignModal, selectedAppointment, selectedDoctorId, weekStart]);
 
-  const filteredAppointments = useMemo(() => {
-    const keyword = search.toLowerCase().trim();
-
-    return appointments.filter((appointment) => {
-      const status = normalizeStatus(appointment.status);
-      const guardianName = getGuardianName(appointment);
-
-      const matchesSearch =
-        !keyword ||
-        (appointment.patient_name || "").toLowerCase().includes(keyword) ||
-        (appointment.patient_email || "").toLowerCase().includes(keyword) ||
-        (appointment.patient_contact || "").toLowerCase().includes(keyword) ||
-        (appointment.doctor_name || "").toLowerCase().includes(keyword) ||
-        (appointment.services || "").toLowerCase().includes(keyword) ||
-        (appointment.status || "").toLowerCase().includes(keyword) ||
-        guardianName.toLowerCase().includes(keyword);
-
-      const matchesStatus =
-        statusFilter === "all" || status === statusFilter.toLowerCase();
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [appointments, search, statusFilter]);
-
   const sortedFollowUps = useMemo(() => {
     return uniqueFollowUpsById(followUps).sort((a, b) => {
       const aCompleted = normalizeStatus(a.status) === "completed";
@@ -428,23 +415,15 @@ useEffect(() => {
 
   const stats = useMemo(() => {
     return {
-      total: appointments.length,
-      pending: appointments.filter(
-        (appointment) => normalizeStatus(appointment.status) === "pending"
-      ).length,
-      initialEvaluation: appointments.filter(
-        (appointment) =>
-          appointment.is_initial_evaluation_request &&
-          normalizeStatus(appointment.status) === "pending"
-      ).length,
-      approved: appointments.filter(
-        (appointment) => normalizeStatus(appointment.status) === "approved"
-      ).length,
+      total: appointmentSummary?.total ?? 0,
+      pending: appointmentSummary?.pending ?? 0,
+      initialEvaluation: appointmentSummary?.initial_evaluation ?? 0,
+      approved: appointmentSummary?.approved ?? 0,
       followUps: sortedFollowUps.filter(
         (item) => normalizeStatus(item.status) !== "completed"
       ).length,
     };
-  }, [appointments, sortedFollowUps]);
+  }, [appointmentSummary, sortedFollowUps]);
 
   function updateAppointmentInState(updated: AdminAppointment) {
     setAppointments((prev) =>
@@ -858,13 +837,19 @@ useEffect(() => {
             type="text"
             placeholder="Search by patient, email, contact, guardian, doctor, service, or status"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
             className={styles.searchInput}
           />
 
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setPage(1);
+            }}
             className={styles.selectInput}
           >
             <option value="all">All Status</option>
@@ -877,18 +862,22 @@ useEffect(() => {
           </select>
         </div>
 
+        <p className={styles.resultMeta}>
+          {total} matching appointment{total === 1 ? "" : "s"}
+        </p>
+
         {loading ? (
           <p className={styles.message}>Loading appointments...</p>
         ) : error ? (
           <p className={styles.error}>{error}</p>
-        ) : filteredAppointments.length === 0 ? (
+        ) : appointments.length === 0 ? (
           <div className={styles.emptyState}>
             <h3>No appointments found</h3>
             <p>Try adjusting the search or status filter.</p>
           </div>
         ) : (
           <section className={styles.appointmentsList}>
-            {filteredAppointments.map((appointment) => {
+            {appointments.map((appointment) => {
               const status = formatStatus(appointment.status);
               const normalized = normalizeStatus(appointment.status);
               const isUpdating = actionLoading === appointment.id;

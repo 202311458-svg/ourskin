@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import PaginationControls from "@/app/components/PaginationControls";
 import AdminDataTable from "@/app/components/portal/admin/AdminDataTable";
 import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
@@ -9,7 +9,12 @@ import PageHeader from "@/app/components/portal/ui/PageHeader";
 import PageShell from "@/app/components/portal/ui/PageShell";
 import StatCard from "@/app/components/portal/ui/StatCard";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
-import { AuditLog, getAdminAuditLogs } from "@/lib/admin-api";
+import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
+import {
+  queryAdminAuditLogs,
+  type AdminAuditLog,
+  type AdminAuditSummary,
+} from "@/lib/admin-data-api";
 import styles from "./page.module.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -105,7 +110,8 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs] = useState<AdminAuditLog[]>([]);
+  const [summary, setSummary] = useState<AdminAuditSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -114,6 +120,7 @@ export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,10 +130,17 @@ export default function AuditLogsPage() {
         setLoading(true);
         setError("");
 
-        const data = await getAdminAuditLogs(page, pageSize);
+        const data = await queryAdminAuditLogs({
+          page,
+          pageSize,
+          search: debouncedSearch,
+          module: moduleFilter,
+          actionType: actionFilter,
+        });
         if (cancelled) return;
         setLogs(data.items);
         setTotal(data.total);
+        setSummary(data.summary);
       } catch (loadError: unknown) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, "Unable to load audit logs"));
@@ -140,46 +154,7 @@ export default function AuditLogsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize]);
-
-  const enhancedLogs = useMemo(() => {
-    return logs.map((log) => ({
-      ...log,
-      module: getModuleFromAction(log.action || ""),
-    }));
-  }, [logs]);
-
-  const filteredLogs = useMemo(() => {
-    const keyword = search.toLowerCase().trim();
-
-    return enhancedLogs.filter((log) => {
-      const moduleName = log.module || getModuleFromAction(log.action || "");
-      const actionType = getActionType(log.action || "");
-
-      const matchesSearch =
-        !keyword ||
-        (log.action || "").toLowerCase().includes(keyword) ||
-        (log.description || "").toLowerCase().includes(keyword) ||
-        String(log.actor_id || "").includes(keyword) ||
-        String(log.target_id || "").includes(keyword) ||
-        (log.actor_name || "").toLowerCase().includes(keyword) ||
-        (log.target_name || "").toLowerCase().includes(keyword);
-
-      const matchesModule = moduleFilter === "all" || moduleName === moduleFilter;
-      const matchesAction = actionFilter === "all" || actionType === actionFilter;
-
-      return matchesSearch && matchesModule && matchesAction;
-    });
-  }, [enhancedLogs, search, moduleFilter, actionFilter]);
-
-  const stats = useMemo(() => {
-    return {
-      total: enhancedLogs.length,
-      account: enhancedLogs.filter((log) => log.module === "Account Management").length,
-      appointment: enhancedLogs.filter((log) => log.module === "Appointments").length,
-      medical: enhancedLogs.filter((log) => log.module === "Medical Records").length,
-    };
-  }, [enhancedLogs]);
+  }, [actionFilter, debouncedSearch, moduleFilter, page, pageSize]);
 
   return (
     <PageShell>
@@ -190,28 +165,45 @@ export default function AuditLogsPage() {
       />
 
       <AdminStatsGrid compact>
-        <StatCard label="Logs on this page" value={stats.total} hint={`${total} total audit records`} />
-        <StatCard label="Account actions" value={stats.account} hint="Account-related records on this page" tone="success" />
-        <StatCard label="Appointment actions" value={stats.appointment} hint="Appointment-related records on this page" tone="info" />
-        <StatCard label="Medical actions" value={stats.medical} hint="Clinical/AI-related records on this page" tone="warning" />
+        <StatCard label="Total audit records" value={summary?.total ?? 0} hint="All backend audit entries" />
+        <StatCard label="Account actions" value={summary?.account ?? 0} hint="Account-related records" tone="success" />
+        <StatCard label="Appointment actions" value={summary?.appointment ?? 0} hint="Appointment-related records" tone="info" />
+        <StatCard label="Medical actions" value={summary?.medical ?? 0} hint="Clinical and AI-related records" tone="warning" />
       </AdminStatsGrid>
 
-      <AdminToolbar meta={`${filteredLogs.length} shown on this page`}>
+      <AdminToolbar meta={`${total} matching record${total === 1 ? "" : "s"}`}>
         <input
           type="search"
           aria-label="Search audit logs"
           placeholder="Search action, description, actor, or target"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
-        <select value={moduleFilter} onChange={(event) => setModuleFilter(event.target.value)} aria-label="Filter audit logs by module">
+        <select
+          value={moduleFilter}
+          onChange={(event) => {
+            setModuleFilter(event.target.value);
+            setPage(1);
+          }}
+          aria-label="Filter audit logs by module"
+        >
           <option value="all">All modules</option>
           <option value="Account Management">Account Management</option>
           <option value="Appointments">Appointments</option>
           <option value="Medical Records">Medical Records</option>
           <option value="System">System</option>
         </select>
-        <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} aria-label="Filter audit logs by action type">
+        <select
+          value={actionFilter}
+          onChange={(event) => {
+            setActionFilter(event.target.value);
+            setPage(1);
+          }}
+          aria-label="Filter audit logs by action type"
+        >
           <option value="all">All actions</option>
           <option value="create">Create / Promote</option>
           <option value="update">Update / Edit</option>
@@ -227,7 +219,7 @@ export default function AuditLogsPage() {
         loading={loading}
         loadingText="Loading audit logs…"
         error={error}
-        empty={!loading && !error && filteredLogs.length === 0}
+        empty={!loading && !error && logs.length === 0}
         emptyTitle="No audit logs match this view."
         emptyDescription="Try changing the search or filters."
       >
@@ -243,26 +235,35 @@ export default function AuditLogsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredLogs.map((log) => (
-              <tr key={log.id}>
-                <td className={styles.dateCell}>{formatDateTime(log.created_at)}</td>
-                <td><StatusBadge tone={getActionTone(log.action || "")}>{formatAction(log.action || "System")}</StatusBadge></td>
-                <td><StatusBadge tone="info">{log.module}</StatusBadge></td>
-                <td className={styles.descriptionCell}>{log.description || "No description provided"}</td>
-                <td>
-                  <div className={styles.personCell}>
-                    <strong>{log.actor_name || "System"}</strong>
-                    <span>{log.actor_id ? `ID: ${log.actor_id}` : "No ID"}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className={styles.personCell}>
-                    <strong>{log.target_name || "N/A"}</strong>
-                    <span>{log.target_id ? `ID: ${log.target_id}` : "No target ID"}</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {logs.map((log) => {
+              const moduleName = log.module || getModuleFromAction(log.action || "");
+              return (
+                <tr key={log.id}>
+                  <td className={styles.dateCell}>{formatDateTime(log.created_at)}</td>
+                  <td><StatusBadge tone={getActionTone(log.action || "")}>{formatAction(log.action || "System")}</StatusBadge></td>
+                  <td><StatusBadge tone="info">{moduleName}</StatusBadge></td>
+                  <td className={styles.descriptionCell}>{log.description || "No description provided"}</td>
+                  <td>
+                    <div className={styles.personCell}>
+                      <strong>{log.actor_name || "System"}</strong>
+                      <span>{log.actor_id ? `ID: ${log.actor_id}` : "No ID"}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className={styles.personCell}>
+                      <strong>{log.target_name || log.target_type || "N/A"}</strong>
+                      <span>
+                        {log.target_record_id
+                          ? `Record: ${log.target_record_id}`
+                          : log.target_id
+                          ? `ID: ${log.target_id}`
+                          : "No target ID"}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </AdminDataTable>

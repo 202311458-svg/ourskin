@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   FaEnvelope,
   FaIdBadge,
@@ -20,7 +20,12 @@ import PageHeader from "@/app/components/portal/ui/PageHeader";
 import PageShell from "@/app/components/portal/ui/PageShell";
 import StatCard from "@/app/components/portal/ui/StatCard";
 import StatusBadge from "@/app/components/portal/ui/StatusBadge";
-import { AdminUser, getAdminUsers } from "@/lib/admin-api";
+import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
+import type { AdminUser } from "@/lib/admin-api";
+import {
+  queryAdminUsers,
+  type AdminUserSummary,
+} from "@/lib/admin-data-api";
 import styles from "./page.module.css";
 
 type RoleFilter = "all" | "patient" | "doctor" | "staff" | "admin";
@@ -150,6 +155,7 @@ function DetailSection({
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [summary, setSummary] = useState<AdminUserSummary | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -160,6 +166,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,10 +175,18 @@ export default function AdminUsersPage() {
       try {
         setLoading(true);
         setError("");
-        const data = await getAdminUsers(page, pageSize);
+        const data = await queryAdminUsers({
+          page,
+          pageSize,
+          search: debouncedSearch,
+          role: roleFilter,
+          verification: verificationFilter,
+          patientType: patientTypeFilter,
+        });
         if (cancelled) return;
         setUsers(data.items);
         setTotal(data.total);
+        setSummary(data.summary);
       } catch (loadError: unknown) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, "Unable to load user records."));
@@ -185,60 +200,14 @@ export default function AdminUsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize]);
-
-  const filteredUsers = useMemo(() => {
-    const keyword = search.toLowerCase().trim();
-
-    return users.filter((user) => {
-      const userRole = normalizeText(user.role);
-      const guardianName = getFullGuardianName(user);
-      const patientType = getPatientType(user).toLowerCase();
-
-      const matchesSearch =
-        !keyword ||
-        normalizeText(user.name).includes(keyword) ||
-        normalizeText(user.first_name).includes(keyword) ||
-        normalizeText(user.last_name).includes(keyword) ||
-        normalizeText(user.email).includes(keyword) ||
-        normalizeText(user.contact).includes(keyword) ||
-        normalizeText(user.address).includes(keyword) ||
-        normalizeText(guardianName).includes(keyword) ||
-        normalizeText(user.guardian_email).includes(keyword) ||
-        normalizeText(user.guardian_contact).includes(keyword) ||
-        normalizeText(user.specialty).includes(keyword) ||
-        normalizeText(user.department).includes(keyword);
-
-      const matchesRole = roleFilter === "all" || userRole === roleFilter;
-      const matchesVerification =
-        verificationFilter === "all" ||
-        (verificationFilter === "verified" && user.is_verified) ||
-        (verificationFilter === "unverified" && !user.is_verified);
-      const matchesPatientType =
-        patientTypeFilter === "all" ||
-        (patientTypeFilter === "minor" && userRole === "patient" && user.is_minor) ||
-        (patientTypeFilter === "adult" && userRole === "patient" && !user.is_minor) ||
-        (patientTypeFilter === "internal" && userRole !== "patient") ||
-        patientType === patientTypeFilter;
-
-      return matchesSearch && matchesRole && matchesVerification && matchesPatientType;
-    });
-  }, [users, search, roleFilter, verificationFilter, patientTypeFilter]);
-
-  const stats = useMemo(() => {
-    const patients = users.filter((user) => normalizeText(user.role) === "patient");
-    const internal = users.filter((user) =>
-      ["admin", "staff", "doctor"].includes(normalizeText(user.role))
-    );
-
-    return {
-      total: users.length,
-      patients: patients.length,
-      internal: internal.length,
-      verified: users.filter((user) => user.is_verified).length,
-      minors: patients.filter((user) => user.is_minor).length,
-    };
-  }, [users]);
+  }, [
+    debouncedSearch,
+    page,
+    pageSize,
+    patientTypeFilter,
+    roleFilter,
+    verificationFilter,
+  ]);
 
   return (
     <PageShell>
@@ -249,34 +218,58 @@ export default function AdminUsersPage() {
       />
 
       <AdminStatsGrid>
-        <StatCard label="Users on this page" value={stats.total} hint={`${total} total registered accounts`} />
-        <StatCard label="Patients" value={stats.patients} hint="Patient accounts on this page" tone="success" />
-        <StatCard label="Internal users" value={stats.internal} hint="Admin, staff, and doctors on this page" tone="info" />
-        <StatCard label="Verified" value={stats.verified} hint="Email-confirmed accounts on this page" tone="success" />
-        <StatCard label="Minor patients" value={stats.minors} hint="Patient accounts requiring guardian context" tone="warning" />
+        <StatCard label="Total users" value={summary?.total ?? 0} hint="All registered accounts" />
+        <StatCard label="Patients" value={summary?.patients ?? 0} hint="All patient accounts" tone="success" />
+        <StatCard label="Internal users" value={summary?.internal ?? 0} hint="Admins, staff, and doctors" tone="info" />
+        <StatCard label="Verified" value={summary?.verified ?? 0} hint="Email-confirmed accounts" tone="success" />
+        <StatCard label="Minor patients" value={summary?.minors ?? 0} hint="Patient accounts requiring guardian context" tone="warning" />
       </AdminStatsGrid>
 
-      <AdminToolbar meta={`${filteredUsers.length} shown on this page`}>
+      <AdminToolbar meta={`${total} matching account${total === 1 ? "" : "s"}`}>
         <input
           type="search"
           aria-label="Search patients and users"
           placeholder="Search name, email, contact, guardian, address, specialty…"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
-        <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as RoleFilter)} aria-label="Filter users by role">
+        <select
+          value={roleFilter}
+          onChange={(event) => {
+            setRoleFilter(event.target.value as RoleFilter);
+            setPage(1);
+          }}
+          aria-label="Filter users by role"
+        >
           <option value="all">All roles</option>
           <option value="patient">Patients</option>
           <option value="doctor">Doctors</option>
           <option value="staff">Staff</option>
           <option value="admin">Admins</option>
         </select>
-        <select value={verificationFilter} onChange={(event) => setVerificationFilter(event.target.value as VerificationFilter)} aria-label="Filter users by verification status">
+        <select
+          value={verificationFilter}
+          onChange={(event) => {
+            setVerificationFilter(event.target.value as VerificationFilter);
+            setPage(1);
+          }}
+          aria-label="Filter users by verification status"
+        >
           <option value="all">All verification</option>
           <option value="verified">Verified</option>
           <option value="unverified">Unverified</option>
         </select>
-        <select value={patientTypeFilter} onChange={(event) => setPatientTypeFilter(event.target.value as PatientTypeFilter)} aria-label="Filter users by account type">
+        <select
+          value={patientTypeFilter}
+          onChange={(event) => {
+            setPatientTypeFilter(event.target.value as PatientTypeFilter);
+            setPage(1);
+          }}
+          aria-label="Filter users by account type"
+        >
           <option value="all">All types</option>
           <option value="adult">Adult patients</option>
           <option value="minor">Minor patients</option>
@@ -290,7 +283,7 @@ export default function AdminUsersPage() {
         loading={loading}
         loadingText="Loading users…"
         error={error}
-        empty={!loading && !error && filteredUsers.length === 0}
+        empty={!loading && !error && users.length === 0}
         emptyTitle="No users match this view."
         emptyDescription="Try changing the search or filters."
       >
@@ -308,7 +301,7 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((user) => {
+            {users.map((user) => {
               const role = normalizeText(user.role) || "patient";
               const status = normalizeText(user.status || "Active");
               const patientType = getPatientType(user);

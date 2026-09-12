@@ -24,6 +24,7 @@ from app.models.appointment_log import AppointmentLog
 from app.routes import (
     admin,
     admin_ai_phase6,
+    admin_data_phase3,
     ai_phase3,
     ai_progress_phase5,
     announcements,
@@ -121,6 +122,10 @@ app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(announcements.router)
+
+# Phase 3 Admin data routes provide server-side search/filter pagination and
+# authoritative summary counts without replacing legacy compatibility routes.
+app.include_router(admin_data_phase3.router)
 
 # M6 provides the versioned AI monitor/evaluation endpoints. The older admin
 # endpoint remains available only for historical records.
