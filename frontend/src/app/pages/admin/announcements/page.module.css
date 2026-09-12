@@ -1,6 +1,32 @@
-.pageWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
+.successMessage,
+.errorMessage {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
+.successMessage { background: var(--color-success-bg); color: var(--color-success); }
+.errorMessage { background: var(--color-danger-bg); color: var(--color-danger); }
+.formStack { display: grid; gap: var(--space-4); }
+.formStack label { display: grid; gap: var(--space-2); }
+.formStack label > span { font-weight: 700; }
+.formStack input,
+.formStack select,
+.formStack textarea { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); padding: 10px 12px; font: inherit; }
+.formStack textarea { resize: vertical; min-height: 120px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.wideField { grid-column: 1 / -1; }
+.checkboxField { display: flex !important; grid-template-columns: auto 1fr; align-items: center; width: fit-content; }
+.checkboxField input { width: auto; }
+.helperText { margin: 0; color: var(--color-text-muted); line-height: var(--line-height-base); }
+.messageCell { min-width: 260px; max-width: 420px; }
+.messageCell strong,
+.messageCell span,
+.messageCell small,
+.dateCell span,
+.dateCell small { display: block; }
+.messageCell span { margin-top: var(--space-1); color: var(--color-text-muted); line-height: var(--line-height-base); }
+.messageCell small,
+.dateCell small { margin-top: var(--space-1); color: var(--color-text-muted); }
+.dateCell { min-width: 180px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+@media (max-width: 720px) { .formGrid { grid-template-columns: 1fr; } }

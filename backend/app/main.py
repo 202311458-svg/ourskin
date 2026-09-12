@@ -25,6 +25,7 @@ from app.routes import (
     admin,
     admin_accounts_phase6,
     admin_ai_phase6,
+    admin_comms_profile_phase8,
     admin_data_phase3,
     admin_oversight_phase7,
     admin_schedules_phase5,
@@ -135,6 +136,10 @@ app.include_router(admin_accounts_phase6.router)
 # Phase 7 oversight routes own AI-monitor queries, audit-log forensics, and
 # versioned operational reports before older compatibility implementations.
 app.include_router(admin_oversight_phase7.router)
+
+# Phase 8 adds Admin-specific communication queries and self-profile editing
+# without changing the shared Staff/Doctor announcement and notification pages.
+app.include_router(admin_comms_profile_phase8.router)
 
 # Phase 3 Admin data routes provide server-side search/filter pagination and
 # authoritative summary counts without replacing legacy compatibility routes.

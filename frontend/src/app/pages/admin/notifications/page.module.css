@@ -1,0 +1,6 @@
+.feedback { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-success-bg); color: var(--color-success); }
+.titleCell { min-width: 280px; max-width: 520px; }
+.titleCell strong, .titleCell span { display: block; }
+.titleCell span { margin-top: var(--space-1); color: var(--color-text-muted); line-height: var(--line-height-base); }
+.unreadRow { background: color-mix(in srgb, var(--color-warning-bg) 55%, transparent); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
