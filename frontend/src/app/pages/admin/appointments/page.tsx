@@ -1,231 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import PaginationControls from "@/app/components/PaginationControls";
-import PortalShell from "@/app/components/PortalShell";
+import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
+import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
+import AdminToolbar from "@/app/components/portal/admin/AdminToolbar";
+import EmptyState from "@/app/components/portal/ui/EmptyState";
+import PageHeader from "@/app/components/portal/ui/PageHeader";
+import PageShell from "@/app/components/portal/ui/PageShell";
+import StatCard from "@/app/components/portal/ui/StatCard";
 import { useAutoRefresh } from "@/app/hooks/useAutoRefresh";
 import { useDebouncedValue } from "@/app/hooks/useDebouncedValue";
-import {
-  AdminAppointment,
-  AdminFollowUp,
-  AppointmentStatus,
-  AssignableDoctor,
-  AssignableSlot,
-  assignInitialEvaluationSchedule,
-  getAdminFollowUps,
-  getAssignableInitialEvaluationDoctors,
-  getAssignableInitialEvaluationSlots,
-  updateAdminFollowUp,
-  updateAppointmentStatus as saveAppointmentStatus,
-} from "@/lib/admin-api";
+import type { AdminAppointment, AppointmentStatus } from "@/lib/admin-api";
+import { updateAppointmentStatus as saveAppointmentStatus } from "@/lib/admin-api";
 import {
   queryAdminAppointments,
   type AdminAppointmentSummary,
 } from "@/lib/admin-data-api";
+import AppointmentApprovalDialog from "./components/AppointmentApprovalDialog";
+import AppointmentCard from "./components/AppointmentCard";
+import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog";
+import AppointmentReasonDialog from "./components/AppointmentReasonDialog";
+import InitialEvaluationAssignmentDialog from "./components/InitialEvaluationAssignmentDialog";
+import {
+  needsInitialEvaluationSchedule,
+  type ModalAction,
+} from "./appointment-utils";
 import styles from "./page.module.css";
-import PageHeader from "@/app/components/portal/ui/PageHeader";
 
-type ModalAction = "decline" | "cancel" | "no-show";
-type ManualConsultationMode = "In-Person" | "Online Consultation";
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-function normalizeStatus(status?: string | null) {
-  return (status || "").trim().toLowerCase();
-}
-
-function formatStatus(status?: string | null) {
-  if (!status) return "N/A";
-
-  return status
-    .replaceAll("-", " ")
-    .split(" ")
-    .map((item) => item.charAt(0).toUpperCase() + item.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function formatDate(dateString?: string | null) {
-  if (!dateString) return "To be scheduled";
-
-  const date = new Date(`${dateString}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) return dateString;
-
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function formatTime(timeString?: string | null) {
-  if (!timeString) return "";
-
-  const [hourText, minuteText] = timeString.split(":");
-  const hour = Number(hourText);
-  const minute = Number(minuteText);
-
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeString;
-
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatSchedule(
-  date?: string | null,
-  time?: string | null,
-  endTime?: string | null
-) {
-  if (!date && !time) return "To be scheduled";
-
-  const dateText = formatDate(date);
-  const startText = formatTime(time);
-  const endText = formatTime(endTime);
-
-  if (!startText) return dateText;
-
-  return `${dateText} • ${startText}${endText ? ` - ${endText}` : ""}`;
-}
-
-function getTodayInputDate() {
-  const today = new Date();
-  const timezoneOffset = today.getTimezoneOffset() * 60000;
-
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
-}
-
-function addDaysToInputDate(days: number) {
-  const today = new Date();
-  today.setDate(today.getDate() + days);
-
-  const timezoneOffset = today.getTimezoneOffset() * 60000;
-  return new Date(today.getTime() - timezoneOffset).toISOString().split("T")[0];
-}
-
-function getStatusClass(status: string) {
-  const cleanStatus = normalizeStatus(status);
-
-  if (cleanStatus === "approved") return styles.approved;
-  if (cleanStatus === "pending") return styles.pending;
-  if (cleanStatus === "completed") return styles.completed;
-  if (cleanStatus === "cancelled") return styles.cancelled;
-  if (cleanStatus === "no-show") return styles.cancelled;
-
-  return styles.declined;
-}
-
-function getFollowUpTiming(item: AdminFollowUp) {
-  const today = getTodayInputDate();
-  const status = normalizeStatus(item.status);
-
-  if (status === "completed") return "Completed";
-  if (status === "cancelled" || status === "canceled") return "Cancelled";
-  if (item.follow_up_date < today) return "Overdue";
-  if (item.follow_up_date === today) return "Due Today";
-
-  return "Upcoming";
-}
-
-function getFollowUpStatusClass(item: AdminFollowUp) {
-  const timing = getFollowUpTiming(item);
-
-  if (timing === "Completed") return styles.followUpBadgeCompleted;
-  if (timing === "Overdue") return styles.followUpBadgeOverdue;
-  if (timing === "Due Today") return styles.followUpBadgeDue;
-
-  return styles.followUpBadgeUpcoming;
-}
-
-function canCompleteFollowUp(item: AdminFollowUp) {
-  const today = getTodayInputDate();
-  const status = normalizeStatus(item.status);
-
-  return status !== "completed" && item.follow_up_date <= today;
-}
-
-function uniqueAppointmentsById(appointments: AdminAppointment[]) {
-  return Array.from(
-    new Map(appointments.map((appointment) => [appointment.id, appointment])).values()
-  );
-}
-
-function uniqueFollowUpsById(followUps: AdminFollowUp[]) {
-  return Array.from(new Map(followUps.map((item) => [item.id, item])).values());
-}
-
-function needsInitialEvaluationSchedule(appointment: AdminAppointment) {
-  return (
-    appointment.is_initial_evaluation_request &&
-    (!appointment.doctor_id ||
-      !appointment.date ||
-      !appointment.time ||
-      !appointment.end_time)
-  );
-}
-
-function buildDefaultApprovalInstruction(appointment: AdminAppointment) {
-  const service = appointment.services || "your selected service";
-  const doctor = appointment.doctor_name || "your assigned doctor";
-  const date = appointment.date ? formatDate(appointment.date) : "the scheduled date";
-  const start = appointment.time ? formatTime(appointment.time) : "the scheduled start time";
-  const end = appointment.end_time ? formatTime(appointment.end_time) : "the scheduled end time";
-
-  if (appointment.consultation_mode === "Online Consultation") {
-    return `Your appointment for ${service} has been approved. It is scheduled on ${date} from ${start} to ${end} with ${doctor}. Please make sure you have a stable internet connection and are in a well-lit area during the consultation. The clinic will provide the consultation access details before your schedule. If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal.`;
-  }
-
-  if (
-    appointment.appointment_type === "Initial Evaluation" ||
-    appointment.appointment_type === "Initial Evaluation Request"
-  ) {
-    return `Your initial evaluation for ${service} has been approved and scheduled on ${date} from ${start} to ${end} with ${doctor}. Please arrive at least 15 minutes before your appointment. The doctor will assess your concern first before confirming the next treatment or procedure plan. Please bring a valid ID and any previous prescriptions, laboratory results, or skin-related medical records if available.`;
-  }
-
-  return `Your appointment for ${service} has been approved. It is scheduled on ${date} from ${start} to ${end} with ${doctor}. Please arrive at least 15 minutes before your scheduled time and bring a valid ID, previous prescriptions, laboratory results, or skin-related medical records if available. If you need to cancel or reschedule, please do this ahead of your appointment time through your patient portal.`;
-}
-
-function getGuardianName(appointment: AdminAppointment) {
-  return [appointment.guardian_first_name, appointment.guardian_last_name]
-    .filter(Boolean)
-    .join(" ");
-}
-
-const TIME_OPTIONS = [
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-  "19:00",
-];
+type FeedbackTone = "success" | "warning" | "danger" | "info";
+type Feedback = { tone: FeedbackTone; message: string } | null;
 
 export default function AdminAppointmentsPage() {
-  const router = useRouter();
-
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
-  const [appointmentSummary, setAppointmentSummary] =
-    useState<AdminAppointmentSummary | null>(null);
-  const [followUps, setFollowUps] = useState<AdminFollowUp[]>([]);
+  const [summary, setSummary] = useState<AdminAppointmentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [followUpActionLoading, setFollowUpActionLoading] = useState<number | null>(
-    null
-  );
   const [error, setError] = useState("");
+  const [operationError, setOperationError] = useState("");
+  const [feedback, setFeedback] = useState<Feedback>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -233,289 +47,108 @@ export default function AdminAppointmentsPage() {
   const [total, setTotal] = useState(0);
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<AdminAppointment | null>(null);
-  const [detailsAppointment, setDetailsAppointment] =
-    useState<AdminAppointment | null>(null);
+  const [detailsAppointment, setDetailsAppointment] = useState<AdminAppointment | null>(null);
+  const [approvalAppointment, setApprovalAppointment] = useState<AdminAppointment | null>(null);
+  const [assignmentAppointment, setAssignmentAppointment] = useState<AdminAppointment | null>(null);
+  const [reasonAppointment, setReasonAppointment] = useState<AdminAppointment | null>(null);
+  const [reasonAction, setReasonAction] = useState<ModalAction | null>(null);
 
-  const [modalAction, setModalAction] = useState<ModalAction | null>(null);
-  const [reason, setReason] = useState("");
+  const loadAppointments = useCallback(async (showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
+      setError("");
 
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [approvalInstruction, setApprovalInstruction] = useState("");
-  const [sendEmail, setSendEmail] = useState(true);
+      const data = await queryAdminAppointments({
+        page,
+        pageSize,
+        search: debouncedSearch,
+        status: statusFilter,
+      });
 
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignDoctors, setAssignDoctors] = useState<AssignableDoctor[]>([]);
-  const [assignSlots, setAssignSlots] = useState<AssignableSlot[]>([]);
-  const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
-  const [selectedSlotId, setSelectedSlotId] = useState("");
-  const [weekStart, setWeekStart] = useState(getTodayInputDate());
-  const [manualDate, setManualDate] = useState(addDaysToInputDate(1));
-  const [manualStartTime, setManualStartTime] = useState("10:00");
-  const [manualEndTime, setManualEndTime] = useState("11:00");
-  const [manualConsultationMode, setManualConsultationMode] =
-    useState<ManualConsultationMode>("In-Person");
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [assignError, setAssignError] = useState("");
-
-  const loadAppointments = useCallback(
-    async (showLoader = true) => {
-      const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
-
-      if (!token || role !== "admin") {
-        router.push("/");
-        return;
-      }
-
-      try {
-        if (showLoader) setLoading(true);
-        setError("");
-
-        const [appointmentData, followUpData] = await Promise.all([
-          queryAdminAppointments({
-            page,
-            pageSize,
-            search: debouncedSearch,
-            status: statusFilter,
-          }),
-          getAdminFollowUps(),
-        ]);
-
-        setAppointments(uniqueAppointmentsById(appointmentData.items));
-        setAppointmentSummary(appointmentData.summary);
-        setTotal(appointmentData.total);
-        setFollowUps(uniqueFollowUpsById(Array.isArray(followUpData) ? followUpData : []));
-      } catch (loadError: unknown) {
-        setError(
-          getErrorMessage(
-            loadError,
-            "Something went wrong while loading appointments."
-          )
-        );
-        setFollowUps([]);
-      } finally {
-        if (showLoader) setLoading(false);
-      }
-    },
-    [debouncedSearch, page, pageSize, router, statusFilter]
-  );
+      setAppointments(uniqueAppointmentsById(data.items));
+      setSummary(data.summary);
+      setTotal(data.total);
+    } catch (loadError: unknown) {
+      setError(getErrorMessage(loadError, "Unable to load appointments."));
+    } finally {
+      if (showLoader) setLoading(false);
+    }
+  }, [debouncedSearch, page, pageSize, statusFilter]);
 
   useEffect(() => {
-    loadAppointments();
+    void loadAppointments();
   }, [loadAppointments]);
+
+  const anyDialogOpen = Boolean(
+    detailsAppointment ||
+      approvalAppointment ||
+      assignmentAppointment ||
+      reasonAppointment
+  );
 
   useAutoRefresh(() => loadAppointments(false), {
     enabled: true,
-    intervalMs: 5000,
-    pause:
-      actionLoading !== null ||
-      followUpActionLoading !== null ||
-      selectedAppointment !== null ||
-      detailsAppointment !== null ||
-      showAssignModal ||
-      showApprovalModal,
+    intervalMs: 15000,
+    pause: actionLoading !== null || anyDialogOpen,
   });
 
-useEffect(() => {
-  if (!showAssignModal || !selectedAppointment) return;
-
-  const appointmentId = selectedAppointment.id;
-  let cancelled = false;
-
-  async function loadDoctors() {
-    try {
-      setAssignError("");
-      setAssignLoading(true);
-
-      const doctors = await getAssignableInitialEvaluationDoctors(appointmentId);
-
-      if (cancelled) return;
-
-      setAssignDoctors(doctors);
-
-      if (doctors.length > 0) {
-        setSelectedDoctorId((currentDoctorId) => currentDoctorId ?? doctors[0].id);
-      } else {
-        setSelectedDoctorId(null);
-      }
-    } catch (loadError: unknown) {
-      if (!cancelled) {
-        setAssignError(
-          getErrorMessage(loadError, "Unable to load assignable doctors.")
-        );
-        setAssignDoctors([]);
-        setSelectedDoctorId(null);
-      }
-    } finally {
-      if (!cancelled) setAssignLoading(false);
-    }
-  }
-
-  loadDoctors();
-
-  return () => {
-    cancelled = true;
-  };
-}, [showAssignModal, selectedAppointment]);
-
-useEffect(() => {
-  if (!showAssignModal || !selectedAppointment || selectedDoctorId === null) {
-    return;
-  }
-
-  const appointmentId = selectedAppointment.id;
-  const doctorId = selectedDoctorId;
-  let cancelled = false;
-
-  async function loadSlots() {
-    try {
-      setAssignError("");
-      setAssignLoading(true);
-      setSelectedSlotId("");
-
-      const slots = await getAssignableInitialEvaluationSlots(appointmentId, {
-        doctor_id: doctorId,
-        week_start: weekStart,
-      });
-
-      if (cancelled) return;
-
-      setAssignSlots(slots);
-    } catch (loadError: unknown) {
-      if (!cancelled) {
-        setAssignError(
-          getErrorMessage(loadError, "Unable to load assignable slots.")
-        );
-        setAssignSlots([]);
-      }
-    } finally {
-      if (!cancelled) setAssignLoading(false);
-    }
-  }
-
-  loadSlots();
-
-  return () => {
-    cancelled = true;
-  };
-}, [showAssignModal, selectedAppointment, selectedDoctorId, weekStart]);
-
-  const sortedFollowUps = useMemo(() => {
-    return uniqueFollowUpsById(followUps).sort((a, b) => {
-      const aCompleted = normalizeStatus(a.status) === "completed";
-      const bCompleted = normalizeStatus(b.status) === "completed";
-
-      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
-
-      return a.follow_up_date.localeCompare(b.follow_up_date);
-    });
-  }, [followUps]);
-
-  const stats = useMemo(() => {
-    return {
-      total: appointmentSummary?.total ?? 0,
-      pending: appointmentSummary?.pending ?? 0,
-      initialEvaluation: appointmentSummary?.initial_evaluation ?? 0,
-      approved: appointmentSummary?.approved ?? 0,
-      followUps: sortedFollowUps.filter(
-        (item) => normalizeStatus(item.status) !== "completed"
-      ).length,
-    };
-  }, [appointmentSummary, sortedFollowUps]);
-
-  function updateAppointmentInState(updated: AdminAppointment) {
-    setAppointments((prev) =>
+  const updateAppointmentInState = (updated: AdminAppointment) => {
+    setAppointments((current) =>
       uniqueAppointmentsById(
-        prev.map((appointment) =>
+        current.map((appointment) =>
           appointment.id === updated.id ? updated : appointment
         )
       )
     );
-  }
+  };
 
-  function openReasonModal(appointment: AdminAppointment, action: ModalAction) {
-    setSelectedAppointment(appointment);
-    setModalAction(action);
-    setReason("");
-  }
-
-  function closeReasonModal() {
-    if (actionLoading !== null) return;
-
-    setSelectedAppointment(null);
-    setModalAction(null);
-    setReason("");
-  }
-
-  function openApprovalModal(appointment: AdminAppointment) {
-    setSelectedAppointment(appointment);
-    setApprovalInstruction(
-      appointment.patient_instruction || buildDefaultApprovalInstruction(appointment)
-    );
-    setSendEmail(true);
-    setShowApprovalModal(true);
-  }
-
-  function closeApprovalModal() {
-    if (actionLoading !== null) return;
-
-    setSelectedAppointment(null);
-    setApprovalInstruction("");
-    setSendEmail(true);
-    setShowApprovalModal(false);
-  }
-
-  function openAssignModal(appointment: AdminAppointment) {
-    setSelectedAppointment(appointment);
-    setShowAssignModal(true);
-    setAssignDoctors([]);
-    setAssignSlots([]);
-    setSelectedDoctorId(null);
-    setSelectedSlotId("");
-    setAssignError("");
-    setWeekStart(getTodayInputDate());
-    setManualDate(addDaysToInputDate(1));
-    setManualStartTime("10:00");
-    setManualEndTime("11:00");
-    setManualConsultationMode("In-Person");
-  }
-
-  function closeAssignModal() {
-    if (assignLoading) return;
-
-    setSelectedAppointment(null);
-    setShowAssignModal(false);
-    setAssignDoctors([]);
-    setAssignSlots([]);
-    setSelectedDoctorId(null);
-    setSelectedSlotId("");
-    setAssignError("");
-  }
-
-  function handleApproveClick(appointment: AdminAppointment) {
+  const openApproval = (appointment: AdminAppointment) => {
+    setOperationError("");
+    setFeedback(null);
     if (needsInitialEvaluationSchedule(appointment)) {
-      openAssignModal(appointment);
+      setAssignmentAppointment(appointment);
       return;
     }
+    setApprovalAppointment(appointment);
+  };
 
-    openApprovalModal(appointment);
-  }
+  const openReasonAction = (appointment: AdminAppointment, action: ModalAction) => {
+    setOperationError("");
+    setFeedback(null);
+    setReasonAppointment(appointment);
+    setReasonAction(action);
+  };
 
-  async function updateAppointmentStatus(
-    appointmentId: number,
+  const closeReasonDialog = () => {
+    if (actionLoading !== null) return;
+    setReasonAppointment(null);
+    setReasonAction(null);
+    setOperationError("");
+  };
+
+  const closeApprovalDialog = () => {
+    if (actionLoading !== null) return;
+    setApprovalAppointment(null);
+    setOperationError("");
+  };
+
+  const saveStatus = async (
+    appointment: AdminAppointment,
     status: AppointmentStatus,
     options?: {
       cancelReason?: string;
       patientInstruction?: string;
       sendEmail?: boolean;
+      source?: "dialog" | "direct";
     }
-  ) {
+  ) => {
+    const source = options?.source || "dialog";
     try {
-      setActionLoading(appointmentId);
+      setActionLoading(appointment.id);
+      setOperationError("");
+      if (source === "direct") setFeedback(null);
 
-      const data = await saveAppointmentStatus(appointmentId, {
+      const data = await saveAppointmentStatus(appointment.id, {
         status,
         cancel_reason: options?.cancelReason || null,
         patient_instruction: options?.patientInstruction || null,
@@ -525,1030 +158,247 @@ useEffect(() => {
       if (data.appointment) updateAppointmentInState(data.appointment);
 
       if (data.email_warning) {
-        alert(
-          `Appointment updated, but the email notification was not sent: ${data.email_warning}`
-        );
+        setFeedback({
+          tone: "warning",
+          message: `Appointment updated, but the email notification was not sent: ${data.email_warning}`,
+        });
+      } else {
+        setFeedback({ tone: "success", message: successMessage(status) });
       }
 
-      closeReasonModal();
-      closeApprovalModal();
+      setApprovalAppointment(null);
+      setReasonAppointment(null);
+      setReasonAction(null);
+      setOperationError("");
       await loadAppointments(false);
     } catch (updateError: unknown) {
-      alert(
-        getErrorMessage(
-          updateError,
-          "Something went wrong while updating the appointment."
-        )
+      const message = getErrorMessage(
+        updateError,
+        "Unable to update this appointment."
       );
+      if (source === "dialog") {
+        setOperationError(message);
+      } else {
+        setFeedback({ tone: "danger", message });
+      }
     } finally {
       setActionLoading(null);
     }
-  }
+  };
 
-  async function handleConfirmApproval() {
-    if (!selectedAppointment) return;
-
-    const trimmedInstruction = approvalInstruction.trim();
-
-    if (!trimmedInstruction) {
-      alert("Please provide patient instructions before approving.");
-      return;
-    }
-
-    await updateAppointmentStatus(selectedAppointment.id, "Approved", {
-      patientInstruction: trimmedInstruction,
+  const confirmApproval = async (instruction: string, sendEmail: boolean) => {
+    if (!approvalAppointment) return;
+    await saveStatus(approvalAppointment, "Approved", {
+      patientInstruction: instruction,
       sendEmail,
+      source: "dialog",
     });
-  }
+  };
 
-  async function handleConfirmReasonAction() {
-    if (!selectedAppointment || !modalAction) return;
+  const confirmReasonAction = async (reason: string) => {
+    if (!reasonAppointment || !reasonAction) return;
 
-    const trimmedReason = reason.trim();
+    const status: AppointmentStatus =
+      reasonAction === "decline"
+        ? "Declined"
+        : reasonAction === "no-show"
+        ? "No-Show"
+        : "Cancelled";
 
-    if (!trimmedReason) {
-      alert(
-        modalAction === "decline"
-          ? "Please provide a reason for declining this appointment."
-          : modalAction === "no-show"
-          ? "Please provide a reason for marking this appointment as no-show."
-          : "Please provide a reason for cancelling this appointment."
-      );
-      return;
-    }
-
-    if (modalAction === "decline") {
-      await updateAppointmentStatus(selectedAppointment.id, "Declined", {
-        cancelReason: trimmedReason,
-      });
-      return;
-    }
-
-    if (modalAction === "no-show") {
-      await updateAppointmentStatus(selectedAppointment.id, "No-Show", {
-        cancelReason: trimmedReason,
-      });
-      return;
-    }
-
-    await updateAppointmentStatus(selectedAppointment.id, "Cancelled", {
-      cancelReason: trimmedReason,
+    await saveStatus(reasonAppointment, status, {
+      cancelReason: reason,
+      source: "dialog",
     });
-  }
+  };
 
-  async function markFollowUpCompleted(followUpId: number) {
-    const selectedFollowUp = followUps.find((item) => item.id === followUpId);
+  const completeAppointment = async (appointment: AdminAppointment) => {
+    await saveStatus(appointment, "Completed", { source: "direct" });
+  };
 
-    if (!selectedFollowUp) {
-      alert("Follow-up schedule was not found.");
-      return;
-    }
-
-    if (!canCompleteFollowUp(selectedFollowUp)) {
-      alert("This follow-up can only be completed on or after its scheduled date.");
-      return;
-    }
-
-    try {
-      setFollowUpActionLoading(followUpId);
-
-      const data = await updateAdminFollowUp(followUpId, {
-        status: "Completed",
-      });
-
-      setFollowUps((prev) =>
-        uniqueFollowUpsById(
-          prev.map((item) =>
-            item.id === followUpId
-              ? { ...item, ...(data?.follow_up || {}), status: "Completed" }
-              : item
-          )
-        )
-      );
-
-      await loadAppointments(false);
-    } catch (completeError: unknown) {
-      alert(
-        getErrorMessage(
-          completeError,
-          "Unable to mark this follow-up as completed."
-        )
-      );
-    } finally {
-      setFollowUpActionLoading(null);
-    }
-  }
-
-  async function handleAssignSelectedSlot() {
-    if (!selectedAppointment) return;
-
-    const selectedSlot = assignSlots.find((slot) => slot.slot_id === selectedSlotId);
-
-    if (!selectedSlot) {
-      alert("Please select an available slot first.");
-      return;
-    }
-
-    if (!selectedSlot.is_available) {
-      alert("This slot is already booked. Please select another slot.");
-      return;
-    }
-
-    try {
-      setAssignLoading(true);
-      setAssignError("");
-
-      const data = await assignInitialEvaluationSchedule(selectedAppointment.id, {
-        schedule_id: selectedSlot.schedule_id,
-        start_time: selectedSlot.start_time,
-        end_time: selectedSlot.end_time,
-      });
-
-      updateAppointmentInState(data.appointment);
-      setShowAssignModal(false);
-      openApprovalModal(data.appointment);
-    } catch (assignErrorValue: unknown) {
-      setAssignError(
-        getErrorMessage(assignErrorValue, "Unable to assign schedule.")
-      );
-    } finally {
-      setAssignLoading(false);
-    }
-  }
-
-  async function handleManualAssign() {
-    if (!selectedAppointment) return;
-
-    if (!selectedDoctorId) {
-      alert("Please select a doctor first.");
-      return;
-    }
-
-    if (!manualDate || !manualStartTime || !manualEndTime) {
-      alert("Please complete the manual schedule fields.");
-      return;
-    }
-
-    if (manualEndTime <= manualStartTime) {
-      alert("End time must be later than start time.");
-      return;
-    }
-
-    try {
-      setAssignLoading(true);
-      setAssignError("");
-
-      const data = await assignInitialEvaluationSchedule(selectedAppointment.id, {
-        schedule_id: null,
-        doctor_id: selectedDoctorId,
-        schedule_date: manualDate,
-        start_time: manualStartTime,
-        end_time: manualEndTime,
-        consultation_mode: manualConsultationMode,
-      });
-
-      updateAppointmentInState(data.appointment);
-      setShowAssignModal(false);
-      openApprovalModal(data.appointment);
-    } catch (assignErrorValue: unknown) {
-      setAssignError(
-        getErrorMessage(assignErrorValue, "Unable to manually assign schedule.")
-      );
-    } finally {
-      setAssignLoading(false);
-    }
-  }
+  const handleAssigned = (updated: AdminAppointment) => {
+    updateAppointmentInState(updated);
+    setAssignmentAppointment(null);
+    setApprovalAppointment(updated);
+    setOperationError("");
+    setFeedback({
+      tone: "info",
+      message: "Schedule assigned. Review the patient instructions to finish approval.",
+    });
+  };
 
   return (
-    <div className="staffLayout">
-      <PortalShell role="admin">
-      <main className={styles.appointmentsPage}>
-        <PageHeader
-          eyebrow="Admin Portal"
-          title="Appointments"
-          description="Manage patient requests, initial evaluations, approvals, cancellations, no-shows, follow-ups, and appointment history."
+    <PageShell>
+      <PageHeader
+        eyebrow="Admin operations"
+        title="Appointments"
+        description="Manage requests, initial evaluations, approvals, attendance outcomes, and appointment history. Follow-up care is handled in its dedicated workspace."
+        primaryAction={
+          <Link href="/pages/admin/follow-ups" className={styles.followUpLink}>
+            Open follow-ups
+          </Link>
+        }
+      />
+
+      <AdminStatsGrid compact>
+        <StatCard
+          label="Total appointments"
+          value={summary?.total ?? "—"}
+          hint="All appointment records"
         />
+        <StatCard
+          label="Pending"
+          value={summary?.pending ?? "—"}
+          hint="Requests needing a decision"
+          tone="warning"
+        />
+        <StatCard
+          label="Initial evaluations"
+          value={summary?.initial_evaluation ?? "—"}
+          hint="Pending requests needing assignment"
+          tone="info"
+        />
+        <StatCard
+          label="Approved"
+          value={summary?.approved ?? "—"}
+          hint="Active approved appointments"
+          tone="success"
+        />
+      </AdminStatsGrid>
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>Total Appointments</span>
-            <strong>{stats.total}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.orangeAccent}`}>
-            <span>Pending</span>
-            <strong>{stats.pending}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.pinkAccent}`}>
-            <span>Initial Evaluation</span>
-            <strong>{stats.initialEvaluation}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.greenAccent}`}>
-            <span>Approved</span>
-            <strong>{stats.approved}</strong>
-          </div>
-
-          <div className={`${styles.statCard} ${styles.blueAccent}`}>
-            <span>Active Follow-ups</span>
-            <strong>{stats.followUps}</strong>
-          </div>
+      {feedback ? (
+        <div
+          className={`${styles.feedback} ${styles[`feedback${capitalize(feedback.tone)}`]}`}
+          role={feedback.tone === "danger" ? "alert" : "status"}
+          aria-live="polite"
+        >
+          <span>{feedback.message}</span>
+          <button type="button" onClick={() => setFeedback(null)} aria-label="Dismiss message">
+            ×
+          </button>
         </div>
+      ) : null}
 
-        <section className={styles.followUpPanel}>
-          <div className={styles.followUpHeader}>
-            <div>
-              <h2>Follow-up Schedule</h2>
-              <p>View scheduled follow-ups and complete due records.</p>
-            </div>
-
-            <span className={styles.followUpCount}>
-              {sortedFollowUps.length} total
-            </span>
-          </div>
-
-          {loading ? (
-            <p className={styles.message}>Loading follow-up schedules...</p>
-          ) : sortedFollowUps.length === 0 ? (
-            <div className={styles.followUpEmpty}>
-              Doctor-created follow-ups will appear here.
-            </div>
-          ) : (
-            <div className={styles.followUpCompactList}>
-              {sortedFollowUps.map((item) => {
-                const timing = getFollowUpTiming(item);
-                const isCompleted = normalizeStatus(item.status) === "completed";
-                const canComplete = canCompleteFollowUp(item);
-                const isUpdating = followUpActionLoading === item.id;
-
-                return (
-                  <div key={item.id} className={styles.followUpCompactRow}>
-                    <div className={styles.followUpPatient}>
-                      <strong>
-                        {item.patient_name ||
-                          (item.patient_id
-                            ? `Patient #${item.patient_id}`
-                            : "Patient details unavailable")}
-                      </strong>
-                      <span>{item.patient_email || "No email provided"}</span>
-                    </div>
-
-                    <div className={styles.followUpMeta}>
-                      <span>{formatDate(item.follow_up_date)}</span>
-                      <small>{item.doctor_name || "Doctor unavailable"}</small>
-                    </div>
-
-                    <span
-                      className={`${styles.followUpBadge} ${getFollowUpStatusClass(
-                        item
-                      )}`}
-                    >
-                      {timing}
-                    </span>
-
-                    {!isCompleted && (
-                      <button
-                        type="button"
-                        className={
-                          canComplete
-                            ? styles.followUpCompleteBtn
-                            : styles.followUpDisabledBtn
-                        }
-                        onClick={() => markFollowUpCompleted(item.id)}
-                        disabled={!canComplete || isUpdating}
-                      >
-                        {isUpdating
-                          ? "Completing..."
-                          : canComplete
-                          ? "Mark Completed"
-                          : "Not Due"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Search by patient, email, contact, guardian, doctor, service, or status"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            className={styles.searchInput}
-          />
-
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value);
-              setPage(1);
-            }}
-            className={styles.selectInput}
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="completed">Completed</option>
-            <option value="declined">Declined</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="no-show">No-Show</option>
-          </select>
-        </div>
-
-        <p className={styles.resultMeta}>
-          {total} matching appointment{total === 1 ? "" : "s"}
-        </p>
-
-        {loading ? (
-          <p className={styles.message}>Loading appointments...</p>
-        ) : error ? (
-          <p className={styles.error}>{error}</p>
-        ) : appointments.length === 0 ? (
-          <div className={styles.emptyState}>
-            <h3>No appointments found</h3>
-            <p>Try adjusting the search or status filter.</p>
-          </div>
-        ) : (
-          <section className={styles.appointmentsList}>
-            {appointments.map((appointment) => {
-              const status = formatStatus(appointment.status);
-              const normalized = normalizeStatus(appointment.status);
-              const isUpdating = actionLoading === appointment.id;
-              const canApprove = normalized === "pending";
-              const canDecline = normalized === "pending";
-              const canCancel = normalized === "approved";
-              const canComplete = normalized === "approved";
-              const canNoShow = normalized === "approved";
-
-              return (
-                <article key={appointment.id} className={styles.appointmentCard}>
-                  <div className={styles.cardTop}>
-                    <div>
-                      <h3>
-                        {appointment.patient_name || "Unknown Patient"}
-                        {appointment.is_minor ? (
-                          <span className={styles.minorBadge}>Minor</span>
-                        ) : null}
-                      </h3>
-                      <p>{appointment.patient_email || "No email available"}</p>
-                    </div>
-
-                    <span
-                      className={`${styles.statusBadge} ${getStatusClass(
-                        appointment.status
-                      )}`}
-                    >
-                      {status}
-                    </span>
-                  </div>
-
-                  <div className={styles.cardDetails}>
-                    <div className={styles.detailItem}>
-                      <span>Doctor</span>
-                      <strong>{appointment.doctor_name || "Not assigned"}</strong>
-                    </div>
-
-                    <div className={styles.detailItem}>
-                      <span>Schedule</span>
-                      <strong>
-                        {formatSchedule(
-                          appointment.date,
-                          appointment.time,
-                          appointment.end_time
-                        )}
-                      </strong>
-                    </div>
-
-                    <div className={styles.detailItem}>
-                      <span>Service</span>
-                      <strong>{appointment.services || "N/A"}</strong>
-                    </div>
-
-                    <div className={styles.detailItem}>
-                      <span>Type</span>
-                      <strong>{appointment.appointment_type || "Regular"}</strong>
-                    </div>
-
-                    <div className={styles.detailItem}>
-                      <span>Mode</span>
-                      <strong>{appointment.consultation_mode || "N/A"}</strong>
-                    </div>
-
-                    <div className={styles.detailItem}>
-                      <span>Email Sent</span>
-                      <strong>{appointment.approval_email_sent ? "Yes" : "No"}</strong>
-                    </div>
-                  </div>
-
-                  {appointment.concern ? (
-                    <p className={styles.compactMeta}>
-                      <strong>Concern:</strong> {appointment.concern}
-                    </p>
-                  ) : null}
-
-                  {appointment.cancel_reason ? (
-                    <p className={styles.compactMeta}>
-                      <strong>Reason:</strong> {appointment.cancel_reason}
-                    </p>
-                  ) : null}
-
-                  {appointment.is_minor ? (
-                    <p className={styles.compactMeta}>
-                      <strong>Guardian:</strong>{" "}
-                      {getGuardianName(appointment) || "Guardian details unavailable"}
-                      {appointment.guardian_relationship
-                        ? ` • ${appointment.guardian_relationship}`
-                        : ""}
-                    </p>
-                  ) : null}
-
-                  <div className={styles.cardFooter}>
-                    <div className={styles.actionButtons}>
-                      <button
-                        type="button"
-                        className={styles.secondaryAction}
-                        onClick={() => setDetailsAppointment(appointment)}
-                      >
-                        View Details
-                      </button>
-
-                      {canApprove && (
-                        <button
-                          type="button"
-                          className={styles.approveBtn}
-                          disabled={isUpdating}
-                          onClick={() => handleApproveClick(appointment)}
-                        >
-                          {needsInitialEvaluationSchedule(appointment)
-                            ? "Assign Schedule"
-                            : isUpdating
-                            ? "Updating..."
-                            : "Approve"}
-                        </button>
-                      )}
-
-                      {canDecline && (
-                        <button
-                          type="button"
-                          className={styles.declineBtn}
-                          disabled={isUpdating}
-                          onClick={() => openReasonModal(appointment, "decline")}
-                        >
-                          Decline
-                        </button>
-                      )}
-
-                      {canComplete && (
-                        <button
-                          type="button"
-                          className={styles.approveBtn}
-                          disabled={isUpdating}
-                          onClick={() =>
-                            updateAppointmentStatus(appointment.id, "Completed")
-                          }
-                        >
-                          Complete
-                        </button>
-                      )}
-
-                      {canNoShow && (
-                        <button
-                          type="button"
-                          className={styles.cancelAppointmentBtn}
-                          disabled={isUpdating}
-                          onClick={() => openReasonModal(appointment, "no-show")}
-                        >
-                          No-Show
-                        </button>
-                      )}
-
-                      {canCancel && (
-                        <button
-                          type="button"
-                          className={styles.cancelAppointmentBtn}
-                          disabled={isUpdating}
-                          onClick={() => openReasonModal(appointment, "cancel")}
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        )}
-        <PaginationControls
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
+      <AdminToolbar
+        meta={`${total} matching appointment${total === 1 ? "" : "s"}`}
+        ariaLabel="Appointment filters"
+      >
+        <input
+          type="search"
+          aria-label="Search appointments"
+          placeholder="Search patient, contact, guardian, doctor, service, status, or appointment ID"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
             setPage(1);
           }}
         />
+        <select
+          value={statusFilter}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setPage(1);
+          }}
+          aria-label="Filter appointments by status"
+        >
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="completed">Completed</option>
+          <option value="declined">Declined</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="no-show">No-show</option>
+        </select>
+      </AdminToolbar>
 
-        {detailsAppointment && (
-          <div className={styles.modalBackdrop}>
-            <div className={`${styles.modalCard} ${styles.modalLarge}`}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>Appointment Details</h2>
-                  <p>
-                    Review the full patient, guardian, schedule, and appointment
-                    context.
-                  </p>
-                </div>
+      {loading ? (
+        <EmptyState title="Loading appointments…" description="Retrieving the current appointment queue." />
+      ) : error ? (
+        <div className={styles.pageError} role="alert">
+          <span>{error}</span>
+          <AdminActionButton onClick={() => void loadAppointments()}>Retry</AdminActionButton>
+        </div>
+      ) : appointments.length === 0 ? (
+        <EmptyState
+          title="No appointments match this view."
+          description="Change the search or status filter to broaden the results."
+        />
+      ) : (
+        <div className={styles.appointmentsList}>
+          {appointments.map((appointment) => (
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              busy={actionLoading === appointment.id}
+              onView={setDetailsAppointment}
+              onApprove={openApproval}
+              onComplete={completeAppointment}
+              onReasonAction={openReasonAction}
+            />
+          ))}
+        </div>
+      )}
 
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={() => setDetailsAppointment(null)}
-                >
-                  ×
-                </button>
-              </div>
+      <PaginationControls
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
 
-              <div className={styles.modalBody}>
-                <section className={styles.detailSection}>
-                  <h3>Patient Information</h3>
-                  <div className={styles.detailGrid}>
-                    <div>
-                      <span>Name</span>
-                      <strong>{detailsAppointment.patient_name}</strong>
-                    </div>
-                    <div>
-                      <span>Email</span>
-                      <strong>{detailsAppointment.patient_email}</strong>
-                    </div>
-                    <div>
-                      <span>Contact</span>
-                      <strong>{detailsAppointment.patient_contact || "N/A"}</strong>
-                    </div>
-                    <div>
-                      <span>Age</span>
-                      <strong>
-                        {detailsAppointment.patient_age_label ||
-                          detailsAppointment.patient_age ||
-                          "N/A"}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Address</span>
-                      <strong>{detailsAppointment.patient_address || "N/A"}</strong>
-                    </div>
-                  </div>
-                </section>
+      <AppointmentDetailsDialog
+        appointment={detailsAppointment}
+        onClose={() => setDetailsAppointment(null)}
+      />
 
-                {detailsAppointment.is_minor && (
-                  <section className={styles.detailSection}>
-                    <h3>Guardian Information</h3>
-                    <div className={styles.detailGrid}>
-                      <div>
-                        <span>Name</span>
-                        <strong>{getGuardianName(detailsAppointment) || "N/A"}</strong>
-                      </div>
-                      <div>
-                        <span>Relationship</span>
-                        <strong>
-                          {detailsAppointment.guardian_relationship || "N/A"}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Contact</span>
-                        <strong>{detailsAppointment.guardian_contact || "N/A"}</strong>
-                      </div>
-                      <div>
-                        <span>Email</span>
-                        <strong>{detailsAppointment.guardian_email || "N/A"}</strong>
-                      </div>
-                      <div>
-                        <span>Consent</span>
-                        <strong>
-                          {detailsAppointment.guardian_consent
-                            ? "Provided"
-                            : "Not provided"}
-                        </strong>
-                      </div>
-                    </div>
-                  </section>
-                )}
+      <InitialEvaluationAssignmentDialog
+        appointment={assignmentAppointment}
+        onClose={() => setAssignmentAppointment(null)}
+        onAssigned={handleAssigned}
+      />
 
-                <section className={styles.detailSection}>
-                  <h3>Appointment Workflow</h3>
-                  <div className={styles.detailGrid}>
-                    <div>
-                      <span>Service</span>
-                      <strong>{detailsAppointment.services}</strong>
-                    </div>
-                    <div>
-                      <span>Type</span>
-                      <strong>{detailsAppointment.appointment_type}</strong>
-                    </div>
-                    <div>
-                      <span>Mode</span>
-                      <strong>{detailsAppointment.consultation_mode}</strong>
-                    </div>
-                    <div>
-                      <span>Doctor</span>
-                      <strong>{detailsAppointment.doctor_name || "Not assigned"}</strong>
-                    </div>
-                    <div>
-                      <span>Schedule</span>
-                      <strong>
-                        {formatSchedule(
-                          detailsAppointment.date,
-                          detailsAppointment.time,
-                          detailsAppointment.end_time
-                        )}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Status</span>
-                      <strong>{formatStatus(detailsAppointment.status)}</strong>
-                    </div>
-                  </div>
+      <AppointmentApprovalDialog
+        appointment={approvalAppointment}
+        busy={Boolean(approvalAppointment && actionLoading === approvalAppointment.id)}
+        error={operationError}
+        onClose={closeApprovalDialog}
+        onConfirm={confirmApproval}
+      />
 
-                  {detailsAppointment.concern ? (
-                    <p className={styles.compactMeta}>
-                      <strong>Concern:</strong> {detailsAppointment.concern}
-                    </p>
-                  ) : null}
-
-                  {detailsAppointment.patient_instruction ? (
-                    <p className={styles.compactMeta}>
-                      <strong>Patient Instruction:</strong>{" "}
-                      {detailsAppointment.patient_instruction}
-                    </p>
-                  ) : null}
-                </section>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showAssignModal && selectedAppointment && (
-          <div className={styles.modalBackdrop}>
-            <div className={`${styles.modalCard} ${styles.modalLarge}`}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>Assign Initial Evaluation</h2>
-                  <p>
-                    Select a doctor and schedule before approving this request.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={closeAssignModal}
-                  disabled={assignLoading}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <section className={styles.detailSection}>
-                  <h3>Request Summary</h3>
-                  <div className={styles.detailGrid}>
-                    <div>
-                      <span>Patient</span>
-                      <strong>{selectedAppointment.patient_name}</strong>
-                    </div>
-                    <div>
-                      <span>Service</span>
-                      <strong>{selectedAppointment.services}</strong>
-                    </div>
-                    <div>
-                      <span>Concern</span>
-                      <strong>{selectedAppointment.concern || "N/A"}</strong>
-                    </div>
-                  </div>
-                </section>
-
-                {assignError ? <p className={styles.error}>{assignError}</p> : null}
-
-                <div className={styles.formGrid}>
-                  <label className={styles.formGroup}>
-                    <span>Doctor</span>
-                    <select
-                      className={styles.selectInput}
-                      value={selectedDoctorId || ""}
-                      onChange={(event) =>
-                        setSelectedDoctorId(Number(event.target.value) || null)
-                      }
-                    >
-                      <option value="">Select doctor</option>
-                      {assignDoctors.map((doctor) => (
-                        <option key={doctor.id} value={doctor.id}>
-                          {doctor.name}
-                          {doctor.specialty ? ` • ${doctor.specialty}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={styles.formGroup}>
-                    <span>Week Start</span>
-                    <input
-                      className={styles.searchInput}
-                      type="date"
-                      value={weekStart}
-                      min={getTodayInputDate()}
-                      onChange={(event) => setWeekStart(event.target.value)}
-                    />
-                  </label>
-                </div>
-
-                <section className={styles.detailSection}>
-                  <h3>Available Slots</h3>
-
-                  {assignLoading ? (
-                    <p className={styles.message}>Loading slots...</p>
-                  ) : assignSlots.length === 0 ? (
-                    <p className={styles.mutedText}>
-                      No available slots found for this doctor and week. Use manual
-                      assignment if the clinic already coordinated a schedule.
-                    </p>
-                  ) : (
-                    <div className={styles.slotList}>
-                      {assignSlots.map((slot) => (
-                        <button
-                          key={slot.slot_id}
-                          type="button"
-                          className={`${styles.slotButton} ${
-                            selectedSlotId === slot.slot_id
-                              ? styles.slotButtonActive
-                              : ""
-                          } ${
-                            !slot.is_available ? styles.slotButtonDisabled : ""
-                          }`}
-                          disabled={!slot.is_available}
-                          onClick={() => setSelectedSlotId(slot.slot_id)}
-                        >
-                          <strong>{formatDate(slot.schedule_date)}</strong>
-                          <span>
-                            {formatTime(slot.start_time)} -{" "}
-                            {formatTime(slot.end_time)}
-                          </span>
-                          <small>
-                            {slot.doctor_name} • {slot.consultation_mode}
-                            {!slot.is_available
-                              ? ` • ${slot.unavailable_reason || "Unavailable"}`
-                              : ""}
-                          </small>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className={styles.modalFooter}>
-                    <button
-                      type="button"
-                      className={styles.approveBtn}
-                      disabled={assignLoading || !selectedSlotId}
-                      onClick={handleAssignSelectedSlot}
-                    >
-                      {assignLoading ? "Assigning..." : "Use Selected Slot"}
-                    </button>
-                  </div>
-                </section>
-
-                <section className={styles.detailSection}>
-                  <h3>Manual Assignment</h3>
-                  <p className={styles.mutedText}>
-                    Use this only when the schedule was coordinated outside the
-                    weekly schedule template.
-                  </p>
-
-                  <div className={styles.formGrid}>
-                    <label className={styles.formGroup}>
-                      <span>Date</span>
-                      <input
-                        className={styles.searchInput}
-                        type="date"
-                        min={getTodayInputDate()}
-                        value={manualDate}
-                        onChange={(event) => setManualDate(event.target.value)}
-                      />
-                    </label>
-
-                    <label className={styles.formGroup}>
-                      <span>Start Time</span>
-                      <select
-                        className={styles.selectInput}
-                        value={manualStartTime}
-                        onChange={(event) => setManualStartTime(event.target.value)}
-                      >
-                        {TIME_OPTIONS.slice(0, -1).map((time) => (
-                          <option key={time} value={time}>
-                            {formatTime(time)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className={styles.formGroup}>
-                      <span>End Time</span>
-                      <select
-                        className={styles.selectInput}
-                        value={manualEndTime}
-                        onChange={(event) => setManualEndTime(event.target.value)}
-                      >
-                        {TIME_OPTIONS.slice(1).map((time) => (
-                          <option key={time} value={time}>
-                            {formatTime(time)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className={styles.formGroup}>
-                      <span>Mode</span>
-                      <select
-                        className={styles.selectInput}
-                        value={manualConsultationMode}
-                        onChange={(event) =>
-                          setManualConsultationMode(
-                            event.target.value as ManualConsultationMode
-                          )
-                        }
-                      >
-                        <option value="In-Person">In-Person</option>
-                        <option value="Online Consultation">
-                          Online Consultation
-                        </option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <div className={styles.modalFooter}>
-                    <button
-                      type="button"
-                      className={styles.secondaryAction}
-                      onClick={closeAssignModal}
-                      disabled={assignLoading}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.approveBtn}
-                      disabled={assignLoading}
-                      onClick={handleManualAssign}
-                    >
-                      {assignLoading ? "Assigning..." : "Use Manual Schedule"}
-                    </button>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showApprovalModal && selectedAppointment && (
-          <div className={styles.modalBackdrop}>
-            <div className={styles.modalCard}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>Approve Appointment</h2>
-                  <p>
-                    Review or edit the instruction that will be saved to the
-                    patient record and optionally emailed.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={closeApprovalModal}
-                  disabled={actionLoading !== null}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <label className={styles.formGroup}>
-                  <span>Patient Instruction</span>
-                  <textarea
-                    className={styles.textArea}
-                    value={approvalInstruction}
-                    onChange={(event) => setApprovalInstruction(event.target.value)}
-                    rows={7}
-                  />
-                </label>
-
-                <label className={styles.checkboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={sendEmail}
-                    onChange={(event) => setSendEmail(event.target.checked)}
-                  />
-                  <span>Send approval email to patient</span>
-                </label>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={closeApprovalModal}
-                  disabled={actionLoading !== null}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.approveBtn}
-                  onClick={handleConfirmApproval}
-                  disabled={actionLoading !== null}
-                >
-                  {actionLoading ? "Approving..." : "Approve Appointment"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedAppointment && modalAction && (
-          <div className={styles.modalBackdrop}>
-            <div className={styles.modalCard}>
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2>
-                    {modalAction === "decline"
-                      ? "Decline Appointment"
-                      : modalAction === "no-show"
-                      ? "Mark No-Show"
-                      : "Cancel Appointment"}
-                  </h2>
-                  <p>
-                    Provide a clear reason. This keeps the appointment history
-                    accountable.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.modalCloseBtn}
-                  onClick={closeReasonModal}
-                  disabled={actionLoading !== null}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <p>
-                  <strong>{selectedAppointment.patient_name}</strong> •{" "}
-                  {selectedAppointment.services}
-                </p>
-
-                <textarea
-                  className={styles.textArea}
-                  placeholder="Enter reason here"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  rows={5}
-                />
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={closeReasonModal}
-                  disabled={actionLoading !== null}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.cancelAppointmentBtn}
-                  onClick={handleConfirmReasonAction}
-                  disabled={actionLoading !== null}
-                >
-                  {actionLoading ? "Saving..." : "Confirm"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-      </PortalShell>
-    </div>
+      <AppointmentReasonDialog
+        appointment={reasonAppointment}
+        action={reasonAction}
+        busy={Boolean(reasonAppointment && actionLoading === reasonAppointment.id)}
+        error={operationError}
+        onClose={closeReasonDialog}
+        onConfirm={confirmReasonAction}
+       />
+    </PageShell>
   );
+}
+
+function uniqueAppointmentsById(appointments: AdminAppointment[]) {
+  return Array.from(
+    new Map(appointments.map((appointment) => [appointment.id, appointment])).values()
+  );
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function successMessage(status: AppointmentStatus) {
+  if (status === "Approved") return "Appointment approved and patient instructions saved.";
+  if (status === "Completed") return "Appointment marked as completed.";
+  if (status === "Declined") return "Appointment request declined and the reason was recorded.";
+  if (status === "Cancelled") return "Appointment cancelled and the reason was recorded.";
+  if (status === "No-Show") return "Appointment marked as no-show and the reason was recorded.";
+  return "Appointment updated successfully.";
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
