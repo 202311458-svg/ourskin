@@ -47,7 +47,16 @@ from app.models.diagnosis_report import DiagnosisReport  # noqa: E402
 from app.models.follow_up import FollowUp  # noqa: E402
 from app.models.skin_analysis import SkinAnalysis  # noqa: E402
 from app.models.user import User  # noqa: E402
-from app.routes import ai_analysis, announcements, appointments, auth, doctor, notifications  # noqa: E402
+from app.routes import (  # noqa: E402
+    ai_phase3,
+    ai_progress_phase5,
+    announcements,
+    appointments,
+    auth,
+    doctor,
+    notifications,
+)
+from app.utils import ai_serializers  # noqa: E402
 
 
 @pytest.fixture()
@@ -232,14 +241,16 @@ def clinical_api(monkeypatch):
     test_app = FastAPI()
     test_app.include_router(appointments.router)
     test_app.include_router(doctor.router)
-    test_app.include_router(ai_analysis.router)
+    test_app.include_router(ai_progress_phase5.router)
+    test_app.include_router(ai_phase3.router)
     test_app.include_router(announcements.router)
     test_app.include_router(auth.router)
     test_app.include_router(notifications.router)
     test_app.dependency_overrides[app_db.get_db] = override_db
     test_app.dependency_overrides[appointments.get_db] = override_db
     test_app.dependency_overrides[doctor.get_db] = override_db
-    test_app.dependency_overrides[ai_analysis.get_db] = override_db
+    test_app.dependency_overrides[ai_progress_phase5.get_db] = override_db
+    test_app.dependency_overrides[ai_phase3.get_db] = override_db
     test_app.dependency_overrides[announcements.get_db] = override_db
     test_app.dependency_overrides[auth.get_db] = override_db
     test_app.dependency_overrides[notifications.get_db] = override_db
@@ -250,7 +261,12 @@ def clinical_api(monkeypatch):
         lambda path: f"https://signed.invalid/{path}" if path else None,
     )
     monkeypatch.setattr(
-        ai_analysis,
+        ai_progress_phase5,
+        "create_signed_image_url",
+        lambda path: f"https://signed.invalid/{path}" if path else None,
+    )
+    monkeypatch.setattr(
+        ai_serializers,
         "create_signed_image_url",
         lambda path: f"https://signed.invalid/{path}" if path else None,
     )
