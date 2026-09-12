@@ -29,6 +29,22 @@ await requirePatterns("src/app/components/portal/PortalFrame.tsx", [
   'href="#portal-content"',
   'id="portal-content"',
   'aria-current={active ? "page" : undefined}',
+  'aria-expanded={mobileOpen}',
+  'aria-label="Close navigation"',
+  "adminRouteTitles",
+]);
+
+await requirePatterns("src/app/components/portal/admin/AdminDialog.tsx", [
+  'role="dialog"',
+  'aria-modal="true"',
+  "FOCUSABLE_SELECTOR",
+  "previousFocus?.focus()",
+]);
+
+await requirePatterns("src/app/components/portal/admin/AdminDataTable.tsx", [
+  'role="region"',
+  "tabIndex={0}",
+  "aria-label={tableLabel}",
 ]);
 
 await requirePatterns("src/app/components/ProfileContent.tsx", [
@@ -36,6 +52,13 @@ await requirePatterns("src/app/components/ProfileContent.tsx", [
   'autoComplete="new-password"',
   'aria-expanded={showPasswordForm}',
   'aria-controls="password-change-form"',
+]);
+
+await requirePatterns("src/app/pages/admin/profile/page.tsx", [
+  'autoComplete="name"',
+  'autoComplete="tel"',
+  'autoComplete="current-password"',
+  'aria-describedby="admin-password-guidance"',
 ]);
 
 await requirePatterns("src/app/pages/patient/home/page.tsx", [

@@ -1,13 +1,33 @@
-.successMessage, .errorMessage { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.successMessage,
+.errorMessage {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
 .successMessage { background: var(--color-success-bg); color: var(--color-success); }
 .errorMessage { background: var(--color-danger-bg); color: var(--color-danger); }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); align-items: start; }
 .form { display: grid; gap: var(--space-4); }
 .form label { display: grid; gap: var(--space-2); }
 .form label > span { font-weight: 700; }
-.form input { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); padding: 10px 12px; font: inherit; }
+.form input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 10px 12px;
+  font: inherit;
+}
+.form input:focus-visible {
+  border-color: var(--color-focus);
+  outline: 3px solid color-mix(in srgb, var(--color-focus) 24%, transparent);
+  outline-offset: 1px;
+}
 .form input:disabled { background: var(--color-surface-subtle); color: var(--color-text-muted); }
+.helperText { margin: calc(var(--space-2) * -1) 0 0; color: var(--color-text-muted); font-size: var(--font-size-sm); line-height: var(--line-height-base); }
 .actions { display: flex; justify-content: flex-end; }
 .sessionNotice { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-subtle); }
 .sessionNotice p { margin: 0; color: var(--color-text-muted); line-height: var(--line-height-base); }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .actions > * { width: 100%; } }

@@ -10,6 +10,7 @@ import {
   FaMoon,
   FaSignOutAlt,
   FaSun,
+  FaTimes,
   FaUserCircle,
 } from "react-icons/fa";
 import NotificationBell from "@/app/components/NotificationBell";
@@ -32,6 +33,21 @@ type PortalFrameProps = {
   role: PortalRole;
   children: React.ReactNode;
 };
+
+const adminRouteTitles = [
+  ["/pages/admin/dashboard", "Dashboard"],
+  ["/pages/admin/appointments", "Appointments"],
+  ["/pages/admin/schedules", "Schedules"],
+  ["/pages/admin/follow-ups", "Follow-ups"],
+  ["/pages/admin/users", "Patients & users"],
+  ["/pages/admin/staff-mgmt", "Staff management"],
+  ["/pages/admin/ai-logs", "AI review monitor"],
+  ["/pages/admin/reports", "Reports"],
+  ["/pages/admin/audit-logs", "Audit logs"],
+  ["/pages/admin/announcements", "Announcements"],
+  ["/pages/admin/notifications", "Notifications"],
+  ["/pages/admin/profile", "Profile & security"],
+] as const;
 
 const patientRouteTitles = [
   ["/pages/patient/dashboard", "Dashboard"],
@@ -108,13 +124,15 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
   const aiClinicalWorkspace = role === "doctor" && isAiClinicalPath(pathname);
 
   const headerSummary = useMemo(() => {
+    if (role === "admin") {
+      return getRouteTitle(pathname, adminRouteTitles, "Administration");
+    }
     if (role === "patient") {
       return getRouteTitle(pathname, patientRouteTitles, "Patient portal");
     }
     if (role === "staff") {
       return getRouteTitle(pathname, staffRouteTitles, "Staff portal");
     }
-    if (pathname.includes("notifications")) return "Notifications";
     if (role === "doctor") {
       return getRouteTitle(pathname, doctorRouteTitles, "Clinical workflow");
     }
@@ -127,8 +145,15 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
       document.body.classList.toggle("navCollapsed", value);
     });
     document.body.classList.toggle("navCollapsed", sidebarState.collapsed);
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      document.body.classList.remove("navCollapsed");
+    };
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
@@ -200,17 +225,23 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
         <div className={styles.brand}>
           <button
             type="button"
-            className={styles.brandButton}
-            onClick={() => {
-              sidebarState.toggle();
-              setCollapsed(!collapsed);
-            }}
+            className={`${styles.brandButton} ${styles.desktopCollapse}`}
+            onClick={() => sidebarState.toggle()}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
               style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
             />
+          </button>
+          <button
+            type="button"
+            className={`${styles.brandButton} ${styles.mobileClose}`}
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
+            title="Close navigation"
+          >
+            <FaTimes />
           </button>
           <div className={styles.brandCopy}>
             <span className={styles.brandIntro}>
@@ -261,7 +292,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
         <div className={styles.sidebarFooter}>
           {profileRoutes[role] && (
             <Link className={styles.navLink} href={profileRoutes[role]!}>
-              <span className={styles.navIcon}>
+              <span className={styles.navIcon} aria-hidden="true">
                 <FaUserCircle />
               </span>
               <span className={styles.navLabel}>Profile</span>
@@ -272,7 +303,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
             className={styles.footerButton}
             onClick={toggleDarkMode}
           >
-            <span className={styles.navIcon}>
+            <span className={styles.navIcon} aria-hidden="true">
               {darkMode ? <FaSun /> : <FaMoon />}
             </span>
             <span>{darkMode ? "Light mode" : "Dark mode"}</span>
@@ -282,7 +313,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
             className={styles.footerButton}
             onClick={handleLogout}
           >
-            <span className={styles.navIcon}>
+            <span className={styles.navIcon} aria-hidden="true">
               <FaSignOutAlt />
             </span>
             <span>Log out</span>
@@ -297,6 +328,7 @@ export default function PortalFrame({ role, children }: PortalFrameProps) {
             className={styles.mobileButton}
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
+            aria-expanded={mobileOpen}
           >
             <FaBars />
           </button>

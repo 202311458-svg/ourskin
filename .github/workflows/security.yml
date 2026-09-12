@@ -35,7 +35,7 @@ jobs:
         working-directory: backend
     env:
       ENVIRONMENT: test
-      DATABASE_URL: sqlite+pysqlite:///:memory:
+      DATABASE_URL: "sqlite+pysqlite:///:memory:"
       SECRET_KEY: ci-only-synthetic-signing-key-at-least-32-bytes
       JWT_ISSUER: os-coms-test
       JWT_AUDIENCE: os-coms-test-api
@@ -125,6 +125,8 @@ jobs:
         run: npm run typecheck
       - name: Shared accessibility smoke checks
         run: npm run check:a11y
+      - name: Admin regression checks
+        run: npm run check:admin
       - name: Production build
         run: npm run build
       - name: Audit production npm dependencies

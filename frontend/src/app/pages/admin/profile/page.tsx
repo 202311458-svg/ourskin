@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminActionButton from "@/app/components/portal/admin/AdminActionButton";
 import AdminStatsGrid from "@/app/components/portal/admin/AdminStatsGrid";
 import EmptyState from "@/app/components/portal/ui/EmptyState";
@@ -18,6 +19,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function AdminProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -31,39 +33,67 @@ export default function AdminProfilePage() {
   const [sessionInvalidated, setSessionInvalidated] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true); setFeedback(null);
+    setLoading(true);
+    setFeedback(null);
     try {
       const data = await getAdminProfile();
-      setProfile(data); setName(data.name || ""); setContact(data.contact || "");
-    } catch (reason) { setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to load profile." }); }
-    finally { setLoading(false); }
+      setProfile(data);
+      setName(data.name || "");
+      setContact(data.contact || "");
+    } catch (reason) {
+      setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to load profile." });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) { setFeedback({ tone: "error", text: "Name is required." }); return; }
-    setSaving(true); setFeedback(null);
+    if (!name.trim()) {
+      setFeedback({ tone: "error", text: "Name is required." });
+      return;
+    }
+    setSaving(true);
+    setFeedback(null);
     try {
       const result = await updateAdminProfile({ name: name.trim(), contact: contact.trim() || null });
-      setProfile(result.user); setName(result.user.name); setContact(result.user.contact || "");
+      setProfile(result.user);
+      setName(result.user.name);
+      setContact(result.user.contact || "");
       setFeedback({ tone: "success", text: result.message });
-    } catch (reason) { setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to save profile." }); }
-    finally { setSaving(false); }
+    } catch (reason) {
+      setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to save profile." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const changePassword = async (event: FormEvent) => {
-    event.preventDefault(); setFeedback(null);
-    if (!currentPassword || !newPassword || !confirmPassword) { setFeedback({ tone: "error", text: "Fill in all password fields." }); return; }
-    if (newPassword !== confirmPassword) { setFeedback({ tone: "error", text: "New password and confirmation do not match." }); return; }
+    event.preventDefault();
+    setFeedback(null);
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setFeedback({ tone: "error", text: "Fill in all password fields." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setFeedback({ tone: "error", text: "New password and confirmation do not match." });
+      return;
+    }
     setPasswordSaving(true);
     try {
       const result = await changeAdminPassword({ current_password: currentPassword, new_password: newPassword });
-      setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setSessionInvalidated(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setSessionInvalidated(true);
       setFeedback({ tone: "success", text: result.message || "Password updated. For security, sign in again with your new password." });
-    } catch (reason) { setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to update password." }); }
-    finally { setPasswordSaving(false); }
+    } catch (reason) {
+      setFeedback({ tone: "error", text: reason instanceof Error ? reason.message : "Unable to update password." });
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   return (
@@ -81,22 +111,52 @@ export default function AdminProfilePage() {
           <div className={styles.grid}>
             <Section title="Profile details" description="Email, role, and account status are controlled by the account system and cannot be changed here.">
               <form className={styles.form} onSubmit={saveProfile}>
-                <label><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} disabled={saving || sessionInvalidated} /></label>
-                <label><span>Contact number</span><input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Optional" disabled={saving || sessionInvalidated} /></label>
-                <label><span>Email</span><input value={profile.email} disabled /></label>
-                <label><span>Department</span><input value={profile.department || "Administration"} disabled /></label>
-                <div className={styles.actions}><AdminActionButton tone="primary" type="submit" disabled={saving || sessionInvalidated}>{saving ? "Saving…" : "Save profile"}</AdminActionButton></div>
+                <label>
+                  <span>Name</span>
+                  <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} disabled={saving || sessionInvalidated} required />
+                </label>
+                <label>
+                  <span>Contact number</span>
+                  <input type="tel" autoComplete="tel" value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Optional" disabled={saving || sessionInvalidated} />
+                </label>
+                <label>
+                  <span>Email</span>
+                  <input type="email" autoComplete="email" value={profile.email} disabled />
+                </label>
+                <label>
+                  <span>Department</span>
+                  <input value={profile.department || "Administration"} disabled />
+                </label>
+                <div className={styles.actions}>
+                  <AdminActionButton tone="primary" type="submit" disabled={saving || sessionInvalidated}>{saving ? "Saving…" : "Save profile"}</AdminActionButton>
+                </div>
               </form>
             </Section>
             <Section title="Password" description="Changing your password invalidates existing authenticated sessions.">
               {sessionInvalidated ? (
-                <div className={styles.sessionNotice}><strong>Password changed</strong><p>Your previous session credentials are no longer valid. Return to the sign-in screen and use your new password.</p><AdminActionButton tone="primary" onClick={() => window.location.assign("/")}>Return to sign in</AdminActionButton></div>
+                <div className={styles.sessionNotice}>
+                  <strong>Password changed</strong>
+                  <p>Your previous session credentials are no longer valid. Return to the sign-in screen and use your new password.</p>
+                  <AdminActionButton tone="primary" onClick={() => router.replace("/")}>Return to sign in</AdminActionButton>
+                </div>
               ) : (
                 <form className={styles.form} onSubmit={changePassword}>
-                  <label><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} disabled={passwordSaving} /></label>
-                  <label><span>New password</span><input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={passwordSaving} /></label>
-                  <label><span>Confirm new password</span><input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={passwordSaving} /></label>
-                  <div className={styles.actions}><AdminActionButton tone="primary" type="submit" disabled={passwordSaving}>{passwordSaving ? "Updating…" : "Update password"}</AdminActionButton></div>
+                  <label>
+                    <span>Current password</span>
+                    <input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={passwordSaving} required />
+                  </label>
+                  <label>
+                    <span>New password</span>
+                    <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={passwordSaving} minLength={8} required aria-describedby="admin-password-guidance" />
+                  </label>
+                  <p id="admin-password-guidance" className={styles.helperText}>Use at least 8 characters with an uppercase letter, a number, and a special character.</p>
+                  <label>
+                    <span>Confirm new password</span>
+                    <input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={passwordSaving} minLength={8} required />
+                  </label>
+                  <div className={styles.actions}>
+                    <AdminActionButton tone="primary" type="submit" disabled={passwordSaving}>{passwordSaving ? "Updating…" : "Update password"}</AdminActionButton>
+                  </div>
                 </form>
               )}
             </Section>

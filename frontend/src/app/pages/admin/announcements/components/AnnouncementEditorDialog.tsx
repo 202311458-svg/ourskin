@@ -96,16 +96,57 @@ export default function AnnouncementEditorDialog({
     >
       <div className={styles.formStack}>
         {error ? <div className={styles.errorMessage} role="alert">{error}</div> : null}
-        <label className={styles.wideField}><span>Title</span><input value={form.title} onChange={(e) => setForm((v) => ({ ...v, title: e.target.value }))} /></label>
-        <label className={styles.wideField}><span>Message</span><textarea rows={6} value={form.message} onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))} /></label>
+        <label className={styles.wideField}>
+          <span>Title</span>
+          <input
+            value={form.title}
+            minLength={3}
+            maxLength={150}
+            required
+            onChange={(e) => setForm((value) => ({ ...value, title: e.target.value }))}
+          />
+        </label>
+        <label className={styles.wideField}>
+          <span>Message</span>
+          <textarea
+            rows={6}
+            value={form.message}
+            minLength={5}
+            required
+            onChange={(e) => setForm((value) => ({ ...value, message: e.target.value }))}
+          />
+        </label>
         <div className={styles.formGrid}>
-          <label><span>Category</span><select value={form.category} onChange={(e) => setForm((v) => ({ ...v, category: e.target.value as AnnouncementCategory }))}>{categories.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label><span>Priority</span><select value={form.priority} onChange={(e) => setForm((v) => ({ ...v, priority: e.target.value as AnnouncementPriority }))}>{priorities.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label><span>Visible from</span><input type="datetime-local" value={toLocal(form.starts_at)} onChange={(e) => setForm((v) => ({ ...v, starts_at: toIso(e.target.value) }))} /></label>
-          <label><span>Expires at</span><input type="datetime-local" value={toLocal(form.expires_at)} onChange={(e) => setForm((v) => ({ ...v, expires_at: toIso(e.target.value) }))} /></label>
+          <label>
+            <span>Category</span>
+            <select value={form.category} onChange={(e) => setForm((value) => ({ ...value, category: e.target.value as AnnouncementCategory }))}>
+              {categories.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Priority</span>
+            <select value={form.priority} onChange={(e) => setForm((value) => ({ ...value, priority: e.target.value as AnnouncementPriority }))}>
+              {priorities.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Visible from</span>
+            <input type="datetime-local" value={toLocal(form.starts_at)} onChange={(e) => setForm((value) => ({ ...value, starts_at: toIso(e.target.value) }))} />
+          </label>
+          <label>
+            <span>Expires at</span>
+            <input type="datetime-local" value={toLocal(form.expires_at)} onChange={(e) => setForm((value) => ({ ...value, expires_at: toIso(e.target.value) }))} />
+          </label>
         </div>
-        <label className={styles.checkboxField}><input type="checkbox" checked={form.is_pinned} onChange={(e) => setForm((v) => ({ ...v, is_pinned: e.target.checked }))} /><span>Pin this announcement</span></label>
-        {form.starts_at && new Date(form.starts_at) > new Date() ? <p className={styles.helperText}>Publishing with a future visible-from time still sends the patient notification when you publish; the announcement itself becomes visible at the scheduled time.</p> : null}
+        <label className={styles.checkboxField}>
+          <input type="checkbox" checked={form.is_pinned} onChange={(e) => setForm((value) => ({ ...value, is_pinned: e.target.checked }))} />
+          <span>Pin this announcement</span>
+        </label>
+        {form.starts_at && new Date(form.starts_at) > new Date() ? (
+          <p className={styles.helperText}>
+            Publishing with a future visible-from time still sends the patient notification when you publish; the announcement itself becomes visible at the scheduled time.
+          </p>
+        ) : null}
       </div>
     </AdminDialog>
   );

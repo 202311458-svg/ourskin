@@ -32,6 +32,8 @@ export default function AdminDataTable({
   className = "",
   ariaLabel,
 }: AdminDataTableProps) {
+  const tableLabel = ariaLabel || (title ? `${title} table` : "Data table");
+
   return (
     <Section
       title={title}
@@ -47,7 +49,14 @@ export default function AdminDataTable({
       ) : empty ? (
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
-        <div className={styles.tableWrap}>{children}</div>
+        <div
+          className={styles.tableWrap}
+          role="region"
+          aria-label={tableLabel}
+          tabIndex={0}
+        >
+          {children}
+        </div>
       )}
     </Section>
   );

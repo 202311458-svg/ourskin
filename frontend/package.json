@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check:a11y": "node scripts/check-accessibility.mjs"
+    "check:a11y": "node scripts/check-accessibility.mjs",
+    "check:admin": "node scripts/check-admin-quality.mjs"
   },
   "dependencies": {
     "next": "^16.1.6",
