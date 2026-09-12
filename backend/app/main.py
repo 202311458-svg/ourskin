@@ -25,6 +25,7 @@ from app.routes import (
     admin,
     admin_accounts_phase6,
     admin_ai_phase6,
+    admin_backend_phase9,
     admin_comms_profile_phase8,
     admin_data_phase3,
     admin_oversight_phase7,
@@ -126,11 +127,17 @@ app.include_router(ai_phase3.router)
 app.include_router(appointments_phase9.router)
 app.include_router(appointments.router)
 app.include_router(patients.router)
+
+# Admin Phase 9 is registered before legacy announcement/Admin routers so
+# transactional account/announcement mutations and optimized dashboard/list
+# endpoints cannot be bypassed through older duplicate route definitions.
+app.include_router(admin_backend_phase9.router)
+
 app.include_router(announcements.router)
 
 # Phase 6 Admin account routes own user/internal-account search plus lifecycle
-# mutations. They are registered before Phase 3/legacy Admin routes so protected
-# role/status transitions cannot be bypassed through older duplicate paths.
+# mutations. Phase 9 now supersedes duplicate mutation paths with atomic audit
+# transactions while Phase 6 continues to provide its query surfaces.
 app.include_router(admin_accounts_phase6.router)
 
 # Phase 7 oversight routes own AI-monitor queries, audit-log forensics, and
@@ -142,7 +149,8 @@ app.include_router(admin_oversight_phase7.router)
 app.include_router(admin_comms_profile_phase8.router)
 
 # Phase 3 Admin data routes provide server-side search/filter pagination and
-# authoritative summary counts without replacing legacy compatibility routes.
+# authoritative summary counts. Phase 9 supersedes the appointment-query path
+# with a joined implementation that avoids per-row patient lookups.
 app.include_router(admin_data_phase3.router)
 
 # Phase 5 adds Admin schedule filtering/summary data without changing Staff list
