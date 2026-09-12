@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 
 import pytest
 from fastapi import HTTPException
+from fastapi.routing import iter_route_contexts
 
 from app.core.clock import get_clinic_timezone
 from app.main import app
@@ -15,9 +16,9 @@ from app.routes import staff_schedules_phase9 as phase9_staff_schedules
 def test_phase9_routes_precede_legacy_appointment_routes():
     matching = [
         route
-        for route in app.routes
-        if getattr(route, "path", None) == "/appointments/today"
-        and "GET" in getattr(route, "methods", set())
+        for route in iter_route_contexts(app.routes)
+        if route.path == "/appointments/today"
+        and "GET" in route.methods
     ]
 
     assert len(matching) >= 2
@@ -27,9 +28,9 @@ def test_phase9_routes_precede_legacy_appointment_routes():
 def test_phase9_staff_schedule_route_precedes_legacy_route():
     matching = [
         route
-        for route in app.routes
-        if getattr(route, "path", None) == "/staff/doctor-schedules"
-        and "GET" in getattr(route, "methods", set())
+        for route in iter_route_contexts(app.routes)
+        if route.path == "/staff/doctor-schedules"
+        and "GET" in route.methods
     ]
 
     assert len(matching) >= 2

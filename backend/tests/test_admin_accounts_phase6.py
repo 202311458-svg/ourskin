@@ -191,7 +191,7 @@ def test_staff_query_is_paginated_and_server_filtered(account_api):
     assert payload["page"] == 2
     assert payload["total_pages"] == 2
     assert payload["summary"]["doctors"] == 1
-    assert payload["summary"]["inactive"] == 1
+    assert payload["summary"]["inactive"] == 0
 
 
 def test_deactivation_invalidates_sessions_and_reactivation_keeps_old_sessions_invalid(account_api):

@@ -1,4 +1,5 @@
 from fastapi import Response
+from fastapi.routing import iter_route_contexts
 
 from app.main import app
 from app.routes import auth_phase10
@@ -8,9 +9,9 @@ from app.routes.auth_phase2 import BROWSER_SESSION_MARKER
 def test_phase10_google_routes_precede_legacy_routes():
     matching = [
         route
-        for route in app.routes
-        if getattr(route, "path", None) == "/auth/google/start"
-        and "POST" in getattr(route, "methods", set())
+        for route in iter_route_contexts(app.routes)
+        if route.path == "/auth/google/start"
+        and "POST" in route.methods
     ]
 
     assert len(matching) >= 2

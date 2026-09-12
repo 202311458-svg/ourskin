@@ -14,14 +14,14 @@ def test_admin_created_staff_password_must_meet_policy():
     with pytest.raises(ValidationError):
         StaffCreate(
             name="Synthetic Staff",
-            email="staff@example.test",
+            email="staff@example.com",
             password="weakpass",
             role="staff",
         )
 
     valid = StaffCreate(
         name="Synthetic Staff",
-        email="staff@example.test",
+        email="staff@example.com",
         password="Strong1!",
         role="staff",
     )
